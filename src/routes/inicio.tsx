@@ -41,19 +41,32 @@ export const Route = createFileRoute("/inicio")({
 function Inicio() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
+  const [defaultAddress, setDefaultAddress] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-        if (data) setProfile(data);
-      }
-      setIsLoading(false);
-    };
+  const fetchData = async () => {
+    setIsLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      // Fetch profile
+      const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      if (profileData) setProfile(profileData);
 
-    fetchProfile();
+      // Fetch default address
+      const { data: addrData } = await supabase
+        .from("customer_addresses" as any)
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("is_default", true)
+        .single();
+      
+      setDefaultAddress(addrData);
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
   const handleLogout = async () => {
@@ -81,9 +94,18 @@ function Inicio() {
             <MapPin className="w-4 h-4 text-primary" />
             <div className="flex flex-col">
               <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Entregar em</span>
-              <button className="flex items-center gap-1 text-sm font-bold text-white group">
-                Informe seu endereço
-                <ChevronRight className="w-4 h-4 text-primary transition-transform group-hover:translate-x-0.5" />
+              <button 
+                onClick={() => navigate({ to: "/enderecos" })}
+                className="flex items-center gap-1 text-sm font-bold text-white group text-left"
+              >
+                {defaultAddress ? (
+                  <span className="truncate max-w-[180px]">
+                    {defaultAddress.label}: {defaultAddress.street}, {defaultAddress.number}
+                  </span>
+                ) : (
+                  "Informe seu endereço"
+                )}
+                <ChevronRight className="w-4 h-4 text-primary transition-transform group-hover:translate-x-0.5 flex-shrink-0" />
               </button>
             </div>
           </div>
