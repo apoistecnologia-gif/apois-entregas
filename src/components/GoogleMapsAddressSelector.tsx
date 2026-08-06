@@ -196,13 +196,14 @@ export function GoogleMapsAddressSelector({ onAddressSelected, initialCenter }: 
             type="button"
             onClick={handleGetCurrentLocation}
             disabled={isLocating}
-            className="absolute bottom-3 right-3 bg-primary text-black hover:bg-primary/90 w-10 h-10 p-0 rounded-full shadow-lg"
+            className="absolute bottom-3 right-3 bg-primary text-black hover:bg-primary/90 w-10 h-10 p-0 rounded-full shadow-lg z-10"
+            title="Usar minha localização atual"
           >
             {isLocating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Navigation className="w-5 h-5" />}
           </Button>
 
           {!isMapLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
+            <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 z-20">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           )}
