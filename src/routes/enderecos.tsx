@@ -26,7 +26,9 @@ export const Route = createFileRoute("/enderecos")({
   },
   component: Enderecos,
   head: () => ({
-    title: "Meus Endereços | APOIS ENTREGA",
+    meta: [
+      { title: "Meus Endereços | APOIS ENTREGA" }
+    ]
   }),
 });
 
@@ -37,16 +39,14 @@ function Enderecos() {
 
   const fetchAddresses = async () => {
     setIsLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
     const { data, error } = await supabase
-      .from("customer_addresses")
+      .from("customer_addresses" as any)
       .select("*")
       .order("is_default", { ascending: false })
       .order("created_at", { ascending: false });
 
     if (error) {
+      console.error("Error fetching addresses:", error);
       toast.error("Erro ao carregar endereços");
     } else {
       setAddresses(data || []);
@@ -63,13 +63,13 @@ function Enderecos() {
     if (!user) return;
 
     // Remove pattern from all
-    await supabase
+    await (supabase as any)
       .from("customer_addresses")
       .update({ is_default: false })
       .eq("user_id", user.id);
 
     // Set new default
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("customer_addresses")
       .update({ is_default: true })
       .eq("id", id);
@@ -90,7 +90,7 @@ function Enderecos() {
 
     if (!confirm("Tem certeza que deseja excluir este endereço?")) return;
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("customer_addresses")
       .delete()
       .eq("id", id);
