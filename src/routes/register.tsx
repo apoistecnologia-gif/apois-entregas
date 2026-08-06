@@ -303,6 +303,7 @@ function Register() {
           <div className="pt-4 pb-8 space-y-4">
             <Button 
               type="submit"
+              disabled={isLoading}
               className={`w-full font-bold h-14 text-lg rounded-2xl transition-all shadow-lg ${
                 !isFormValid 
                   ? "bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed opacity-80" 
