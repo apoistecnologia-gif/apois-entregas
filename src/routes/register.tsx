@@ -158,7 +158,11 @@ function Register() {
         if (data) console.log("Supabase Data (even with error):", data);
 
         const errorDetail = `Erro ${error.status || 'N/A'} (${error.code || 'sem código'}): ${error.message}`;
-        toast.error(errorDetail, { duration: 6000 });
+        toast.error(errorDetail, { duration: 8000 });
+        
+        if (error.message.includes("Database error saving new user")) {
+          toast.error("Erro interno no banco de dados. A trigger de criação de perfil pode estar falhando.", { duration: 10000 });
+        }
         
         if (error.message.includes("User already registered")) {
           toast.error("Este e-mail já está cadastrado.");
