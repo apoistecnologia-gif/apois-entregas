@@ -131,10 +131,14 @@ function Register() {
     toast.info("Enviando cadastro ao Supabase", { duration: 2000 });
 
     try {
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      console.log("Email Redirect To:", redirectTo);
+      
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
+          emailRedirectTo: redirectTo,
           data: {
             full_name: formData.fullName,
             phone: formData.phone,
