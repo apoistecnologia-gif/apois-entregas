@@ -223,6 +223,7 @@ function Register() {
             {(touched.phone || !isFormValid) && errors["phone"] && (
               <p className="text-[10px] text-red-500 ml-1">{errors["phone"]}</p>
             )}
+          </div>
 
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-zinc-400 ml-1">
