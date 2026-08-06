@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { GoogleMapsAddressSelector } from "@/components/GoogleMapsAddressSelector";
 
 export const Route = createFileRoute("/enderecos/editar/$addressId")({
   beforeLoad: async () => {
@@ -41,6 +42,8 @@ function EditarEndereco() {
     city: "",
     state: "",
     reference: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
   });
 
   useEffect(() => {
@@ -65,6 +68,8 @@ function EditarEndereco() {
           city: data.city,
           state: data.state,
           reference: data.reference || "",
+          latitude: data.latitude,
+          longitude: data.longitude,
         });
       }
       setIsLoading(false);
@@ -110,7 +115,7 @@ function EditarEndereco() {
   const labelOptions = ["Casa", "Trabalho", "Outro"];
 
   return (
-    <div className="flex min-h-screen flex-col bg-black text-white overflow-x-hidden max-w-[500px] mx-auto shadow-2xl border-x border-white/5">
+    <div className="fixed inset-0 z-[60] bg-black overflow-y-auto overflow-x-hidden flex flex-col max-w-[500px] mx-auto shadow-2xl">
       <header className="flex items-center p-4 sticky top-0 z-50 bg-black/80 backdrop-blur-lg border-b border-white/10">
         <button 
           onClick={() => navigate({ to: "/enderecos" })}
@@ -121,8 +126,20 @@ function EditarEndereco() {
         <h1 className="text-lg font-bold ml-2">Editar Endereço</h1>
       </header>
 
-      <main className="flex-1 px-6 py-6 pb-24">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <main className="flex-1 overflow-y-auto">
+        <div className="px-6 py-4 border-b border-white/5 bg-zinc-950/50">
+          <GoogleMapsAddressSelector 
+            initialCenter={formData.latitude && formData.longitude ? { lat: formData.latitude, lng: formData.longitude } : undefined}
+            onAddressSelected={(addr) => {
+              setFormData(prev => ({
+                ...prev,
+                ...addr
+              }));
+            }}
+          />
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6 px-6 py-6 pb-24">
           <div className="space-y-3">
             <label className="text-sm font-medium text-zinc-400">Apelido do endereço</label>
             <div className="flex gap-2">
