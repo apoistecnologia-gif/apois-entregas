@@ -32,6 +32,9 @@ export const Route = createFileRoute("/inicio")({
   component: Inicio,
   head: () => ({
     title: "Início | APOIS ENTREGA",
+    meta: [
+      { name: "description", content: "Bem-vindo ao APOIS ENTREGA" }
+    ]
   }),
 });
 

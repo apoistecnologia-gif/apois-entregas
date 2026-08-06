@@ -48,7 +48,7 @@ function Login() {
 
       if (data.session) {
         toast.success("Login realizado com sucesso!");
-        navigate({ to: "/" });
+        navigate({ to: "/inicio" });
       }
     } catch (err) {
       toast.error("Não foi possível entrar agora. Verifique sua conexão e tente novamente.");

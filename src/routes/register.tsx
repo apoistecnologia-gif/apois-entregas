@@ -151,7 +151,7 @@ function Register() {
 
       if (data.session) {
         toast.success("Conta criada e autenticada com sucesso!");
-        navigate({ to: "/" });
+        navigate({ to: "/inicio" });
       } else if (data.user) {
         // Se houver user mas não session, e a confirmação está desativada, algo inesperado ocorreu
         toast.error("Sua conta foi criada, mas não foi possível iniciar a sessão automaticamente. Por favor, tente fazer login.");
