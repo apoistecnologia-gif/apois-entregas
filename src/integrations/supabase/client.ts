@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// O projeto APOIS ENTREGA - PRODUÇÃO sbvhdgyuuperszlsllji
+// CONFIGURAÇÃO FORÇADA - sbvhdgyuuperszlsllji
 const SUPABASE_URL = "https://sbvhdgyuuperszlsllji.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_tmNxPNALqBcWiEdD7_eWOw_mk0qRkJa";
 
