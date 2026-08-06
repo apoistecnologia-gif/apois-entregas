@@ -90,14 +90,14 @@ function Inicio() {
       {/* Top Header */}
       <header className="px-6 pt-8 pb-4 sticky top-0 z-50 bg-black/80 backdrop-blur-lg">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-primary" />
-            <div className="flex flex-col">
+          <button 
+            onClick={() => navigate({ to: "/enderecos" })}
+            className="flex items-center gap-2 flex-1 text-left group"
+          >
+            <MapPin className="w-4 h-4 text-primary shrink-0" />
+            <div className="flex flex-col overflow-hidden">
               <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Entregar em</span>
-              <button 
-                onClick={() => navigate({ to: "/enderecos" })}
-                className="flex items-center gap-1 text-sm font-bold text-white group text-left"
-              >
+              <div className="flex items-center gap-1 text-sm font-bold text-white">
                 {defaultAddress ? (
                   <span className="truncate max-w-[180px]">
                     {defaultAddress.label}: {defaultAddress.street}, {defaultAddress.number}
@@ -106,9 +106,9 @@ function Inicio() {
                   "Informe seu endereço"
                 )}
                 <ChevronRight className="w-4 h-4 text-primary transition-transform group-hover:translate-x-0.5 flex-shrink-0" />
-              </button>
+              </div>
             </div>
-          </div>
+          </button>
           <button className="p-2 bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition-colors">
             <Bell className="w-5 h-5" />
           </button>
