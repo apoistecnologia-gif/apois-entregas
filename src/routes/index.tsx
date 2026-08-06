@@ -32,27 +32,27 @@ function Index() {
       </header>
 
       {/* Hero Section */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 text-center bg-black">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 md:py-12 text-center bg-black">
         <div className="max-w-2xl w-full">
-          <h1 className="text-4xl md:text-6xl font-black text-white mb-4 leading-tight">
+          <h1 className="text-3xl md:text-6xl font-black text-white mb-4 leading-tight">
             Tudo o que você precisa, <span className="text-primary italic">agora.</span>
           </h1>
-          <p className="text-zinc-400 text-lg md:text-xl mb-12">
+          <p className="text-zinc-400 text-base md:text-xl mb-8 md:text-xl mb-12">
             Escolha como você quer começar hoje no APOIS.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
             {/* Option 1: Customer */}
             <Card className="bg-zinc-900 border-zinc-800 hover:border-primary transition-all cursor-pointer group">
-              <CardContent className="pt-8 pb-6 flex flex-col items-center">
-                <div className="p-4 rounded-2xl bg-primary/10 text-primary mb-4 group-hover:scale-110 transition-transform">
-                  <ShoppingBag size={32} />
+              <CardContent className="pt-6 pb-4 md:pt-8 md:pb-6 flex flex-col items-center">
+                <div className="p-3 md:p-4 rounded-2xl bg-primary/10 text-primary mb-3 md:mb-4 group-hover:scale-110 transition-transform">
+                  <ShoppingBag className="w-6 h-6 md:w-8 md:h-8" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Quero pedir</h3>
-                <p className="text-sm text-zinc-500 mb-6 px-4">
+                <h3 className="text-lg md:text-xl font-bold text-white mb-2">Quero pedir</h3>
+                <p className="text-xs md:text-sm text-zinc-500 mb-4 md:mb-6 px-2 md:px-4">
                   Os melhores restaurantes e lojas na sua mão.
                 </p>
-                <Button className="w-full bg-primary text-black hover:bg-primary/90 font-bold">
+                <Button className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-9 md:h-10 text-sm">
                   Começar
                 </Button>
               </CardContent>
@@ -60,15 +60,15 @@ function Index() {
 
             {/* Option 2: Delivery */}
             <Card className="bg-zinc-900 border-zinc-800 hover:border-primary transition-all cursor-pointer group">
-              <CardContent className="pt-8 pb-6 flex flex-col items-center">
-                <div className="p-4 rounded-2xl bg-primary/10 text-primary mb-4 group-hover:scale-110 transition-transform">
-                  <Truck size={32} />
+              <CardContent className="pt-6 pb-4 md:pt-8 md:pb-6 flex flex-col items-center">
+                <div className="p-3 md:p-4 rounded-2xl bg-primary/10 text-primary mb-3 md:mb-4 group-hover:scale-110 transition-transform">
+                  <Truck className="w-6 h-6 md:w-8 md:h-8" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Quero entregar</h3>
-                <p className="text-sm text-zinc-500 mb-6 px-4">
+                <h3 className="text-lg md:text-xl font-bold text-white mb-2">Quero entregar</h3>
+                <p className="text-xs md:text-sm text-zinc-500 mb-4 md:mb-6 px-2 md:px-4">
                   Faça sua própria renda com flexibilidade total.
                 </p>
-                <Button className="w-full border-primary text-primary hover:bg-primary hover:text-black font-bold" variant="outline">
+                <Button className="w-full border-primary text-primary hover:bg-primary hover:text-black font-bold h-9 md:h-10 text-sm" variant="outline">
                   Cadastrar
                 </Button>
               </CardContent>
@@ -76,15 +76,15 @@ function Index() {
 
             {/* Option 3: Merchant */}
             <Card className="bg-zinc-900 border-zinc-800 hover:border-primary transition-all cursor-pointer group">
-              <CardContent className="pt-8 pb-6 flex flex-col items-center">
-                <div className="p-4 rounded-2xl bg-primary/10 text-primary mb-4 group-hover:scale-110 transition-transform">
-                  <Store size={32} />
+              <CardContent className="pt-6 pb-4 md:pt-8 md:pb-6 flex flex-col items-center">
+                <div className="p-3 md:p-4 rounded-2xl bg-primary/10 text-primary mb-3 md:mb-4 group-hover:scale-110 transition-transform">
+                  <Store className="w-6 h-6 md:w-8 md:h-8" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Quero vender</h3>
-                <p className="text-sm text-zinc-500 mb-6 px-4">
+                <h3 className="text-lg md:text-xl font-bold text-white mb-2">Quero vender</h3>
+                <p className="text-xs md:text-sm text-zinc-500 mb-4 md:mb-6 px-2 md:px-4">
                   Sua loja aberta para milhares de clientes.
                 </p>
-                <Button className="w-full border-primary text-primary hover:bg-primary hover:text-black font-bold" variant="outline">
+                <Button className="w-full border-primary text-primary hover:bg-primary hover:text-black font-bold h-9 md:h-10 text-sm" variant="outline">
                   Parceria
                 </Button>
               </CardContent>
