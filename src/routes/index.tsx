@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import logoAsset from "@/assets/logo.png.asset.json";
 
@@ -13,6 +13,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const navigate = useNavigate();
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground overflow-x-hidden max-w-[500px] mx-auto shadow-2xl border-x border-white/5">
       {/* Header */}
@@ -43,17 +44,13 @@ function Index() {
               Criar minha conta
             </Button>
             
-            <Link 
-              to="/login" 
-              className="w-full flex"
+            <Button 
+              onClick={() => navigate({ to: "/login" })}
+              variant="outline" 
+              className="w-full border-white bg-white text-black hover:bg-white/90 font-bold h-14 text-lg rounded-2xl"
             >
-              <Button 
-                variant="outline" 
-                className="w-full border-white bg-white text-black hover:bg-white/90 font-bold h-14 text-lg rounded-2xl pointer-events-none"
-              >
-                Entrar
-              </Button>
-            </Link>
+              Entrar
+            </Button>
 
             <button className="text-zinc-500 hover:text-zinc-300 text-sm font-medium mt-4 transition-colors">
               Continuar como visitante
