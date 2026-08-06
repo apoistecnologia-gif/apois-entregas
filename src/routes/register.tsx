@@ -130,6 +130,7 @@ function Register() {
 
     try {
       const redirectTo = `${window.location.origin}/auth/callback`;
+      console.log("Supabase URL usada no cadastro:", import.meta.env['VITE_SUPABASE_URL']);
       console.log("Email Redirect To:", redirectTo);
       
       const { data, error } = await supabase.auth.signUp({
