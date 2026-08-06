@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ShoppingBag, Truck, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import logoAsset from "@/assets/logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -15,18 +16,17 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex min-h-screen flex-col bg-background text-foreground overflow-x-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between p-6 border-b border-white/10 bg-black">
+      <header className="flex items-center justify-between p-4 md:p-6 border-b border-white/10 bg-black sticky top-0 z-50">
         <div className="flex items-center gap-2">
-          <div className="h-10 w-10 bg-primary rounded-full flex items-center justify-center font-bold text-black text-xl">
-            A
-          </div>
-          <span className="text-2xl font-black tracking-tighter text-white">
-            APOIS <span className="text-primary">ENTREGA</span>
-          </span>
+          <img 
+            src={logoAsset.url} 
+            alt="APOIS ENTREGA" 
+            className="h-8 md:h-10 w-auto object-contain"
+          />
         </div>
-        <Button variant="ghost" className="text-white hover:text-primary hover:bg-white/5">
+        <Button variant="ghost" className="text-white hover:text-primary hover:bg-white/5 text-sm md:text-base">
           Entrar
         </Button>
       </header>
