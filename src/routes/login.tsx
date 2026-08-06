@@ -55,7 +55,14 @@ function Login() {
 
       if (data.session) {
         toast.success("Login realizado com sucesso!");
-        navigate({ to: "/inicio" });
+        const searchParams = new URLSearchParams(window.location.search);
+        const redirectPath = searchParams.get('redirect');
+        
+        if (redirectPath) {
+          navigate({ to: redirectPath });
+        } else {
+          navigate({ to: "/inicio" });
+        }
       }
     } catch (err) {
       toast.error("Não foi possível entrar agora. Verifique sua conexão e tente novamente.");
