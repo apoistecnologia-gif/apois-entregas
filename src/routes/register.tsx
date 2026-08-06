@@ -90,11 +90,16 @@ function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid || isLoading) return;
+    console.log("Submit clicked", { isFormValid, isLoading, formData });
+    if (!isFormValid || isLoading) {
+      console.log("Submit blocked", { isFormValid, isLoading });
+      return;
+    }
     
     setIsLoading(true);
 
     try {
+      console.log("Calling supabase.auth.signUp...");
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
