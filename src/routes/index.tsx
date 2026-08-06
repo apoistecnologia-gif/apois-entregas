@@ -21,7 +21,7 @@ function Index() {
           <img 
             src={logoAsset.url} 
             alt="APOIS ENTREGA" 
-            className="h-14 md:h-16 w-auto object-contain"
+            className="h-20 md:h-24 w-auto object-contain"
           />
         </div>
       </header>
