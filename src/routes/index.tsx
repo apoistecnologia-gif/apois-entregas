@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import logoAsset from "@/assets/logo.png.asset.json";
 
@@ -43,9 +43,11 @@ function Index() {
               Criar minha conta
             </Button>
             
-            <Button variant="outline" className="w-full border-white bg-white text-black hover:bg-white/90 font-bold h-14 text-lg rounded-2xl">
-              Entrar
-            </Button>
+            <Link to="/login" className="w-full">
+              <Button variant="outline" className="w-full border-white bg-white text-black hover:bg-white/90 font-bold h-14 text-lg rounded-2xl">
+                Entrar
+              </Button>
+            </Link>
 
             <button className="text-zinc-500 hover:text-zinc-300 text-sm font-medium mt-4 transition-colors">
               Continuar como visitante
