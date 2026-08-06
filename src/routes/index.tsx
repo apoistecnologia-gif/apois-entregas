@@ -21,29 +21,29 @@ function Index() {
           <img 
             src={logoAsset.url} 
             alt="APOIS ENTREGA" 
-            className="h-10 md:h-12 w-auto object-contain"
+            className="h-14 md:h-16 w-auto object-contain"
           />
         </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center bg-black">
-        <div className="w-full space-y-8">
-          <div className="space-y-4">
-            <h1 className="text-4xl font-black text-white leading-tight">
+        <div className="w-full space-y-6">
+          <div className="space-y-3">
+            <h1 className="text-3xl sm:text-4xl font-black text-white leading-tight">
               Seu pedido, <span className="text-primary italic">do seu jeito</span>
             </h1>
-            <p className="text-zinc-400 text-lg">
+            <p className="text-zinc-400 text-base sm:text-lg">
               Pediu, chegou. Apois, vamo comer?
             </p>
           </div>
 
-          <div className="flex flex-col gap-4 w-full pt-8">
+          <div className="flex flex-col gap-4 w-full pt-4">
             <Button className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl">
               Criar minha conta
             </Button>
             
-            <Button variant="outline" className="w-full border-zinc-800 text-white hover:bg-white/5 font-bold h-14 text-lg rounded-2xl">
+            <Button variant="outline" className="w-full border-white bg-white text-black hover:bg-white/90 font-bold h-14 text-lg rounded-2xl">
               Entrar
             </Button>
 
