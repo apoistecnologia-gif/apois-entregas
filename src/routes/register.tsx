@@ -191,7 +191,7 @@ function Register() {
         </div>
 
         {/* Register Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-zinc-400 ml-1">
               Nome completo
