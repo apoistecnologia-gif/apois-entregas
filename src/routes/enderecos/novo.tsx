@@ -4,11 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   ChevronLeft, 
   Loader2,
-  Save
+  Save,
+  MapPin
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { GoogleMapsAddressSelector } from "@/components/GoogleMapsAddressSelector";
 
 export const Route = createFileRoute("/enderecos/novo")({
   beforeLoad: async () => {
@@ -137,8 +139,19 @@ function NovoEndereco() {
         <h1 className="text-lg font-bold ml-2">Novo Endereço</h1>
       </header>
 
-      <main className="flex-1 px-6 py-6 pb-40">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <main className="flex-1 overflow-y-auto">
+        <div className="px-6 py-4 border-b border-white/5 bg-zinc-950/50">
+          <GoogleMapsAddressSelector 
+            onAddressSelected={(addr) => {
+              setFormData(prev => ({
+                ...prev,
+                ...addr
+              }));
+            }}
+          />
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6 px-6 py-6 pb-40">
           <div className="space-y-3">
             <label className="text-sm font-medium text-zinc-400">Apelido do endereço</label>
             <div className="flex gap-2">
