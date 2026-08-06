@@ -16,10 +16,10 @@ interface GoogleMapsAddressSelectorProps {
     city: string;
     state: string;
     postal_code: string;
-    latitude?: number;
-    longitude?: number;
+    latitude?: number | null;
+    longitude?: number | null;
   }) => void;
-  initialCenter?: { lat: number; lng: number };
+  initialCenter?: { lat: number; lng: number } | null | undefined;
 }
 
 export function GoogleMapsAddressSelector({ onAddressSelected, initialCenter }: GoogleMapsAddressSelectorProps) {
