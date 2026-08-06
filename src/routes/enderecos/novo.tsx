@@ -147,7 +147,14 @@ function NovoEndereco() {
             onAddressSelected={(addr) => {
               setFormData(prev => ({
                 ...prev,
-                ...addr
+                street: addr.street || prev.street,
+                neighborhood: addr.neighborhood || prev.neighborhood,
+                city: addr.city || prev.city,
+                state: addr.state || prev.state,
+                postal_code: addr.postal_code || prev.postal_code,
+                number: addr.number || prev.number,
+                latitude: addr.latitude ?? prev.latitude,
+                longitude: addr.longitude ?? prev.longitude,
               }));
             }}
           />

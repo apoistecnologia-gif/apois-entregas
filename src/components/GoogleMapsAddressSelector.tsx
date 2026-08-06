@@ -42,13 +42,20 @@ export function GoogleMapsAddressSelector({ onAddressSelected, initialCenter }: 
     const getShortComponent = (type: string) => 
       components.find((c: any) => c.types.includes(type))?.short_name || "";
 
+    const street = getComponent("route");
+    const neighborhood = getComponent("sublocality_level_1") || getComponent("neighborhood") || getComponent("political");
+    const city = getComponent("administrative_area_level_2") || getComponent("locality");
+    const state = getShortComponent("administrative_area_level_1");
+    const postalCode = getComponent("postal_code").replace(/\D/g, "");
+    const number = getComponent("street_number");
+
     return {
-      street: getComponent("route"),
-      number: getComponent("street_number"),
-      neighborhood: getComponent("political") || getComponent("sublocality_level_1") || getComponent("neighborhood"),
-      city: getComponent("administrative_area_level_2") || getComponent("locality"),
-      state: getShortComponent("administrative_area_level_1"),
-      postal_code: getComponent("postal_code").replace(/\D/g, ""),
+      street,
+      number,
+      neighborhood,
+      city,
+      state,
+      postal_code: postalCode,
     };
   };
 
@@ -189,13 +196,14 @@ export function GoogleMapsAddressSelector({ onAddressSelected, initialCenter }: 
             type="button"
             onClick={handleGetCurrentLocation}
             disabled={isLocating}
-            className="absolute bottom-3 right-3 bg-primary text-black hover:bg-primary/90 w-10 h-10 p-0 rounded-full shadow-lg"
+            className="absolute bottom-3 right-3 bg-primary text-black hover:bg-primary/90 w-10 h-10 p-0 rounded-full shadow-lg z-10"
+            title="Usar minha localização atual"
           >
             {isLocating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Navigation className="w-5 h-5" />}
           </Button>
 
           {!isMapLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
+            <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 z-20">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           )}
