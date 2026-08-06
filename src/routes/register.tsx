@@ -201,7 +201,7 @@ function Register() {
               value={formData.fullName}
               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
               onBlur={() => setTouched({ ...touched, fullName: true })}
-              className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${touched.fullName && errors["fullName"] ? 'border-red-500/50' : ''}`}
+              className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${(touched.fullName || !isFormValid) && errors["fullName"] ? 'border-red-500/50' : ''}`}
             />
             {(touched.fullName || !isFormValid) && errors["fullName"] && (
               <p className="text-[10px] text-red-500 ml-1">{errors["fullName"]}</p>
@@ -218,7 +218,7 @@ function Register() {
               value={formData.phone}
               onChange={handlePhoneChange}
               onBlur={() => setTouched({ ...touched, phone: true })}
-              className="bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary"
+              className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${(touched.phone || !isFormValid) && errors["phone"] ? 'border-red-500/50' : ''}`}
             />
             {(touched.phone || !isFormValid) && errors["phone"] && (
               <p className="text-[10px] text-red-500 ml-1">{errors["phone"]}</p>
@@ -235,7 +235,7 @@ function Register() {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               onBlur={() => setTouched({ ...touched, email: true })}
-              className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${touched.email && errors["email"] ? 'border-red-500/50' : ''}`}
+              className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${(touched.email || !isFormValid) && errors["email"] ? 'border-red-500/50' : ''}`}
             />
             {(touched.email || !isFormValid) && errors["email"] && (
               <p className="text-[10px] text-red-500 ml-1">{errors["email"]}</p>
@@ -253,7 +253,7 @@ function Register() {
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 onBlur={() => setTouched({ ...touched, password: true })}
-                className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 pr-12 focus:ring-primary focus:border-primary ${touched.password && errors["password"] ? 'border-red-500/50' : ''}`}
+                className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 pr-12 focus:ring-primary focus:border-primary ${(touched.password || !isFormValid) && errors["password"] ? 'border-red-500/50' : ''}`}
               />
               <button 
                 type="button"
@@ -279,7 +279,7 @@ function Register() {
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                 onBlur={() => setTouched({ ...touched, confirmPassword: true })}
-                className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 pr-12 focus:ring-primary focus:border-primary ${touched.confirmPassword && errors["confirmPassword"] ? 'border-red-500/50' : ''}`}
+                className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 pr-12 focus:ring-primary focus:border-primary ${(touched.confirmPassword || !isFormValid) && errors["confirmPassword"] ? 'border-red-500/50' : ''}`}
               />
             </div>
             {(touched.confirmPassword || !isFormValid) && errors["confirmPassword"] && (
