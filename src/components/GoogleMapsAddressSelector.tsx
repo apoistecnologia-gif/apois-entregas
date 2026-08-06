@@ -1,4 +1,5 @@
-import { APIProvider, Map, AdvancedMarker, useMap } from "@vis.gl/react-google-maps";
+/// <reference types="@types/google.maps" />
+import { APIProvider, Map, AdvancedMarker } from "@vis.gl/react-google-maps";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
