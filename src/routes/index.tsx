@@ -40,7 +40,10 @@ function Index() {
           </div>
 
           <div className="flex flex-col gap-4 w-full pt-4">
-            <Button className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl">
+            <Button 
+              onClick={() => navigate({ to: "/register" })}
+              className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl"
+            >
               Criar minha conta
             </Button>
             
