@@ -2,10 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 export const geocodeAddress = createServerFn({ method: "GET" })
-  .input(z.object({ lat: z.number(), lng: z.number() }))
+  .validator((data: unknown) => z.object({ lat: z.number(), lng: z.number() }).parse(data))
   .handler(async ({ data }) => {
-    const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-    const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+    const LOVABLE_API_KEY = process.env["LOVABLE_API_KEY"];
+    const GOOGLE_MAPS_API_KEY = process.env["GOOGLE_MAPS_API_KEY"];
 
     if (!LOVABLE_API_KEY || !GOOGLE_MAPS_API_KEY) {
       throw new Error("Missing Google Maps Platform credentials");
@@ -30,10 +30,10 @@ export const geocodeAddress = createServerFn({ method: "GET" })
   });
 
 export const autocompleteAddress = createServerFn({ method: "GET" })
-  .input(z.object({ input: z.string() }))
+  .validator((data: unknown) => z.object({ input: z.string() }).parse(data))
   .handler(async ({ data }) => {
-    const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-    const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+    const LOVABLE_API_KEY = process.env["LOVABLE_API_KEY"];
+    const GOOGLE_MAPS_API_KEY = process.env["GOOGLE_MAPS_API_KEY"];
 
     if (!LOVABLE_API_KEY || !GOOGLE_MAPS_API_KEY) {
       throw new Error("Missing Google Maps Platform credentials");
@@ -60,10 +60,10 @@ export const autocompleteAddress = createServerFn({ method: "GET" })
   });
 
 export const getPlaceDetails = createServerFn({ method: "GET" })
-  .input(z.object({ placeId: z.string() }))
+  .validator((data: unknown) => z.object({ placeId: z.string() }).parse(data))
   .handler(async ({ data }) => {
-    const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-    const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+    const LOVABLE_API_KEY = process.env["LOVABLE_API_KEY"];
+    const GOOGLE_MAPS_API_KEY = process.env["GOOGLE_MAPS_API_KEY"];
 
     if (!LOVABLE_API_KEY || !GOOGLE_MAPS_API_KEY) {
       throw new Error("Missing Google Maps Platform credentials");
