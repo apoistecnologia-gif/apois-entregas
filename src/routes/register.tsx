@@ -8,6 +8,9 @@ import logoAsset from "@/assets/logo.png.asset.json";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+
+
+
 export const Route = createFileRoute("/register")({
   component: Register,
   head: () => ({
