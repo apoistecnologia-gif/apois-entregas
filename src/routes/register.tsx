@@ -127,7 +127,6 @@ function Register() {
     
     setIsLoading(true);
     console.log("Enviando cadastro ao Supabase...");
-    toast.info("Enviando cadastro ao Supabase", { duration: 2000 });
 
     try {
       const redirectTo = `${window.location.origin}/auth/callback`;
