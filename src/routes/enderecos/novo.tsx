@@ -1,12 +1,10 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   ChevronLeft, 
-  MapPin, 
   Loader2,
-  Save,
-  CheckCircle2
+  Save
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,10 +41,15 @@ function NovoEndereco() {
     reference: "",
   });
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+
 
   const handleCEPBlur = async () => {
     const cep = formData.postal_code.replace(/\D/g, "");
@@ -123,7 +126,7 @@ function NovoEndereco() {
   const labelOptions = ["Casa", "Trabalho", "Outro"];
 
   return (
-    <div className="flex min-h-screen flex-col bg-black text-white overflow-x-hidden max-w-[500px] mx-auto shadow-2xl border-x border-white/5">
+    <div className="fixed inset-0 z-[60] bg-black overflow-y-auto overflow-x-hidden flex flex-col max-w-[500px] mx-auto shadow-2xl">
       <header className="flex items-center p-4 sticky top-0 z-50 bg-black/80 backdrop-blur-lg border-b border-white/10">
         <button 
           onClick={() => navigate({ to: "/enderecos" })}
@@ -134,9 +137,8 @@ function NovoEndereco() {
         <h1 className="text-lg font-bold ml-2">Novo Endereço</h1>
       </header>
 
-      <main className="flex-1 px-6 py-6 pb-24">
+      <main className="flex-1 px-6 py-6 pb-40">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Label Selection */}
           <div className="space-y-3">
             <label className="text-sm font-medium text-zinc-400">Apelido do endereço</label>
             <div className="flex gap-2">
@@ -157,7 +159,6 @@ function NovoEndereco() {
             </div>
           </div>
 
-          {/* CEP and Street */}
           <div className="grid grid-cols-3 gap-4">
             <div className="col-span-1 space-y-2">
               <label className="text-xs font-medium text-zinc-500 ml-1">CEP*</label>
@@ -167,7 +168,7 @@ function NovoEndereco() {
                 value={formData.postal_code}
                 onChange={handleChange}
                 onBlur={handleCEPBlur}
-                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary"
+                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
                 required
               />
             </div>
@@ -178,13 +179,12 @@ function NovoEndereco() {
                 placeholder="Nome da rua"
                 value={formData.street}
                 onChange={handleChange}
-                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary"
+                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
                 required
               />
             </div>
           </div>
 
-          {/* Number and Complement */}
           <div className="grid grid-cols-3 gap-4">
             <div className="col-span-1 space-y-2">
               <label className="text-xs font-medium text-zinc-500 ml-1">Número*</label>
@@ -193,7 +193,7 @@ function NovoEndereco() {
                 placeholder="123"
                 value={formData.number}
                 onChange={handleChange}
-                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary"
+                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
                 required
               />
             </div>
@@ -204,12 +204,11 @@ function NovoEndereco() {
                 placeholder="Apto, Bloco, etc."
                 value={formData.complement}
                 onChange={handleChange}
-                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary"
+                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
               />
             </div>
           </div>
 
-          {/* Neighborhood */}
           <div className="space-y-2">
             <label className="text-xs font-medium text-zinc-500 ml-1">Bairro*</label>
             <Input 
@@ -217,12 +216,11 @@ function NovoEndereco() {
               placeholder="Nome do bairro"
               value={formData.neighborhood}
               onChange={handleChange}
-              className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary"
+              className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
               required
             />
           </div>
 
-          {/* City and State */}
           <div className="grid grid-cols-4 gap-4">
             <div className="col-span-3 space-y-2">
               <label className="text-xs font-medium text-zinc-500 ml-1">Cidade*</label>
@@ -231,7 +229,7 @@ function NovoEndereco() {
                 placeholder="Sua cidade"
                 value={formData.city}
                 onChange={handleChange}
-                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary"
+                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
                 required
               />
             </div>
@@ -243,13 +241,12 @@ function NovoEndereco() {
                 maxLength={2}
                 value={formData.state}
                 onChange={handleChange}
-                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary uppercase text-center"
+                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary uppercase text-center text-white"
                 required
               />
             </div>
           </div>
 
-          {/* Reference */}
           <div className="space-y-2">
             <label className="text-xs font-medium text-zinc-500 ml-1">Ponto de referência</label>
             <Input 
@@ -257,28 +254,29 @@ function NovoEndereco() {
               placeholder="Próximo ao..."
               value={formData.reference}
               onChange={handleChange}
-              className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary"
+              className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
             />
-          </div>
-
-          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-[500px] px-6">
-            <Button 
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl shadow-xl flex items-center justify-center gap-2"
-            >
-              {isLoading ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
-              ) : (
-                <>
-                  <Save className="w-5 h-5" />
-                  Salvar endereço
-                </>
-              )}
-            </Button>
           </div>
         </form>
       </main>
+
+      <div className="sticky bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black to-transparent pt-10">
+        <Button 
+          type="button"
+          onClick={handleSubmit}
+          disabled={isLoading}
+          className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl shadow-xl flex items-center justify-center gap-2"
+        >
+          {isLoading ? (
+            <Loader2 className="w-6 h-6 animate-spin" />
+          ) : (
+            <>
+              <Save className="w-5 h-5" />
+              Salvar endereço
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }
