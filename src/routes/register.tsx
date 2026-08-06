@@ -8,6 +8,10 @@ import logoAsset from "@/assets/logo.png.asset.json";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+console.log("Supabase client initialized:", !!supabase);
+console.log("Supabase URL present:", !!import.meta.env.VITE_SUPABASE_URL);
+
+
 export const Route = createFileRoute("/register")({
   component: Register,
   head: () => ({
