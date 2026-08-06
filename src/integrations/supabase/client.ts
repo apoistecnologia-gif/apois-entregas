@@ -3,7 +3,7 @@ import type { Database } from './types';
 
 // O projeto APOIS ENTREGA - PRODUÇÃO sbvhdgyuuperszlsllji
 const SUPABASE_URL = "https://sbvhdgyuuperszlsllji.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_80f682f768297b778c199589d85e05417087611a";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_-fhQ-KcM0lLrx7_QIG6jjA_6kjlVPSR";
 
 console.log("[AUDIT] CLIENT LOADED WITH URL:", SUPABASE_URL);
 
