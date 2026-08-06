@@ -59,20 +59,34 @@ function Register() {
   const errors = useMemo(() => {
     const newErrors: Record<string, string> = {};
 
-    if (formData.fullName && formData.fullName.trim().split(" ").length < 2) {
+    if (!formData.fullName.trim()) {
+      newErrors["fullName"] = "Campo obrigatório";
+    } else if (formData.fullName.trim().split(" ").length < 2) {
       newErrors["fullName"] = "Digite seu nome completo (nome e sobrenome)";
     }
 
+    if (!formData.phone.replace(/\D/g, "")) {
+      newErrors["phone"] = "Campo obrigatório";
+    } else if (formData.phone.replace(/\D/g, "").length < 10) {
+      newErrors["phone"] = "Telefone incompleto";
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.email && !emailRegex.test(formData.email)) {
+    if (!formData.email) {
+      newErrors["email"] = "Campo obrigatório";
+    } else if (!emailRegex.test(formData.email)) {
       newErrors["email"] = "E-mail inválido";
     }
 
-    if (formData.password && formData.password.length < 8) {
+    if (!formData.password) {
+      newErrors["password"] = "Campo obrigatório";
+    } else if (formData.password.length < 8) {
       newErrors["password"] = "A senha deve ter no mínimo 8 caracteres";
     }
 
-    if (formData.confirmPassword && formData.confirmPassword !== formData.password) {
+    if (!formData.confirmPassword) {
+      newErrors["confirmPassword"] = "Campo obrigatório";
+    } else if (formData.confirmPassword !== formData.password) {
       newErrors["confirmPassword"] = "As senhas não coincidem";
     }
 
@@ -189,7 +203,7 @@ function Register() {
               onBlur={() => setTouched({ ...touched, fullName: true })}
               className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${touched.fullName && errors["fullName"] ? 'border-red-500/50' : ''}`}
             />
-            {touched.fullName && errors["fullName"] && (
+            {(touched.fullName || !isFormValid) && errors["fullName"] && (
               <p className="text-[10px] text-red-500 ml-1">{errors["fullName"]}</p>
             )}
           </div>
@@ -206,7 +220,9 @@ function Register() {
               onBlur={() => setTouched({ ...touched, phone: true })}
               className="bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary"
             />
-          </div>
+            {(touched.phone || !isFormValid) && errors["phone"] && (
+              <p className="text-[10px] text-red-500 ml-1">{errors["phone"]}</p>
+            )}
 
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-zinc-400 ml-1">
@@ -220,7 +236,7 @@ function Register() {
               onBlur={() => setTouched({ ...touched, email: true })}
               className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${touched.email && errors["email"] ? 'border-red-500/50' : ''}`}
             />
-            {touched.email && errors["email"] && (
+            {(touched.email || !isFormValid) && errors["email"] && (
               <p className="text-[10px] text-red-500 ml-1">{errors["email"]}</p>
             )}
           </div>
@@ -246,7 +262,7 @@ function Register() {
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-            {touched.password && errors["password"] && (
+            {(touched.password || !isFormValid) && errors["password"] && (
               <p className="text-[10px] text-red-500 ml-1">{errors["password"]}</p>
             )}
           </div>
@@ -265,7 +281,7 @@ function Register() {
                 className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 pr-12 focus:ring-primary focus:border-primary ${touched.confirmPassword && errors["confirmPassword"] ? 'border-red-500/50' : ''}`}
               />
             </div>
-            {touched.confirmPassword && errors["confirmPassword"] && (
+            {(touched.confirmPassword || !isFormValid) && errors["confirmPassword"] && (
               <p className="text-[10px] text-red-500 ml-1">{errors["confirmPassword"]}</p>
             )}
           </div>
