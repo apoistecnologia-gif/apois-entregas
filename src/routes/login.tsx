@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, Eye, EyeOff, Loader2 } from "lucide-react";
@@ -8,6 +8,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
+  beforeLoad: async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      throw redirect({ to: "/inicio" });
+    }
+  },
   component: Login,
   head: () => ({
     title: "Login - APOIS ENTREGA",
@@ -48,7 +54,7 @@ function Login() {
 
       if (data.session) {
         toast.success("Login realizado com sucesso!");
-        navigate({ to: "/" });
+        navigate({ to: "/inicio" });
       }
     } catch (err) {
       toast.error("Não foi possível entrar agora. Verifique sua conexão e tente novamente.");
@@ -120,12 +126,12 @@ function Login() {
               </button>
             </div>
             <div className="flex justify-end pt-1">
-              <Link 
-                to="/login" 
+              <button 
+                type="button"
                 className="text-primary text-sm font-bold hover:underline"
               >
                 Esqueci minha senha
-              </Link>
+              </button>
             </div>
           </div>
 

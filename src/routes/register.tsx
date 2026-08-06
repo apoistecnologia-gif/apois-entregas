@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,10 +8,13 @@ import logoAsset from "@/assets/logo.png.asset.json";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-
-
-
 export const Route = createFileRoute("/register")({
+  beforeLoad: async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      throw redirect({ to: "/inicio" });
+    }
+  },
   component: Register,
   head: () => ({
     title: "Criar conta - APOIS ENTREGA",
@@ -151,9 +154,8 @@ function Register() {
 
       if (data.session) {
         toast.success("Conta criada e autenticada com sucesso!");
-        navigate({ to: "/" });
+        navigate({ to: "/inicio" });
       } else if (data.user) {
-        // Se houver user mas não session, e a confirmação está desativada, algo inesperado ocorreu
         toast.error("Sua conta foi criada, mas não foi possível iniciar a sessão automaticamente. Por favor, tente fazer login.");
         navigate({ to: "/login" });
       }
@@ -316,14 +318,6 @@ function Register() {
                 "Criar minha conta"
               )}
             </Button>
-            
-            {!isFormValid && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                <p className="text-[10px] text-red-400 font-medium">
-                  Pendências: {missingFields.length > 0 ? missingFields.join(", ") : "Nenhuma (verifique os campos)"}
-                </p>
-              </div>
-            )}
           </div>
 
           <div className="text-center">
