@@ -111,15 +111,17 @@ function Login() {
           </h1>
         </div>
 
-        {/* Login Form */}
-        <div className="space-y-6">
+        <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-medium text-zinc-400 ml-1">
-              E-mail ou Telefone
+              E-mail
             </label>
             <Input 
-              type="text"
-              placeholder="Digite seu e-mail ou telefone"
+              type="email"
+              placeholder="Digite seu e-mail"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
               className="bg-zinc-900/50 border-zinc-800 h-14 rounded-2xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary"
             />
           </div>
@@ -132,6 +134,9 @@ function Login() {
               <Input 
                 type={showPassword ? "text" : "password"}
                 placeholder="Sua senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
                 className="bg-zinc-900/50 border-zinc-800 h-14 rounded-2xl text-white placeholder:text-zinc-600 pr-12 focus:ring-primary focus:border-primary"
               />
               <button 
@@ -152,8 +157,12 @@ function Login() {
             </div>
           </div>
 
-          <Button className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl mt-4">
-            Entrar
+          <Button 
+            type="submit" 
+            disabled={isLoading}
+            className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl mt-4"
+          >
+            {isLoading ? <Loader2 className="w-6 h-6 animate-spin mx-auto" /> : "Entrar"}
           </Button>
 
           <div className="text-center pt-8">
@@ -167,7 +176,7 @@ function Login() {
               </Link>
             </p>
           </div>
-        </div>
+        </form>
       </main>
 
       {/* Footer */}
