@@ -320,7 +320,7 @@ function Register() {
             {!isFormValid && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
                 <p className="text-[10px] text-red-400 font-medium">
-                  Pendências: {missingFields.join(", ")}
+                  Pendências: {missingFields.length > 0 ? missingFields.join(", ") : "Nenhuma (verifique os campos)"}
                 </p>
               </div>
             )}
