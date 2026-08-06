@@ -94,7 +94,7 @@ function Login() {
             <p className="text-zinc-500 text-sm">
               Ainda não tem uma conta?{" "}
               <Link 
-                to="/login" 
+                to="/register" 
                 className="text-primary font-bold hover:underline"
               >
                 Criar minha conta
