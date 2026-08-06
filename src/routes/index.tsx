@@ -16,7 +16,7 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground overflow-x-hidden">
+    <div className="flex min-h-screen flex-col bg-background text-foreground overflow-x-hidden max-w-[500px] mx-auto shadow-2xl border-x border-white/5">
       {/* Header */}
       <header className="flex items-center justify-between p-4 md:p-6 border-b border-white/10 bg-black sticky top-0 z-50">
         <div className="flex items-center gap-2">
