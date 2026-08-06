@@ -109,10 +109,8 @@ function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("onSubmit chamado - FormData:", formData);
 
     if (!isFormValid) {
-      console.log("Formulário inválido. Campos faltando:", missingFields);
       setTouched({
         fullName: true,
         phone: true,
@@ -126,12 +124,9 @@ function Register() {
     if (isLoading) return;
     
     setIsLoading(true);
-    console.log("Enviando cadastro ao Supabase...");
 
     try {
       const redirectTo = `${window.location.origin}/auth/callback`;
-      console.log("Supabase URL usada no cadastro:", import.meta.env['VITE_SUPABASE_URL']);
-      console.log("Email Redirect To:", redirectTo);
       
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
@@ -146,37 +141,24 @@ function Register() {
       });
 
       if (error) {
-        console.error("Supabase Error Full details:", {
-          message: error.message,
-          status: error.status,
-          code: error.code,
-          name: error.name,
-        });
-        
-        // Log the actual response structure if available
-        if (data) console.log("Supabase Data (even with error):", data);
-
-        const errorDetail = `Erro ${error.status || 'N/A'} (${error.code || 'sem código'}): ${error.message}`;
-        toast.error(errorDetail, { duration: 8000 });
-        
-        if (error.message.includes("Database error saving new user")) {
-          toast.error("Erro interno no banco de dados. A trigger de criação de perfil pode estar falhando.", { duration: 10000 });
-        }
-        
         if (error.message.includes("User already registered")) {
           toast.error("Este e-mail já está cadastrado.");
+        } else {
+          toast.error(`Erro ao criar conta: ${error.message}`);
         }
         return;
       }
 
-      if (data.user) {
-        console.log("Cadastro realizado com sucesso:", data.user);
-        toast.success("Conta criada com sucesso! Verifique seu e-mail para confirmar.");
+      if (data.session) {
+        toast.success("Conta criada e autenticada com sucesso!");
+        navigate({ to: "/" });
+      } else if (data.user) {
+        // Se houver user mas não session, e a confirmação está desativada, algo inesperado ocorreu
+        toast.error("Sua conta foi criada, mas não foi possível iniciar a sessão automaticamente. Por favor, tente fazer login.");
         navigate({ to: "/login" });
       }
     } catch (err: any) {
-      console.error("Catch block error:", err);
-      toast.error(`Erro inesperado: ${err.message || "Verifique o console"}`);
+      toast.error("Ocorreu um erro inesperado ao realizar seu cadastro.");
     } finally {
       setIsLoading(false);
     }
