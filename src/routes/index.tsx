@@ -1,15 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ShoppingBag, Truck, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import logoAsset from "@/assets/logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
-    title: "APOIS ENTREGA - Sua plataforma de pedidos e entregas",
+    title: "APOIS ENTREGA - Seu pedido, do seu jeito",
     meta: [
-      { name: "description", content: "Peça, entregue ou venda com o APOIS ENTREGA." },
+      { name: "description", content: "Peça no APOIS ENTREGA: Pediu, chegou. Apois, vamo comer?" },
     ],
   }),
 });
@@ -18,77 +16,40 @@ function Index() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground overflow-x-hidden max-w-[500px] mx-auto shadow-2xl border-x border-white/5">
       {/* Header */}
-      <header className="flex items-center justify-between p-4 md:p-6 border-b border-white/10 bg-black sticky top-0 z-50">
+      <header className="flex items-center justify-center p-6 border-b border-white/10 bg-black sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <img 
             src={logoAsset.url} 
             alt="APOIS ENTREGA" 
-            className="h-8 md:h-10 w-auto object-contain"
+            className="h-10 md:h-12 w-auto object-contain"
           />
         </div>
-        <Button variant="ghost" className="text-white hover:text-primary hover:bg-white/5 text-sm md:text-base">
-          Entrar
-        </Button>
       </header>
 
-      {/* Hero Section */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 md:py-12 text-center bg-black">
-        <div className="max-w-2xl w-full">
-          <h1 className="text-3xl md:text-6xl font-black text-white mb-4 leading-tight">
-            Tudo o que você precisa, <span className="text-primary italic">agora.</span>
-          </h1>
-          <p className="text-zinc-400 text-base md:text-xl mb-8 md:text-xl mb-12">
-            Escolha como você quer começar hoje no APOIS.
-          </p>
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center bg-black">
+        <div className="w-full space-y-8">
+          <div className="space-y-4">
+            <h1 className="text-4xl font-black text-white leading-tight">
+              Seu pedido, <span className="text-primary italic">do seu jeito</span>
+            </h1>
+            <p className="text-zinc-400 text-lg">
+              Pediu, chegou. Apois, vamo comer?
+            </p>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
-            {/* Option 1: Customer */}
-            <Card className="bg-zinc-900 border-zinc-800 hover:border-primary transition-all cursor-pointer group">
-              <CardContent className="pt-6 pb-4 md:pt-8 md:pb-6 flex flex-col items-center">
-                <div className="p-3 md:p-4 rounded-2xl bg-primary/10 text-primary mb-3 md:mb-4 group-hover:scale-110 transition-transform">
-                  <ShoppingBag className="w-6 h-6 md:w-8 md:h-8" />
-                </div>
-                <h3 className="text-lg md:text-xl font-bold text-white mb-2">Quero pedir</h3>
-                <p className="text-xs md:text-sm text-zinc-500 mb-4 md:mb-6 px-2 md:px-4">
-                  Os melhores restaurantes e lojas na sua mão.
-                </p>
-                <Button className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-9 md:h-10 text-sm">
-                  Começar
-                </Button>
-              </CardContent>
-            </Card>
+          <div className="flex flex-col gap-4 w-full pt-8">
+            <Button className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl">
+              Criar minha conta
+            </Button>
+            
+            <Button variant="outline" className="w-full border-zinc-800 text-white hover:bg-white/5 font-bold h-14 text-lg rounded-2xl">
+              Entrar
+            </Button>
 
-            {/* Option 2: Delivery */}
-            <Card className="bg-zinc-900 border-zinc-800 hover:border-primary transition-all cursor-pointer group">
-              <CardContent className="pt-6 pb-4 md:pt-8 md:pb-6 flex flex-col items-center">
-                <div className="p-3 md:p-4 rounded-2xl bg-primary/10 text-primary mb-3 md:mb-4 group-hover:scale-110 transition-transform">
-                  <Truck className="w-6 h-6 md:w-8 md:h-8" />
-                </div>
-                <h3 className="text-lg md:text-xl font-bold text-white mb-2">Quero entregar</h3>
-                <p className="text-xs md:text-sm text-zinc-500 mb-4 md:mb-6 px-2 md:px-4">
-                  Faça sua própria renda com flexibilidade total.
-                </p>
-                <Button className="w-full border-primary text-primary hover:bg-primary hover:text-black font-bold h-9 md:h-10 text-sm" variant="outline">
-                  Cadastrar
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Option 3: Merchant */}
-            <Card className="bg-zinc-900 border-zinc-800 hover:border-primary transition-all cursor-pointer group">
-              <CardContent className="pt-6 pb-4 md:pt-8 md:pb-6 flex flex-col items-center">
-                <div className="p-3 md:p-4 rounded-2xl bg-primary/10 text-primary mb-3 md:mb-4 group-hover:scale-110 transition-transform">
-                  <Store className="w-6 h-6 md:w-8 md:h-8" />
-                </div>
-                <h3 className="text-lg md:text-xl font-bold text-white mb-2">Quero vender</h3>
-                <p className="text-xs md:text-sm text-zinc-500 mb-4 md:mb-6 px-2 md:px-4">
-                  Sua loja aberta para milhares de clientes.
-                </p>
-                <Button className="w-full border-primary text-primary hover:bg-primary hover:text-black font-bold h-9 md:h-10 text-sm" variant="outline">
-                  Parceria
-                </Button>
-              </CardContent>
-            </Card>
+            <button className="text-zinc-500 hover:text-zinc-300 text-sm font-medium mt-4 transition-colors">
+              Continuar como visitante
+            </button>
           </div>
         </div>
       </main>
