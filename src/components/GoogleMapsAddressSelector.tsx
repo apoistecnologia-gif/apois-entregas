@@ -42,13 +42,20 @@ export function GoogleMapsAddressSelector({ onAddressSelected, initialCenter }: 
     const getShortComponent = (type: string) => 
       components.find((c: any) => c.types.includes(type))?.short_name || "";
 
+    const street = getComponent("route");
+    const neighborhood = getComponent("sublocality_level_1") || getComponent("neighborhood") || getComponent("political");
+    const city = getComponent("administrative_area_level_2") || getComponent("locality");
+    const state = getShortComponent("administrative_area_level_1");
+    const postalCode = getComponent("postal_code").replace(/\D/g, "");
+    const number = getComponent("street_number");
+
     return {
-      street: getComponent("route"),
-      number: getComponent("street_number"),
-      neighborhood: getComponent("political") || getComponent("sublocality_level_1") || getComponent("neighborhood"),
-      city: getComponent("administrative_area_level_2") || getComponent("locality"),
-      state: getShortComponent("administrative_area_level_1"),
-      postal_code: getComponent("postal_code").replace(/\D/g, ""),
+      street,
+      number,
+      neighborhood,
+      city,
+      state,
+      postal_code: postalCode,
     };
   };
 
