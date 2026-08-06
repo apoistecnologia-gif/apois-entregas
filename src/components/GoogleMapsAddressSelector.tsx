@@ -176,6 +176,22 @@ export function GoogleMapsAddressSelector({ onAddressSelected, initialCenter }: 
           )}
         </div>
 
+        <Button
+          type="button"
+          onClick={handleGetCurrentLocation}
+          disabled={isLocating}
+          className="w-full bg-[#FFD700] text-black hover:bg-[#FFD700]/90 font-bold h-12 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all"
+        >
+          {isLocating ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <>
+              <Navigation className="w-5 h-5 fill-current" />
+              Usar minha localização atual
+            </>
+          )}
+        </Button>
+
         <div className="relative h-48 w-full rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900">
           <Map
             center={markerPos}
@@ -200,10 +216,10 @@ export function GoogleMapsAddressSelector({ onAddressSelected, initialCenter }: 
               handleGetCurrentLocation();
             }}
             disabled={isLocating}
-            className="absolute bottom-4 right-4 bg-[#FFD700] text-black hover:bg-[#FFD700]/90 w-14 h-14 p-0 rounded-full shadow-[0_0_25px_rgba(255,215,0,0.5)] z-[150] border-2 border-black active:scale-90 transition-all flex items-center justify-center cursor-pointer"
+            className="absolute bottom-4 right-4 bg-[#FFD700] text-black hover:bg-[#FFD700]/90 w-12 h-12 p-0 rounded-full shadow-lg z-[150] border-2 border-black active:scale-90 transition-all flex items-center justify-center cursor-pointer"
             title="Usar minha localização atual"
           >
-            {isLocating ? <Loader2 className="w-7 h-7 animate-spin" /> : <Navigation className="w-7 h-7 fill-current" />}
+            {isLocating ? <Loader2 className="w-6 h-6 animate-spin" /> : <Navigation className="w-6 h-6 fill-current" />}
           </button>
 
           {!isMapLoaded && (
@@ -212,23 +228,6 @@ export function GoogleMapsAddressSelector({ onAddressSelected, initialCenter }: 
             </div>
           )}
         </div>
-
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleGetCurrentLocation}
-          disabled={isLocating}
-          className="w-full border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 h-12 rounded-xl flex items-center justify-center gap-2"
-        >
-          {isLocating ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <>
-              <MapPin className="w-5 h-5" />
-              Usar minha localização atual
-            </>
-          )}
-        </Button>
       </div>
     </APIProvider>
   );
