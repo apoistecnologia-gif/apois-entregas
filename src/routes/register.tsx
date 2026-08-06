@@ -8,8 +8,6 @@ import logoAsset from "@/assets/logo.png.asset.json";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-console.log("Supabase client initialized:", !!supabase);
-console.log("Supabase URL present:", !!import.meta.env["VITE_SUPABASE_URL"]);
 
 
 
@@ -95,16 +93,11 @@ function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Submit clicked", { isFormValid, isLoading, formData });
-    if (!isFormValid || isLoading) {
-      console.log("Submit blocked", { isFormValid, isLoading });
-      return;
-    }
+    if (!isFormValid || isLoading) return;
     
     setIsLoading(true);
 
     try {
-      console.log("Calling supabase.auth.signUp...");
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -117,7 +110,6 @@ function Register() {
       });
 
       if (error) {
-        console.error("Supabase signUp error:", error);
         if (error.message.includes("User already registered")) {
           toast.error("Este e-mail já está cadastrado.");
         } else {
@@ -126,14 +118,13 @@ function Register() {
         return;
       }
 
-      console.log("Supabase signUp success:", data);
       if (data.user) {
         toast.success("Conta criada com sucesso! Verifique seu e-mail para confirmar.");
         navigate({ to: "/login" });
       }
     } catch (err: any) {
-      console.error("Registration unexpected error:", err);
       toast.error("Ocorreu um erro ao criar sua conta.");
+      console.error("Registration error:", err);
     } finally {
       setIsLoading(false);
     }
