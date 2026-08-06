@@ -130,7 +130,7 @@ function NovoEndereco() {
   const labelOptions = ["Casa", "Trabalho", "Outro"];
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black overflow-y-auto overflow-x-hidden flex flex-col max-w-[500px] mx-auto shadow-2xl">
+    <div className="fixed inset-0 z-[100] bg-black overflow-y-auto overflow-x-hidden flex flex-col max-w-[500px] mx-auto shadow-2xl">
       <header className="flex items-center p-4 sticky top-0 z-50 bg-black/80 backdrop-blur-lg border-b border-white/10">
         <button 
           onClick={() => navigate({ to: "/enderecos" })}
