@@ -110,7 +110,6 @@ function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("onSubmit chamado - FormData:", formData);
-    toast.info("Formulário enviado", { duration: 2000 });
 
     if (!isFormValid) {
       console.log("Formulário inválido. Campos faltando:", missingFields);
@@ -128,7 +127,6 @@ function Register() {
     
     setIsLoading(true);
     console.log("Enviando cadastro ao Supabase...");
-    toast.info("Enviando cadastro ao Supabase", { duration: 2000 });
 
     try {
       const redirectTo = `${window.location.origin}/auth/callback`;
