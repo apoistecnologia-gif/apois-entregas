@@ -143,21 +143,33 @@ function Register() {
       });
 
       if (error) {
+        console.error("Supabase Error Full details:", {
+          message: error.message,
+          status: error.status,
+          code: error.code,
+          name: error.name,
+        });
+        
+        // Log the actual response structure if available
+        if (data) console.log("Supabase Data (even with error):", data);
+
+        const errorDetail = `Erro ${error.status || 'N/A'} (${error.code || 'sem código'}): ${error.message}`;
+        toast.error(errorDetail, { duration: 6000 });
+        
         if (error.message.includes("User already registered")) {
           toast.error("Este e-mail já está cadastrado.");
-        } else {
-          toast.error(error.message);
         }
         return;
       }
 
       if (data.user) {
+        console.log("Cadastro realizado com sucesso:", data.user);
         toast.success("Conta criada com sucesso! Verifique seu e-mail para confirmar.");
         navigate({ to: "/login" });
       }
     } catch (err: any) {
-      toast.error("Ocorreu um erro ao criar sua conta.");
-      console.error("Registration error:", err);
+      console.error("Catch block error:", err);
+      toast.error(`Erro inesperado: ${err.message || "Verifique o console"}`);
     } finally {
       setIsLoading(false);
     }
