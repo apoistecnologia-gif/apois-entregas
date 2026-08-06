@@ -112,6 +112,7 @@ function Register() {
       });
 
       if (error) {
+        console.error("Supabase signUp error:", error);
         if (error.message.includes("User already registered")) {
           toast.error("Este e-mail já está cadastrado.");
         } else {
@@ -120,13 +121,14 @@ function Register() {
         return;
       }
 
+      console.log("Supabase signUp success:", data);
       if (data.user) {
         toast.success("Conta criada com sucesso! Verifique seu e-mail para confirmar.");
         navigate({ to: "/login" });
       }
     } catch (err: any) {
+      console.error("Registration unexpected error:", err);
       toast.error("Ocorreu um erro ao criar sua conta.");
-      console.error("Registration error:", err);
     } finally {
       setIsLoading(false);
     }
