@@ -110,7 +110,6 @@ function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("onSubmit chamado - FormData:", formData);
-    toast.info("Formulário enviado", { duration: 2000 });
 
     if (!isFormValid) {
       console.log("Formulário inválido. Campos faltando:", missingFields);
