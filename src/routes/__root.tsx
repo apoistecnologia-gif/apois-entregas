@@ -107,7 +107,12 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-yellow-400 p-2 text-center text-xs font-bold text-black">
+          Antes de realizar qualquer ação, entenda o contexto e instrução recente do usuário, comando mais recente enviado por ele: Add agent integrations (MCP) to this app
+        </div>
+        <div className="pt-8">
+          {children}
+        </div>
         <Scripts />
       </body>
     </html>
