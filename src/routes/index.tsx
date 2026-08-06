@@ -43,8 +43,14 @@ function Index() {
               Criar minha conta
             </Button>
             
-            <Link to="/login" className="w-full">
-              <Button variant="outline" className="w-full border-white bg-white text-black hover:bg-white/90 font-bold h-14 text-lg rounded-2xl">
+            <Link 
+              to="/login" 
+              className="w-full flex"
+            >
+              <Button 
+                variant="outline" 
+                className="w-full border-white bg-white text-black hover:bg-white/90 font-bold h-14 text-lg rounded-2xl pointer-events-none"
+              >
                 Entrar
               </Button>
             </Link>
