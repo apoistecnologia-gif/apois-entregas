@@ -59,43 +59,76 @@ function Register() {
   const errors = useMemo(() => {
     const newErrors: Record<string, string> = {};
 
-    if (formData.fullName && formData.fullName.trim().split(" ").length < 2) {
+    if (!formData.fullName.trim()) {
+      newErrors["fullName"] = "Campo obrigatório";
+    } else if (formData.fullName.trim().split(" ").length < 2) {
       newErrors["fullName"] = "Digite seu nome completo (nome e sobrenome)";
     }
 
+    if (!formData.phone.replace(/\D/g, "")) {
+      newErrors["phone"] = "Campo obrigatório";
+    } else if (formData.phone.replace(/\D/g, "").length < 10) {
+      newErrors["phone"] = "Telefone incompleto";
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.email && !emailRegex.test(formData.email)) {
+    if (!formData.email) {
+      newErrors["email"] = "Campo obrigatório";
+    } else if (!emailRegex.test(formData.email)) {
       newErrors["email"] = "E-mail inválido";
     }
 
-    if (formData.password && formData.password.length < 8) {
+    if (!formData.password) {
+      newErrors["password"] = "Campo obrigatório";
+    } else if (formData.password.length < 8) {
       newErrors["password"] = "A senha deve ter no mínimo 8 caracteres";
     }
 
-    if (formData.confirmPassword && formData.confirmPassword !== formData.password) {
+    if (!formData.confirmPassword) {
+      newErrors["confirmPassword"] = "Campo obrigatório";
+    } else if (formData.confirmPassword !== formData.password) {
       newErrors["confirmPassword"] = "As senhas não coincidem";
     }
 
     return newErrors;
   }, [formData]);
 
-  const isFormValid = useMemo(() => {
+  const missingFields = useMemo(() => {
+    const missing: string[] = [];
+    if (formData.fullName.trim().split(" ").length < 2) missing.push("Nome completo");
+    if (formData.phone.replace(/\D/g, "").length < 10) missing.push("Telefone");
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return (
-      formData.fullName.trim().split(" ").length >= 2 &&
-      formData.phone.replace(/\D/g, "").length >= 10 &&
-      emailRegex.test(formData.email) &&
-      formData.password.length >= 8 &&
-      formData.password === formData.confirmPassword &&
-      formData.acceptTerms
-    );
+    if (!emailRegex.test(formData.email)) missing.push("E-mail válido");
+    if (formData.password.length < 8) missing.push("Senha (mín. 8 chars)");
+    if (formData.password !== formData.confirmPassword) missing.push("Confirmação de senha");
+    if (!formData.acceptTerms) missing.push("Aceite dos termos");
+    return missing;
   }, [formData]);
+
+  const isFormValid = missingFields.length === 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid || isLoading) return;
+    console.log("onSubmit chamado - FormData:", formData);
+    toast.info("Formulário enviado", { duration: 2000 });
+
+    if (!isFormValid) {
+      console.log("Formulário inválido. Campos faltando:", missingFields);
+      setTouched({
+        fullName: true,
+        phone: true,
+        email: true,
+        password: true,
+        confirmPassword: true,
+      });
+      return;
+    }
+
+    if (isLoading) return;
     
     setIsLoading(true);
+    console.log("Enviando cadastro ao Supabase...");
+    toast.info("Enviando cadastro ao Supabase", { duration: 2000 });
 
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -168,9 +201,9 @@ function Register() {
               value={formData.fullName}
               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
               onBlur={() => setTouched({ ...touched, fullName: true })}
-              className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${touched.fullName && errors["fullName"] ? 'border-red-500/50' : ''}`}
+              className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${(touched.fullName || !isFormValid) && errors["fullName"] ? 'border-red-500/50' : ''}`}
             />
-            {touched.fullName && errors["fullName"] && (
+            {(touched.fullName || !isFormValid) && errors["fullName"] && (
               <p className="text-[10px] text-red-500 ml-1">{errors["fullName"]}</p>
             )}
           </div>
@@ -185,8 +218,11 @@ function Register() {
               value={formData.phone}
               onChange={handlePhoneChange}
               onBlur={() => setTouched({ ...touched, phone: true })}
-              className="bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary"
+              className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${(touched.phone || !isFormValid) && errors["phone"] ? 'border-red-500/50' : ''}`}
             />
+            {(touched.phone || !isFormValid) && errors["phone"] && (
+              <p className="text-[10px] text-red-500 ml-1">{errors["phone"]}</p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -199,9 +235,9 @@ function Register() {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               onBlur={() => setTouched({ ...touched, email: true })}
-              className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${touched.email && errors["email"] ? 'border-red-500/50' : ''}`}
+              className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${(touched.email || !isFormValid) && errors["email"] ? 'border-red-500/50' : ''}`}
             />
-            {touched.email && errors["email"] && (
+            {(touched.email || !isFormValid) && errors["email"] && (
               <p className="text-[10px] text-red-500 ml-1">{errors["email"]}</p>
             )}
           </div>
@@ -217,7 +253,7 @@ function Register() {
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 onBlur={() => setTouched({ ...touched, password: true })}
-                className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 pr-12 focus:ring-primary focus:border-primary ${touched.password && errors["password"] ? 'border-red-500/50' : ''}`}
+                className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 pr-12 focus:ring-primary focus:border-primary ${(touched.password || !isFormValid) && errors["password"] ? 'border-red-500/50' : ''}`}
               />
               <button 
                 type="button"
@@ -227,7 +263,7 @@ function Register() {
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-            {touched.password && errors["password"] && (
+            {(touched.password || !isFormValid) && errors["password"] && (
               <p className="text-[10px] text-red-500 ml-1">{errors["password"]}</p>
             )}
           </div>
@@ -243,10 +279,10 @@ function Register() {
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                 onBlur={() => setTouched({ ...touched, confirmPassword: true })}
-                className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 pr-12 focus:ring-primary focus:border-primary ${touched.confirmPassword && errors["confirmPassword"] ? 'border-red-500/50' : ''}`}
+                className={`bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 pr-12 focus:ring-primary focus:border-primary ${(touched.confirmPassword || !isFormValid) && errors["confirmPassword"] ? 'border-red-500/50' : ''}`}
               />
             </div>
-            {touched.confirmPassword && errors["confirmPassword"] && (
+            {(touched.confirmPassword || !isFormValid) && errors["confirmPassword"] && (
               <p className="text-[10px] text-red-500 ml-1">{errors["confirmPassword"]}</p>
             )}
           </div>
@@ -263,11 +299,14 @@ function Register() {
             </label>
           </div>
 
-          <div className="pt-4 pb-8">
+          <div className="pt-4 pb-8 space-y-4">
             <Button 
               type="submit"
-              disabled={!isFormValid || isLoading}
-              className="w-full bg-primary text-black disabled:bg-zinc-800 disabled:text-zinc-500 hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl transition-all"
+              className={`w-full font-bold h-14 text-lg rounded-2xl transition-all shadow-lg ${
+                !isFormValid 
+                  ? "bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed opacity-80" 
+                  : "bg-primary text-black hover:bg-primary/90 active:scale-[0.98]"
+              }`}
             >
               {isLoading ? (
                 <Loader2 className="w-6 h-6 animate-spin mx-auto" />
@@ -275,6 +314,14 @@ function Register() {
                 "Criar minha conta"
               )}
             </Button>
+            
+            {!isFormValid && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                <p className="text-[10px] text-red-400 font-medium">
+                  Pendências: {missingFields.join(", ")}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="text-center">
