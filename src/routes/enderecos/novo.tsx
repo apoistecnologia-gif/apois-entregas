@@ -41,6 +41,8 @@ function NovoEndereco() {
     city: "",
     state: "",
     reference: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
   });
 
   useEffect(() => {
