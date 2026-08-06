@@ -49,6 +49,7 @@ function Login() {
         } else {
           toast.error("Não foi possível entrar agora. Verifique sua conexão e tente novamente.");
         }
+        setIsLoading(false);
         return;
       }
 
