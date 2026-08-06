@@ -29,7 +29,7 @@ function Login() {
     if (!email || !password || isLoading) return;
 
     setIsLoading(true);
-
+    try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
