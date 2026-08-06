@@ -15,6 +15,7 @@ import { Route as InicioRouteImport } from './routes/inicio'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as EnderecosNovoRouteImport } from './routes/enderecos/novo'
+import { Route as EnderecosEditarAddressIdRouteImport } from './routes/enderecos/editar/$addressId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,12 @@ const EnderecosNovoRoute = EnderecosNovoRouteImport.update({
   path: '/novo',
   getParentRoute: () => EnderecosRoute,
 } as any)
+const EnderecosEditarAddressIdRoute =
+  EnderecosEditarAddressIdRouteImport.update({
+    id: '/editar/$addressId',
+    path: '/editar/$addressId',
+    getParentRoute: () => EnderecosRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
+  '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +70,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
+  '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,14 +80,27 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
+  '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/enderecos' | '/inicio' | '/login' | '/register' | '/enderecos/novo'
+    | '/'
+    | '/enderecos'
+    | '/inicio'
+    | '/login'
+    | '/register'
+    | '/enderecos/novo'
+    | '/enderecos/editar/$addressId'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/' | '/enderecos' | '/inicio' | '/login' | '/register' | '/enderecos/novo'
+    | '/'
+    | '/enderecos'
+    | '/inicio'
+    | '/login'
+    | '/register'
+    | '/enderecos/novo'
+    | '/enderecos/editar/$addressId'
   id:
     | '__root__'
     | '/'
@@ -87,6 +109,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/enderecos/novo'
+    | '/enderecos/editar/$addressId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -141,15 +164,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EnderecosNovoRouteImport
       parentRoute: typeof EnderecosRoute
     }
+    '/enderecos/editar/$addressId': {
+      id: '/enderecos/editar/$addressId'
+      path: '/editar/$addressId'
+      fullPath: '/enderecos/editar/$addressId'
+      preLoaderRoute: typeof EnderecosEditarAddressIdRouteImport
+      parentRoute: typeof EnderecosRoute
+    }
   }
 }
 
 interface EnderecosRouteChildren {
   EnderecosNovoRoute: typeof EnderecosNovoRoute
+  EnderecosEditarAddressIdRoute: typeof EnderecosEditarAddressIdRoute
 }
 
 const EnderecosRouteChildren: EnderecosRouteChildren = {
   EnderecosNovoRoute: EnderecosNovoRoute,
+  EnderecosEditarAddressIdRoute: EnderecosEditarAddressIdRoute,
 }
 
 const EnderecosRouteWithChildren = EnderecosRoute._addFileChildren(
