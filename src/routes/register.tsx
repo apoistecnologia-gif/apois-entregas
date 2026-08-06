@@ -2,10 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronLeft, Eye, EyeOff } from "lucide-react";
+import { ChevronLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useState, useMemo } from "react";
 import logoAsset from "@/assets/logo.png.asset.json";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/register")({
   component: Register,
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/register")({
 function Register() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
@@ -86,11 +88,43 @@ function Register() {
     );
   }, [formData]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid) return;
+    if (!isFormValid || isLoading) return;
     
-    toast.info("Cadastro ainda não conectado. Em breve concluiremos esta integração.");
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.fullName,
+            phone: formData.phone,
+          },
+        },
+      });
+
+      if (error) {
+        if (error.message.includes("User already registered")) {
+          toast.error("Este e-mail já está cadastrado.");
+        } else {
+          toast.error(error.message);
+        }
+        return;
+      }
+
+      if (data.user) {
+        toast.success("Conta criada com sucesso! Verifique seu e-mail para confirmar.");
+        navigate({ to: "/login" });
+      }
+    } catch (err: any) {
+      toast.error("Ocorreu um erro ao criar sua conta.");
+      console.error("Registration error:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -229,10 +263,14 @@ function Register() {
           <div className="pt-4 pb-8">
             <Button 
               type="submit"
-              disabled={!isFormValid}
+              disabled={!isFormValid || isLoading}
               className="w-full bg-primary text-black disabled:bg-zinc-800 disabled:text-zinc-500 hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl transition-all"
             >
-              Criar minha conta
+              {isLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+              ) : (
+                "Criar minha conta"
+              )}
             </Button>
           </div>
 

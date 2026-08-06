@@ -1,9 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, Eye, EyeOff } from "lucide-react";
+import { ChevronLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useState } from "react";
 import logoAsset from "@/assets/logo.png.asset.json";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   component: Login,
@@ -18,6 +20,70 @@ export const Route = createFileRoute("/login")({
 function Login() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password || isLoading) return;
+
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          toast.error("E-mail ou senha inválidos.");
+        } else {
+          toast.error(error.message);
+        }
+        return;
+      }
+
+      if (data.user) {
+        // Buscar perfil e papel
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profileError || !profile) {
+          toast.error("Usuário sem perfil cadastrado.");
+          return;
+        }
+
+        const { data: roleData, error: roleError } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user.id)
+          .single();
+
+        if (roleError || !roleData) {
+          toast.error("Usuário sem permissões atribuídas.");
+          return;
+        }
+
+        toast.success("Login realizado com sucesso!");
+        
+        // Redirecionar conforme papel
+        if (roleData.role === "customer") {
+          navigate({ to: "/" }); // Por enquanto volta para a home
+        } else {
+          toast.error("Acesso não autorizado para este aplicativo.");
+        }
+      }
+    } catch (err) {
+      toast.error("Ocorreu um erro ao realizar o login.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-black text-white overflow-x-hidden max-w-[500px] mx-auto shadow-2xl border-x border-white/5">
