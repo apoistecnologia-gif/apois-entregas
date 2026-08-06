@@ -61,11 +61,14 @@ function EnderecosLayout() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    setIsLoading(true);
+    // 1. Remove default from all other addresses of this user
     await (supabase as any)
       .from("customer_addresses")
       .update({ is_default: false })
       .eq("user_id", user.id);
 
+    // 2. Set this one as default
     const { error } = await (supabase as any)
       .from("customer_addresses")
       .update({ is_default: true })
@@ -73,9 +76,12 @@ function EnderecosLayout() {
 
     if (error) {
       toast.error("Erro ao definir endereço padrão");
+      setIsLoading(false);
+      fetchAddresses();
     } else {
       toast.success("Endereço padrão atualizado");
-      fetchAddresses();
+      // 3. Navigate back to inicio immediately
+      navigate({ to: "/inicio" });
     }
   };
 
@@ -148,7 +154,10 @@ function EnderecosLayout() {
                       : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
                   }`}
                 >
-                  <div className="flex items-start justify-between">
+                  <div 
+                    className="flex items-start justify-between cursor-pointer"
+                    onClick={() => !addr.is_default && handleSetDefault(addr.id)}
+                  >
                     <div className="flex items-start gap-3">
                       <div className={`p-3 rounded-2xl ${addr.is_default ? "bg-primary text-black" : "bg-zinc-800 text-zinc-400"}`}>
                         <Icon className="w-5 h-5" />

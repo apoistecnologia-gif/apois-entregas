@@ -67,6 +67,14 @@ function Inicio() {
 
   useEffect(() => {
     fetchData();
+
+    // Listen for visibility change or focus to refresh data (IFood style persistence)
+    const handleFocus = () => fetchData();
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   const handleLogout = async () => {
