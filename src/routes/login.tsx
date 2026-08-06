@@ -30,56 +30,28 @@ function Login() {
 
     setIsLoading(true);
 
-    try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        if (error.message.includes("Invalid login credentials")) {
-          toast.error("E-mail ou senha inválidos.");
+        if (error.message.includes("Email not confirmed") || error.code === "email_not_confirmed") {
+          toast.error("Seu e-mail ainda não foi confirmado. Acesse sua caixa de entrada e clique no link de confirmação.");
+        } else if (error.message.includes("Invalid login credentials")) {
+          toast.error("E-mail ou senha incorretos.");
         } else {
-          toast.error(error.message);
+          toast.error("Não foi possível entrar agora. Verifique sua conexão e tente novamente.");
         }
         return;
       }
 
-      if (data.user) {
-        // Buscar perfil e papel
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("id", data.user.id)
-          .single();
-
-        if (profileError || !profile) {
-          toast.error("Usuário sem perfil cadastrado.");
-          return;
-        }
-
-        const { data: roleData, error: roleError } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", data.user.id)
-          .single();
-
-        if (roleError || !roleData) {
-          toast.error("Usuário sem permissões atribuídas.");
-          return;
-        }
-
+      if (data.session) {
         toast.success("Login realizado com sucesso!");
-        
-        // Redirecionar conforme papel
-        if (roleData.role === "customer") {
-          navigate({ to: "/" }); // Por enquanto volta para a home
-        } else {
-          toast.error("Acesso não autorizado para este aplicativo.");
-        }
+        navigate({ to: "/" });
       }
     } catch (err) {
-      toast.error("Ocorreu um erro ao realizar o login.");
+      toast.error("Não foi possível entrar agora. Verifique sua conexão e tente novamente.");
     } finally {
       setIsLoading(false);
     }
