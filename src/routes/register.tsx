@@ -109,7 +109,6 @@ function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    e.stopPropagation();
 
     if (!isFormValid) {
       setTouched({
@@ -302,14 +301,10 @@ function Register() {
           </div>
 
           <div className="pt-4 pb-8 space-y-4">
-            <button 
-              type="button"
-              onClick={(e) => {
-                console.log("Botão de cadastro clicado via onClick");
-                handleSubmit(e);
-              }}
+            <Button 
+              type="submit"
               disabled={isLoading}
-              className={`w-full font-bold h-14 text-lg rounded-2xl transition-all shadow-lg flex items-center justify-center ${
+              className={`w-full font-bold h-14 text-lg rounded-2xl transition-all shadow-lg ${
                 !isFormValid 
                   ? "bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed opacity-80" 
                   : "bg-primary text-black hover:bg-primary/90 active:scale-[0.98]"
@@ -320,7 +315,7 @@ function Register() {
               ) : (
                 "Criar minha conta"
               )}
-            </button>
+            </Button>
             
             {!isFormValid && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
