@@ -204,10 +204,10 @@ function Enderecos() {
           </div>
         )}
 
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-[500px] px-6">
+        <div className="mt-8">
           <Button 
             onClick={() => navigate({ to: "/enderecos/novo" })}
-            className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl shadow-xl flex items-center justify-center gap-2"
+            className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl shadow-xl flex items-center justify-center gap-2 cursor-pointer"
           >
             <Plus className="w-5 h-5" />
             Adicionar endereço
