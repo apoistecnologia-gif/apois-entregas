@@ -87,7 +87,7 @@ function Buscar() {
         setCategories(cats);
 
         if (addrData) {
-          const mers = await fetchMerchants((addrData as any).city, (addrData as any).state);
+          const mers = await fetchMerchants(addrData.city, addrData.state);
           setMerchants(mers);
         } else {
           setMerchants([]);
