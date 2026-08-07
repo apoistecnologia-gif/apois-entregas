@@ -1,7 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { MOCK_MERCHANTS } from "@/lib/mock-data";
+import { fetchMerchantCategories, fetchMerchants } from "@/lib/catalog";
 import { useCart } from "@/contexts/CartContext";
 import { ShoppingBag } from "lucide-react";
 import {
@@ -58,25 +58,42 @@ function Inicio() {
   const { totalItems } = useCart();
   const [profile, setProfile] = useState<any>(null);
   const [defaultAddress, setDefaultAddress] = useState<any>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [merchants, setMerchants] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     setIsLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      if (profileData) setProfile(profileData);
+    setError(null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+        if (profileData) setProfile(profileData);
 
-      const { data: addrData } = await supabase
-        .from("customer_addresses" as any)
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("is_default", true)
-        .single();
+        const { data: addrData } = await supabase
+          .from("customer_addresses" as any)
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("is_default", true)
+          .maybeSingle();
 
-      setDefaultAddress(addrData);
+        setDefaultAddress(addrData);
+      }
+
+      const [cats, mers] = await Promise.all([
+        fetchMerchantCategories(),
+        fetchMerchants()
+      ]);
+      setCategories(cats);
+      setMerchants(mers);
+    } catch (err: any) {
+      console.error("Error fetching data:", err);
+      setError("Ocorreu um erro ao carregar o catálogo.");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -86,15 +103,8 @@ function Inicio() {
     return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
-
   const firstName = profile?.full_name?.split(" ")[0]?.toUpperCase();
 
-  const categories = [
-    { id: 1, name: "Restaurantes", image: catRestaurantes, className: "from-orange-500/25 via-orange-900/10 to-black" },
-    { id: 2, name: "Mercados", image: catMercados, className: "from-green-500/25 via-green-900/10 to-black" },
-    { id: 3, name: "Farmácias", image: catFarmacias, className: "from-sky-500/25 via-cyan-900/10 to-black" },
-    { id: 4, name: "Lojas", image: catLojas, className: "from-violet-500/25 via-purple-900/10 to-black" },
-  ];
 
 
 
@@ -166,33 +176,43 @@ function Inicio() {
 
         {/* Categorias */}
         <div className="grid grid-cols-4 gap-2.5">
-          {categories.map((cat) => (
-            <button 
-              key={cat.id} 
-              onClick={() => navigate({ 
-                to: "/buscar", 
-                search: { categoria: cat.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") } 
-              })}
-              className="group flex min-w-0 flex-col items-center gap-2"
-            >
-              <span
-                className={`relative grid aspect-[3/3.4] w-full place-items-center overflow-hidden rounded-[1.25rem] bg-gradient-to-br ${cat.className} shadow-[0_10px_22px_-10px_rgba(0,0,0,0.95)] ring-1 ring-white/10 transition-transform group-active:scale-95`}
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex flex-col items-center gap-2 animate-pulse">
+                <div className="aspect-[3/3.4] w-full rounded-[1.25rem] bg-zinc-900" />
+                <div className="h-2 w-12 rounded bg-zinc-900" />
+              </div>
+            ))
+          ) : categories.length > 0 ? (
+            categories.map((cat) => (
+              <button 
+                key={cat.id} 
+                onClick={() => navigate({ 
+                  to: "/buscar", 
+                  search: { categoria: cat.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") } 
+                })}
+                className="group flex min-w-0 flex-col items-center gap-2"
               >
-                <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent" />
-                <img
-                  src={cat.image}
-                  alt=""
-                  loading="lazy"
-                  width={512}
-                  height={512}
-                  className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
-                />
-              </span>
-              <span className="w-full truncate text-center text-[11px] font-medium text-zinc-300">
-                {cat.name}
-              </span>
-            </button>
-          ))}
+                <span
+                  className="relative grid aspect-[3/3.4] w-full place-items-center overflow-hidden rounded-[1.25rem] bg-zinc-900 ring-1 ring-white/10 transition-transform group-active:scale-95"
+                >
+                  {cat.image_url ? (
+                    <img
+                      src={cat.image_url}
+                      alt={cat.name}
+                      loading="lazy"
+                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
+                    />
+                  ) : (
+                    <Store className="h-8 w-8 text-zinc-700" />
+                  )}
+                </span>
+                <span className="w-full truncate text-center text-[11px] font-medium text-zinc-300">
+                  {cat.name}
+                </span>
+              </button>
+            ))
+          ) : null}
         </div>
 
 
@@ -209,58 +229,74 @@ function Inicio() {
           </div>
 
           <div className="flex flex-col gap-3">
-            {/* Lista de Estabelecimentos */}
-            {MOCK_MERCHANTS.map((merchant) => (
-              <button 
-                key={merchant.id}
-                onClick={() => navigate({ to: "/estabelecimento/$merchantId", params: { merchantId: merchant.id } })}
-                className="group grid grid-cols-[84px_1fr] items-center gap-4 rounded-3xl border border-zinc-900 bg-zinc-950/50 p-3 text-left transition-all hover:bg-zinc-900/50 active:scale-[0.98] active:bg-zinc-900"
-              >
-                <div className="relative aspect-square w-full overflow-hidden rounded-2xl ring-1 ring-white/10">
-                  <img 
-                    src={merchant.logoImage} 
-                    alt={merchant.name}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold backdrop-blur-sm">
-                    <Star className="h-2.5 w-2.5 fill-primary text-primary" />
-                    <span>{merchant.rating}</span>
-                  </div>
-                </div>
-                
-                <div className="flex flex-col justify-center gap-1.5 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="truncate text-base font-extrabold text-white">{merchant.name}</h3>
-                    <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5 text-primary" /> {merchant.deliveryTime}
-                    </span>
-                    <span className="h-1 w-1 rounded-full bg-zinc-700" />
-                    <span className="flex items-center gap-1">
-                      <Bike className="h-3.5 w-3.5 text-primary" /> R$ {merchant.deliveryFee.toFixed(2).replace('.', ',')}
-                    </span>
+            {isLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-24 w-full animate-pulse rounded-3xl bg-zinc-900" />
+              ))
+            ) : merchants.length > 0 ? (
+              merchants.map((merchant) => (
+                <button 
+                  key={merchant.id}
+                  onClick={() => navigate({ to: "/estabelecimento/$merchantId", params: { merchantId: merchant.id } })}
+                  className="group grid grid-cols-[84px_1fr] items-center gap-4 rounded-3xl border border-zinc-900 bg-zinc-950/50 p-3 text-left transition-all hover:bg-zinc-900/50 active:scale-[0.98] active:bg-zinc-900"
+                >
+                  <div className="relative aspect-square w-full overflow-hidden rounded-2xl ring-1 ring-white/10 bg-zinc-900">
+                    {merchant.logo_url ? (
+                      <img 
+                        src={merchant.logo_url} 
+                        alt={merchant.name}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center">
+                        <Store className="h-8 w-8 text-zinc-700" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold backdrop-blur-sm">
+                      <Star className="h-2.5 w-2.5 fill-primary text-primary" />
+                      <span>{merchant.rating}</span>
+                    </div>
                   </div>
                   
-                  <p className="truncate text-[11px] text-zinc-500 italic">
-                    {merchant.description}
-                  </p>
-                </div>
-              </button>
-            ))}
-
-            {/* Placeholder de estado vazio (opcional, mantendo um item para demonstração) */}
-            <div className="flex flex-col items-center gap-2 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 px-6 py-8 text-center opacity-60">
-              <span className="grid h-12 w-12 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800">
-                <Store className="h-6 w-6 text-zinc-700" />
-              </span>
-              <p className="max-w-[200px] text-[10px] leading-relaxed text-zinc-600">
-                Mais estabelecimentos parceiros estarão disponíveis em breve.
-              </p>
-            </div>
+                  <div className="flex flex-col justify-center gap-1.5 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="truncate text-base font-extrabold text-white">{merchant.name}</h3>
+                      <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5 text-primary" /> 
+                        {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
+                          ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
+                          : "30-45 min"}
+                      </span>
+                      <span className="h-1 w-1 rounded-full bg-zinc-700" />
+                      <span className="flex items-center gap-1">
+                        <Bike className="h-3.5 w-3.5 text-primary" /> 
+                        {merchant.delivery_fee > 0 ? `R$ ${merchant.delivery_fee.toFixed(2).replace('.', ',')}` : "Grátis"}
+                      </span>
+                    </div>
+                    
+                    {merchant.description && (
+                      <p className="truncate text-[11px] text-zinc-500 italic">
+                        {merchant.description}
+                      </p>
+                    )}
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="flex flex-col items-center gap-2 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 px-6 py-8 text-center">
+                <span className="grid h-12 w-12 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800">
+                  <Store className="h-6 w-6 text-zinc-700" />
+                </span>
+                <p className="max-w-[200px] text-[12px] leading-relaxed text-zinc-500">
+                  Os estabelecimentos da sua região aparecerão aqui em breve.
+                </p>
+              </div>
+            )}
           </div>
         </section>
 

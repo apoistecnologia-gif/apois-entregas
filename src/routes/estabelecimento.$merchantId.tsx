@@ -11,59 +11,17 @@ import {
   Search,
   Info,
   Flame,
-  ChevronDown
+  ChevronDown,
+  Store
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { 
+  fetchMerchantById, 
+  fetchMenuCategoriesByMerchant, 
+  fetchProductsByMerchant 
+} from "@/lib/catalog";
 import { useCart } from "@/contexts/CartContext";
-import { MOCK_MERCHANTS } from "@/lib/mock-data";
+import { toast } from "sonner";
 
-
-// Dados do estabelecimento centralizados em src/lib/mock-data.ts
-const getMerchantData = (id: string) => MOCK_MERCHANTS.find(m => m.id === id) || MOCK_MERCHANTS[0];
-
-const MOCK_CATEGORIES = [
-  { id: "destaques", name: "Destaques" },
-  { id: "burgers", name: "Burgers" },
-  { id: "combos", name: "Combos" },
-  { id: "bebidas", name: "Bebidas" },
-  { id: "sobremesas", name: "Sobremesas" },
-];
-
-const MOCK_PRODUCTS = [
-  {
-    id: "p1",
-    name: "Brasa Smash",
-    description: "Dois smash burgers, queijo cheddar, cebola caramelizada e molho especial.",
-    price: 32.90,
-    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=300&auto=format&fit=crop",
-    category: "burgers",
-    isPopular: true,
-  },
-  {
-    id: "p2",
-    name: "Brasa Bacon",
-    description: "Pão brioche, hambúrguer 160g, bacon crocante, queijo prato, alface, tomate e maionese da casa.",
-    price: 29.90,
-    image: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?q=80&w=300&auto=format&fit=crop",
-    category: "burgers",
-  },
-  {
-    id: "p3",
-    name: "Combo Brasa",
-    description: "Brasa Burguer + batata frita + refrigerante lata.",
-    price: 42.90,
-    image: "https://images.unsplash.com/photo-1630384060421-cb20d0e0649d?q=80&w=300&auto=format&fit=crop",
-    category: "combos",
-  },
-  {
-    id: "p4",
-    name: "Coca-Cola Lata 350ml",
-    description: "Coca-Cola geladinha para acompanhar seu pedido.",
-    price: 6.90,
-    image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?q=80&w=300&auto=format&fit=crop",
-    category: "bebidas",
-  },
-];
 
 export const Route = createFileRoute("/estabelecimento/$merchantId")({
   component: EstabelecimentoPage,
@@ -72,43 +30,107 @@ export const Route = createFileRoute("/estabelecimento/$merchantId")({
 function EstabelecimentoPage() {
   const { merchantId } = useParams({ from: "/estabelecimento/$merchantId" });
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState("destaques");
+  const [activeCategory, setActiveCategory] = useState("all");
   const [isFavorite, setIsFavorite] = useState(false);
-  const { items, addItem, totalPrice, totalItems } = useCart();
+  const [merchant, setMerchant] = useState<any>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { addItem, totalPrice, totalItems, merchant: cartMerchant, clearCart } = useCart();
   
-  const merchantData = getMerchantData(merchantId)!;
-
-  // Futuramente buscar dados reais usando o merchantId
-  // const { data: merchant } = useQuery(...)
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!merchantId) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const [merchantData, catsData, prodsData] = await Promise.all([
+          fetchMerchantById(merchantId),
+          fetchMenuCategoriesByMerchant(merchantId),
+          fetchProductsByMerchant(merchantId)
+        ]);
+        
+        setMerchant(merchantData);
+        setCategories(catsData);
+        setProducts(prodsData);
+      } catch (err: any) {
+        console.error("Error fetching merchant details:", err);
+        setError("Estabelecimento não encontrado");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [merchantId]);
 
   const handleAddToCart = (product: any) => {
+    if (cartMerchant && cartMerchant.id !== merchantId) {
+      if (!window.confirm("Você já tem itens de outro estabelecimento na sacola. Deseja limpar a sacola e iniciar um novo pedido aqui?")) {
+        return;
+      }
+      clearCart();
+    }
+
     addItem({
       id: product.id,
       name: product.name,
-      description: product.description,
+      description: product.description || "",
       price: product.price,
-      image: product.image,
-      merchantId: merchantId || 'brasa-burguer'
+      image: product.image_url || "",
+      merchantId: merchantId
     }, {
-      id: merchantId || 'brasa-burguer',
-      name: merchantData.name,
-      logo: merchantData.logoImage,
-      deliveryFee: merchantData.deliveryFee,
-      deliveryTime: merchantData.deliveryTime,
-      closeTime: merchantData.closeTime,
-      category: "Hambúrgueres • Lanches"
+      id: merchantId,
+      name: merchant.name,
+      logo: merchant.logo_url || "",
+      deliveryFee: merchant.delivery_fee,
+      deliveryTime: merchant.delivery_min_minutes && merchant.delivery_max_minutes 
+        ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
+        : "30-45 min",
+      closeTime: merchant.closes_at || "",
+      category: merchant.category_name || "Estabelecimento"
     });
+    
+    toast.success(`${product.name} adicionado à sacola!`);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (error || !merchant) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-black px-6 text-center">
+        <h2 className="text-xl font-bold text-white">{error || "Estabelecimento não encontrado"}</h2>
+        <button 
+          onClick={() => window.history.back()}
+          className="mt-4 flex items-center gap-2 text-primary font-bold"
+        >
+          <ArrowLeft className="h-5 w-5" /> Voltar
+        </button>
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex min-h-full w-full flex-col overflow-x-hidden bg-black text-white selection:bg-primary selection:text-black">
       {/* Header com Capa */}
       <div className="relative h-60 w-full shrink-0">
-        <img 
-          src={merchantData.coverImage} 
-          alt={merchantData.name}
-          className="h-full w-full object-cover"
-        />
+        {merchant.cover_url ? (
+          <img 
+            src={merchant.cover_url} 
+            alt={merchant.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="h-full w-full bg-zinc-900" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black" />
         
         {/* Botões de Ação no Topo */}
@@ -130,30 +152,34 @@ function EstabelecimentoPage() {
         {/* Logo do Estabelecimento */}
         <div className="absolute -bottom-10 left-4 z-10">
           <div className="relative h-24 w-24 overflow-hidden rounded-full border-2 border-primary bg-zinc-950 shadow-2xl">
-            <img 
-              src={merchantData.logoImage} 
-              alt="Logo"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "/favicon.png";
-              }}
-              className="h-full w-full object-cover bg-zinc-900"
-            />
-            {/* Overlay com chama ou ícone premium se necessário */}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-               <Flame className="h-8 w-8 text-primary opacity-80" />
+            {merchant.logo_url ? (
+              <img 
+                src={merchant.logo_url} 
+                alt="Logo"
+                className="h-full w-full object-cover bg-zinc-900"
+              />
+            ) : (
+              <div className="grid h-full w-full place-items-center bg-zinc-900">
+                <Store className="h-10 w-10 text-zinc-700" />
+              </div>
+            )}
+            {/* Overlay decorativo se necessário */}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+               <Flame className="h-8 w-8 text-primary opacity-40" />
             </div>
           </div>
         </div>
       </div>
 
+
       {/* Info do Estabelecimento */}
       <div className="mt-12 px-4 space-y-4 pb-4">
         <div className="space-y-1">
-          <h1 className="text-2xl font-extrabold tracking-tight text-white">{merchantData.name}</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-white">{merchant.name}</h1>
           <div className="flex items-center gap-2">
             <Star className="h-4 w-4 fill-primary text-primary" />
-            <span className="text-[14px] font-bold text-primary">{merchantData.rating}</span>
-            <span className="text-[14px] text-zinc-500">({merchantData.reviewCount} avaliações)</span>
+            <span className="text-[14px] font-bold text-primary">{merchant.rating}</span>
+            <span className="text-[14px] text-zinc-500">({merchant.review_count} avaliações)</span>
           </div>
         </div>
 
@@ -161,18 +187,22 @@ function EstabelecimentoPage() {
         <div className="grid grid-cols-3 gap-0 rounded-2xl border border-zinc-800 bg-zinc-950/50 py-3 shadow-inner shadow-black/60">
           <div className="flex flex-col items-center justify-center gap-1 border-r border-zinc-800 px-2">
             <Clock className="h-5 w-5 text-primary" />
-            <span className="text-[12px] font-bold text-white">{merchantData.deliveryTime}</span>
+            <span className="text-[12px] font-bold text-white">
+              {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
+                ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
+                : "30-45 min"}
+            </span>
             <span className="text-[10px] uppercase tracking-wider text-zinc-500">Tempo</span>
           </div>
           <div className="flex flex-col items-center justify-center gap-1 border-r border-zinc-800 px-2">
             <Bike className="h-5 w-5 text-primary" />
-            <span className="text-[12px] font-bold text-white">R$ {merchantData.deliveryFee.toFixed(2).replace('.', ',')}</span>
+            <span className="text-[12px] font-bold text-white">R$ {merchant.delivery_fee.toFixed(2).replace('.', ',')}</span>
             <span className="text-[10px] uppercase tracking-wider text-zinc-500">Taxa</span>
           </div>
           <button className="flex flex-col items-center justify-center gap-1 px-2 group">
             <div className="flex items-center gap-1">
-              <span className={`h-2 w-2 rounded-full ${merchantData.isOpen ? "bg-green-500" : "bg-red-500"}`} />
-              <span className="text-[12px] font-bold text-green-500">Aberto até {merchantData.closeTime}</span>
+              <span className={`h-2 w-2 rounded-full ${merchant.is_open ? "bg-green-500" : "bg-red-500"}`} />
+              <span className="text-[12px] font-bold text-green-500">{merchant.is_open ? "Aberto" : "Fechado"}{merchant.closes_at ? ` até ${merchant.closes_at}` : ""}</span>
             </div>
             <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500 group-active:text-primary">
               Ver horário <ChevronRight className="h-3 w-3" />
@@ -181,18 +211,27 @@ function EstabelecimentoPage() {
         </div>
 
         {/* Descrição */}
-        <div className="relative">
-          <p className="text-[14px] leading-relaxed text-zinc-400 line-clamp-3">
-            {merchantData.description}
-          </p>
-          <button className="flex items-center gap-1 text-[13px] font-bold text-primary mt-1">
-            Ver mais <ChevronDown className="h-4 w-4" />
-          </button>
-        </div>
+        {merchant.description && (
+          <div className="relative">
+            <p className="text-[14px] leading-relaxed text-zinc-400 line-clamp-3">
+              {merchant.description}
+            </p>
+          </div>
+        )}
 
         {/* Categorias do Menu */}
         <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 py-2">
-          {MOCK_CATEGORIES.map((cat) => (
+          <button
+            onClick={() => setActiveCategory("all")}
+            className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-[14px] font-bold transition-all ${
+              activeCategory === "all" 
+              ? "bg-primary text-black shadow-[0_4px_12px_rgba(255,215,0,0.3)] scale-[1.05]" 
+              : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+            }`}
+          >
+            Todos
+          </button>
+          {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
@@ -202,73 +241,54 @@ function EstabelecimentoPage() {
                 : "bg-zinc-900 text-zinc-400 border border-zinc-800"
               }`}
             >
-              {cat.id === 'destaques' && <Star className={`h-4 w-4 ${activeCategory === cat.id ? 'fill-black' : 'fill-transparent'}`} />}
               {cat.name}
             </button>
           ))}
         </div>
 
-        {/* Banner de Promoção */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-amber-600 p-[1px] shadow-lg shadow-primary/10">
-          <div className="flex items-center justify-between bg-black/90 px-4 py-5 rounded-[15px] relative overflow-hidden">
-            {/* Glow decorativo */}
-            <div className="absolute -left-10 top-0 h-20 w-20 rounded-full bg-primary/20 blur-3xl" />
-            
-            <div className="flex items-center gap-3">
-              <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary text-black shadow-lg">
-                <span className="text-xl font-black">%</span>
-              </div>
-              <div className="space-y-0.5">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Promo Exclusiva</p>
-                <p className="text-lg font-black leading-none text-white">10% OFF</p>
-                <p className="text-[11px] text-zinc-400">em pedidos acima de R$ 60,00</p>
-              </div>
-            </div>
-            
-            <div className="flex flex-col items-end gap-2">
-               <button className="rounded-lg bg-zinc-900 border border-primary/30 px-3 py-1.5 text-[11px] font-black text-primary uppercase tracking-tight">
-                 Aplicar cupom
-               </button>
-               <span className="text-[10px] font-bold text-zinc-500 bg-zinc-900/50 px-2 py-0.5 rounded border border-zinc-800">BRASA10</span>
-            </div>
-          </div>
-        </div>
 
         {/* Lista de Produtos */}
         <section className="space-y-6 pt-2">
           <div className="flex items-center gap-2">
             <Flame className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-extrabold tracking-tight">Destaques da casa</h2>
+            <h2 className="text-lg font-extrabold tracking-tight">Menu</h2>
           </div>
 
           <div className="space-y-4">
-            {MOCK_PRODUCTS.map((product) => (
+            {products
+              .filter(p => activeCategory === "all" || p.menu_category_id === activeCategory)
+              .map((product) => (
               <div 
                 key={product.id}
                 className="grid grid-cols-[80px_1fr_auto] gap-4 rounded-2xl border border-zinc-900 bg-zinc-950/40 p-3 transition-colors active:bg-zinc-900/50"
               >
-                <img 
-                  src={product.image} 
-                  alt={product.name}
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=300&auto=format&fit=crop";
-                    target.classList.add("opacity-50", "grayscale");
-                  }}
-                  className="aspect-square w-full rounded-xl object-cover ring-1 ring-white/5 bg-zinc-900"
-                />
+                <div className="aspect-square w-full rounded-xl overflow-hidden ring-1 ring-white/5 bg-zinc-900">
+                  {product.image_url ? (
+                    <img 
+                      src={product.image_url} 
+                      alt={product.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="grid h-full w-full place-items-center">
+                      <Store className="h-6 w-6 text-zinc-800" />
+                    </div>
+                  )}
+                </div>
                 <div className="flex flex-col justify-center min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="truncate text-[15px] font-bold text-white">{product.name}</h3>
-                    {product.isPopular && (
+                    {product.is_featured && (
                       <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-black text-primary uppercase">
-                        <Flame className="h-2.5 w-2.5" /> Mais pedido
+                        <Flame className="h-2.5 w-2.5" /> Destaque
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 line-clamp-2 text-[12px] leading-snug text-zinc-500">
-                    {product.description}
-                  </p>
+                  {product.description && (
+                    <p className="mt-1 line-clamp-2 text-[12px] leading-snug text-zinc-500">
+                      {product.description}
+                    </p>
+                  )}
                   <p className="mt-2 text-[15px] font-black text-primary">
                     R$ {product.price.toFixed(2).replace('.', ',')}
                   </p>
@@ -283,6 +303,12 @@ function EstabelecimentoPage() {
                 </div>
               </div>
             ))}
+            
+            {products.filter(p => activeCategory === "all" || p.menu_category_id === activeCategory).length === 0 && (
+              <div className="py-8 text-center text-zinc-500 text-sm italic">
+                Nenhum produto encontrado nesta categoria.
+              </div>
+            )}
           </div>
         </section>
       </div>
