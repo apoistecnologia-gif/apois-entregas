@@ -1,30 +1,39 @@
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/types";
 
-export type MerchantHours = Database["public"]["Tables"]["merchant_hours"]["Row"];
+// Local type for merchant_hours since it's not in generated types yet
+export interface MerchantHours {
+  id: string;
+  merchant_id: string;
+  weekday: number;
+  opens_at: string | null;
+  closes_at: string | null;
+  is_closed: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export const fetchMerchantHours = async (merchantId: string) => {
   const { data, error } = await supabase
-    .from("merchant_hours")
+    .from("merchant_hours" as any)
     .select("*")
     .eq("merchant_id", merchantId)
     .order("weekday", { ascending: true });
 
   if (error) throw error;
-  return data;
+  return data as unknown as MerchantHours[];
 };
 
 export const fetchMerchantsHoursBatch = async (merchantIds: string[]) => {
   if (merchantIds.length === 0) return [];
   
   const { data, error } = await supabase
-    .from("merchant_hours")
+    .from("merchant_hours" as any)
     .select("*")
     .in("merchant_id", merchantIds)
     .order("weekday", { ascending: true });
 
   if (error) throw error;
-  return data;
+  return data as unknown as MerchantHours[];
 };
 
 export type MerchantStatusType = "open" | "closed" | "unknown";
@@ -81,6 +90,8 @@ export const calculateMerchantStatus = (hours: MerchantHours[], customNow?: Date
   const todayHours = hours.find(h => h.weekday === currentWeekday);
   
   if (!todayHours) {
+    // Se não há registro hoje nem do dia anterior atravessando, o status depende se há registros na semana
+    // Mas a instrução diz: se não existir registro para hoje e não houver expediente da noite anterior -> unknown
     return { status: "unknown", message: "Horário não informado" };
   }
 
@@ -97,16 +108,14 @@ export const calculateMerchantStatus = (hours: MerchantHours[], customNow?: Date
 
   const isOvernight = closeMins < openMins;
   
-  // Se for overnight (ex: 20:00 - 02:00)
-  // Aberto se agora >= 20:00 OU agora < 02:00
-  // Mas a verificação de "agora < 02:00" já foi tratada no passo 1 (dia anterior)
-  // Então aqui só validamos o início do expediente de hoje.
+  // Aberto hoje se:
+  // Se não atravessa meia-noite: entre opens e closes
+  // Se atravessa meia-noite: >= opens (o < closes é tratado pelo dia seguinte)
   const isOpen = isOvernight 
-    ? (nowMinutes >= openMins) // Se agora >= 20:00 (o resto é tratado amanhã)
+    ? (nowMinutes >= openMins)
     : (nowMinutes >= openMins && nowMinutes < closeMins);
 
   if (!isOpen) {
-    // Se o dia tem registro mas não bate o horário, está fechado
     return { status: "closed", message: "Fechado", hoursToday: todayHours };
   }
 
