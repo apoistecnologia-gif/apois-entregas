@@ -20,25 +20,25 @@ function Index() {
   return (
     <div className="flex min-h-screen flex-col bg-black text-white overflow-x-hidden max-w-[500px] mx-auto relative font-sans">
       {/* Official Logo Header */}
-      <header className="flex flex-col items-center pt-8 pb-4 px-6">
+      <header className="flex flex-col items-center pt-6 pb-2 px-6">
         <img 
           src={logoAsset.url} 
           alt="APOIS ENTREGA" 
-          className="w-40 sm:w-48 h-auto object-contain mb-4"
+          className="w-36 sm:w-44 h-auto object-contain mb-3"
         />
         
         <div className="text-center space-y-1 mt-1">
-          <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight">
+          <h1 className="text-[20px] sm:text-[24px] font-bold tracking-tight">
             Seu delivery <span className="text-[#FFD700]">do seu jeito</span>
           </h1>
-          <p className="text-zinc-400 text-[13px] sm:text-[15px] font-light leading-relaxed max-w-[240px] mx-auto">
+          <p className="text-zinc-400 text-[12px] sm:text-[14px] font-light leading-relaxed max-w-[220px] mx-auto">
             Peça comida, mercado, farmácia e lojas com rapidez e segurança.
           </p>
         </div>
       </header>
 
       {/* Visual Composition / Hero area */}
-      <div className="relative w-full aspect-[16/9] flex items-center justify-center px-4 overflow-hidden">
+      <div className="relative w-full aspect-[2/1] flex items-center justify-center px-4 overflow-hidden">
         {/* Background building silhouette effect (CSS gradient based) */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
         
@@ -64,7 +64,7 @@ function Index() {
       </div>
 
       {/* Service Grid Cards */}
-      <div className="px-5 grid grid-cols-4 gap-2 mb-6 mt-[-15px] relative z-20">
+      <div className="px-5 grid grid-cols-4 gap-2 mb-4 mt-[-10px] relative z-20">
         {[
           { icon: UtensilsCrossed, label: "Comida", sub: "do seu jeito" },
           { icon: ShoppingBasket, label: "Mercado", sub: "sem sair de casa" },
@@ -72,41 +72,41 @@ function Index() {
           { icon: ShoppingBag, label: "Lojas", sub: "com praticidade" },
         ].map((item, idx) => (
           <div key={idx} className="flex flex-col items-center p-2 rounded-xl border border-white/5 bg-zinc-900/50 backdrop-blur-sm text-center">
-            <div className="w-8 h-8 flex items-center justify-center mb-1.5">
-              <item.icon className="w-5 h-5 text-[#FFD700]" strokeWidth={1.5} />
+            <div className="w-7 h-7 flex items-center justify-center mb-1">
+              <item.icon className="w-4 h-4 text-[#FFD700]" strokeWidth={1.5} />
             </div>
-            <span className="text-[10px] font-bold text-white block truncate w-full">{item.label}</span>
-            <span className="text-[8px] text-zinc-500 block leading-tight mt-0.5">{item.sub}</span>
+            <span className="text-[9px] font-bold text-white block truncate w-full">{item.label}</span>
+            <span className="text-[7px] text-zinc-500 block leading-tight mt-0.5">{item.sub}</span>
           </div>
         ))}
       </div>
 
       {/* Main Actions */}
-      <div className="px-6 space-y-3 pb-8 w-full mt-auto">
+      <div className="px-6 space-y-2 pb-6 w-full mt-auto">
         <Button 
           onClick={() => navigate({ to: "/register" })}
-          className="w-full bg-[#FFD700] hover:bg-[#FFC000] text-black font-bold h-[54px] text-base rounded-[14px] flex items-center justify-between px-6 transition-transform active:scale-[0.98]"
+          className="w-full bg-[#FFD700] hover:bg-[#FFC000] text-black font-bold h-[50px] text-sm rounded-[12px] flex items-center justify-between px-6 transition-transform active:scale-[0.98]"
         >
           <span>Criar minha conta</span>
-          <ArrowRight className="w-5 h-5" />
+          <ArrowRight className="w-4 h-4" />
         </Button>
         
         <Button 
           onClick={() => navigate({ to: "/login" })}
           variant="outline" 
-          className="w-full border-zinc-800 bg-transparent text-white hover:bg-white/5 font-bold h-[54px] text-base rounded-[14px] transition-transform active:scale-[0.98]"
+          className="w-full border-zinc-800 bg-transparent text-white hover:bg-white/5 font-bold h-[50px] text-sm rounded-[12px] transition-transform active:scale-[0.98]"
         >
           Entrar
         </Button>
 
         <button 
-          className="w-full flex items-center justify-center gap-2 py-3 text-[#FFD700] hover:opacity-80 transition-opacity text-sm font-medium"
+          className="w-full flex items-center justify-center gap-2 py-2 text-[#FFD700] hover:opacity-80 transition-opacity text-[13px] font-medium"
         >
-          <User className="w-4 h-4" />
+          <User className="w-3.5 h-3.5" />
           <span>Continuar como visitante</span>
         </button>
 
-        <p className="text-[10px] text-zinc-600 text-center px-4 leading-relaxed mt-2">
+        <p className="text-[9px] text-zinc-600 text-center px-4 leading-relaxed mt-1">
           Ao continuar, você concorda com nossos <br />
           <span className="text-[#FFD700] font-medium">Termos de Uso</span> e <span className="text-[#FFD700] font-medium">Política de Privacidade</span>.
         </p>
