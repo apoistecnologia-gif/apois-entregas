@@ -49,9 +49,12 @@ function EstabelecimentoPage() {
   const [menuCategories, setMenuCategories] = useState<any[]>([]);
   const [merchantCategory, setMerchantCategory] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
+  const [merchantHours, setMerchantHours] = useState<MerchantHours[]>([]);
+  const [isHoursDialogOpen, setIsHoursDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { addItem, totalPrice, totalItems, merchant: cartMerchant, clearCart } = useCart();
+
   
   useEffect(() => {
     const fetchData = async () => {
