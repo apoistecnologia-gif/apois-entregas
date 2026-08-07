@@ -106,7 +106,7 @@ function EditarEndereco() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black">
+      <div className="flex min-h-full items-center justify-center bg-black">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -115,7 +115,7 @@ function EditarEndereco() {
   const labelOptions = ["Casa", "Trabalho", "Outro"];
 
   return (
-    <div className="fixed inset-0 z-[160] bg-black overflow-y-auto overflow-x-hidden flex flex-col w-full shadow-2xl">
+    <div className="absolute inset-0 z-[160] bg-black overflow-y-auto overflow-x-hidden flex flex-col w-full shadow-2xl">
       <header className="flex items-center p-4 sticky top-0 z-50 bg-black/80 backdrop-blur-lg border-b border-white/10">
         <button 
           onClick={() => navigate({ to: "/enderecos" })}
@@ -257,7 +257,7 @@ function EditarEndereco() {
             />
           </div>
 
-          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-[500px] px-6">
+          <div className="sticky bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black to-transparent pt-10">
             <Button 
               type="submit"
               disabled={isSaving}
