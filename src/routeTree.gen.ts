@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApoisPlusRouteImport } from './routes/apois-plus'
 import { Route as BuscarRouteImport } from './routes/buscar'
 import { Route as EnderecosRouteImport } from './routes/enderecos'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
@@ -21,11 +22,21 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SacolaRouteImport } from './routes/sacola'
 import { Route as EnderecosNovoRouteImport } from './routes/enderecos/novo'
 import { Route as EstabelecimentoMerchantIdRouteImport } from './routes/estabelecimento.$merchantId'
+import { Route as PerfilAjudaRouteImport } from './routes/perfil/ajuda'
+import { Route as PerfilDadosPessoaisRouteImport } from './routes/perfil/dados-pessoais'
+import { Route as PerfilLegalRouteImport } from './routes/perfil/legal'
+import { Route as PerfilNotificacoesRouteImport } from './routes/perfil/notificacoes'
+import { Route as PerfilPagamentosRouteImport } from './routes/perfil/pagamentos'
 import { Route as EnderecosEditarAddressIdRouteImport } from './routes/enderecos/editar/$addressId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApoisPlusRoute = ApoisPlusRouteImport.update({
+  id: '/apois-plus',
+  path: '/apois-plus',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuscarRoute = BuscarRouteImport.update({
@@ -84,6 +95,31 @@ const EstabelecimentoMerchantIdRoute =
     path: '/estabelecimento/$merchantId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const PerfilAjudaRoute = PerfilAjudaRouteImport.update({
+  id: '/ajuda',
+  path: '/ajuda',
+  getParentRoute: () => PerfilRoute,
+} as any)
+const PerfilDadosPessoaisRoute = PerfilDadosPessoaisRouteImport.update({
+  id: '/dados-pessoais',
+  path: '/dados-pessoais',
+  getParentRoute: () => PerfilRoute,
+} as any)
+const PerfilLegalRoute = PerfilLegalRouteImport.update({
+  id: '/legal',
+  path: '/legal',
+  getParentRoute: () => PerfilRoute,
+} as any)
+const PerfilNotificacoesRoute = PerfilNotificacoesRouteImport.update({
+  id: '/notificacoes',
+  path: '/notificacoes',
+  getParentRoute: () => PerfilRoute,
+} as any)
+const PerfilPagamentosRoute = PerfilPagamentosRouteImport.update({
+  id: '/pagamentos',
+  path: '/pagamentos',
+  getParentRoute: () => PerfilRoute,
+} as any)
 const EnderecosEditarAddressIdRoute =
   EnderecosEditarAddressIdRouteImport.update({
     id: '/editar/$addressId',
@@ -93,54 +129,73 @@ const EnderecosEditarAddressIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/apois-plus': typeof ApoisPlusRoute
   '/buscar': typeof BuscarRoute
   '/enderecos': typeof EnderecosRouteWithChildren
   '/favoritos': typeof FavoritosRoute
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
   '/pedidos': typeof PedidosRoute
-  '/perfil': typeof PerfilRoute
+  '/perfil': typeof PerfilRouteWithChildren
   '/register': typeof RegisterRoute
   '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
+  '/perfil/ajuda': typeof PerfilAjudaRoute
+  '/perfil/dados-pessoais': typeof PerfilDadosPessoaisRoute
+  '/perfil/legal': typeof PerfilLegalRoute
+  '/perfil/notificacoes': typeof PerfilNotificacoesRoute
+  '/perfil/pagamentos': typeof PerfilPagamentosRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/apois-plus': typeof ApoisPlusRoute
   '/buscar': typeof BuscarRoute
   '/enderecos': typeof EnderecosRouteWithChildren
   '/favoritos': typeof FavoritosRoute
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
   '/pedidos': typeof PedidosRoute
-  '/perfil': typeof PerfilRoute
+  '/perfil': typeof PerfilRouteWithChildren
   '/register': typeof RegisterRoute
   '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
+  '/perfil/ajuda': typeof PerfilAjudaRoute
+  '/perfil/dados-pessoais': typeof PerfilDadosPessoaisRoute
+  '/perfil/legal': typeof PerfilLegalRoute
+  '/perfil/notificacoes': typeof PerfilNotificacoesRoute
+  '/perfil/pagamentos': typeof PerfilPagamentosRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/apois-plus': typeof ApoisPlusRoute
   '/buscar': typeof BuscarRoute
   '/enderecos': typeof EnderecosRouteWithChildren
   '/favoritos': typeof FavoritosRoute
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
   '/pedidos': typeof PedidosRoute
-  '/perfil': typeof PerfilRoute
+  '/perfil': typeof PerfilRouteWithChildren
   '/register': typeof RegisterRoute
   '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
+  '/perfil/ajuda': typeof PerfilAjudaRoute
+  '/perfil/dados-pessoais': typeof PerfilDadosPessoaisRoute
+  '/perfil/legal': typeof PerfilLegalRoute
+  '/perfil/notificacoes': typeof PerfilNotificacoesRoute
+  '/perfil/pagamentos': typeof PerfilPagamentosRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/apois-plus'
     | '/buscar'
     | '/enderecos'
     | '/favoritos'
@@ -152,10 +207,16 @@ export interface FileRouteTypes {
     | '/sacola'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
+    | '/perfil/ajuda'
+    | '/perfil/dados-pessoais'
+    | '/perfil/legal'
+    | '/perfil/notificacoes'
+    | '/perfil/pagamentos'
     | '/enderecos/editar/$addressId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/apois-plus'
     | '/buscar'
     | '/enderecos'
     | '/favoritos'
@@ -167,10 +228,16 @@ export interface FileRouteTypes {
     | '/sacola'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
+    | '/perfil/ajuda'
+    | '/perfil/dados-pessoais'
+    | '/perfil/legal'
+    | '/perfil/notificacoes'
+    | '/perfil/pagamentos'
     | '/enderecos/editar/$addressId'
   id:
     | '__root__'
     | '/'
+    | '/apois-plus'
     | '/buscar'
     | '/enderecos'
     | '/favoritos'
@@ -182,18 +249,24 @@ export interface FileRouteTypes {
     | '/sacola'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
+    | '/perfil/ajuda'
+    | '/perfil/dados-pessoais'
+    | '/perfil/legal'
+    | '/perfil/notificacoes'
+    | '/perfil/pagamentos'
     | '/enderecos/editar/$addressId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApoisPlusRoute: typeof ApoisPlusRoute
   BuscarRoute: typeof BuscarRoute
   EnderecosRoute: typeof EnderecosRouteWithChildren
   FavoritosRoute: typeof FavoritosRoute
   InicioRoute: typeof InicioRoute
   LoginRoute: typeof LoginRoute
   PedidosRoute: typeof PedidosRoute
-  PerfilRoute: typeof PerfilRoute
+  PerfilRoute: typeof PerfilRouteWithChildren
   RegisterRoute: typeof RegisterRoute
   SacolaRoute: typeof SacolaRoute
   EstabelecimentoMerchantIdRoute: typeof EstabelecimentoMerchantIdRoute
@@ -206,6 +279,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/apois-plus': {
+      id: '/apois-plus'
+      path: '/apois-plus'
+      fullPath: '/apois-plus'
+      preLoaderRoute: typeof ApoisPlusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/buscar': {
@@ -285,6 +365,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EstabelecimentoMerchantIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/perfil/ajuda': {
+      id: '/perfil/ajuda'
+      path: '/ajuda'
+      fullPath: '/perfil/ajuda'
+      preLoaderRoute: typeof PerfilAjudaRouteImport
+      parentRoute: typeof PerfilRoute
+    }
+    '/perfil/dados-pessoais': {
+      id: '/perfil/dados-pessoais'
+      path: '/dados-pessoais'
+      fullPath: '/perfil/dados-pessoais'
+      preLoaderRoute: typeof PerfilDadosPessoaisRouteImport
+      parentRoute: typeof PerfilRoute
+    }
+    '/perfil/legal': {
+      id: '/perfil/legal'
+      path: '/legal'
+      fullPath: '/perfil/legal'
+      preLoaderRoute: typeof PerfilLegalRouteImport
+      parentRoute: typeof PerfilRoute
+    }
+    '/perfil/notificacoes': {
+      id: '/perfil/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/perfil/notificacoes'
+      preLoaderRoute: typeof PerfilNotificacoesRouteImport
+      parentRoute: typeof PerfilRoute
+    }
+    '/perfil/pagamentos': {
+      id: '/perfil/pagamentos'
+      path: '/pagamentos'
+      fullPath: '/perfil/pagamentos'
+      preLoaderRoute: typeof PerfilPagamentosRouteImport
+      parentRoute: typeof PerfilRoute
+    }
     '/enderecos/editar/$addressId': {
       id: '/enderecos/editar/$addressId'
       path: '/editar/$addressId'
@@ -309,15 +424,35 @@ const EnderecosRouteWithChildren = EnderecosRoute._addFileChildren(
   EnderecosRouteChildren,
 )
 
+interface PerfilRouteChildren {
+  PerfilAjudaRoute: typeof PerfilAjudaRoute
+  PerfilDadosPessoaisRoute: typeof PerfilDadosPessoaisRoute
+  PerfilLegalRoute: typeof PerfilLegalRoute
+  PerfilNotificacoesRoute: typeof PerfilNotificacoesRoute
+  PerfilPagamentosRoute: typeof PerfilPagamentosRoute
+}
+
+const PerfilRouteChildren: PerfilRouteChildren = {
+  PerfilAjudaRoute: PerfilAjudaRoute,
+  PerfilDadosPessoaisRoute: PerfilDadosPessoaisRoute,
+  PerfilLegalRoute: PerfilLegalRoute,
+  PerfilNotificacoesRoute: PerfilNotificacoesRoute,
+  PerfilPagamentosRoute: PerfilPagamentosRoute,
+}
+
+const PerfilRouteWithChildren =
+  PerfilRoute._addFileChildren(PerfilRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApoisPlusRoute: ApoisPlusRoute,
   BuscarRoute: BuscarRoute,
   EnderecosRoute: EnderecosRouteWithChildren,
   FavoritosRoute: FavoritosRoute,
   InicioRoute: InicioRoute,
   LoginRoute: LoginRoute,
   PedidosRoute: PedidosRoute,
-  PerfilRoute: PerfilRoute,
+  PerfilRoute: PerfilRouteWithChildren,
   RegisterRoute: RegisterRoute,
   SacolaRoute: SacolaRoute,
   EstabelecimentoMerchantIdRoute: EstabelecimentoMerchantIdRoute,
@@ -325,3 +460,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
