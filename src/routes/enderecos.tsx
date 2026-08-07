@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate, Outlet } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate, Outlet, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -56,9 +56,25 @@ function EnderecosLayout() {
     setIsLoading(false);
   };
 
+  // Atualiza a lista sempre que a rota ganha foco ou o componente monta
   useEffect(() => {
     fetchAddresses();
+    
+    // Escuta evento de foco da janela para garantir atualização ao voltar de outras abas/apps
+    window.addEventListener('focus', fetchAddresses);
+    return () => window.removeEventListener('focus', fetchAddresses);
   }, []);
+
+  // Use a hook to refetch when route changes or component is navigated to
+  const router = useRouter();
+  useEffect(() => {
+    const unsub = router.subscribe('onBeforeNavigate', () => {
+      // Small delay to ensure DB transaction is committed if coming from save
+      setTimeout(fetchAddresses, 100);
+    });
+    return unsub;
+  }, [router]);
+
 
   const handleSetDefault = async (id: string) => {
     const { data: { user } } = await supabase.auth.getUser();

@@ -121,7 +121,8 @@ function NovoEndereco() {
       if (error) throw error;
 
       toast.success("Endereço salvo com sucesso!");
-      navigate({ to: "/enderecos" });
+      await navigate({ to: "/enderecos" });
+
     } catch (error: any) {
       toast.error(`Erro ao salvar: ${error.message}`);
     } finally {
