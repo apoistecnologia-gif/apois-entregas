@@ -272,10 +272,13 @@ function EstabelecimentoPage() {
         </section>
       </div>
 
-      {/* Botão Flutuante da Sacola (Exemplo de UI) */}
+      {/* Botão Flutuante da Sacola */}
       {cart.length > 0 && (
         <div className="sticky bottom-4 left-0 right-0 z-50 px-4">
-          <button className="flex w-full items-center justify-between rounded-2xl bg-primary px-6 py-4 text-black shadow-[0_12px_24px_rgba(255,215,0,0.4)] ring-4 ring-black transition-transform active:scale-95">
+          <button 
+            onClick={() => navigate({ to: "/sacola" })}
+            className="flex w-full items-center justify-between rounded-2xl bg-primary px-6 py-4 text-black shadow-[0_12px_24px_rgba(255,215,0,0.4)] ring-4 ring-black transition-transform active:scale-95"
+          >
             <div className="flex items-center gap-3">
               <span className="grid h-7 w-7 place-items-center rounded-lg bg-black text-[14px] font-black text-primary">
                 {cart.length}
