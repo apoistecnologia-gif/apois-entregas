@@ -12,8 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BuscarRouteImport } from './routes/buscar'
 import { Route as EnderecosRouteImport } from './routes/enderecos'
+import { Route as FavoritosRouteImport } from './routes/favoritos'
 import { Route as InicioRouteImport } from './routes/inicio'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PedidosRouteImport } from './routes/pedidos'
+import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SacolaRouteImport } from './routes/sacola'
 import { Route as EnderecosNovoRouteImport } from './routes/enderecos/novo'
@@ -35,6 +38,11 @@ const EnderecosRoute = EnderecosRouteImport.update({
   path: '/enderecos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FavoritosRoute = FavoritosRouteImport.update({
+  id: '/favoritos',
+  path: '/favoritos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InicioRoute = InicioRouteImport.update({
   id: '/inicio',
   path: '/inicio',
@@ -43,6 +51,16 @@ const InicioRoute = InicioRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PedidosRoute = PedidosRouteImport.update({
+  id: '/pedidos',
+  path: '/pedidos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PerfilRoute = PerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -77,8 +95,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/buscar': typeof BuscarRoute
   '/enderecos': typeof EnderecosRouteWithChildren
+  '/favoritos': typeof FavoritosRoute
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
+  '/pedidos': typeof PedidosRoute
+  '/perfil': typeof PerfilRoute
   '/register': typeof RegisterRoute
   '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
@@ -89,8 +110,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/buscar': typeof BuscarRoute
   '/enderecos': typeof EnderecosRouteWithChildren
+  '/favoritos': typeof FavoritosRoute
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
+  '/pedidos': typeof PedidosRoute
+  '/perfil': typeof PerfilRoute
   '/register': typeof RegisterRoute
   '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
@@ -102,8 +126,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/buscar': typeof BuscarRoute
   '/enderecos': typeof EnderecosRouteWithChildren
+  '/favoritos': typeof FavoritosRoute
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
+  '/pedidos': typeof PedidosRoute
+  '/perfil': typeof PerfilRoute
   '/register': typeof RegisterRoute
   '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
@@ -116,8 +143,11 @@ export interface FileRouteTypes {
     | '/'
     | '/buscar'
     | '/enderecos'
+    | '/favoritos'
     | '/inicio'
     | '/login'
+    | '/pedidos'
+    | '/perfil'
     | '/register'
     | '/sacola'
     | '/enderecos/novo'
@@ -128,8 +158,11 @@ export interface FileRouteTypes {
     | '/'
     | '/buscar'
     | '/enderecos'
+    | '/favoritos'
     | '/inicio'
     | '/login'
+    | '/pedidos'
+    | '/perfil'
     | '/register'
     | '/sacola'
     | '/enderecos/novo'
@@ -140,8 +173,11 @@ export interface FileRouteTypes {
     | '/'
     | '/buscar'
     | '/enderecos'
+    | '/favoritos'
     | '/inicio'
     | '/login'
+    | '/pedidos'
+    | '/perfil'
     | '/register'
     | '/sacola'
     | '/enderecos/novo'
@@ -153,8 +189,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BuscarRoute: typeof BuscarRoute
   EnderecosRoute: typeof EnderecosRouteWithChildren
+  FavoritosRoute: typeof FavoritosRoute
   InicioRoute: typeof InicioRoute
   LoginRoute: typeof LoginRoute
+  PedidosRoute: typeof PedidosRoute
+  PerfilRoute: typeof PerfilRoute
   RegisterRoute: typeof RegisterRoute
   SacolaRoute: typeof SacolaRoute
   EstabelecimentoMerchantIdRoute: typeof EstabelecimentoMerchantIdRoute
@@ -183,6 +222,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EnderecosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/favoritos': {
+      id: '/favoritos'
+      path: '/favoritos'
+      fullPath: '/favoritos'
+      preLoaderRoute: typeof FavoritosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/inicio': {
       id: '/inicio'
       path: '/inicio'
@@ -195,6 +241,20 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pedidos': {
+      id: '/pedidos'
+      path: '/pedidos'
+      fullPath: '/pedidos'
+      preLoaderRoute: typeof PedidosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/perfil': {
+      id: '/perfil'
+      path: '/perfil'
+      fullPath: '/perfil'
+      preLoaderRoute: typeof PerfilRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -253,8 +313,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BuscarRoute: BuscarRoute,
   EnderecosRoute: EnderecosRouteWithChildren,
+  FavoritosRoute: FavoritosRoute,
   InicioRoute: InicioRoute,
   LoginRoute: LoginRoute,
+  PedidosRoute: PedidosRoute,
+  PerfilRoute: PerfilRoute,
   RegisterRoute: RegisterRoute,
   SacolaRoute: SacolaRoute,
   EstabelecimentoMerchantIdRoute: EstabelecimentoMerchantIdRoute,
@@ -262,13 +325,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
