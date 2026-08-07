@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import logoAsset from "@/assets/logo.png.asset.json";
-import { ArrowRight, UtensilsCrossed, ShoppingBasket, Pill, ShoppingBag, User } from "lucide-react";
+import { ArrowRight, User } from "lucide-react";
 import heroImage from "@/assets/delivery-hero.png.asset.json";
 
 export const Route = createFileRoute("/")({
