@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 const MOCK_MERCHANT = {
   id: "brasa-burguer",
   name: "Brasa Burguer",
-  logo: "/favicon.png",
+  logo: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&q=80&w=200",
   deliveryFee: 5.99,
   deliveryTime: "30-40 min",
   closeTime: "23:30",
@@ -45,7 +45,7 @@ function SacolaPage() {
       name: "Brasa Burger",
       description: "Pão brioche, 180g de blend, queijo cheddar, alface, tomate e molho da casa.",
       price: 25.90,
-      image: "/favicon.png", // Usando placeholder local
+      image: "https://images.unsplash.com/photo-1550317138-10000687ad32?auto=format&fit=crop&q=80&w=300",
       quantity: 1,
     },
     {
@@ -53,7 +53,7 @@ function SacolaPage() {
       name: "Batata Rústica",
       description: "Porção de batata rústica temperada.",
       price: 9.90,
-      image: "/favicon.png",
+      image: "https://images.unsplash.com/photo-1513185158878-8d8c196b8965?auto=format&fit=crop&q=80&w=300",
       quantity: 1,
     },
     {
@@ -61,7 +61,7 @@ function SacolaPage() {
       name: "Coca-Cola Lata 350ml",
       description: "Lata gelada.",
       price: 6.00,
-      image: "/favicon.png",
+      image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=300",
       quantity: 1,
     }
   ]);
