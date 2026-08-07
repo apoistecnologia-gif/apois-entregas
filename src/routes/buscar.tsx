@@ -79,18 +79,18 @@ function Buscar() {
           .maybeSingle();
 
         setDefaultAddress(addrData);
-      }
 
-      const [cats] = await Promise.all([
-        fetchMerchantCategories()
-      ]);
-      setCategories(cats);
+        const [cats] = await Promise.all([
+          fetchMerchantCategories()
+        ]);
+        setCategories(cats);
 
-      if (addrData) {
-        const mers = await fetchMerchants(addrData.city, addrData.state);
-        setMerchants(mers);
-      } else {
-        setMerchants([]);
+        if (addrData) {
+          const mers = await fetchMerchants(addrData.city, addrData.state);
+          setMerchants(mers);
+        } else {
+          setMerchants([]);
+        }
       }
     } catch (err: any) {
       console.error("Error fetching data:", err);

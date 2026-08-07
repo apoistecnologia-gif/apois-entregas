@@ -71,7 +71,6 @@ function Inicio() {
       if (user) {
         const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).single();
         if (profileData) setProfile(profileData);
-
         const { data: addrData } = await supabase
           .from("customer_addresses" as any)
           .select("*")
@@ -80,18 +79,18 @@ function Inicio() {
           .maybeSingle();
 
         setDefaultAddress(addrData);
-      }
 
-      const [cats] = await Promise.all([
-        fetchMerchantCategories()
-      ]);
-      setCategories(cats);
+        const [cats] = await Promise.all([
+          fetchMerchantCategories()
+        ]);
+        setCategories(cats);
 
-      if (addrData) {
-        const mers = await fetchMerchants(addrData.city, addrData.state);
-        setMerchants(mers);
-      } else {
-        setMerchants([]);
+        if (addrData) {
+          const mers = await fetchMerchants(addrData.city, addrData.state);
+          setMerchants(mers);
+        } else {
+          setMerchants([]);
+        }
       }
     } catch (err: any) {
       console.error("Error fetching data:", err);
