@@ -79,18 +79,18 @@ function EstabelecimentoPage() {
       description: product.description || "",
       price: product.price,
       image: product.image_url || "",
-      merchantId: merchantId
-    }, {
-      id: merchantId,
-      name: merchant.name,
-      logo: merchant.logo_url || "",
-      deliveryFee: merchant.delivery_fee,
-      deliveryTime: merchant.delivery_min_minutes && merchant.delivery_max_minutes 
-        ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
-        : "30-45 min",
-      closeTime: merchant.closes_at || "",
-      category: merchant.category_name || "Estabelecimento"
-    });
+       merchantId: merchantId
+     }, {
+       id: merchantId,
+       name: merchant.name,
+       logo: merchant.logo_url || "",
+       deliveryFee: merchant.delivery_fee,
+       deliveryTime: merchant.delivery_min_minutes && merchant.delivery_max_minutes 
+         ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
+         : "",
+       closeTime: merchant.closes_at || "",
+       category: categories.find(c => c.id === merchant.category_id)?.name || ""
+     });
     
     toast.success(`${product.name} adicionado à sacola!`);
   };
