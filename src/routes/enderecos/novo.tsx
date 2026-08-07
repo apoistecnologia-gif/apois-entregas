@@ -127,22 +127,26 @@ function NovoEndereco() {
     }
   };
 
-  const labelOptions = ["Casa", "Trabalho", "Outro"];
+  const labelOptions = [
+    { value: "Casa", Icon: Home },
+    { value: "Trabalho", Icon: Briefcase },
+    { value: "Outro", Icon: MapPin },
+  ];
 
   return (
     <div className="absolute inset-0 z-[160] bg-black overflow-y-auto overflow-x-hidden flex flex-col w-full shadow-2xl">
-      <header className="flex items-center p-4 sticky top-0 z-50 bg-black/80 backdrop-blur-lg border-b border-white/10">
+      <header className="flex items-center p-4 sticky top-0 z-50 bg-black/90 backdrop-blur-xl border-b border-white/10">
         <button 
           onClick={() => navigate({ to: "/enderecos" })}
-          className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors"
+          className="w-10 h-10 flex items-center justify-center -ml-1 rounded-full bg-white/5 border border-white/10 text-primary hover:bg-white/10 transition-colors active:scale-95"
         >
-          <ChevronLeft className="w-6 h-6" />
+          <ChevronLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-lg font-bold ml-2">Novo Endereço</h1>
+        <h1 className="text-[17px] font-extrabold ml-3 tracking-tight">Novo Endereço</h1>
       </header>
 
       <main className="flex-1 overflow-y-auto">
-        <div className="px-6 py-4 border-b border-white/5 bg-zinc-950/50">
+        <div className="px-5 py-5 border-b border-white/5 bg-gradient-to-b from-zinc-950 to-black">
           <GoogleMapsAddressSelector 
             onAddressSelected={(addr) => {
               setFormData(prev => ({
