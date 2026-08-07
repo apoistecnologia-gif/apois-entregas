@@ -272,13 +272,13 @@ function Inicio() {
                       <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
                     </div>
                     
-                    <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5 text-primary" /> 
-                        {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
-                          ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
-                          : "30-45 min"}
-                      </span>
+                     <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
+                       <span className="flex items-center gap-1">
+                         <Clock className="h-3.5 w-3.5 text-primary" /> 
+                         {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
+                           ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
+                           : "Prazo não informado"}
+                       </span>
                       <span className="h-1 w-1 rounded-full bg-zinc-700" />
                       <span className="flex items-center gap-1">
                         <Bike className="h-3.5 w-3.5 text-primary" /> 
