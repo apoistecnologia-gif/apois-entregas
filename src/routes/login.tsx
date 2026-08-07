@@ -32,44 +32,40 @@ function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("[LOGIN] Form submitted. Email:", email, "Password length:", password.length);
+    console.log("[LOGIN] Form submitted. Email:", email);
     if (!email || !password || isLoading) return;
 
     setIsLoading(true);
     try {
-      console.log("[LOGIN] Attempting signInWithPassword with client from @/integrations/supabase/client");
-      
+      console.log("[LOGIN] Calling signInWithPassword...");
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      console.log("[LOGIN] Supabase response received:", { 
-        hasData: !!data, 
-        hasSession: !!data?.session,
-        error: error ? { 
-          message: error.message, 
-          status: error.status, 
-          code: error.code,
-          name: error.name
-        } : null 
+      console.log("[LOGIN] Response:", { 
+        success: !!data.session, 
+        error: error?.message,
+        code: error?.code,
+        status: error?.status 
       });
 
       if (error) {
-        console.error("[LOGIN] Supabase Auth Error:", error);
-        
-        // Verificamos o status 400 que geralmente indica credenciais inválidas ou e-mail não confirmado
+        // Tratamento específico para e-mail não confirmado
         if (error.message.includes("Email not confirmed") || error.code === "email_not_confirmed") {
-          toast.error("Seu e-mail ainda não foi confirmado. Acesse sua caixa de entrada e clique no link de confirmação.");
-        } else if (
-          error.message.includes("Invalid login credentials") || 
-          error.status === 400 || 
-          error.message.includes("invalid_credentials")
-        ) {
-          toast.error("E-mail ou senha incorretos.");
-        } else {
-          toast.error(`Não foi possível entrar: ${error.message}`);
+          toast.error("Seu e-mail ainda não foi confirmado. Acesse sua caixa de entrada.");
+          setIsLoading(false);
+          return;
         }
+        
+        // Tratamento para credenciais inválidas (Supabase retorna 400 em muitos casos de erro de credenciais)
+        if (error.status === 400 || error.code === "invalid_credentials" || error.message.toLowerCase().includes("invalid")) {
+          toast.error("E-mail ou senha incorretos.");
+          setIsLoading(false);
+          return;
+        }
+
+        toast.error(`Erro: ${error.message}`);
         setIsLoading(false);
         return;
       }
