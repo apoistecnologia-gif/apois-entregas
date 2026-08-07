@@ -20,6 +20,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import logoAsset from "@/assets/logo.png.asset.json";
+import catRestaurantes from "@/assets/cat-restaurantes.png";
+import catMercados from "@/assets/cat-mercados.png";
+import catFarmacias from "@/assets/cat-farmacias.png";
+import catLojas from "@/assets/cat-lojas.png";
 import { z } from "zod";
 
 const searchSchema = z.object({
@@ -122,10 +126,10 @@ function Buscar() {
   };
 
   const categories = [
-    { id: "restaurantes", name: "Restaurantes", icon: "🍴" },
-    { id: "mercados", name: "Mercados", icon: "🛒" },
-    { id: "farmacias", name: "Farmácias", icon: "➕" },
-    { id: "lojas", name: "Lojas", icon: "🛍️" },
+    { id: "restaurantes", name: "Restaurantes", image: catRestaurantes, className: "from-orange-500/25 via-orange-900/10 to-black" },
+    { id: "mercados", name: "Mercados", image: catMercados, className: "from-green-500/25 via-green-900/10 to-black" },
+    { id: "farmacias", name: "Farmácias", image: catFarmacias, className: "from-sky-500/25 via-cyan-900/10 to-black" },
+    { id: "lojas", name: "Lojas", image: catLojas, className: "from-violet-500/25 via-purple-900/10 to-black" },
   ];
 
   const navItems = [
@@ -195,20 +199,36 @@ function Buscar() {
           )}
         </form>
 
-        {/* Categorias (Pills horizontais) */}
-        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
+        {/* Categorias (Grid 4 colunas - Premium Compacto) */}
+        <div className="grid grid-cols-4 gap-2.5">
           {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => handleCategoryClick(cat.id)}
-              className={`flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-[13px] font-bold transition-all active:scale-95 ${
-                searchParams.categoria === cat.id
-                  ? "border-primary bg-primary/10 text-primary shadow-[0_0_15px_-5px_rgba(255,215,0,0.4)]"
-                  : "border-zinc-800 bg-zinc-900/50 text-zinc-400"
-              }`}
+              className="group flex min-w-0 flex-col items-center gap-2"
             >
-              <span className="text-[15px]">{cat.icon}</span>
-              {cat.name}
+              <div
+                className={`relative grid aspect-square w-full place-items-center overflow-hidden rounded-2xl bg-gradient-to-br ${cat.className} shadow-[0_8px_20px_-10px_rgba(0,0,0,0.9)] transition-all group-active:scale-95 ${
+                  searchParams.categoria === cat.id
+                    ? "ring-2 ring-primary shadow-[0_0_20px_-5px_rgba(255,215,0,0.4)] scale-[1.02]"
+                    : "ring-1 ring-white/10 opacity-70"
+                }`}
+              >
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/15 to-transparent" />
+                <img
+                  src={cat.image}
+                  alt=""
+                  loading="lazy"
+                  className={`relative h-[72%] w-[72%] object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.7)] transition-transform duration-300 ${
+                    searchParams.categoria === cat.id ? "scale-110 rotate-2" : "group-hover:scale-105"
+                  }`}
+                />
+              </div>
+              <span className={`w-full truncate text-center text-[10px] font-bold tracking-tight transition-colors ${
+                searchParams.categoria === cat.id ? "text-primary" : "text-zinc-500"
+              }`}>
+                {cat.name.toUpperCase()}
+              </span>
             </button>
           ))}
         </div>
