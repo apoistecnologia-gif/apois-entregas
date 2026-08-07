@@ -14,6 +14,8 @@ import {
   ChevronDown
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useCart } from "@/contexts/CartContext";
+
 
 // Demonstração local de dados (isolados do banco)
 const MOCK_MERCHANT = {
@@ -83,14 +85,20 @@ function EstabelecimentoPage() {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("destaques");
   const [isFavorite, setIsFavorite] = useState(false);
-  const [cart, setCart] = useState<any[]>([]);
+  const { items, addItem, totalPrice, totalItems } = useCart();
 
   // Futuramente buscar dados reais usando o merchantId
   // const { data: merchant } = useQuery(...)
 
   const handleAddToCart = (product: any) => {
-    setCart((prev) => [...prev, product]);
-    // Toast de confirmação futuramente
+    addItem({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      image: product.image,
+      merchantId: merchantId || 'brasa-burguer'
+    });
   };
 
   return (
@@ -281,7 +289,7 @@ function EstabelecimentoPage() {
       </div>
 
       {/* Botão Flutuante da Sacola */}
-      {cart.length > 0 && (
+      {totalItems > 0 && (
         <div className="sticky bottom-4 left-0 right-0 z-50 px-4">
           <button 
             onClick={() => navigate({ to: "/sacola" })}
@@ -289,12 +297,12 @@ function EstabelecimentoPage() {
           >
             <div className="flex items-center gap-3">
               <span className="grid h-7 w-7 place-items-center rounded-lg bg-black text-[14px] font-black text-primary">
-                {cart.length}
+                {totalItems}
               </span>
               <span className="text-[16px] font-black uppercase tracking-tight">Ver sacola</span>
             </div>
             <span className="text-[16px] font-black">
-              R$ {cart.reduce((acc, p) => acc + p.price, 0).toFixed(2).replace('.', ',')}
+              R$ {totalPrice.toFixed(2).replace('.', ',')}
             </span>
           </button>
         </div>
