@@ -134,18 +134,22 @@ function Buscar() {
   };
 
 
-  const filteredMerchants = merchants.filter(m => {
-    const query = searchParams.q?.toLowerCase() || "";
-    const catId = searchParams.categoria; // UUID da categoria selecionada
-    
-    const matchesQuery = !query || 
-      m.name.toLowerCase().includes(query) || 
-      (m.tags && m.tags.some((t: string) => t.toLowerCase().includes(query)));
-      
-    const matchesCat = !catId || m.category_id === catId;
-    
-    return matchesQuery && matchesCat;
-  });
+   const filteredMerchants = merchants.filter(m => {
+     const query = searchParams.q?.toLowerCase() || "";
+     const catId = searchParams.categoria; // UUID da categoria selecionada
+     
+     // Encontrar nome da categoria se houver catId
+     const categoryName = catId ? categories.find(c => c.id === catId)?.name?.toLowerCase() || "" : "";
+
+     const matchesQuery = !query || 
+       m.name.toLowerCase().includes(query) || 
+       (m.tags && m.tags.some((t: string) => t.toLowerCase().includes(query))) ||
+       categoryName.includes(query);
+       
+     const matchesCat = !catId || m.category_id === catId;
+     
+     return matchesQuery && matchesCat;
+   });
 
 
 
@@ -255,22 +259,37 @@ function Buscar() {
         </div>
 
         {/* Contador de resultados */}
-        {(searchParams.q || searchParams.categoria) && (
-          <p className="text-[13px] font-medium text-zinc-500">
-            Nenhum resultado para{" "}
-            <span className="text-zinc-300">
-              "{searchParams.q || searchParams.categoria}"
-            </span>
-          </p>
-        )}
+         {(searchParams.q || searchParams.categoria) && (
+           <div className="flex flex-col gap-1">
+             <p className="text-[13px] font-medium text-zinc-500">
+               {filteredMerchants.length > 0 ? (
+                 <>Exibindo <span className="text-primary font-bold">{filteredMerchants.length}</span> resultados</>
+               ) : (
+                 <>Nenhum resultado para <span className="text-zinc-300">"{searchParams.q || (searchParams.categoria ? categories.find(c => c.id === searchParams.categoria)?.name : "")}"</span></>
+               )}
+             </p>
+           </div>
+         )}
 
         {/* Área de Resultados */}
-        <section className="min-h-[40vh] pt-2">
-          {isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="mb-3 h-24 w-full animate-pulse rounded-3xl bg-zinc-900" />
-            ))
-          ) : filteredMerchants.length > 0 ? (
+       <section className="min-h-[40vh] pt-2">
+         {isLoading ? (
+           Array.from({ length: 4 }).map((_, i) => (
+             <div key={i} className="mb-3 h-24 w-full animate-pulse rounded-3xl bg-zinc-900" />
+           ))
+         ) : error ? (
+           <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-red-900/50 bg-red-950/10 px-6 py-16 text-center">
+             <div className="relative grid h-20 w-20 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800/50">
+               <X className="h-9 w-9 text-red-500" />
+             </div>
+             <div className="space-y-1">
+               <h3 className="text-lg font-bold text-zinc-200">Erro ao carregar</h3>
+               <p className="mx-auto max-w-[240px] text-[13px] leading-relaxed text-zinc-500">
+                 {error}
+               </p>
+             </div>
+           </div>
+         ) : filteredMerchants.length > 0 ? (
             <div className="flex flex-col gap-3">
               {filteredMerchants.map((merchant) => (
                 <button 
@@ -304,11 +323,11 @@ function Buscar() {
                     </div>
                     
                     <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
-                      <span className="flex items-center gap-1">
+                       <span className="flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5 text-primary" /> 
                         {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
                           ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
-                          : "30-45 min"}
+                          : "Prazo não informado"}
                       </span>
                       <span className="h-1 w-1 rounded-full bg-zinc-700" />
                       <span className="flex items-center gap-1">

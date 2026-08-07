@@ -68,9 +68,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [items, merchant]);
 
   const addItem = (newItem: Omit<CartItem, 'quantity'>, merchantData: CartMerchant) => {
-    if (!merchant) {
-      setMerchant(merchantData);
-    }
+     if (!merchant || merchant.id !== merchantData.id) {
+       setMerchant(merchantData);
+     }
     
     setItems(prev => {
       const existingItem = prev.find(item => item.id === newItem.id);

@@ -1,7 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/types";
-
-type Tables = Database['public']['Tables'];
+ import { supabase } from "@/integrations/supabase/client";
 
 export const fetchMerchantCategories = async () => {
   const { data, error } = await supabase

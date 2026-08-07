@@ -79,18 +79,18 @@ function EstabelecimentoPage() {
       description: product.description || "",
       price: product.price,
       image: product.image_url || "",
-      merchantId: merchantId
-    }, {
-      id: merchantId,
-      name: merchant.name,
-      logo: merchant.logo_url || "",
-      deliveryFee: merchant.delivery_fee,
-      deliveryTime: merchant.delivery_min_minutes && merchant.delivery_max_minutes 
-        ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
-        : "30-45 min",
-      closeTime: merchant.closes_at || "",
-      category: merchant.category_name || "Estabelecimento"
-    });
+       merchantId: merchantId
+     }, {
+       id: merchantId,
+       name: merchant.name,
+       logo: merchant.logo_url || "",
+       deliveryFee: merchant.delivery_fee,
+       deliveryTime: merchant.delivery_min_minutes && merchant.delivery_max_minutes 
+         ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
+         : "",
+       closeTime: merchant.closes_at || "",
+       category: categories.find(c => c.id === merchant.category_id)?.name || ""
+     });
     
     toast.success(`${product.name} adicionado à sacola!`);
   };
@@ -187,11 +187,11 @@ function EstabelecimentoPage() {
         <div className="grid grid-cols-3 gap-0 rounded-2xl border border-zinc-800 bg-zinc-950/50 py-3 shadow-inner shadow-black/60">
           <div className="flex flex-col items-center justify-center gap-1 border-r border-zinc-800 px-2">
             <Clock className="h-5 w-5 text-primary" />
-            <span className="text-[12px] font-bold text-white">
-              {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
-                ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
-                : "30-45 min"}
-            </span>
+             <span className="text-[12px] font-bold text-white">
+               {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
+                 ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
+                 : "Prazo não informado"}
+             </span>
             <span className="text-[10px] uppercase tracking-wider text-zinc-500">Tempo</span>
           </div>
           <div className="flex flex-col items-center justify-center gap-1 border-r border-zinc-800 px-2">

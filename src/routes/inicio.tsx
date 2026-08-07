@@ -176,23 +176,30 @@ function Inicio() {
 
         {/* Categorias */}
         <div className="grid grid-cols-4 gap-2.5">
-          {isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex flex-col items-center gap-2 animate-pulse">
-                <div className="aspect-[3/3.4] w-full rounded-[1.25rem] bg-zinc-900" />
-                <div className="h-2 w-12 rounded bg-zinc-900" />
-              </div>
-            ))
-          ) : categories.length > 0 ? (
-            categories.map((cat) => (
-              <button 
-                key={cat.id} 
-                onClick={() => navigate({ 
-                  to: "/buscar", 
-                  search: { categoria: cat.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") } 
-                })}
-                className="group flex min-w-0 flex-col items-center gap-2"
-              >
+           {isLoading ? (
+             Array.from({ length: 4 }).map((_, i) => (
+               <div key={i} className="flex flex-col items-center gap-2 animate-pulse">
+                 <div className="aspect-[3/3.4] w-full rounded-[1.25rem] bg-zinc-900" />
+                 <div className="h-2 w-12 rounded bg-zinc-900" />
+               </div>
+             ))
+           ) : error ? (
+             <div className="col-span-4 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/30 px-4 py-6 text-center">
+               <span className="grid h-10 w-10 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800">
+                 <Store className="h-5 w-5 text-zinc-700" />
+               </span>
+               <p className="text-[12px] text-zinc-500">Erro ao carregar categorias</p>
+             </div>
+           ) : categories.length > 0 ? (
+             categories.map((cat) => (
+               <button 
+                 key={cat.id} 
+                 onClick={() => navigate({ 
+                   to: "/buscar", 
+                   search: { categoria: cat.id } 
+                 })}
+                 className="group flex min-w-0 flex-col items-center gap-2"
+               >
                 <span
                   className="relative grid aspect-[3/3.4] w-full place-items-center overflow-hidden rounded-[1.25rem] bg-zinc-900 ring-1 ring-white/10 transition-transform group-active:scale-95"
                 >
@@ -265,13 +272,13 @@ function Inicio() {
                       <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
                     </div>
                     
-                    <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5 text-primary" /> 
-                        {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
-                          ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
-                          : "30-45 min"}
-                      </span>
+                     <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
+                       <span className="flex items-center gap-1">
+                         <Clock className="h-3.5 w-3.5 text-primary" /> 
+                         {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
+                           ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
+                           : "Prazo não informado"}
+                       </span>
                       <span className="h-1 w-1 rounded-full bg-zinc-700" />
                       <span className="flex items-center gap-1">
                         <Bike className="h-3.5 w-3.5 text-primary" /> 

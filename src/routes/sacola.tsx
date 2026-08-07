@@ -9,9 +9,10 @@ import {
   ChevronRight, 
   CreditCard, 
   CircleDollarSign,
-  ShieldCheck,
-  ChevronDown
-} from "lucide-react";
+   ShieldCheck,
+   ChevronDown,
+   Store
+ } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 
@@ -100,24 +101,34 @@ function SacolaPage() {
         {/* Merchant Info */}
         {items.length > 0 && merchant && (
           <section className="flex items-center gap-4 rounded-2xl border border-zinc-900 bg-zinc-950 p-4 shadow-lg shadow-black/50">
-            <img 
-              src={merchant.logo} 
-              alt={merchant.name}
-              className="h-16 w-16 rounded-xl object-cover ring-1 ring-primary/20"
-            />
+             {merchant.logo ? (
+               <img 
+                 src={merchant.logo} 
+                 alt={merchant.name}
+                 className="h-16 w-16 rounded-xl object-cover ring-1 ring-primary/20"
+               />
+             ) : (
+               <div className="h-16 w-16 rounded-xl bg-zinc-900 grid place-items-center ring-1 ring-white/10">
+                 <Store className="h-8 w-8 text-zinc-700" />
+               </div>
+             )}
             <div className="flex-1">
               <h2 className="text-lg font-bold text-white">{merchant.name}</h2>
-              <p className="text-sm text-zinc-500">{merchant.category || "Hambúrgueres • Lanches"}</p>
-              <div className="mt-1 flex items-center gap-3">
-                <span className="flex items-center gap-1 text-[12px] font-medium text-green-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                  Aberto até {merchant.closeTime}
-                </span>
-                <span className="flex items-center gap-1 text-[12px] text-zinc-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
-                  {merchant.deliveryTime}
-                </span>
-              </div>
+               <p className="text-sm text-zinc-500">{merchant.category || ""}</p>
+               <div className="mt-1 flex items-center gap-3">
+                 {merchant.closeTime && (
+                   <span className="flex items-center gap-1 text-[12px] font-medium text-green-500">
+                     <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                     Aberto até {merchant.closeTime}
+                   </span>
+                 )}
+                 {merchant.deliveryTime && (
+                   <span className="flex items-center gap-1 text-[12px] text-zinc-500">
+                     <span className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
+                     {merchant.deliveryTime}
+                   </span>
+                 )}
+               </div>
             </div>
           </section>
         )}
@@ -130,16 +141,17 @@ function SacolaPage() {
               className="group relative flex gap-4 p-3 border-b border-zinc-900/50 last:border-0"
             >
               <div className="relative h-20 w-20 shrink-0">
-                <img 
-                  src={item.image} 
-                  alt={item.name}
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=300&auto=format&fit=crop";
-                    target.classList.add("opacity-50", "grayscale");
-                  }}
-                  className="h-full w-full rounded-xl object-cover ring-1 ring-white/5 bg-zinc-900"
-                />
+                 {item.image ? (
+                   <img 
+                     src={item.image} 
+                     alt={item.name}
+                     className="h-full w-full rounded-xl object-cover ring-1 ring-white/5 bg-zinc-900"
+                   />
+                 ) : (
+                   <div className="h-full w-full rounded-xl bg-zinc-900 grid place-items-center ring-1 ring-white/10">
+                     <Store className="h-6 w-6 text-zinc-800" />
+                   </div>
+                 )}
                 <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[12px] font-black text-black ring-2 ring-black">
                   {item.quantity}
                 </span>
