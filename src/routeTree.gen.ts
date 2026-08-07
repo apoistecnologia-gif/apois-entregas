@@ -22,6 +22,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SacolaRouteImport } from './routes/sacola'
 import { Route as EnderecosNovoRouteImport } from './routes/enderecos/novo'
 import { Route as EstabelecimentoMerchantIdRouteImport } from './routes/estabelecimento.$merchantId'
+import { Route as PerfilIndexRouteImport } from './routes/perfil/index'
 import { Route as PerfilAjudaRouteImport } from './routes/perfil/ajuda'
 import { Route as PerfilDadosPessoaisRouteImport } from './routes/perfil/dados-pessoais'
 import { Route as PerfilLegalRouteImport } from './routes/perfil/legal'
@@ -95,6 +96,11 @@ const EstabelecimentoMerchantIdRoute =
     path: '/estabelecimento/$merchantId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const PerfilIndexRoute = PerfilIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PerfilRoute,
+} as any)
 const PerfilAjudaRoute = PerfilAjudaRouteImport.update({
   id: '/ajuda',
   path: '/ajuda',
@@ -146,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/perfil/legal': typeof PerfilLegalRoute
   '/perfil/notificacoes': typeof PerfilNotificacoesRoute
   '/perfil/pagamentos': typeof PerfilPagamentosRoute
+  '/perfil/': typeof PerfilIndexRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
 }
 export interface FileRoutesByTo {
@@ -157,7 +164,6 @@ export interface FileRoutesByTo {
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
   '/pedidos': typeof PedidosRoute
-  '/perfil': typeof PerfilRouteWithChildren
   '/register': typeof RegisterRoute
   '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
@@ -167,6 +173,7 @@ export interface FileRoutesByTo {
   '/perfil/legal': typeof PerfilLegalRoute
   '/perfil/notificacoes': typeof PerfilNotificacoesRoute
   '/perfil/pagamentos': typeof PerfilPagamentosRoute
+  '/perfil': typeof PerfilIndexRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
 }
 export interface FileRoutesById {
@@ -189,6 +196,7 @@ export interface FileRoutesById {
   '/perfil/legal': typeof PerfilLegalRoute
   '/perfil/notificacoes': typeof PerfilNotificacoesRoute
   '/perfil/pagamentos': typeof PerfilPagamentosRoute
+  '/perfil/': typeof PerfilIndexRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
 }
 export interface FileRouteTypes {
@@ -212,6 +220,7 @@ export interface FileRouteTypes {
     | '/perfil/legal'
     | '/perfil/notificacoes'
     | '/perfil/pagamentos'
+    | '/perfil/'
     | '/enderecos/editar/$addressId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -223,7 +232,6 @@ export interface FileRouteTypes {
     | '/inicio'
     | '/login'
     | '/pedidos'
-    | '/perfil'
     | '/register'
     | '/sacola'
     | '/enderecos/novo'
@@ -233,6 +241,7 @@ export interface FileRouteTypes {
     | '/perfil/legal'
     | '/perfil/notificacoes'
     | '/perfil/pagamentos'
+    | '/perfil'
     | '/enderecos/editar/$addressId'
   id:
     | '__root__'
@@ -254,6 +263,7 @@ export interface FileRouteTypes {
     | '/perfil/legal'
     | '/perfil/notificacoes'
     | '/perfil/pagamentos'
+    | '/perfil/'
     | '/enderecos/editar/$addressId'
   fileRoutesById: FileRoutesById
 }
@@ -365,6 +375,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EstabelecimentoMerchantIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/perfil/': {
+      id: '/perfil/'
+      path: '/'
+      fullPath: '/perfil/'
+      preLoaderRoute: typeof PerfilIndexRouteImport
+      parentRoute: typeof PerfilRoute
+    }
     '/perfil/ajuda': {
       id: '/perfil/ajuda'
       path: '/ajuda'
@@ -430,6 +447,7 @@ interface PerfilRouteChildren {
   PerfilLegalRoute: typeof PerfilLegalRoute
   PerfilNotificacoesRoute: typeof PerfilNotificacoesRoute
   PerfilPagamentosRoute: typeof PerfilPagamentosRoute
+  PerfilIndexRoute: typeof PerfilIndexRoute
 }
 
 const PerfilRouteChildren: PerfilRouteChildren = {
@@ -438,6 +456,7 @@ const PerfilRouteChildren: PerfilRouteChildren = {
   PerfilLegalRoute: PerfilLegalRoute,
   PerfilNotificacoesRoute: PerfilNotificacoesRoute,
   PerfilPagamentosRoute: PerfilPagamentosRoute,
+  PerfilIndexRoute: PerfilIndexRoute,
 }
 
 const PerfilRouteWithChildren =
@@ -460,13 +479,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
