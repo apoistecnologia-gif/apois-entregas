@@ -9,9 +9,10 @@ import {
   ChevronRight, 
   CreditCard, 
   CircleDollarSign,
-  ShieldCheck,
-  ChevronDown
-} from "lucide-react";
+   ShieldCheck,
+   ChevronDown,
+   Store
+ } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 
