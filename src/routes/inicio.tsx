@@ -72,7 +72,7 @@ function Inicio() {
         const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).single();
         if (profileData) setProfile(profileData);
         const { data: addrData, error: addrError } = await supabase
-          .from("customer_addresses" as any)
+          .from("customer_addresses")
           .select("*")
           .eq("user_id", user.id)
           .eq("is_default", true)
