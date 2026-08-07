@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate, Outlet } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate, Outlet, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -56,9 +56,30 @@ function EnderecosLayout() {
     setIsLoading(false);
   };
 
+  // TanStack Router hook para invalidar e recarregar dados quando a rota ganha foco
+  const router = useRouter();
+  
   useEffect(() => {
+    // Busca inicial
     fetchAddresses();
-  }, []);
+    
+    // Inscreve para atualizar sempre que houver navegação concluída para esta rota
+    const unsub = router.subscribe('onResolved', (state) => {
+      if (state.toLocation.pathname === '/enderecos') {
+        fetchAddresses();
+      }
+    });
+    
+    // Também atualiza quando a janela ganha foco (ex: volta do navegador)
+    window.addEventListener('focus', fetchAddresses);
+    
+    return () => {
+      unsub();
+      window.removeEventListener('focus', fetchAddresses);
+    };
+  }, [router]);
+
+
 
   const handleSetDefault = async (id: string) => {
     const { data: { user } } = await supabase.auth.getUser();

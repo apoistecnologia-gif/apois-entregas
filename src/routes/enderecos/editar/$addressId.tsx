@@ -96,7 +96,8 @@ function EditarEndereco() {
       if (error) throw error;
 
       toast.success("Endereço atualizado!");
-      navigate({ to: "/enderecos" });
+      await navigate({ to: "/enderecos" });
+
     } catch (error: any) {
       toast.error(`Erro ao salvar: ${error.message}`);
     } finally {
