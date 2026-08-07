@@ -89,7 +89,7 @@ function Buscar() {
     e.preventDefault();
     navigate({
       to: "/buscar",
-      search: (prev) => ({ ...prev, q: searchTerm }),
+      search: (prev: any) => ({ ...prev, q: searchTerm || undefined }),
       replace: true,
     });
   };
@@ -98,7 +98,7 @@ function Buscar() {
     setSearchTerm("");
     navigate({
       to: "/buscar",
-      search: (prev) => ({ ...prev, q: undefined }),
+      search: (prev: any) => ({ ...prev, q: undefined }),
       replace: true,
     });
   };
@@ -107,7 +107,7 @@ function Buscar() {
     const newCat = searchParams.categoria === catId ? undefined : catId;
     navigate({
       to: "/buscar",
-      search: (prev) => ({ ...prev, categoria: newCat }),
+      search: (prev: any) => ({ ...prev, categoria: newCat }),
       replace: true,
     });
   };
