@@ -2,6 +2,8 @@ import { createFileRoute, redirect, useNavigate, useSearch } from "@tanstack/rea
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchMerchantCategories, fetchMerchants } from "@/lib/catalog";
+import { fetchMerchantsHoursBatch, calculateMerchantStatus } from "@/lib/merchant-hours";
+
 import { useCart } from "@/contexts/CartContext";
 import {
   MapPin,
@@ -60,8 +62,10 @@ function Buscar() {
   const [defaultAddress, setDefaultAddress] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [merchants, setMerchants] = useState<any[]>([]);
+  const [merchantsHours, setMerchantsHours] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [searchTerm, setSearchTerm] = useState(searchParams.q || "");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -333,9 +337,11 @@ function Buscar() {
                       <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
                          <span className="flex items-center gap-1">
                           <Clock className="h-3.5 w-3.5 text-primary" /> 
-                          {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
-                            ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
-                            : "Prazo não informado"}
+                          {(() => {
+                            const mHours = merchantsHours.filter(h => h.merchant_id === merchant.id);
+                            const status = calculateMerchantStatus(mHours);
+                            return status.message;
+                          })()}
                         </span>
                         <span className="h-1 w-1 rounded-full bg-zinc-700" />
                         <span className="flex items-center gap-1">
@@ -343,6 +349,7 @@ function Buscar() {
                           {merchant.delivery_fee > 0 ? `R$ ${merchant.delivery_fee.toFixed(2).replace('.', ',')}` : "Grátis"}
                         </span>
                       </div>
+
                     </div>
                   </button>
                 ))}
