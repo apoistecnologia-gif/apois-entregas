@@ -44,8 +44,9 @@ function Index() {
       </header>
 
       {/* Visual Composition / Hero area with Animated Map/Pin */}
-      <div className="relative flex-1 min-h-0 flex items-center justify-center px-4 overflow-hidden z-10">
-        <div className="relative w-full h-full max-h-[280px] flex items-center justify-center scale-95 origin-center">
+      <div className="relative flex-1 min-h-0 flex items-center justify-center px-4 overflow-hidden z-10 py-2">
+        <div className="relative w-full h-full max-h-[340px] flex items-center justify-center origin-center">
+
           {/* Main Delivery Visual */}
           <div className="relative w-full h-full flex items-center justify-center">
              <img 
