@@ -78,7 +78,7 @@ function SacolaPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from('customer_addresses')
       .select('*')
       .eq('user_id', user.id)

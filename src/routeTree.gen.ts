@@ -15,6 +15,7 @@ import { Route as EnderecosRouteImport } from './routes/enderecos'
 import { Route as InicioRouteImport } from './routes/inicio'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as SacolaRouteImport } from './routes/sacola'
 import { Route as EnderecosNovoRouteImport } from './routes/enderecos/novo'
 import { Route as EstabelecimentoMerchantIdRouteImport } from './routes/estabelecimento.$merchantId'
 import { Route as EnderecosEditarAddressIdRouteImport } from './routes/enderecos/editar/$addressId'
@@ -49,6 +50,11 @@ const RegisterRoute = RegisterRouteImport.update({
   path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SacolaRoute = SacolaRouteImport.update({
+  id: '/sacola',
+  path: '/sacola',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EnderecosNovoRoute = EnderecosNovoRouteImport.update({
   id: '/novo',
   path: '/novo',
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByTo {
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
@@ -97,6 +105,7 @@ export interface FileRoutesById {
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
     | '/inicio'
     | '/login'
     | '/register'
+    | '/sacola'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
     | '/enderecos/editar/$addressId'
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/inicio'
     | '/login'
     | '/register'
+    | '/sacola'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
     | '/enderecos/editar/$addressId'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '/inicio'
     | '/login'
     | '/register'
+    | '/sacola'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
     | '/enderecos/editar/$addressId'
@@ -144,6 +156,7 @@ export interface RootRouteChildren {
   InicioRoute: typeof InicioRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  SacolaRoute: typeof SacolaRoute
   EstabelecimentoMerchantIdRoute: typeof EstabelecimentoMerchantIdRoute
 }
 
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sacola': {
+      id: '/sacola'
+      path: '/sacola'
+      fullPath: '/sacola'
+      preLoaderRoute: typeof SacolaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/enderecos/novo': {
       id: '/enderecos/novo'
       path: '/novo'
@@ -236,8 +256,19 @@ const rootRouteChildren: RootRouteChildren = {
   InicioRoute: InicioRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  SacolaRoute: SacolaRoute,
   EstabelecimentoMerchantIdRoute: EstabelecimentoMerchantIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
