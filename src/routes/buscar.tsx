@@ -18,6 +18,7 @@ import {
   Circle,
   X,
   LogOut,
+  ShoppingBag,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
