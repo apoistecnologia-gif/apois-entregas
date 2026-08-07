@@ -45,23 +45,30 @@ function CheckoutPage() {
 
   const subtotal = totalPrice;
   const deliveryFee = merchant?.deliveryFee || 0;
-  const discount = 5.00;
-  const total = subtotal + deliveryFee - discount;
+  const total = subtotal + deliveryFee;
+
 
   const handleConfirm = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    if (!address) {
+      alert("Por favor, selecione um endereço de entrega antes de confirmar.");
+      return;
+    }
+
     const paymentMethod = sessionStorage.getItem('apois_payment_method') || 'pix';
     const orderId = `APOIS-${Math.floor(100000 + Math.random() * 900000)}`;
+
     const newOrder = {
+
       id: orderId,
       createdAt: new Date().toISOString(),
       merchant,
       items,
       subtotal,
       deliveryFee,
-      discount,
+      discount: 0,
       total,
       address,
       paymentMethod,
@@ -120,7 +127,7 @@ function CheckoutPage() {
         <section className="space-y-2 text-sm text-zinc-400">
           <div className="flex justify-between"><span>Subtotal</span><span>R$ {subtotal.toFixed(2)}</span></div>
           <div className="flex justify-between"><span>Taxa de entrega</span><span>R$ {deliveryFee.toFixed(2)}</span></div>
-          <div className="flex justify-between text-primary font-bold text-lg"><span>Total</span><span>R$ {total.toFixed(2)}</span></div>
+          <div className="flex justify-between text-primary font-black text-lg pt-2 border-t border-zinc-900 mt-2"><span>Total</span><span>R$ {total.toFixed(2)}</span></div>
         </section>
       </main>
 

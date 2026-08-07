@@ -27,14 +27,46 @@ function OrderConfirmedPage() {
   const navigate = useNavigate();
   const { orderId } = Route.useSearch();
   const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const orders = JSON.parse(localStorage.getItem("apois_orders") || "[]");
-    const foundOrder = orders.find((o: any) => o.id === orderId);
-    if (foundOrder) setOrder(foundOrder);
+    const fetchOrder = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      const ordersKey = `apois_orders_${user.id}`;
+      const orders = JSON.parse(localStorage.getItem(ordersKey) || "[]");
+      const foundOrder = orders.find((o: any) => o.id === orderId);
+      if (foundOrder) setOrder(foundOrder);
+      setLoading(false);
+    };
+    fetchOrder();
   }, [orderId]);
 
-  if (!order) return null;
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-black p-6 text-center text-white">
+        <h2 className="text-xl font-bold mb-4">Pedido não encontrado</h2>
+        <button 
+          onClick={() => navigate({ to: "/pedidos" })}
+          className="bg-primary text-black px-6 py-3 rounded-xl font-bold uppercase shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+        >
+          Voltar para Meus Pedidos
+        </button>
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center bg-black p-6 text-center text-white">

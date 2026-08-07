@@ -127,12 +127,6 @@ function OrderDetailsPage() {
               <span>Subtotal</span>
               <span>R$ {order.subtotal.toFixed(2).replace('.', ',')}</span>
             </div>
-            {order.discount > 0 && (
-              <div className="flex justify-between text-xs text-green-500">
-                <span>Desconto</span>
-                <span>- R$ {order.discount.toFixed(2).replace('.', ',')}</span>
-              </div>
-            )}
             <div className="flex justify-between text-xs text-zinc-500">
               <span>Taxa de entrega</span>
               <span>R$ {order.deliveryFee.toFixed(2).replace('.', ',')}</span>
