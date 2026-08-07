@@ -16,6 +16,7 @@ import { Route as InicioRouteImport } from './routes/inicio'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as EnderecosNovoRouteImport } from './routes/enderecos/novo'
+import { Route as EstabelecimentoMerchantIdRouteImport } from './routes/estabelecimento.$merchantId'
 import { Route as EnderecosEditarAddressIdRouteImport } from './routes/enderecos/editar/$addressId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -53,6 +54,12 @@ const EnderecosNovoRoute = EnderecosNovoRouteImport.update({
   path: '/novo',
   getParentRoute: () => EnderecosRoute,
 } as any)
+const EstabelecimentoMerchantIdRoute =
+  EstabelecimentoMerchantIdRouteImport.update({
+    id: '/estabelecimento/$merchantId',
+    path: '/estabelecimento/$merchantId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const EnderecosEditarAddressIdRoute =
   EnderecosEditarAddressIdRouteImport.update({
     id: '/editar/$addressId',
@@ -68,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
+  '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
 }
 export interface FileRoutesByTo {
@@ -78,6 +86,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
+  '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
 }
 export interface FileRoutesById {
@@ -89,6 +98,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
+  '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
 }
 export interface FileRouteTypes {
@@ -101,6 +111,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/enderecos/novo'
+    | '/estabelecimento/$merchantId'
     | '/enderecos/editar/$addressId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -111,6 +122,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/enderecos/novo'
+    | '/estabelecimento/$merchantId'
     | '/enderecos/editar/$addressId'
   id:
     | '__root__'
@@ -121,6 +133,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/enderecos/novo'
+    | '/estabelecimento/$merchantId'
     | '/enderecos/editar/$addressId'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +144,7 @@ export interface RootRouteChildren {
   InicioRoute: typeof InicioRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  EstabelecimentoMerchantIdRoute: typeof EstabelecimentoMerchantIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -184,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EnderecosNovoRouteImport
       parentRoute: typeof EnderecosRoute
     }
+    '/estabelecimento/$merchantId': {
+      id: '/estabelecimento/$merchantId'
+      path: '/estabelecimento/$merchantId'
+      fullPath: '/estabelecimento/$merchantId'
+      preLoaderRoute: typeof EstabelecimentoMerchantIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/enderecos/editar/$addressId': {
       id: '/enderecos/editar/$addressId'
       path: '/editar/$addressId'
@@ -215,17 +236,8 @@ const rootRouteChildren: RootRouteChildren = {
   InicioRoute: InicioRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  EstabelecimentoMerchantIdRoute: EstabelecimentoMerchantIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
