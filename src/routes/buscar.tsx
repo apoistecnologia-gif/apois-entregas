@@ -72,7 +72,7 @@ function Buscar() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: addrData, error: addrError } = await supabase
-          .from("customer_addresses")
+          .from("customer_addresses" as any)
           .select("*")
           .eq("user_id", user.id)
           .eq("is_default", true)
