@@ -160,13 +160,14 @@ function Buscar() {
       {/* Header compactado com Logo e Notificações */}
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 pb-2 pt-6">
         <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-8 w-auto object-contain object-left" />
-        <button
-          className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full border border-zinc-800 bg-zinc-950 text-white"
-          aria-label="Notificações"
-        >
-          <Bell className="h-4.5 w-4.5" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary ring-2 ring-zinc-950" />
-        </button>
+          <button
+            onClick={() => navigate({ to: "/sacola" })}
+            className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full border border-zinc-800 bg-zinc-950 text-white"
+            aria-label="Sacola"
+          >
+            <ShoppingBag className="h-4.5 w-4.5" />
+            {totalItems > 0 && <span className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-primary text-[10px] font-bold text-black flex items-center justify-center ring-2 ring-zinc-950">{totalItems}</span>}
+          </button>
       </header>
 
       <main className="flex-1 space-y-4 px-4 pb-28 pt-2">
@@ -259,31 +260,73 @@ function Buscar() {
           </p>
         )}
 
-        {/* Área de Resultados - Estado Vazio */}
+        {/* Área de Resultados */}
         <section className="min-h-[40vh] pt-2">
-          <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/40 px-6 py-16 text-center">
-            <div className="relative">
-              <div className="absolute inset-0 animate-pulse rounded-full bg-primary/5 blur-2xl" />
-              <div className="relative grid h-20 w-20 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800/50">
-                <Search className="h-9 w-9 text-zinc-700" />
+          {filteredMerchants.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {filteredMerchants.map((merchant) => (
+                <button 
+                  key={merchant.id}
+                  onClick={() => navigate({ to: "/estabelecimento/$merchantId", params: { merchantId: merchant.id } })}
+                  className="group grid grid-cols-[84px_1fr] items-center gap-4 rounded-3xl border border-zinc-900 bg-zinc-950/50 p-3 text-left transition-all hover:bg-zinc-900/50 active:scale-[0.98] active:bg-zinc-900"
+                >
+                  <div className="relative aspect-square w-full overflow-hidden rounded-2xl ring-1 ring-white/10">
+                    <img 
+                      src={merchant.logoImage} 
+                      alt={merchant.name}
+                      className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold backdrop-blur-sm">
+                      <Star className="h-2.5 w-2.5 fill-primary text-primary" />
+                      <span>{merchant.rating}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col justify-center gap-1.5 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="truncate text-base font-extrabold text-white">{merchant.name}</h3>
+                      <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5 text-primary" /> {merchant.deliveryTime}
+                      </span>
+                      <span className="h-1 w-1 rounded-full bg-zinc-700" />
+                      <span className="flex items-center gap-1">
+                        <Bike className="h-3.5 w-3.5 text-primary" /> R$ {merchant.deliveryFee.toFixed(2).replace('.', ',')}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/40 px-6 py-16 text-center">
+              <div className="relative">
+                <div className="absolute inset-0 animate-pulse rounded-full bg-primary/5 blur-2xl" />
+                <div className="relative grid h-20 w-20 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800/50">
+                  <Search className="h-9 w-9 text-zinc-700" />
+                </div>
               </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-zinc-200">Nenhum estabelecimento encontrado</h3>
+                <p className="mx-auto max-w-[240px] text-[13px] leading-relaxed text-zinc-500">
+                  Ainda não temos parceiros ativos que correspondam à sua busca nesta região.
+                </p>
+              </div>
+              <button 
+                onClick={() => {
+                  setSearchTerm("");
+                  navigate({ to: "/buscar", search: {}, replace: true });
+                }}
+                className="mt-2 rounded-full border border-primary/20 bg-primary/5 px-6 py-2 text-[13px] font-bold text-primary transition-colors hover:bg-primary/10"
+              >
+                Limpar filtros
+              </button>
             </div>
-            <div className="space-y-1">
-              <h3 className="text-lg font-bold text-zinc-200">Nenhum estabelecimento encontrado</h3>
-              <p className="mx-auto max-w-[240px] text-[13px] leading-relaxed text-zinc-500">
-                Ainda não temos parceiros ativos que correspondam à sua busca nesta região.
-              </p>
-            </div>
-            <button 
-              onClick={() => {
-                setSearchTerm("");
-                navigate({ to: "/buscar", search: {}, replace: true });
-              }}
-              className="mt-2 rounded-full border border-primary/20 bg-primary/5 px-6 py-2 text-[13px] font-bold text-primary transition-colors hover:bg-primary/10"
-            >
-              Limpar filtros
-            </button>
-          </div>
+          )}
         </section>
       </main>
 
