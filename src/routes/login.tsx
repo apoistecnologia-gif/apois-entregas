@@ -82,14 +82,14 @@ function Login() {
         {/* Top Section: Logo, Greeting, Google, Forms */}
         <div className="flex flex-col">
           {/* Logo and Greeting */}
-          <div className="flex flex-col items-center mb-4 text-center">
+          <div className="flex flex-col items-center mb-6 text-center">
             <img 
               src={logoAsset.url} 
               alt="APOIS ENTREGA" 
-              className="h-16 w-auto object-contain mb-3"
+              className="h-24 w-auto object-contain mb-4"
             />
-            <h1 className="text-[20px] font-black text-white leading-tight">
-              Ta com fome ? Apois entra ai e bora comer
+            <h1 className="text-[22px] font-black text-white leading-tight">
+              Tá com fome? Apois entra ai e bora comer
             </h1>
           </div>
 
