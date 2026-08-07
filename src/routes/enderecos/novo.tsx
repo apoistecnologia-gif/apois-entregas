@@ -164,26 +164,28 @@ function NovoEndereco() {
           />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 px-6 py-6 pb-40">
+        <form onSubmit={handleSubmit} className="space-y-5 px-5 py-5 pb-40">
           <div className="space-y-3">
-            <label className="text-sm font-medium text-zinc-400">Apelido do endereço</label>
+            <label className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">Tipo do endereço</label>
             <div className="flex gap-2">
-              {labelOptions.map(opt => (
+              {labelOptions.map(({ value, Icon }) => (
                 <button
-                  key={opt}
+                  key={value}
                   type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, label: opt }))}
-                  className={`flex-1 py-3 rounded-2xl font-bold transition-all border ${
-                    formData.label === opt 
-                      ? "bg-primary text-black border-primary" 
+                  onClick={() => setFormData(prev => ({ ...prev, label: value }))}
+                  className={`flex-1 py-3 rounded-2xl font-bold text-sm transition-all border flex flex-col items-center gap-1.5 active:scale-[0.97] ${
+                    formData.label === value
+                      ? "bg-primary text-black border-primary shadow-[0_6px_20px_-6px_hsl(var(--primary))]"
                       : "bg-zinc-900 text-zinc-400 border-zinc-800"
                   }`}
                 >
-                  {opt}
+                  <Icon className="w-5 h-5" />
+                  {value}
                 </button>
               ))}
             </div>
           </div>
+
 
           <div className="grid grid-cols-3 gap-4">
             <div className="col-span-1 space-y-2">
