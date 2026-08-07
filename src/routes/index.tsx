@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import logoAsset from "@/assets/logo.png.asset.json";
-import { ArrowRight, UtensilsCrossed, ShoppingBasket, Pill, ShoppingBag, User } from "lucide-react";
+import { ArrowRight, User } from "lucide-react";
 import heroImage from "@/assets/delivery-hero.png.asset.json";
 
 export const Route = createFileRoute("/")({
@@ -44,8 +44,9 @@ function Index() {
       </header>
 
       {/* Visual Composition / Hero area with Animated Map/Pin */}
-      <div className="relative flex-1 min-h-0 flex items-center justify-center px-4 overflow-hidden z-10">
-        <div className="relative w-full h-full max-h-[280px] flex items-center justify-center scale-95 origin-center">
+      <div className="relative flex-1 min-h-0 flex items-center justify-center px-4 overflow-hidden z-10 py-2">
+        <div className="relative w-full h-full max-h-[340px] flex items-center justify-center origin-center">
+
           {/* Main Delivery Visual */}
           <div className="relative w-full h-full flex items-center justify-center">
              <img 
@@ -81,25 +82,8 @@ function Index() {
         </div>
       </div>
 
-      {/* Service Grid Cards */}
-      <div className="px-6 grid grid-cols-4 gap-2 mb-4 shrink-0 relative z-20">
-        {[
-          { icon: UtensilsCrossed, label: "Comida" },
-          { icon: ShoppingBasket, label: "Mercado" },
-          { icon: Pill, label: "Farmácia" },
-          { icon: ShoppingBag, label: "Lojas" },
-        ].map((item, idx) => (
-          <div key={idx} className="group flex flex-col items-center py-2.5 px-1 rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-xl text-center transition-all active:scale-90 hover:border-[#FFD700]/30 shadow-lg">
-            <div className="w-8 h-8 flex items-center justify-center mb-1 rounded-full bg-white/5 group-hover:bg-[#FFD700]/10 transition-colors">
-              <item.icon className="w-4 h-4 text-[#FFD700]" strokeWidth={2.5} />
-            </div>
-            <span className="text-[9px] font-bold text-zinc-100 block">{item.label}</span>
-          </div>
-        ))}
-      </div>
-
       {/* Main Actions */}
-      <div className="px-7 space-y-2.5 pb-6 w-full shrink-0 relative z-20">
+      <div className="px-7 space-y-3 pb-7 w-full shrink-0 relative z-20">
         <Button 
           onClick={() => navigate({ to: "/register" })}
           className="w-full bg-[#FFD700] hover:bg-[#FFC000] text-black font-extrabold h-[50px] text-[14px] rounded-[16px] flex items-center justify-between px-6 transition-all active:scale-[0.98] shadow-[0_8px_25px_rgba(255,215,0,0.25)] relative overflow-hidden group"
