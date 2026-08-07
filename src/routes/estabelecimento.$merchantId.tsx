@@ -61,7 +61,7 @@ const MOCK_PRODUCTS = [
     name: "Combo Brasa",
     description: "Brasa Burguer + batata frita + refrigerante lata.",
     price: 42.90,
-    image: "https://images.unsplash.com/photo-1573015084185-7205ba3d854e?q=80&w=300&auto=format&fit=crop",
+    image: "https://images.unsplash.com/photo-1630384060421-cb20d0e0649d?q=80&w=300&auto=format&fit=crop",
     category: "combos",
   },
   {
