@@ -136,15 +136,15 @@ function Buscar() {
 
    const filteredMerchants = merchants.filter(m => {
      const query = searchParams.q?.toLowerCase() || "";
-     const catId = searchParams.categoria; // UUID da categoria selecionada
+     const catId = searchParams.categoria;
      
-     // Encontrar nome da categoria se houver catId
-     const categoryName = catId ? categories.find(c => c.id === catId)?.name?.toLowerCase() || "" : "";
+     // Encontrar nome da categoria real para este estabelecimento específico
+     const merchantCategoryName = categories.find(c => c.id === m.category_id)?.name?.toLowerCase() || "";
 
      const matchesQuery = !query || 
        m.name.toLowerCase().includes(query) || 
        (m.tags && m.tags.some((t: string) => t.toLowerCase().includes(query))) ||
-       categoryName.includes(query);
+       merchantCategoryName.includes(query);
        
      const matchesCat = !catId || m.category_id === catId;
      
