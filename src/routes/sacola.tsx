@@ -13,6 +13,8 @@ import {
   ChevronDown
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useCart } from "@/contexts/CartContext";
+
 
 // MOCK DATA (Isolado do banco conforme solicitado)
 const MOCK_MERCHANT = {
@@ -29,47 +31,14 @@ export const Route = createFileRoute("/sacola")({
   component: SacolaPage,
 });
 
-type CartItem = {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  image: string;
-  quantity: number;
-};
-
 function SacolaPage() {
   const navigate = useNavigate();
-  const [items, setItems] = useState<CartItem[]>([
-    {
-      id: "p1",
-      name: "Brasa Burger",
-      description: "Pão brioche, 180g de blend, queijo cheddar, alface, tomate e molho da casa.",
-      price: 25.90,
-      image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=300&auto=format&fit=crop",
-      quantity: 1,
-    },
-    {
-      id: "p2",
-      name: "Batata Rústica",
-      description: "Porção de batata rústica temperada.",
-      price: 9.90,
-      image: "https://images.unsplash.com/photo-1630384060421-cb20d0e0649d?q=80&w=300&auto=format&fit=crop",
-      quantity: 1,
-    },
-    {
-      id: "p3",
-      name: "Coca-Cola Lata 350ml",
-      description: "Lata gelada.",
-      price: 6.00,
-      image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?q=80&w=300&auto=format&fit=crop",
-      quantity: 1,
-    }
-  ]);
+  const { items, updateQuantity, removeItem, totalPrice } = useCart();
 
   const [defaultAddress, setDefaultAddress] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cartao' | 'dinheiro'>('pix');
   const [discount, setDiscount] = useState(5.00);
+
 
   useEffect(() => {
     fetchDefaultAddress();
@@ -89,22 +58,9 @@ function SacolaPage() {
     if (data) setDefaultAddress(data);
   };
 
-  const updateQuantity = (id: string, delta: number) => {
-    setItems(prev => prev.map(item => {
-      if (item.id === id) {
-        const newQty = Math.max(1, item.quantity + delta);
-        return { ...item, quantity: newQty };
-      }
-      return item;
-    }));
-  };
+  const subtotal = totalPrice;
+  const total = subtotal + MOCK_MERCHANT.deliveryFee - (subtotal > 0 ? discount : 0);
 
-  const removeItem = (id: string) => {
-    setItems(prev => prev.filter(item => item.id !== id));
-  };
-
-  const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const total = subtotal + MOCK_MERCHANT.deliveryFee - discount;
 
   const handleFinishOrder = () => {
     if (items.length === 0) {
@@ -217,8 +173,20 @@ function SacolaPage() {
           ))}
 
           {items.length === 0 && (
-            <div className="py-12 text-center text-zinc-500">
-              Sua sacola está vazia
+            <div className="py-20 flex flex-col items-center justify-center text-center space-y-6">
+              <div className="w-24 h-24 rounded-full bg-zinc-900 flex items-center justify-center ring-1 ring-white/10 shadow-2xl">
+                <Trash2 className="w-10 h-10 text-zinc-700" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-xl font-bold text-white">Sua sacola está vazia</h3>
+                <p className="text-zinc-500 text-sm max-w-[200px]">Adicione produtos para começar seu pedido</p>
+              </div>
+              <button 
+                onClick={() => navigate({ to: "/inicio" })}
+                className="bg-primary text-black px-8 py-3 rounded-xl font-bold uppercase tracking-tight shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+              >
+                Explorar estabelecimentos
+              </button>
             </div>
           )}
         </section>
