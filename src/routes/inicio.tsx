@@ -15,6 +15,8 @@ import {
   User,
   Bike,
   Store,
+  Star,
+  Clock,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
