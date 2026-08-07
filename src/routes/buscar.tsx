@@ -71,22 +71,28 @@ function Buscar() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: addrData } = await supabase
+        const { data: addrData, error: addrError } = await supabase
           .from("customer_addresses" as any)
           .select("*")
           .eq("user_id", user.id)
           .eq("is_default", true)
           .maybeSingle();
 
+        if (addrError) throw addrError;
         setDefaultAddress(addrData);
-      }
 
-      const [cats, mers] = await Promise.all([
-        fetchMerchantCategories(),
-        fetchMerchants()
-      ]);
-      setCategories(cats);
-      setMerchants(mers);
+        const [cats] = await Promise.all([
+          fetchMerchantCategories()
+        ]);
+        setCategories(cats);
+
+        if (addrData) {
+          const mers = await fetchMerchants(addrData.city, addrData.state);
+          setMerchants(mers);
+        } else {
+          setMerchants([]);
+        }
+      }
     } catch (err: any) {
       console.error("Error fetching data:", err);
       setError("Ocorreu um erro ao carregar o catálogo.");
@@ -289,78 +295,98 @@ function Buscar() {
                </p>
              </div>
            </div>
-         ) : filteredMerchants.length > 0 ? (
-            <div className="flex flex-col gap-3">
-              {filteredMerchants.map((merchant) => (
-                <button 
-                  key={merchant.id}
-                  onClick={() => navigate({ to: "/estabelecimento/$merchantId", params: { merchantId: merchant.id } })}
-                  className="group grid grid-cols-[84px_1fr] items-center gap-4 rounded-3xl border border-zinc-900 bg-zinc-950/50 p-3 text-left transition-all hover:bg-zinc-900/50 active:scale-[0.98] active:bg-zinc-900"
-                >
-                  <div className="relative aspect-square w-full overflow-hidden rounded-2xl ring-1 ring-white/10 bg-zinc-900">
-                    {merchant.logo_url ? (
-                      <img 
-                        src={merchant.logo_url} 
-                        alt={merchant.name}
-                        className="h-full w-full object-cover transition-transform group-hover:scale-110"
-                      />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center">
-                        <Store className="h-6 w-6 text-zinc-700" />
+          ) : defaultAddress ? (
+            filteredMerchants.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {filteredMerchants.map((merchant) => (
+                  <button 
+                    key={merchant.id}
+                    onClick={() => navigate({ to: "/estabelecimento/$merchantId", params: { merchantId: merchant.id } })}
+                    className="group grid grid-cols-[84px_1fr] items-center gap-4 rounded-3xl border border-zinc-900 bg-zinc-950/50 p-3 text-left transition-all hover:bg-zinc-900/50 active:scale-[0.98] active:bg-zinc-900"
+                  >
+                    <div className="relative aspect-square w-full overflow-hidden rounded-2xl ring-1 ring-white/10 bg-zinc-900">
+                      {merchant.logo_url ? (
+                        <img 
+                          src={merchant.logo_url} 
+                          alt={merchant.name}
+                          className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                        />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center">
+                          <Store className="h-6 w-6 text-zinc-700" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold backdrop-blur-sm">
+                        <Star className="h-2.5 w-2.5 fill-primary text-primary" />
+                        <span>{merchant.rating}</span>
                       </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold backdrop-blur-sm">
-                      <Star className="h-2.5 w-2.5 fill-primary text-primary" />
-                      <span>{merchant.rating}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col justify-center gap-1.5 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="truncate text-base font-extrabold text-white">{merchant.name}</h3>
-                      <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
                     </div>
                     
-                    <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
-                       <span className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5 text-primary" /> 
-                        {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
-                          ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
-                          : "Prazo não informado"}
-                      </span>
-                      <span className="h-1 w-1 rounded-full bg-zinc-700" />
-                      <span className="flex items-center gap-1">
-                        <Bike className="h-3.5 w-3.5 text-primary" /> 
-                        {merchant.delivery_fee > 0 ? `R$ ${merchant.delivery_fee.toFixed(2).replace('.', ',')}` : "Grátis"}
-                      </span>
+                    <div className="flex flex-col justify-center gap-1.5 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="truncate text-base font-extrabold text-white">{merchant.name}</h3>
+                        <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
+                      </div>
+                      
+                      <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
+                         <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5 text-primary" /> 
+                          {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
+                            ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
+                            : "Prazo não informado"}
+                        </span>
+                        <span className="h-1 w-1 rounded-full bg-zinc-700" />
+                        <span className="flex items-center gap-1">
+                          <Bike className="h-3.5 w-3.5 text-primary" /> 
+                          {merchant.delivery_fee > 0 ? `R$ ${merchant.delivery_fee.toFixed(2).replace('.', ',')}` : "Grátis"}
+                        </span>
+                      </div>
                     </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/40 px-6 py-16 text-center">
+                <div className="relative">
+                  <div className="absolute inset-0 animate-pulse rounded-full bg-primary/5 blur-2xl" />
+                  <div className="relative grid h-20 w-20 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800/50">
+                    <Search className="h-9 w-9 text-zinc-700" />
                   </div>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/40 px-6 py-16 text-center">
-              <div className="relative">
-                <div className="absolute inset-0 animate-pulse rounded-full bg-primary/5 blur-2xl" />
-                <div className="relative grid h-20 w-20 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800/50">
-                  <Search className="h-9 w-9 text-zinc-700" />
                 </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-zinc-200">Nenhum estabelecimento encontrado</h3>
+                  <p className="mx-auto max-w-[240px] text-[13px] leading-relaxed text-zinc-500">
+                    Não encontramos resultados para esta busca na sua região.
+                  </p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setSearchTerm("");
+                    navigate({ to: "/buscar", search: {}, replace: true });
+                  }}
+                  className="mt-2 rounded-full border border-primary/20 bg-primary/5 px-6 py-2 text-[13px] font-bold text-primary transition-colors hover:bg-primary/10"
+                >
+                  Limpar filtros
+                </button>
+              </div>
+            )
+          ) : (
+            <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-primary/20 bg-primary/5 px-6 py-16 text-center">
+              <div className="relative grid h-20 w-20 place-items-center rounded-full bg-zinc-900 ring-1 ring-primary/30">
+                <MapPin className="h-9 w-9 text-primary" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-bold text-zinc-200">Nenhum estabelecimento encontrado</h3>
+                <h3 className="text-lg font-bold text-zinc-200">Selecione um endereço</h3>
                 <p className="mx-auto max-w-[240px] text-[13px] leading-relaxed text-zinc-500">
-                  Os estabelecimentos da sua região aparecerão aqui em breve.
+                  Informe sua localização para encontrar estabelecimentos que entregam na sua região.
                 </p>
               </div>
-              <button 
-                onClick={() => {
-                  setSearchTerm("");
-                  navigate({ to: "/buscar", search: {}, replace: true });
-                }}
-                className="mt-2 rounded-full border border-primary/20 bg-primary/5 px-6 py-2 text-[13px] font-bold text-primary transition-colors hover:bg-primary/10"
+              <button
+                onClick={() => navigate({ to: "/enderecos" })}
+                className="mt-2 rounded-full bg-primary px-8 py-2.5 text-[14px] font-bold text-black active:scale-95 transition-transform"
               >
-                Limpar filtros
+                Configurar endereço
               </button>
             </div>
           )}

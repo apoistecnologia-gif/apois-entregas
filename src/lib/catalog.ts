@@ -11,11 +11,19 @@ export const fetchMerchantCategories = async () => {
   return data;
 };
 
-export const fetchMerchants = async () => {
-  const { data, error } = await supabase
+export const fetchMerchants = async (city?: string, state?: string) => {
+  let query = supabase
     .from("merchants")
     .select("*")
     .eq("is_active", true);
+  
+  if (city && state) {
+    query = query
+      .ilike("city", city)
+      .ilike("state", state);
+  }
+  
+  const { data, error } = await query;
   
   if (error) throw error;
   return data;
