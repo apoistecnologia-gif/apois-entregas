@@ -67,15 +67,12 @@ function SacolaPage() {
 
 
   const handleFinishOrder = () => {
-    if (items.length === 0) {
-      alert("Sua sacola está vazia!");
-      return;
-    }
+    if (items.length === 0) return;
     if (!defaultAddress) {
       alert("Selecione um endereço de entrega!");
       return;
     }
-    alert("Pedido validado! (Simulação concluída)");
+    navigate({ to: "/checkout" });
   };
 
   return (
