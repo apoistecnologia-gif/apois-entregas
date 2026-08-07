@@ -13,6 +13,7 @@ import {
   X,
   ShoppingBag,
   Heart,
+  Store,
 } from "lucide-react";
 import { AppBottomNav } from "@/components/AppBottomNav";
 import { Input } from "@/components/ui/input";
