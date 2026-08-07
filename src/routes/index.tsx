@@ -18,7 +18,7 @@ function Index() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-col bg-black text-white h-dvh overflow-hidden w-full relative font-sans">
+    <div className="flex flex-col bg-black text-white min-h-full overflow-hidden w-full relative font-sans">
       {/* Background Decorative Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] -left-[20%] w-[60%] h-[40%] bg-[#FFD700]/5 blur-[120px] rounded-full" />
