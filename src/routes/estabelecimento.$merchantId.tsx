@@ -26,8 +26,8 @@ const MOCK_MERCHANT = {
   isOpen: true,
   closeTime: "23:30",
   description: "Hambúrgueres artesanais grelhados no braseiro, com ingredientes frescos e muito sabor. Do clássico ao smash, aqui é tudo feito com paixão pela brasa!",
-  coverImage: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?auto=format&fit=crop&q=80&w=1000",
-  logoImage: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&q=80&w=200",
+  coverImage: "/favicon.png",
+  logoImage: "/favicon.png",
 };
 
 const MOCK_CATEGORIES = [
@@ -44,7 +44,7 @@ const MOCK_PRODUCTS = [
     name: "Brasa Smash",
     description: "Dois smash burgers, queijo cheddar, cebola caramelizada e molho especial.",
     price: 32.90,
-    image: "https://images.unsplash.com/photo-1550317138-10000687ad32?auto=format&fit=crop&q=80&w=300",
+    image: "/favicon.png",
     category: "burgers",
     isPopular: true,
   },
@@ -53,7 +53,7 @@ const MOCK_PRODUCTS = [
     name: "Brasa Bacon",
     description: "Pão brioche, hambúrguer 160g, bacon crocante, queijo prato, alface, tomate e maionese da casa.",
     price: 29.90,
-    image: "https://images.unsplash.com/photo-1553979459-d2229ba7433b?auto=format&fit=crop&q=80&w=300",
+    image: "/favicon.png",
     category: "burgers",
   },
   {
@@ -61,7 +61,7 @@ const MOCK_PRODUCTS = [
     name: "Combo Brasa",
     description: "Brasa Burguer + batata frita + refrigerante lata.",
     price: 42.90,
-    image: "https://images.unsplash.com/photo-1513185158878-8d8c196b8965?auto=format&fit=crop&q=80&w=300",
+    image: "/favicon.png",
     category: "combos",
   },
   {
@@ -69,7 +69,7 @@ const MOCK_PRODUCTS = [
     name: "Coca-Cola Lata 350ml",
     description: "Coca-Cola geladinha para acompanhar seu pedido.",
     price: 6.90,
-    image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=300",
+    image: "/favicon.png",
     category: "bebidas",
   },
 ];
@@ -126,7 +126,10 @@ function EstabelecimentoPage() {
             <img 
               src={MOCK_MERCHANT.logoImage} 
               alt="Logo"
-              className="h-full w-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/favicon.png";
+              }}
+              className="h-full w-full object-cover bg-zinc-900"
             />
             {/* Overlay com chama ou ícone premium se necessário */}
             <div className="absolute inset-0 flex items-center justify-center bg-black/20">
@@ -240,7 +243,10 @@ function EstabelecimentoPage() {
                 <img 
                   src={product.image} 
                   alt={product.name}
-                  className="aspect-square w-full rounded-xl object-cover ring-1 ring-white/5"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "/favicon.png";
+                  }}
+                  className="aspect-square w-full rounded-xl object-cover ring-1 ring-white/5 bg-zinc-900"
                 />
                 <div className="flex flex-col justify-center min-w-0">
                   <div className="flex items-center gap-2">
