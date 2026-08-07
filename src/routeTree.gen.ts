@@ -23,6 +23,8 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SacolaRouteImport } from './routes/sacola'
 import { Route as EnderecosNovoRouteImport } from './routes/enderecos/novo'
 import { Route as EstabelecimentoMerchantIdRouteImport } from './routes/estabelecimento.$merchantId'
+import { Route as PedidoOrderIdRouteImport } from './routes/pedido/$orderId'
+import { Route as PedidoConfirmadoRouteImport } from './routes/pedido/confirmado'
 import { Route as PerfilIndexRouteImport } from './routes/perfil/index'
 import { Route as PerfilAjudaRouteImport } from './routes/perfil/ajuda'
 import { Route as PerfilDadosPessoaisRouteImport } from './routes/perfil/dados-pessoais'
@@ -30,6 +32,7 @@ import { Route as PerfilLegalRouteImport } from './routes/perfil/legal'
 import { Route as PerfilNotificacoesRouteImport } from './routes/perfil/notificacoes'
 import { Route as PerfilPagamentosRouteImport } from './routes/perfil/pagamentos'
 import { Route as EnderecosEditarAddressIdRouteImport } from './routes/enderecos/editar/$addressId'
+import { Route as PedidoOrderIdAvaliarRouteImport } from './routes/pedido/$orderId/avaliar'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -102,6 +105,16 @@ const EstabelecimentoMerchantIdRoute =
     path: '/estabelecimento/$merchantId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const PedidoOrderIdRoute = PedidoOrderIdRouteImport.update({
+  id: '/pedido/$orderId',
+  path: '/pedido/$orderId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PedidoConfirmadoRoute = PedidoConfirmadoRouteImport.update({
+  id: '/pedido/confirmado',
+  path: '/pedido/confirmado',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PerfilIndexRoute = PerfilIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -138,6 +151,11 @@ const EnderecosEditarAddressIdRoute =
     path: '/editar/$addressId',
     getParentRoute: () => EnderecosRoute,
   } as any)
+const PedidoOrderIdAvaliarRoute = PedidoOrderIdAvaliarRouteImport.update({
+  id: '/avaliar',
+  path: '/avaliar',
+  getParentRoute: () => PedidoOrderIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -154,6 +172,8 @@ export interface FileRoutesByFullPath {
   '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
+  '/pedido/$orderId': typeof PedidoOrderIdRouteWithChildren
+  '/pedido/confirmado': typeof PedidoConfirmadoRoute
   '/perfil/ajuda': typeof PerfilAjudaRoute
   '/perfil/dados-pessoais': typeof PerfilDadosPessoaisRoute
   '/perfil/legal': typeof PerfilLegalRoute
@@ -161,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/perfil/pagamentos': typeof PerfilPagamentosRoute
   '/perfil/': typeof PerfilIndexRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
+  '/pedido/$orderId/avaliar': typeof PedidoOrderIdAvaliarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -176,6 +197,8 @@ export interface FileRoutesByTo {
   '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
+  '/pedido/$orderId': typeof PedidoOrderIdRouteWithChildren
+  '/pedido/confirmado': typeof PedidoConfirmadoRoute
   '/perfil/ajuda': typeof PerfilAjudaRoute
   '/perfil/dados-pessoais': typeof PerfilDadosPessoaisRoute
   '/perfil/legal': typeof PerfilLegalRoute
@@ -183,6 +206,7 @@ export interface FileRoutesByTo {
   '/perfil/pagamentos': typeof PerfilPagamentosRoute
   '/perfil': typeof PerfilIndexRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
+  '/pedido/$orderId/avaliar': typeof PedidoOrderIdAvaliarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -200,6 +224,8 @@ export interface FileRoutesById {
   '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
+  '/pedido/$orderId': typeof PedidoOrderIdRouteWithChildren
+  '/pedido/confirmado': typeof PedidoConfirmadoRoute
   '/perfil/ajuda': typeof PerfilAjudaRoute
   '/perfil/dados-pessoais': typeof PerfilDadosPessoaisRoute
   '/perfil/legal': typeof PerfilLegalRoute
@@ -207,6 +233,7 @@ export interface FileRoutesById {
   '/perfil/pagamentos': typeof PerfilPagamentosRoute
   '/perfil/': typeof PerfilIndexRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
+  '/pedido/$orderId/avaliar': typeof PedidoOrderIdAvaliarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -225,6 +252,8 @@ export interface FileRouteTypes {
     | '/sacola'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
+    | '/pedido/$orderId'
+    | '/pedido/confirmado'
     | '/perfil/ajuda'
     | '/perfil/dados-pessoais'
     | '/perfil/legal'
@@ -232,6 +261,7 @@ export interface FileRouteTypes {
     | '/perfil/pagamentos'
     | '/perfil/'
     | '/enderecos/editar/$addressId'
+    | '/pedido/$orderId/avaliar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -247,6 +277,8 @@ export interface FileRouteTypes {
     | '/sacola'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
+    | '/pedido/$orderId'
+    | '/pedido/confirmado'
     | '/perfil/ajuda'
     | '/perfil/dados-pessoais'
     | '/perfil/legal'
@@ -254,6 +286,7 @@ export interface FileRouteTypes {
     | '/perfil/pagamentos'
     | '/perfil'
     | '/enderecos/editar/$addressId'
+    | '/pedido/$orderId/avaliar'
   id:
     | '__root__'
     | '/'
@@ -270,6 +303,8 @@ export interface FileRouteTypes {
     | '/sacola'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
+    | '/pedido/$orderId'
+    | '/pedido/confirmado'
     | '/perfil/ajuda'
     | '/perfil/dados-pessoais'
     | '/perfil/legal'
@@ -277,6 +312,7 @@ export interface FileRouteTypes {
     | '/perfil/pagamentos'
     | '/perfil/'
     | '/enderecos/editar/$addressId'
+    | '/pedido/$orderId/avaliar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -293,6 +329,8 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   SacolaRoute: typeof SacolaRoute
   EstabelecimentoMerchantIdRoute: typeof EstabelecimentoMerchantIdRoute
+  PedidoOrderIdRoute: typeof PedidoOrderIdRouteWithChildren
+  PedidoConfirmadoRoute: typeof PedidoConfirmadoRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -395,6 +433,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EstabelecimentoMerchantIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pedido/$orderId': {
+      id: '/pedido/$orderId'
+      path: '/pedido/$orderId'
+      fullPath: '/pedido/$orderId'
+      preLoaderRoute: typeof PedidoOrderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pedido/confirmado': {
+      id: '/pedido/confirmado'
+      path: '/pedido/confirmado'
+      fullPath: '/pedido/confirmado'
+      preLoaderRoute: typeof PedidoConfirmadoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/perfil/': {
       id: '/perfil/'
       path: '/'
@@ -444,6 +496,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EnderecosEditarAddressIdRouteImport
       parentRoute: typeof EnderecosRoute
     }
+    '/pedido/$orderId/avaliar': {
+      id: '/pedido/$orderId/avaliar'
+      path: '/avaliar'
+      fullPath: '/pedido/$orderId/avaliar'
+      preLoaderRoute: typeof PedidoOrderIdAvaliarRouteImport
+      parentRoute: typeof PedidoOrderIdRoute
+    }
   }
 }
 
@@ -482,6 +541,18 @@ const PerfilRouteChildren: PerfilRouteChildren = {
 const PerfilRouteWithChildren =
   PerfilRoute._addFileChildren(PerfilRouteChildren)
 
+interface PedidoOrderIdRouteChildren {
+  PedidoOrderIdAvaliarRoute: typeof PedidoOrderIdAvaliarRoute
+}
+
+const PedidoOrderIdRouteChildren: PedidoOrderIdRouteChildren = {
+  PedidoOrderIdAvaliarRoute: PedidoOrderIdAvaliarRoute,
+}
+
+const PedidoOrderIdRouteWithChildren = PedidoOrderIdRoute._addFileChildren(
+  PedidoOrderIdRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApoisPlusRoute: ApoisPlusRoute,
@@ -496,6 +567,8 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   SacolaRoute: SacolaRoute,
   EstabelecimentoMerchantIdRoute: EstabelecimentoMerchantIdRoute,
+  PedidoOrderIdRoute: PedidoOrderIdRouteWithChildren,
+  PedidoConfirmadoRoute: PedidoConfirmadoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
