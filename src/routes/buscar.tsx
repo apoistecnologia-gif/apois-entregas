@@ -261,6 +261,14 @@ function Buscar() {
                       searchParams.categoria === cat.id ? "scale-110 rotate-2" : "group-hover:scale-105"
                     }`}
                   />
+                ) : cat.slug === "restaurantes" ? (
+                  <img src={catRestaurantes} alt={cat.name} className="relative h-[72%] w-[72%] object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.7)]" />
+                ) : cat.slug === "mercados" ? (
+                  <img src={catMercados} alt={cat.name} className="relative h-[72%] w-[72%] object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.7)]" />
+                ) : cat.slug === "farmacias" ? (
+                  <img src={catFarmacias} alt={cat.name} className="relative h-[72%] w-[72%] object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.7)]" />
+                ) : cat.slug === "lojas" ? (
+                  <img src={catLojas} alt={cat.name} className="relative h-[72%] w-[72%] object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.7)]" />
                 ) : (
                   <Store className="h-6 w-6 text-zinc-700" />
                 )}

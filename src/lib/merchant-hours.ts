@@ -1,39 +1,30 @@
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 
-// Local type for merchant_hours since it's not in generated types yet
-export interface MerchantHours {
-  id: string;
-  merchant_id: string;
-  weekday: number;
-  opens_at: string | null;
-  closes_at: string | null;
-  is_closed: boolean;
-  created_at: string;
-  updated_at: string;
-}
+export type MerchantHours = Database["public"]["Tables"]["merchant_hours"]["Row"];
 
 export const fetchMerchantHours = async (merchantId: string) => {
   const { data, error } = await supabase
-    .from("merchant_hours" as any)
+    .from("merchant_hours")
     .select("*")
     .eq("merchant_id", merchantId)
     .order("weekday", { ascending: true });
 
   if (error) throw error;
-  return data as unknown as MerchantHours[];
+  return data;
 };
 
 export const fetchMerchantsHoursBatch = async (merchantIds: string[]) => {
   if (merchantIds.length === 0) return [];
   
   const { data, error } = await supabase
-    .from("merchant_hours" as any)
+    .from("merchant_hours")
     .select("*")
     .in("merchant_id", merchantIds)
     .order("weekday", { ascending: true });
 
   if (error) throw error;
-  return data as unknown as MerchantHours[];
+  return data;
 };
 
 export type MerchantStatusType = "open" | "closed" | "unknown";

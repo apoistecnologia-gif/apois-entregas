@@ -96,10 +96,12 @@ function Inicio() {
           if (mers.length > 0) {
             const hours = await fetchMerchantsHoursBatch(mers.map(m => m.id));
             setMerchantsHours(hours);
+          } else {
+            setMerchantsHours([]);
           }
-
         } else {
           setMerchants([]);
+          setMerchantsHours([]);
         }
       }
     } catch (err: any) {
@@ -224,6 +226,14 @@ function Inicio() {
                       loading="lazy"
                       className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
                     />
+                  ) : cat.slug === "restaurantes" ? (
+                    <img src={catRestaurantes} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
+                  ) : cat.slug === "mercados" ? (
+                    <img src={catMercados} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
+                  ) : cat.slug === "farmacias" ? (
+                    <img src={catFarmacias} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
+                  ) : cat.slug === "lojas" ? (
+                    <img src={catLojas} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
                   ) : (
                     <Store className="h-8 w-8 text-zinc-700" />
                   )}
