@@ -12,16 +12,28 @@ import {
   Info,
   Flame,
   ChevronDown,
-  Store
+  Store,
+  Calendar,
+  X
 } from "lucide-react";
+
 import { 
   fetchMerchantById, 
   fetchMenuCategoriesByMerchant, 
   fetchProductsByMerchant,
   fetchMerchantCategoryById
 } from "@/lib/catalog";
+import { fetchMerchantHours, calculateMerchantStatus, MerchantHours } from "@/lib/merchant-hours";
 import { useCart } from "@/contexts/CartContext";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
+
 
 
 export const Route = createFileRoute("/estabelecimento/$merchantId")({
@@ -47,15 +59,18 @@ function EstabelecimentoPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const [merchantData, menuCatsData, prodsData] = await Promise.all([
+        const [merchantData, menuCatsData, prodsData, hoursData] = await Promise.all([
           fetchMerchantById(merchantId),
           fetchMenuCategoriesByMerchant(merchantId),
-          fetchProductsByMerchant(merchantId)
+          fetchProductsByMerchant(merchantId),
+          fetchMerchantHours(merchantId)
         ]);
         
         setMerchant(merchantData);
         setMenuCategories(menuCatsData);
         setProducts(prodsData);
+        setMerchantHours(hoursData);
+
 
         if (merchantData.category_id) {
           const cat = await fetchMerchantCategoryById(merchantData.category_id);
@@ -73,12 +88,25 @@ function EstabelecimentoPage() {
   }, [merchantId]);
 
   const handleAddToCart = (product: any) => {
+    const status = calculateMerchantStatus(merchantHours);
+    
+    if (!status.isOpen && status.message !== "Horário não informado") {
+      toast.error("Este estabelecimento está fechado no momento.");
+      return;
+    }
+
+    if (status.message === "Horário não informado") {
+      toast.error("Horário não disponível. Não é possível iniciar novo pedido.");
+      return;
+    }
+
     if (cartMerchant && cartMerchant.id !== merchantId) {
       if (!window.confirm("Você já tem itens de outro estabelecimento na sacola. Deseja limpar a sacola e iniciar um novo pedido aqui?")) {
         return;
       }
       clearCart();
     }
+
 
     addItem({
       id: product.id,
@@ -95,7 +123,7 @@ function EstabelecimentoPage() {
        deliveryTime: merchant.delivery_min_minutes && merchant.delivery_max_minutes 
          ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
          : "",
-       closeTime: merchant.closes_at || "",
+       closeTime: calculateMerchantStatus(merchantHours).closesAt || "",
        category: merchantCategory?.name || ""
      });
     
@@ -206,15 +234,59 @@ function EstabelecimentoPage() {
             <span className="text-[12px] font-bold text-white">R$ {merchant.delivery_fee.toFixed(2).replace('.', ',')}</span>
             <span className="text-[10px] uppercase tracking-wider text-zinc-500">Taxa</span>
           </div>
-          <button className="flex flex-col items-center justify-center gap-1 px-2 group">
-            <div className="flex items-center gap-1">
-              <span className={`h-2 w-2 rounded-full ${merchant.is_open ? "bg-green-500" : "bg-red-500"}`} />
-              <span className="text-[12px] font-bold text-green-500">{merchant.is_open ? "Aberto" : "Fechado"}{merchant.closes_at ? ` até ${merchant.closes_at}` : ""}</span>
-            </div>
-            <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500 group-active:text-primary">
-              Ver horário <ChevronRight className="h-3 w-3" />
-            </div>
-          </button>
+          <Dialog open={isHoursDialogOpen} onOpenChange={setIsHoursDialogOpen}>
+            <DialogTrigger asChild>
+              <button className="flex flex-col items-center justify-center gap-1 px-2 group">
+                <div className="flex items-center gap-1">
+                  {(() => {
+                    const status = calculateMerchantStatus(merchantHours);
+                    return (
+                      <>
+                        <span className={`h-2 w-2 rounded-full ${status.isOpen ? "bg-green-500" : "bg-red-500"}`} />
+                        <span className={`text-[12px] font-bold ${status.isOpen ? "text-green-500" : "text-red-500"}`}>
+                          {status.isOpen ? "Aberto" : "Fechado"}
+                          {status.closesAt ? ` até ${status.closesAt}` : ""}
+                        </span>
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500 group-active:text-primary">
+                  Ver horário <ChevronRight className="h-3 w-3" />
+                </div>
+              </button>
+            </DialogTrigger>
+            <DialogContent className="bg-zinc-950 border-zinc-800 text-white sm:max-w-[425px] rounded-3xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  Horário de Funcionamento
+                </DialogTitle>
+              </DialogHeader>
+              <div className="mt-4 space-y-3">
+                {["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"].map((dayName, index) => {
+                  const dayHours = merchantHours.find(h => h.weekday === index);
+                  return (
+                    <div key={dayName} className="flex items-center justify-between border-b border-zinc-900 pb-2">
+                      <span className={`text-[14px] ${new Date().getDay() === index ? "text-primary font-bold" : "text-zinc-300"}`}>
+                        {dayName}
+                      </span>
+                      <span className="text-[14px] font-medium">
+                        {!dayHours ? (
+                          <span className="text-zinc-500 italic">Não informado</span>
+                        ) : dayHours.is_closed ? (
+                          <span className="text-red-500">Fechado</span>
+                        ) : (
+                          `${dayHours.opens_at?.substring(0, 5)} às ${dayHours.closes_at?.substring(0, 5)}`
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </DialogContent>
+          </Dialog>
+
         </div>
 
         {/* Descrição */}
