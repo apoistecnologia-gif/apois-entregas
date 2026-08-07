@@ -12,6 +12,7 @@ import {
   Clock,
   X,
   ShoppingBag,
+  Heart,
 } from "lucide-react";
 import { AppBottomNav } from "@/components/AppBottomNav";
 import { Input } from "@/components/ui/input";

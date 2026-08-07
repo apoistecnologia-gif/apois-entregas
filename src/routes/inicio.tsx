@@ -15,6 +15,7 @@ import {
   Store,
   Star,
   Clock,
+  Heart,
 } from "lucide-react";
 import { AppBottomNav } from "@/components/AppBottomNav";
 import { Input } from "@/components/ui/input";
