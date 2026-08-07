@@ -86,10 +86,10 @@ function Login() {
             <img 
               src={logoAsset.url} 
               alt="APOIS ENTREGA" 
-              className="h-12 w-auto object-contain mb-3"
+              className="h-16 w-auto object-contain mb-3"
             />
             <h1 className="text-[20px] font-black text-white leading-tight">
-              Que bom ter você de volta
+              Ta com fome ? Apois entra ai e bora comer
             </h1>
           </div>
 
