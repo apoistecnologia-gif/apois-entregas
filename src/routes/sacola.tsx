@@ -18,7 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 const MOCK_MERCHANT = {
   id: "brasa-burguer",
   name: "Brasa Burguer",
-  logo: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&q=80&w=200",
+  // Usando imagens via Unsplash mas com parâmetros de fallback mais robustos e URLs conhecidas como estáveis
+  logo: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?q=80&w=200&auto=format&fit=crop",
   deliveryFee: 5.99,
   deliveryTime: "30-40 min",
   closeTime: "23:30",
@@ -45,7 +46,7 @@ function SacolaPage() {
       name: "Brasa Burger",
       description: "Pão brioche, 180g de blend, queijo cheddar, alface, tomate e molho da casa.",
       price: 25.90,
-      image: "https://images.unsplash.com/photo-1550317138-10000687ad32?auto=format&fit=crop&q=80&w=300",
+      image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=300&auto=format&fit=crop",
       quantity: 1,
     },
     {
@@ -53,7 +54,7 @@ function SacolaPage() {
       name: "Batata Rústica",
       description: "Porção de batata rústica temperada.",
       price: 9.90,
-      image: "https://images.unsplash.com/photo-1513185158878-8d8c196b8965?auto=format&fit=crop&q=80&w=300",
+      image: "https://images.unsplash.com/photo-1573015084185-7205ba3d854e?q=80&w=300&auto=format&fit=crop",
       quantity: 1,
     },
     {
@@ -61,7 +62,7 @@ function SacolaPage() {
       name: "Coca-Cola Lata 350ml",
       description: "Lata gelada.",
       price: 6.00,
-      image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=300",
+      image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?q=80&w=300&auto=format&fit=crop",
       quantity: 1,
     }
   ]);
@@ -166,7 +167,9 @@ function SacolaPage() {
                   src={item.image} 
                   alt={item.name}
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = "/favicon.png";
+                    const target = e.target as HTMLImageElement;
+                    target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=300&auto=format&fit=crop";
+                    target.classList.add("opacity-50", "grayscale");
                   }}
                   className="h-full w-full rounded-xl object-cover ring-1 ring-white/5 bg-zinc-900"
                 />
