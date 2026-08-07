@@ -4,10 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   MapPin,
   Search,
-  UtensilsCrossed,
-  ShoppingBasket,
-  Pill,
-  ShoppingBag,
   LogOut,
   ChevronRight,
   ChevronDown,
@@ -23,6 +19,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import logoAsset from "@/assets/logo.png.asset.json";
+import catRestaurantes from "@/assets/cat-restaurantes.png";
+import catMercados from "@/assets/cat-mercados.png";
+import catFarmacias from "@/assets/cat-farmacias.png";
+import catLojas from "@/assets/cat-lojas.png";
+
 
 export const Route = createFileRoute("/inicio")({
   beforeLoad: async ({ location }) => {
@@ -94,11 +95,12 @@ function Inicio() {
   const firstName = profile?.full_name?.split(" ")[0]?.toUpperCase();
 
   const categories = [
-    { id: 1, name: "Restaurantes", icon: UtensilsCrossed, className: "from-orange-500 to-orange-700" },
-    { id: 2, name: "Mercados", icon: ShoppingBasket, className: "from-green-500 to-green-700" },
-    { id: 3, name: "Farmácias", icon: Pill, className: "from-sky-500 to-cyan-700" },
-    { id: 4, name: "Lojas", icon: ShoppingBag, className: "from-violet-500 to-purple-700" },
+    { id: 1, name: "Restaurantes", image: catRestaurantes, className: "from-orange-500/25 via-orange-900/10 to-black" },
+    { id: 2, name: "Mercados", image: catMercados, className: "from-green-500/25 via-green-900/10 to-black" },
+    { id: 3, name: "Farmácias", image: catFarmacias, className: "from-sky-500/25 via-cyan-900/10 to-black" },
+    { id: 4, name: "Lojas", image: catLojas, className: "from-violet-500/25 via-purple-900/10 to-black" },
   ];
+
 
   const navItems = [
     { name: "Início", icon: Home, active: true },
@@ -173,11 +175,19 @@ function Inicio() {
         {/* Categorias */}
         <div className="grid grid-cols-4 gap-2.5">
           {categories.map((cat) => (
-            <button key={cat.id} className="group flex flex-col items-center gap-2">
+            <button key={cat.id} className="group flex min-w-0 flex-col items-center gap-2">
               <span
-                className={`grid aspect-square w-full place-items-center rounded-[1.25rem] bg-gradient-to-br ${cat.className} shadow-[0_8px_18px_-8px_rgba(0,0,0,0.9)] ring-1 ring-white/10 transition-transform group-active:scale-95`}
+                className={`relative grid aspect-[3/3.4] w-full place-items-center overflow-hidden rounded-[1.25rem] bg-gradient-to-br ${cat.className} shadow-[0_10px_22px_-10px_rgba(0,0,0,0.95)] ring-1 ring-white/10 transition-transform group-active:scale-95`}
               >
-                <cat.icon className="h-7 w-7 text-white drop-shadow" />
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent" />
+                <img
+                  src={cat.image}
+                  alt=""
+                  loading="lazy"
+                  width={512}
+                  height={512}
+                  className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
+                />
               </span>
               <span className="w-full truncate text-center text-[11px] font-medium text-zinc-300">
                 {cat.name}
@@ -185,6 +195,7 @@ function Inicio() {
             </button>
           ))}
         </div>
+
 
         {/* Perto de você */}
         <section className="space-y-3 pt-1">
