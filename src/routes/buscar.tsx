@@ -130,7 +130,7 @@ function Buscar() {
 
   const navItems = [
     { name: "Início", icon: Home, active: false, to: "/inicio" },
-    { name: "Pedidos", icon: Compass, active: true, to: "/buscar" },
+    { name: "Pedidos", icon: Compass, active: false, to: "/buscar" },
     { name: "Favoritos", icon: Heart, active: false, to: "/inicio" }, // Placeholder
     { name: "Perfil", icon: User, active: false, to: "/inicio" }, // Placeholder
   ];
