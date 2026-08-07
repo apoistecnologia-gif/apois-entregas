@@ -1,7 +1,7 @@
 import { createFileRoute, redirect, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { MOCK_MERCHANTS } from "@/lib/mock-data";
+import { fetchMerchantCategories, fetchMerchants } from "@/lib/catalog";
 import { useCart } from "@/contexts/CartContext";
 import {
   MapPin,
@@ -57,24 +57,41 @@ function Buscar() {
   const searchParams = useSearch({ from: "/buscar" });
   const { totalItems } = useCart();
   const [defaultAddress, setDefaultAddress] = useState<any>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [merchants, setMerchants] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState(searchParams.q || "");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const fetchData = async () => {
     setIsLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: addrData } = await supabase
-        .from("customer_addresses" as any)
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("is_default", true)
-        .maybeSingle();
+    setError(null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: addrData } = await supabase
+          .from("customer_addresses" as any)
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("is_default", true)
+          .maybeSingle();
 
-      setDefaultAddress(addrData);
+        setDefaultAddress(addrData);
+      }
+
+      const [cats, mers] = await Promise.all([
+        fetchMerchantCategories(),
+        fetchMerchants()
+      ]);
+      setCategories(cats);
+      setMerchants(mers);
+    } catch (err: any) {
+      console.error("Error fetching data:", err);
+      setError("Ocorreu um erro ao carregar o catálogo.");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -116,25 +133,19 @@ function Buscar() {
   };
 
 
-  const categories = [
-    { id: "restaurantes", name: "Restaurantes", image: catRestaurantes, className: "from-orange-500/25 via-orange-900/10 to-black" },
-    { id: "mercados", name: "Mercados", image: catMercados, className: "from-green-500/25 via-green-900/10 to-black" },
-    { id: "farmacias", name: "Farmácias", image: catFarmacias, className: "from-sky-500/25 via-cyan-900/10 to-black" },
-    { id: "lojas", name: "Lojas", image: catLojas, className: "from-violet-500/25 via-purple-900/10 to-black" },
-  ];
-
-  const filteredMerchants = MOCK_MERCHANTS.filter(m => {
+  const filteredMerchants = merchants.filter(m => {
     const query = searchParams.q?.toLowerCase() || "";
-    const cat = searchParams.categoria?.toLowerCase() || "";
+    const catId = searchParams.categoria; // UUID da categoria selecionada
     
     const matchesQuery = !query || 
       m.name.toLowerCase().includes(query) || 
-      m.tags.some(t => t.toLowerCase().includes(query));
+      (m.tags && m.tags.some((t: string) => t.toLowerCase().includes(query)));
       
-    const matchesCat = !cat || m.category.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(cat);
+    const matchesCat = !catId || m.category_id === catId;
     
     return matchesQuery && matchesCat;
   });
+
 
 
   return (
@@ -200,28 +211,38 @@ function Buscar() {
 
         {/* Categorias (Grid 4 colunas - Premium Compacto) */}
         <div className="grid grid-cols-4 gap-2.5">
-          {categories.map((cat) => (
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex flex-col items-center gap-2 animate-pulse">
+                <div className="aspect-square w-full rounded-2xl bg-zinc-900" />
+                <div className="h-2 w-10 rounded bg-zinc-900" />
+              </div>
+            ))
+          ) : categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => handleCategoryClick(cat.id)}
               className="group flex min-w-0 flex-col items-center gap-2"
             >
               <div
-                className={`relative grid aspect-square w-full place-items-center overflow-hidden rounded-2xl bg-gradient-to-br ${cat.className} shadow-[0_8px_20px_-10px_rgba(0,0,0,0.9)] transition-all group-active:scale-95 ${
+                className={`relative grid aspect-square w-full place-items-center overflow-hidden rounded-2xl bg-zinc-900 transition-all group-active:scale-95 ${
                   searchParams.categoria === cat.id
                     ? "ring-2 ring-primary shadow-[0_0_20px_-5px_rgba(255,215,0,0.4)] scale-[1.02]"
                     : "ring-1 ring-white/10 opacity-70"
                 }`}
               >
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/15 to-transparent" />
-                <img
-                  src={cat.image}
-                  alt=""
-                  loading="lazy"
-                  className={`relative h-[72%] w-[72%] object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.7)] transition-transform duration-300 ${
-                    searchParams.categoria === cat.id ? "scale-110 rotate-2" : "group-hover:scale-105"
-                  }`}
-                />
+                {cat.image_url ? (
+                  <img
+                    src={cat.image_url}
+                    alt={cat.name}
+                    loading="lazy"
+                    className={`relative h-[72%] w-[72%] object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.7)] transition-transform duration-300 ${
+                      searchParams.categoria === cat.id ? "scale-110 rotate-2" : "group-hover:scale-105"
+                    }`}
+                  />
+                ) : (
+                  <Store className="h-6 w-6 text-zinc-700" />
+                )}
               </div>
               <span className={`w-full truncate text-center text-[10px] font-bold tracking-tight transition-colors ${
                 searchParams.categoria === cat.id ? "text-primary" : "text-zinc-500"
@@ -244,7 +265,11 @@ function Buscar() {
 
         {/* Área de Resultados */}
         <section className="min-h-[40vh] pt-2">
-          {filteredMerchants.length > 0 ? (
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="mb-3 h-24 w-full animate-pulse rounded-3xl bg-zinc-900" />
+            ))
+          ) : filteredMerchants.length > 0 ? (
             <div className="flex flex-col gap-3">
               {filteredMerchants.map((merchant) => (
                 <button 
@@ -252,12 +277,18 @@ function Buscar() {
                   onClick={() => navigate({ to: "/estabelecimento/$merchantId", params: { merchantId: merchant.id } })}
                   className="group grid grid-cols-[84px_1fr] items-center gap-4 rounded-3xl border border-zinc-900 bg-zinc-950/50 p-3 text-left transition-all hover:bg-zinc-900/50 active:scale-[0.98] active:bg-zinc-900"
                 >
-                  <div className="relative aspect-square w-full overflow-hidden rounded-2xl ring-1 ring-white/10">
-                    <img 
-                      src={merchant.logoImage} 
-                      alt={merchant.name}
-                      className="h-full w-full object-cover transition-transform group-hover:scale-110"
-                    />
+                  <div className="relative aspect-square w-full overflow-hidden rounded-2xl ring-1 ring-white/10 bg-zinc-900">
+                    {merchant.logo_url ? (
+                      <img 
+                        src={merchant.logo_url} 
+                        alt={merchant.name}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center">
+                        <Store className="h-6 w-6 text-zinc-700" />
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold backdrop-blur-sm">
                       <Star className="h-2.5 w-2.5 fill-primary text-primary" />
@@ -273,11 +304,15 @@ function Buscar() {
                     
                     <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
                       <span className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5 text-primary" /> {merchant.deliveryTime}
+                        <Clock className="h-3.5 w-3.5 text-primary" /> 
+                        {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
+                          ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
+                          : "30-45 min"}
                       </span>
                       <span className="h-1 w-1 rounded-full bg-zinc-700" />
                       <span className="flex items-center gap-1">
-                        <Bike className="h-3.5 w-3.5 text-primary" /> R$ {merchant.deliveryFee.toFixed(2).replace('.', ',')}
+                        <Bike className="h-3.5 w-3.5 text-primary" /> 
+                        {merchant.delivery_fee > 0 ? `R$ ${merchant.delivery_fee.toFixed(2).replace('.', ',')}` : "Grátis"}
                       </span>
                     </div>
                   </div>
@@ -295,7 +330,7 @@ function Buscar() {
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-zinc-200">Nenhum estabelecimento encontrado</h3>
                 <p className="mx-auto max-w-[240px] text-[13px] leading-relaxed text-zinc-500">
-                  Ainda não temos parceiros ativos que correspondam à sua busca nesta região.
+                  Os estabelecimentos da sua região aparecerão aqui em breve.
                 </p>
               </div>
               <button 
