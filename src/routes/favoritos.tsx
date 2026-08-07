@@ -1,9 +1,22 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ShoppingBag, Heart } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { AppBottomNav } from "@/components/AppBottomNav";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/favoritos")({
+  beforeLoad: async ({ location }) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw redirect({
+        to: "/login",
+        search: {
+          redirect: location.href,
+        },
+      });
+    }
+    return { session };
+  },
   component: FavoritosPage,
 });
 
