@@ -1,41 +1,69 @@
-import { createFileRoute, redirect, useNavigate, useParams } from "@tanstack/react-router";
-import { ArrowLeft, Clock, MapPin, CheckCircle2, Bike, PackageCheck, UtensilsCrossed, Star } from "lucide-react";
+import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
+import { ArrowLeft, MapPin, CheckCircle2, Bike, PackageCheck, UtensilsCrossed, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/pedido/$orderId/")({
-  beforeLoad: async ({ location }) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw redirect({
-        to: "/login",
-        search: { redirect: location.href },
-      });
-    }
-    return { session };
-  },
   component: OrderDetailsPage,
 });
 
 function OrderDetailsPage() {
   const navigate = useNavigate();
-  const { orderId } = useParams({ from: "/pedido/$orderId" });
+  const { orderId } = useParams({ from: "/pedido/$orderId/" });
   const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const orders = JSON.parse(localStorage.getItem("apois_orders") || "[]");
-    const foundOrder = orders.find((o: any) => o.id === orderId);
-    if (foundOrder) setOrder(foundOrder);
+    const fetchOrder = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      
+      const ordersKey = `apois_orders_${user.id}`;
+      const orders = JSON.parse(localStorage.getItem(ordersKey) || "[]");
+      const foundOrder = orders.find((o: any) => o.id === orderId);
+      if (foundOrder) setOrder(foundOrder);
+      setLoading(false);
+    };
+    
+    fetchOrder();
   }, [orderId]);
 
-  if (!order) return null;
+  if (loading) return (
+    <div className="flex h-screen w-full items-center justify-center bg-black">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+    </div>
+  );
+
+  if (!order) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-black p-6 text-center text-white">
+        <h2 className="text-xl font-bold mb-4">Pedido não encontrado</h2>
+        <button 
+          onClick={() => navigate({ to: "/pedidos" })}
+          className="bg-primary text-black px-6 py-3 rounded-xl font-bold uppercase shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+        >
+          Voltar para Meus Pedidos
+        </button>
+      </div>
+    );
+  }
+
+  const getStatusStep = (status: string) => {
+    const states = ['confirmado', 'preparando', 'pronto', 'saiu_para_entrega', 'entregue'];
+    return states.indexOf(status);
+  };
+
+  const currentStepIdx = getStatusStep(order.status || 'confirmado');
 
   const steps = [
-    { label: "Pedido confirmado", icon: CheckCircle2, status: "completed" },
-    { label: "Estabelecimento preparando", icon: UtensilsCrossed, status: "current" },
-    { label: "Pedido pronto", icon: PackageCheck, status: "pending" },
-    { label: "Saiu para entrega", icon: Bike, status: "pending" },
-    { label: "Entregue", icon: CheckCircle2, status: "pending" },
+    { label: "Pedido confirmado", icon: CheckCircle2, status: currentStepIdx >= 0 ? (currentStepIdx === 0 ? "current" : "completed") : "pending" },
+    { label: "Estabelecimento preparando", icon: UtensilsCrossed, status: currentStepIdx >= 1 ? (currentStepIdx === 1 ? "current" : "completed") : "pending" },
+    { label: "Pedido pronto", icon: PackageCheck, status: currentStepIdx >= 2 ? (currentStepIdx === 2 ? "current" : "completed") : "pending" },
+    { label: "Saiu para entrega", icon: Bike, status: currentStepIdx >= 3 ? (currentStepIdx === 3 ? "current" : "completed") : "pending" },
+    { label: "Entregue", icon: CheckCircle2, status: currentStepIdx >= 4 ? (currentStepIdx === 4 ? "current" : "completed") : "pending" },
   ];
 
   return (
@@ -76,7 +104,7 @@ function OrderDetailsPage() {
         {order.status === 'entregue' && !order.rating && (
           <button 
             onClick={() => navigate({ to: `/pedido/${orderId}/avaliar` })}
-            className="w-full bg-primary/10 border border-primary/20 text-primary py-4 rounded-xl font-bold flex items-center justify-center gap-2"
+            className="w-full bg-primary/10 border border-primary/20 text-primary py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/5 active:scale-95 transition-transform"
           >
             <Star className="h-5 w-5 fill-primary" />
             Avaliar pedido
