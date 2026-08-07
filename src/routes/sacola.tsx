@@ -253,7 +253,10 @@ function SacolaPage() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <button 
-                  onClick={() => setPaymentMethod('pix')}
+                  onClick={() => {
+                    setPaymentMethod('pix');
+                    sessionStorage.setItem('apois_payment_method', 'pix');
+                  }}
                   className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === 'pix' ? 'border-primary bg-primary/5 text-primary shadow-[0_0_15px_rgba(255,215,0,0.15)] ring-1 ring-primary/30' : 'border-zinc-900 bg-zinc-950 text-zinc-500'}`}
                 >
                   <div className="relative">
@@ -264,7 +267,10 @@ function SacolaPage() {
                 </button>
                 
                 <button 
-                  onClick={() => setPaymentMethod('cartao')}
+                  onClick={() => {
+                    setPaymentMethod('cartao');
+                    sessionStorage.setItem('apois_payment_method', 'cartao');
+                  }}
                   className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === 'cartao' ? 'border-primary bg-primary/5 text-primary' : 'border-zinc-900 bg-zinc-950 text-zinc-500'}`}
                 >
                   <CreditCard className="h-6 w-6" />
@@ -272,7 +278,10 @@ function SacolaPage() {
                 </button>
                 
                 <button 
-                  onClick={() => setPaymentMethod('dinheiro')}
+                  onClick={() => {
+                    setPaymentMethod('dinheiro');
+                    sessionStorage.setItem('apois_payment_method', 'dinheiro');
+                  }}
                   className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === 'dinheiro' ? 'border-primary bg-primary/5 text-primary' : 'border-zinc-900 bg-zinc-950 text-zinc-500'}`}
                 >
                   <CircleDollarSign className="h-6 w-6" />

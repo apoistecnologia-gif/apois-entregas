@@ -23,6 +23,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SacolaRouteImport } from './routes/sacola'
 import { Route as EnderecosNovoRouteImport } from './routes/enderecos/novo'
 import { Route as EstabelecimentoMerchantIdRouteImport } from './routes/estabelecimento.$merchantId'
+import { Route as PedidoOrderIdRouteImport } from './routes/pedido/$orderId'
 import { Route as PedidoConfirmadoRouteImport } from './routes/pedido/confirmado'
 import { Route as PerfilIndexRouteImport } from './routes/perfil/index'
 import { Route as PerfilAjudaRouteImport } from './routes/perfil/ajuda'
@@ -105,6 +106,11 @@ const EstabelecimentoMerchantIdRoute =
     path: '/estabelecimento/$merchantId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const PedidoOrderIdRoute = PedidoOrderIdRouteImport.update({
+  id: '/pedido/$orderId',
+  path: '/pedido/$orderId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PedidoConfirmadoRoute = PedidoConfirmadoRouteImport.update({
   id: '/pedido/confirmado',
   path: '/pedido/confirmado',
@@ -147,14 +153,14 @@ const EnderecosEditarAddressIdRoute =
     getParentRoute: () => EnderecosRoute,
   } as any)
 const PedidoOrderIdIndexRoute = PedidoOrderIdIndexRouteImport.update({
-  id: '/pedido/$orderId/',
-  path: '/pedido/$orderId/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => PedidoOrderIdRoute,
 } as any)
 const PedidoOrderIdAvaliarRoute = PedidoOrderIdAvaliarRouteImport.update({
-  id: '/pedido/$orderId/avaliar',
-  path: '/pedido/$orderId/avaliar',
-  getParentRoute: () => rootRouteImport,
+  id: '/avaliar',
+  path: '/avaliar',
+  getParentRoute: () => PedidoOrderIdRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -172,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
+  '/pedido/$orderId': typeof PedidoOrderIdRouteWithChildren
   '/pedido/confirmado': typeof PedidoConfirmadoRoute
   '/perfil/ajuda': typeof PerfilAjudaRoute
   '/perfil/dados-pessoais': typeof PerfilDadosPessoaisRoute
@@ -224,6 +231,7 @@ export interface FileRoutesById {
   '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
+  '/pedido/$orderId': typeof PedidoOrderIdRouteWithChildren
   '/pedido/confirmado': typeof PedidoConfirmadoRoute
   '/perfil/ajuda': typeof PerfilAjudaRoute
   '/perfil/dados-pessoais': typeof PerfilDadosPessoaisRoute
@@ -252,6 +260,7 @@ export interface FileRouteTypes {
     | '/sacola'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
+    | '/pedido/$orderId'
     | '/pedido/confirmado'
     | '/perfil/ajuda'
     | '/perfil/dados-pessoais'
@@ -303,6 +312,7 @@ export interface FileRouteTypes {
     | '/sacola'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
+    | '/pedido/$orderId'
     | '/pedido/confirmado'
     | '/perfil/ajuda'
     | '/perfil/dados-pessoais'
@@ -329,9 +339,8 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   SacolaRoute: typeof SacolaRoute
   EstabelecimentoMerchantIdRoute: typeof EstabelecimentoMerchantIdRoute
+  PedidoOrderIdRoute: typeof PedidoOrderIdRouteWithChildren
   PedidoConfirmadoRoute: typeof PedidoConfirmadoRoute
-  PedidoOrderIdAvaliarRoute: typeof PedidoOrderIdAvaliarRoute
-  PedidoOrderIdIndexRoute: typeof PedidoOrderIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -434,6 +443,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EstabelecimentoMerchantIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pedido/$orderId': {
+      id: '/pedido/$orderId'
+      path: '/pedido/$orderId'
+      fullPath: '/pedido/$orderId'
+      preLoaderRoute: typeof PedidoOrderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pedido/confirmado': {
       id: '/pedido/confirmado'
       path: '/pedido/confirmado'
@@ -492,17 +508,17 @@ declare module '@tanstack/react-router' {
     }
     '/pedido/$orderId/': {
       id: '/pedido/$orderId/'
-      path: '/pedido/$orderId'
+      path: '/'
       fullPath: '/pedido/$orderId/'
       preLoaderRoute: typeof PedidoOrderIdIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof PedidoOrderIdRoute
     }
     '/pedido/$orderId/avaliar': {
       id: '/pedido/$orderId/avaliar'
-      path: '/pedido/$orderId/avaliar'
+      path: '/avaliar'
       fullPath: '/pedido/$orderId/avaliar'
       preLoaderRoute: typeof PedidoOrderIdAvaliarRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof PedidoOrderIdRoute
     }
   }
 }
@@ -542,6 +558,20 @@ const PerfilRouteChildren: PerfilRouteChildren = {
 const PerfilRouteWithChildren =
   PerfilRoute._addFileChildren(PerfilRouteChildren)
 
+interface PedidoOrderIdRouteChildren {
+  PedidoOrderIdAvaliarRoute: typeof PedidoOrderIdAvaliarRoute
+  PedidoOrderIdIndexRoute: typeof PedidoOrderIdIndexRoute
+}
+
+const PedidoOrderIdRouteChildren: PedidoOrderIdRouteChildren = {
+  PedidoOrderIdAvaliarRoute: PedidoOrderIdAvaliarRoute,
+  PedidoOrderIdIndexRoute: PedidoOrderIdIndexRoute,
+}
+
+const PedidoOrderIdRouteWithChildren = PedidoOrderIdRoute._addFileChildren(
+  PedidoOrderIdRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApoisPlusRoute: ApoisPlusRoute,
@@ -556,20 +586,9 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   SacolaRoute: SacolaRoute,
   EstabelecimentoMerchantIdRoute: EstabelecimentoMerchantIdRoute,
+  PedidoOrderIdRoute: PedidoOrderIdRouteWithChildren,
   PedidoConfirmadoRoute: PedidoConfirmadoRoute,
-  PedidoOrderIdAvaliarRoute: PedidoOrderIdAvaliarRoute,
-  PedidoOrderIdIndexRoute: PedidoOrderIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
