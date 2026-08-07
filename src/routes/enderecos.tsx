@@ -56,24 +56,29 @@ function EnderecosLayout() {
     setIsLoading(false);
   };
 
-  // Atualiza a lista sempre que a rota ganha foco ou o componente monta
+  // TanStack Router hook para invalidar e recarregar dados quando a rota ganha foco
+  const router = useRouter();
+  
   useEffect(() => {
+    // Busca inicial
     fetchAddresses();
     
-    // Escuta evento de foco da janela para garantir atualização ao voltar de outras abas/apps
-    window.addEventListener('focus', fetchAddresses);
-    return () => window.removeEventListener('focus', fetchAddresses);
-  }, []);
-
-  // Use a hook to refetch when route changes or component is navigated to
-  const router = useRouter();
-  useEffect(() => {
-    const unsub = router.subscribe('onBeforeNavigate', () => {
-      // Small delay to ensure DB transaction is committed if coming from save
-      setTimeout(fetchAddresses, 100);
+    // Inscreve para atualizar sempre que houver navegação concluída para esta rota
+    const unsub = router.subscribe('onResolved', (state) => {
+      if (state.toLocation.pathname === '/enderecos') {
+        fetchAddresses();
+      }
     });
-    return unsub;
+    
+    // Também atualiza quando a janela ganha foco (ex: volta do navegador)
+    window.addEventListener('focus', fetchAddresses);
+    
+    return () => {
+      unsub();
+      window.removeEventListener('focus', fetchAddresses);
+    };
   }, [router]);
+
 
 
   const handleSetDefault = async (id: string) => {
