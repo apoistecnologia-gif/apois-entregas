@@ -134,18 +134,22 @@ function Buscar() {
   };
 
 
-  const filteredMerchants = merchants.filter(m => {
-    const query = searchParams.q?.toLowerCase() || "";
-    const catId = searchParams.categoria; // UUID da categoria selecionada
-    
-    const matchesQuery = !query || 
-      m.name.toLowerCase().includes(query) || 
-      (m.tags && m.tags.some((t: string) => t.toLowerCase().includes(query)));
-      
-    const matchesCat = !catId || m.category_id === catId;
-    
-    return matchesQuery && matchesCat;
-  });
+   const filteredMerchants = merchants.filter(m => {
+     const query = searchParams.q?.toLowerCase() || "";
+     const catId = searchParams.categoria; // UUID da categoria selecionada
+     
+     // Encontrar nome da categoria se houver catId
+     const categoryName = catId ? categories.find(c => c.id === catId)?.name?.toLowerCase() || "" : "";
+
+     const matchesQuery = !query || 
+       m.name.toLowerCase().includes(query) || 
+       (m.tags && m.tags.some((t: string) => t.toLowerCase().includes(query))) ||
+       categoryName.includes(query);
+       
+     const matchesCat = !catId || m.category_id === catId;
+     
+     return matchesQuery && matchesCat;
+   });
 
 
 
