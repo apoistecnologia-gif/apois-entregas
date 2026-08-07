@@ -72,7 +72,7 @@ function Login() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-black text-white overflow-x-hidden max-w-[500px] mx-auto shadow-2xl border-x border-white/5">
+    <div className="flex min-h-screen flex-col bg-black text-white overflow-x-hidden w-full">
       {/* Header with Back Button */}
       <header className="flex items-center p-4 sticky top-0 z-50 bg-black">
         <button 
