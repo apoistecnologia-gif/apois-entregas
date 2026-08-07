@@ -26,8 +26,8 @@ const MOCK_MERCHANT = {
   isOpen: true,
   closeTime: "23:30",
   description: "Hambúrgueres artesanais grelhados no braseiro, com ingredientes frescos e muito sabor. Do clássico ao smash, aqui é tudo feito com paixão pela brasa!",
-  coverImage: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?auto=format&fit=crop&q=80&w=1000",
-  logoImage: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&q=80&w=200",
+  coverImage: "/favicon.png",
+  logoImage: "/favicon.png",
 };
 
 const MOCK_CATEGORIES = [
@@ -126,7 +126,10 @@ function EstabelecimentoPage() {
             <img 
               src={MOCK_MERCHANT.logoImage} 
               alt="Logo"
-              className="h-full w-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/favicon.png";
+              }}
+              className="h-full w-full object-cover bg-zinc-900"
             />
             {/* Overlay com chama ou ícone premium se necessário */}
             <div className="absolute inset-0 flex items-center justify-center bg-black/20">

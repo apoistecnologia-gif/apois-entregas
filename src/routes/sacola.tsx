@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 const MOCK_MERCHANT = {
   id: "brasa-burguer",
   name: "Brasa Burguer",
-  logo: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&q=80&w=200",
+  logo: "/favicon.png",
   deliveryFee: 5.99,
   deliveryTime: "30-40 min",
   closeTime: "23:30",
