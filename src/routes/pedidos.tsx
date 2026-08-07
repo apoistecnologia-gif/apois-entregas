@@ -3,6 +3,7 @@ import { ArrowLeft, ShoppingBag } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { AppBottomNav } from "@/components/AppBottomNav";
 import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/pedidos")({
   beforeLoad: async ({ location }) => {
