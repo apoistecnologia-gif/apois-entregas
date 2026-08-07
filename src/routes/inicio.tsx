@@ -104,9 +104,9 @@ function Inicio() {
 
   const navItems = [
     { name: "Início", icon: Home, active: true },
-    { name: "Pedidos", icon: Compass, active: false },
-    { name: "Favoritos", icon: Heart, active: false },
-    { name: "Perfil", icon: User, active: false },
+    { name: "Pedidos", icon: Compass, active: false, to: "/buscar" },
+    { name: "Favoritos", icon: Heart, active: false, to: "/inicio" },
+    { name: "Perfil", icon: User, active: false, to: "/inicio" },
   ];
 
   return (
@@ -150,12 +150,14 @@ function Inicio() {
         </button>
 
         {/* Busca */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-primary" />
+        <div className="relative group">
+          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-primary group-focus-within:text-white transition-colors" />
           <Input
             type="text"
+            readOnly
+            onClick={() => navigate({ to: "/buscar" })}
             placeholder="O que você quer pedir?"
-            className="h-13 rounded-2xl border-zinc-800 bg-zinc-950/90 pl-12 text-[15px] text-white shadow-inner shadow-black/60 placeholder:text-zinc-500 focus-visible:border-primary/50 focus-visible:ring-primary/40"
+            className="h-13 cursor-pointer rounded-2xl border-zinc-800 bg-zinc-950/90 pl-12 text-[15px] text-white shadow-inner shadow-black/60 placeholder:text-zinc-500 focus-visible:border-primary/50 focus-visible:ring-primary/40"
           />
         </div>
 
@@ -175,7 +177,14 @@ function Inicio() {
         {/* Categorias */}
         <div className="grid grid-cols-4 gap-2.5">
           {categories.map((cat) => (
-            <button key={cat.id} className="group flex min-w-0 flex-col items-center gap-2">
+            <button 
+              key={cat.id} 
+              onClick={() => navigate({ 
+                to: "/buscar", 
+                search: { categoria: cat.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") } 
+              })}
+              className="group flex min-w-0 flex-col items-center gap-2"
+            >
               <span
                 className={`relative grid aspect-[3/3.4] w-full place-items-center overflow-hidden rounded-[1.25rem] bg-gradient-to-br ${cat.className} shadow-[0_10px_22px_-10px_rgba(0,0,0,0.95)] ring-1 ring-white/10 transition-transform group-active:scale-95`}
               >
@@ -267,9 +276,13 @@ function Inicio() {
   );
 }
 
-function NavButton({ item }: { item: { name: string; icon: any; active: boolean } }) {
+function NavButton({ item }: { item: { name: string; icon: any; active: boolean; to?: string } }) {
+  const navigate = useNavigate();
   return (
-    <button className="flex flex-col items-center gap-1">
+    <button 
+      onClick={() => item.to && navigate({ to: item.to })}
+      className="flex flex-col items-center gap-1"
+    >
       <item.icon className={`h-6 w-6 ${item.active ? "text-primary" : "text-zinc-500"}`} />
       <span className={`text-[11px] ${item.active ? "font-semibold text-primary" : "text-zinc-500"}`}>
         {item.name}
