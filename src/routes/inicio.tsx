@@ -2,6 +2,8 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchMerchantCategories, fetchMerchants } from "@/lib/catalog";
+import { fetchMerchantsHoursBatch, calculateMerchantStatus } from "@/lib/merchant-hours";
+
 import { useCart } from "@/contexts/CartContext";
 import { ShoppingBag } from "lucide-react";
 import {
@@ -60,8 +62,10 @@ function Inicio() {
   const [defaultAddress, setDefaultAddress] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [merchants, setMerchants] = useState<any[]>([]);
+  const [merchantsHours, setMerchantsHours] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -87,8 +91,9 @@ function Inicio() {
         setCategories(cats);
 
         if (addrData) {
-          const mers = await fetchMerchants(addrData.city, addrData.state);
+          const mers = await fetchMerchants((addrData as any).city, (addrData as any).state);
           setMerchants(mers);
+
         } else {
           setMerchants([]);
         }
@@ -281,9 +286,11 @@ function Inicio() {
                        <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
                          <span className="flex items-center gap-1">
                            <Clock className="h-3.5 w-3.5 text-primary" /> 
-                           {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
-                             ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
-                             : "Prazo não informado"}
+                           {(() => {
+                             const mHours = merchantsHours.filter(h => h.merchant_id === merchant.id);
+                             const status = calculateMerchantStatus(mHours);
+                             return status.message;
+                           })()}
                          </span>
                         <span className="h-1 w-1 rounded-full bg-zinc-700" />
                         <span className="flex items-center gap-1">
@@ -291,6 +298,7 @@ function Inicio() {
                           {merchant.delivery_fee > 0 ? `R$ ${merchant.delivery_fee.toFixed(2).replace('.', ',')}` : "Grátis"}
                         </span>
                       </div>
+
                       
                       {merchant.description && (
                         <p className="truncate text-[11px] text-zinc-500 italic">
