@@ -71,13 +71,14 @@ function Inicio() {
       if (user) {
         const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).single();
         if (profileData) setProfile(profileData);
-        const { data: addrData } = await supabase
+        const { data: addrData, error: addrError } = await supabase
           .from("customer_addresses" as any)
           .select("*")
           .eq("user_id", user.id)
           .eq("is_default", true)
           .maybeSingle();
 
+        if (addrError) throw addrError;
         setDefaultAddress(addrData);
 
         const [cats] = await Promise.all([
@@ -244,68 +245,85 @@ function Inicio() {
               Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="h-24 w-full animate-pulse rounded-3xl bg-zinc-900" />
               ))
-            ) : merchants.length > 0 ? (
-              merchants.map((merchant) => (
-                <button 
-                  key={merchant.id}
-                  onClick={() => navigate({ to: "/estabelecimento/$merchantId", params: { merchantId: merchant.id } })}
-                  className="group grid grid-cols-[84px_1fr] items-center gap-4 rounded-3xl border border-zinc-900 bg-zinc-950/50 p-3 text-left transition-all hover:bg-zinc-900/50 active:scale-[0.98] active:bg-zinc-900"
-                >
-                  <div className="relative aspect-square w-full overflow-hidden rounded-2xl ring-1 ring-white/10 bg-zinc-900">
-                    {merchant.logo_url ? (
-                      <img 
-                        src={merchant.logo_url} 
-                        alt={merchant.name}
-                        className="h-full w-full object-cover transition-transform group-hover:scale-110"
-                      />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center">
-                        <Store className="h-8 w-8 text-zinc-700" />
+            ) : defaultAddress ? (
+              merchants.length > 0 ? (
+                merchants.map((merchant) => (
+                  <button 
+                    key={merchant.id}
+                    onClick={() => navigate({ to: "/estabelecimento/$merchantId", params: { merchantId: merchant.id } })}
+                    className="group grid grid-cols-[84px_1fr] items-center gap-4 rounded-3xl border border-zinc-900 bg-zinc-950/50 p-3 text-left transition-all hover:bg-zinc-900/50 active:scale-[0.98] active:bg-zinc-900"
+                  >
+                    <div className="relative aspect-square w-full overflow-hidden rounded-2xl ring-1 ring-white/10 bg-zinc-900">
+                      {merchant.logo_url ? (
+                        <img 
+                          src={merchant.logo_url} 
+                          alt={merchant.name}
+                          className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                        />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center">
+                          <Store className="h-8 w-8 text-zinc-700" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold backdrop-blur-sm">
+                        <Star className="h-2.5 w-2.5 fill-primary text-primary" />
+                        <span>{merchant.rating}</span>
                       </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold backdrop-blur-sm">
-                      <Star className="h-2.5 w-2.5 fill-primary text-primary" />
-                      <span>{merchant.rating}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col justify-center gap-1.5 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="truncate text-base font-extrabold text-white">{merchant.name}</h3>
-                      <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
                     </div>
                     
-                     <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
-                       <span className="flex items-center gap-1">
-                         <Clock className="h-3.5 w-3.5 text-primary" /> 
-                         {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
-                           ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
-                           : "Prazo não informado"}
-                       </span>
-                      <span className="h-1 w-1 rounded-full bg-zinc-700" />
-                      <span className="flex items-center gap-1">
-                        <Bike className="h-3.5 w-3.5 text-primary" /> 
-                        {merchant.delivery_fee > 0 ? `R$ ${merchant.delivery_fee.toFixed(2).replace('.', ',')}` : "Grátis"}
-                      </span>
+                    <div className="flex flex-col justify-center gap-1.5 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="truncate text-base font-extrabold text-white">{merchant.name}</h3>
+                        <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
+                      </div>
+                      
+                       <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
+                         <span className="flex items-center gap-1">
+                           <Clock className="h-3.5 w-3.5 text-primary" /> 
+                           {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
+                             ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
+                             : "Prazo não informado"}
+                         </span>
+                        <span className="h-1 w-1 rounded-full bg-zinc-700" />
+                        <span className="flex items-center gap-1">
+                          <Bike className="h-3.5 w-3.5 text-primary" /> 
+                          {merchant.delivery_fee > 0 ? `R$ ${merchant.delivery_fee.toFixed(2).replace('.', ',')}` : "Grátis"}
+                        </span>
+                      </div>
+                      
+                      {merchant.description && (
+                        <p className="truncate text-[11px] text-zinc-500 italic">
+                          {merchant.description}
+                        </p>
+                      )}
                     </div>
-                    
-                    {merchant.description && (
-                      <p className="truncate text-[11px] text-zinc-500 italic">
-                        {merchant.description}
-                      </p>
-                    )}
-                  </div>
-                </button>
-              ))
+                  </button>
+                ))
+              ) : (
+                <div className="flex flex-col items-center gap-2 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 px-6 py-8 text-center">
+                  <span className="grid h-12 w-12 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800">
+                    <Store className="h-6 w-6 text-zinc-700" />
+                  </span>
+                  <p className="max-w-[200px] text-[12px] leading-relaxed text-zinc-500">
+                    Nenhum estabelecimento disponível nesta região.
+                  </p>
+                </div>
+              )
             ) : (
-              <div className="flex flex-col items-center gap-2 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 px-6 py-8 text-center">
-                <span className="grid h-12 w-12 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800">
-                  <Store className="h-6 w-6 text-zinc-700" />
+              <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-primary/20 bg-primary/5 px-6 py-10 text-center">
+                <span className="grid h-12 w-12 place-items-center rounded-full bg-zinc-900 ring-1 ring-primary/30">
+                  <MapPin className="h-6 w-6 text-primary" />
                 </span>
-                <p className="max-w-[200px] text-[12px] leading-relaxed text-zinc-500">
-                  Os estabelecimentos da sua região aparecerão aqui em breve.
+                <p className="max-w-[220px] text-[13px] font-medium leading-relaxed text-zinc-300">
+                  Informe um endereço de entrega para ver os estabelecimentos disponíveis na sua região.
                 </p>
+                <button
+                  onClick={() => navigate({ to: "/enderecos" })}
+                  className="rounded-full bg-primary px-6 py-2 text-[13px] font-bold text-black shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+                >
+                  Selecionar endereço
+                </button>
               </div>
             )}
           </div>
