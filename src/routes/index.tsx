@@ -83,7 +83,7 @@ function Index() {
       </div>
 
       {/* Main Actions */}
-      <div className="px-7 space-y-2.5 pb-6 w-full shrink-0 relative z-20">
+      <div className="px-7 space-y-3 pb-7 w-full shrink-0 relative z-20">
         <Button 
           onClick={() => navigate({ to: "/register" })}
           className="w-full bg-[#FFD700] hover:bg-[#FFC000] text-black font-extrabold h-[50px] text-[14px] rounded-[16px] flex items-center justify-between px-6 transition-all active:scale-[0.98] shadow-[0_8px_25px_rgba(255,215,0,0.25)] relative overflow-hidden group"
