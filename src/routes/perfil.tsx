@@ -67,7 +67,6 @@ function PerfilPage() {
   };
 
   const menuItems = [
-  const menuItems = [
     { icon: User, label: "Dados pessoais", path: "#" },
     { icon: MapPin, label: "Meus endereços", path: "/enderecos" },
     { icon: CreditCard, label: "Formas de pagamento", path: "#" },
