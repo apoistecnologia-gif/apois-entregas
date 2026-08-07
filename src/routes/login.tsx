@@ -32,16 +32,27 @@ function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("[LOGIN] Form submitted", { email });
+    console.log("[LOGIN] Form submitted. Email:", email, "Password length:", password.length);
     if (!email || !password || isLoading) return;
 
     setIsLoading(true);
     try {
-      console.log("[LOGIN] Attempting signInWithPassword...");
-      // Forçamos o uso do cliente importado para garantir que as configurações de auditoria sejam aplicadas
+      console.log("[LOGIN] Attempting signInWithPassword with client from @/integrations/supabase/client");
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+      });
+
+      console.log("[LOGIN] Supabase response received:", { 
+        hasData: !!data, 
+        hasSession: !!data?.session,
+        error: error ? { 
+          message: error.message, 
+          status: error.status, 
+          code: error.code,
+          name: error.name
+        } : null 
       });
 
       if (error) {
