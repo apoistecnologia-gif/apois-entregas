@@ -284,6 +284,7 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
       merchant_hours: {
         Row: {
           closes_at: string | null
@@ -324,7 +325,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
       }
     }
     Views: {
