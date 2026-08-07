@@ -1,9 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// CONFIGURAÇÃO FORÇADA - sbvhdgyuuperszlsllji
-const SUPABASE_URL = "https://sbvhdgyuuperszlsllji.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_tmNxPNALqBcWiEdD7_eWOw_mk0qRkJa";
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config';
 
 console.log("[AUDIT] CLIENT LOADED WITH URL:", SUPABASE_URL);
 console.log("[AUDIT] KEY CHECK - START:", SUPABASE_PUBLISHABLE_KEY.slice(0, 15), "END:", SUPABASE_PUBLISHABLE_KEY.slice(-6));
