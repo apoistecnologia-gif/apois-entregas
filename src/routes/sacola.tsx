@@ -16,16 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 
 
-// MOCK DATA (Isolado do banco conforme solicitado)
-const MOCK_MERCHANT = {
-  id: "brasa-burguer",
-  name: "Brasa Burguer",
-  // Usando imagens via Unsplash mas com parâmetros de fallback mais robustos e URLs conhecidas como estáveis
-  logo: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?q=80&w=200&auto=format&fit=crop",
-  deliveryFee: 5.99,
-  deliveryTime: "30-40 min",
-  closeTime: "23:30",
-};
+// Dados do estabelecimento são obtidos do CartContext
 
 export const Route = createFileRoute("/sacola")({
   component: SacolaPage,
@@ -33,7 +24,7 @@ export const Route = createFileRoute("/sacola")({
 
 function SacolaPage() {
   const navigate = useNavigate();
-  const { items, updateQuantity, removeItem, totalPrice } = useCart();
+  const { items, merchant, updateQuantity, removeItem, totalPrice } = useCart();
 
   const [defaultAddress, setDefaultAddress] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cartao' | 'dinheiro'>('pix');
@@ -59,7 +50,8 @@ function SacolaPage() {
   };
 
   const subtotal = totalPrice;
-  const total = subtotal + MOCK_MERCHANT.deliveryFee - (subtotal > 0 ? discount : 0);
+  const deliveryFee = merchant?.deliveryFee || 0;
+  const total = subtotal + deliveryFee - (subtotal > 0 ? discount : 0);
 
 
   const handleFinishOrder = () => {
@@ -89,27 +81,29 @@ function SacolaPage() {
 
       <main className="flex-1 space-y-4 p-4 pb-32">
         {/* Merchant Info */}
-        <section className="flex items-center gap-4 rounded-2xl border border-zinc-900 bg-zinc-950 p-4 shadow-lg shadow-black/50">
-          <img 
-            src={MOCK_MERCHANT.logo} 
-            alt={MOCK_MERCHANT.name}
-            className="h-16 w-16 rounded-xl object-cover ring-1 ring-primary/20"
-          />
-          <div className="flex-1">
-            <h2 className="text-lg font-bold text-white">{MOCK_MERCHANT.name}</h2>
-            <p className="text-sm text-zinc-500">Hambúrgueres • Lanches</p>
-            <div className="mt-1 flex items-center gap-3">
-              <span className="flex items-center gap-1 text-[12px] font-medium text-green-500">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                Aberto até {MOCK_MERCHANT.closeTime}
-              </span>
-              <span className="flex items-center gap-1 text-[12px] text-zinc-500">
-                <span className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
-                {MOCK_MERCHANT.deliveryTime}
-              </span>
+        {items.length > 0 && merchant && (
+          <section className="flex items-center gap-4 rounded-2xl border border-zinc-900 bg-zinc-950 p-4 shadow-lg shadow-black/50">
+            <img 
+              src={merchant.logo} 
+              alt={merchant.name}
+              className="h-16 w-16 rounded-xl object-cover ring-1 ring-primary/20"
+            />
+            <div className="flex-1">
+              <h2 className="text-lg font-bold text-white">{merchant.name}</h2>
+              <p className="text-sm text-zinc-500">{merchant.category || "Hambúrgueres • Lanches"}</p>
+              <div className="mt-1 flex items-center gap-3">
+                <span className="flex items-center gap-1 text-[12px] font-medium text-green-500">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                  Aberto até {merchant.closeTime}
+                </span>
+                <span className="flex items-center gap-1 text-[12px] text-zinc-500">
+                  <span className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
+                  {merchant.deliveryTime}
+                </span>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Products List */}
         <section className="space-y-4 rounded-2xl border border-zinc-900 bg-zinc-950/50 p-1">
@@ -192,94 +186,98 @@ function SacolaPage() {
         </section>
 
         {/* Summary */}
-        <section className="space-y-3 px-1 text-sm">
-          <div className="flex justify-between text-zinc-400">
-            <span>Subtotal</span>
-            <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
-          </div>
-          <div className="flex justify-between text-zinc-400">
-            <div className="flex items-center gap-1">
-              <span>Taxa de entrega</span>
-              <button className="text-zinc-600"><span className="text-[10px] border border-zinc-700 rounded-full px-1">i</span></button>
-            </div>
-            <span>R$ {MOCK_MERCHANT.deliveryFee.toFixed(2).replace('.', ',')}</span>
-          </div>
-          {discount > 0 && (
-            <div className="flex justify-between text-green-500">
-              <span>Desconto</span>
-              <span>- R$ {discount.toFixed(2).replace('.', ',')}</span>
-            </div>
-          )}
-          <div className="flex justify-between border-t border-zinc-900 pt-3 text-lg font-black">
-            <span>Total</span>
-            <span className="text-primary text-xl">R$ {total.toFixed(2).replace('.', ',')}</span>
-          </div>
-        </section>
-
-        {/* Address Selector */}
-        <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4 shadow-lg">
-          <button 
-            onClick={() => navigate({ to: "/enderecos" })}
-            className="group flex w-full items-center gap-4 text-left"
-          >
-            <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
-              <MapPin className="h-6 w-6" />
-            </div>
-            <div className="flex-1">
-              <p className="text-[12px] font-medium text-zinc-500">Endereço de entrega</p>
-              {defaultAddress ? (
-                <>
-                  <p className="font-bold text-white line-clamp-1">{defaultAddress.label}: {defaultAddress.street}, {defaultAddress.number}</p>
-                  <p className="text-[12px] text-zinc-500">Entregar até 22:00 • {MOCK_MERCHANT.deliveryTime}</p>
-                </>
-              ) : (
-                <p className="font-bold text-primary">Selecione um endereço</p>
-              )}
-            </div>
-            <ChevronRight className="h-5 w-5 text-zinc-700 transition-transform group-active:translate-x-1" />
-          </button>
-        </section>
-
-        {/* Payment Methods */}
-        <section className="space-y-3 pb-4">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">Pagamento</h3>
-            <button className="text-xs font-bold text-primary uppercase underline underline-offset-4">Trocar</button>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <button 
-              onClick={() => setPaymentMethod('pix')}
-              className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === 'pix' ? 'border-primary bg-primary/5 text-primary shadow-[0_0_15px_rgba(255,215,0,0.15)] ring-1 ring-primary/30' : 'border-zinc-900 bg-zinc-950 text-zinc-500'}`}
-            >
-              <div className="relative">
-                <CircleDollarSign className="h-6 w-6" />
-                {paymentMethod === 'pix' && <div className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-primary flex items-center justify-center ring-2 ring-black"><div className="h-1.5 w-1.5 rounded-full bg-black" /></div>}
+        {items.length > 0 && (
+          <>
+            <section className="space-y-3 px-1 text-sm">
+              <div className="flex justify-between text-zinc-400">
+                <span>Subtotal</span>
+                <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
               </div>
-              <span className="text-[12px] font-bold">Pix</span>
-            </button>
-            
-            <button 
-              onClick={() => setPaymentMethod('cartao')}
-              className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === 'cartao' ? 'border-primary bg-primary/5 text-primary' : 'border-zinc-900 bg-zinc-950 text-zinc-500'}`}
-            >
-              <CreditCard className="h-6 w-6" />
-              <span className="text-[12px] font-bold">Cartão</span>
-            </button>
-            
-            <button 
-              onClick={() => setPaymentMethod('dinheiro')}
-              className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === 'dinheiro' ? 'border-primary bg-primary/5 text-primary' : 'border-zinc-900 bg-zinc-950 text-zinc-500'}`}
-            >
-              <CircleDollarSign className="h-6 w-6" />
-              <span className="text-[12px] font-bold">Dinheiro</span>
-            </button>
-          </div>
-        </section>
+              <div className="flex justify-between text-zinc-400">
+                <div className="flex items-center gap-1">
+                  <span>Taxa de entrega</span>
+                  <button className="text-zinc-600"><span className="text-[10px] border border-zinc-700 rounded-full px-1">i</span></button>
+                </div>
+                <span>R$ {deliveryFee.toFixed(2).replace('.', ',')}</span>
+              </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-green-500">
+                  <span>Desconto</span>
+                  <span>- R$ {discount.toFixed(2).replace('.', ',')}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-zinc-900 pt-3 text-lg font-black">
+                <span>Total</span>
+                <span className="text-primary text-xl">R$ {total.toFixed(2).replace('.', ',')}</span>
+              </div>
+            </section>
 
-        <div className="flex items-center justify-center gap-2 text-zinc-600 text-[11px] pb-4">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          <span>Ambiente seguro e criptografado</span>
-        </div>
+            {/* Address Selector */}
+            <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4 shadow-lg">
+              <button 
+                onClick={() => navigate({ to: "/enderecos" })}
+                className="group flex w-full items-center gap-4 text-left"
+              >
+                <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
+                  <MapPin className="h-6 w-6" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[12px] font-medium text-zinc-500">Endereço de entrega</p>
+                  {defaultAddress ? (
+                    <>
+                      <p className="font-bold text-white line-clamp-1">{defaultAddress.label}: {defaultAddress.street}, {defaultAddress.number}</p>
+                      <p className="text-[12px] text-zinc-500">Entregar até 22:00 • {merchant?.deliveryTime}</p>
+                    </>
+                  ) : (
+                    <p className="font-bold text-primary">Selecione um endereço</p>
+                  )}
+                </div>
+                <ChevronRight className="h-5 w-5 text-zinc-700 transition-transform group-active:translate-x-1" />
+              </button>
+            </section>
+
+            {/* Payment Methods */}
+            <section className="space-y-3 pb-4">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">Pagamento</h3>
+                <button className="text-xs font-bold text-primary uppercase underline underline-offset-4">Trocar</button>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <button 
+                  onClick={() => setPaymentMethod('pix')}
+                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === 'pix' ? 'border-primary bg-primary/5 text-primary shadow-[0_0_15px_rgba(255,215,0,0.15)] ring-1 ring-primary/30' : 'border-zinc-900 bg-zinc-950 text-zinc-500'}`}
+                >
+                  <div className="relative">
+                    <CircleDollarSign className="h-6 w-6" />
+                    {paymentMethod === 'pix' && <div className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-primary flex items-center justify-center ring-2 ring-black"><div className="h-1.5 w-1.5 rounded-full bg-black" /></div>}
+                  </div>
+                  <span className="text-[12px] font-bold">Pix</span>
+                </button>
+                
+                <button 
+                  onClick={() => setPaymentMethod('cartao')}
+                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === 'cartao' ? 'border-primary bg-primary/5 text-primary' : 'border-zinc-900 bg-zinc-950 text-zinc-500'}`}
+                >
+                  <CreditCard className="h-6 w-6" />
+                  <span className="text-[12px] font-bold">Cartão</span>
+                </button>
+                
+                <button 
+                  onClick={() => setPaymentMethod('dinheiro')}
+                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === 'dinheiro' ? 'border-primary bg-primary/5 text-primary' : 'border-zinc-900 bg-zinc-950 text-zinc-500'}`}
+                >
+                  <CircleDollarSign className="h-6 w-6" />
+                  <span className="text-[12px] font-bold">Dinheiro</span>
+                </button>
+              </div>
+            </section>
+
+            <div className="flex items-center justify-center gap-2 text-zinc-600 text-[11px] pb-4">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span>Ambiente seguro e criptografado</span>
+            </div>
+          </>
+        )}
       </main>
 
       {/* Footer CTA */}

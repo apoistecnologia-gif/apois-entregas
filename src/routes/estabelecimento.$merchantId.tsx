@@ -98,6 +98,14 @@ function EstabelecimentoPage() {
       price: product.price,
       image: product.image,
       merchantId: merchantId || 'brasa-burguer'
+    }, {
+      id: merchantId || 'brasa-burguer',
+      name: MOCK_MERCHANT.name,
+      logo: MOCK_MERCHANT.logoImage,
+      deliveryFee: MOCK_MERCHANT.deliveryFee,
+      deliveryTime: MOCK_MERCHANT.deliveryTime,
+      closeTime: MOCK_MERCHANT.closeTime,
+      category: "Hambúrgueres • Lanches"
     });
   };
 
