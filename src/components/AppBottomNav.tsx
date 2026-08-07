@@ -1,7 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Home, Compass, Heart, User, Bike, LogOut } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { Home, Compass, Heart, User, Bike } from "lucide-react";
 
 interface AppBottomNavProps {
   activeTab: "inicio" | "pedidos" | "favoritos" | "perfil";
@@ -9,15 +7,6 @@ interface AppBottomNavProps {
 
 export function AppBottomNav({ activeTab }: AppBottomNavProps) {
   const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast.error("Erro ao sair da conta");
-    } else {
-      navigate({ to: "/login" });
-    }
-  };
 
   const navItems = [
     { name: "Início", id: "inicio", icon: Home, to: "/inicio" },
@@ -27,8 +16,8 @@ export function AppBottomNav({ activeTab }: AppBottomNavProps) {
   ];
 
   return (
-    <nav className="sticky bottom-0 z-50 border-t border-zinc-900 bg-black/95 backdrop-blur-md">
-      <div className="relative grid grid-cols-5 items-end px-2 pb-2 pt-3">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-900/50 bg-black/80 backdrop-blur-xl">
+      <div className="mx-auto max-w-[500px] flex items-center justify-around px-2 py-2">
         {navItems.slice(0, 2).map((item) => (
           <NavButton 
             key={item.id} 
@@ -38,13 +27,13 @@ export function AppBottomNav({ activeTab }: AppBottomNavProps) {
           />
         ))}
         
-        <div className="flex justify-center">
+        <div className="flex justify-center -mt-8">
           <button
             onClick={() => navigate({ to: "/buscar" })}
-            className="-mt-9 grid h-16 w-16 place-items-center rounded-full bg-gradient-to-b from-primary to-amber-500 text-black shadow-[0_10px_25px_-6px_rgba(255,215,0,0.55)] ring-4 ring-black transition-transform active:scale-95"
+            className="grid h-14 w-14 place-items-center rounded-full bg-gradient-to-b from-primary to-amber-500 text-black shadow-[0_8px_20px_-4px_rgba(255,215,0,0.5)] ring-4 ring-black transition-transform active:scale-90"
             aria-label="Buscar"
           >
-            <Bike className="h-8 w-8" />
+            <Bike className="h-7 w-7" />
           </button>
         </div>
 
@@ -57,14 +46,6 @@ export function AppBottomNav({ activeTab }: AppBottomNavProps) {
           />
         ))}
       </div>
-      
-      <button
-        onClick={handleLogout}
-        className="flex w-full items-center justify-center gap-2 border-t border-zinc-900 py-2.5 text-[12px] text-zinc-600 transition-colors hover:text-red-400"
-      >
-        <LogOut className="h-3.5 w-3.5" />
-        Sair da conta
-      </button>
     </nav>
   );
 }
@@ -81,13 +62,13 @@ function NavButton({
   return (
     <button 
       onClick={onClick}
-      className="flex flex-col items-center gap-1"
+      className="flex flex-col items-center justify-center gap-0.5 min-w-[64px] transition-all active:scale-95"
     >
-      <item.icon className={`h-6 w-6 transition-colors ${active ? "text-primary" : "text-zinc-500"}`} />
-      <span className={`text-[11px] transition-colors ${active ? "font-semibold text-primary" : "text-zinc-500"}`}>
+      <item.icon className={`h-5 w-5 transition-colors ${active ? "text-primary" : "text-zinc-500"}`} />
+      <span className={`text-[10px] transition-colors ${active ? "font-bold text-primary" : "text-zinc-500"}`}>
         {item.name}
       </span>
-      <span className={`h-0.5 w-6 rounded-full transition-all ${active ? "bg-primary scale-100" : "bg-transparent scale-0"}`} />
+      <div className={`h-1 w-1 rounded-full transition-all mt-0.5 ${active ? "bg-primary scale-100" : "bg-transparent scale-0"}`} />
     </button>
   );
 }
