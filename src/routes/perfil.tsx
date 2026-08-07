@@ -67,6 +67,7 @@ function PerfilPage() {
   };
 
   const menuItems = [
+  const menuItems = [
     { icon: User, label: "Dados pessoais", path: "#" },
     { icon: MapPin, label: "Meus endereços", path: "/enderecos" },
     { icon: CreditCard, label: "Formas de pagamento", path: "#" },
@@ -78,9 +79,20 @@ function PerfilPage() {
     { icon: Star, label: "APOIS+", path: "#", highlight: true },
   ];
 
+  const handleItemClick = (item: typeof menuItems[0]) => {
+    if (item.path !== "#") {
+      navigate({ to: item.path as any });
+    } else {
+      toast.info("Em breve", {
+        description: "Funcionalidade em desenvolvimento",
+        duration: 2000,
+      });
+    }
+  };
+
   return (
-    <div className="flex min-h-screen w-full flex-col bg-black text-white">
-      <header className="sticky top-0 z-50 flex items-center justify-between p-4 bg-black/80 backdrop-blur-lg border-b border-zinc-900">
+    <div className="flex h-screen w-full flex-col bg-black text-white overflow-hidden relative">
+      <header className="shrink-0 z-50 flex items-center justify-between p-4 bg-black/80 backdrop-blur-lg border-b border-zinc-900">
         <button onClick={() => navigate({ to: "/inicio" })} className="p-2 rounded-full bg-zinc-900 shadow-lg">
           <ArrowLeft className="w-5 h-5 text-zinc-300" />
         </button>
@@ -95,7 +107,7 @@ function PerfilPage() {
         </button>
       </header>
 
-      <main className="flex-1 p-4 pb-32">
+      <main className="flex-1 overflow-y-auto p-4 pb-20 scrollbar-none">
         {/* Profile Header */}
         <div className="flex flex-col items-center mb-8 bg-zinc-900/40 p-6 rounded-3xl border border-zinc-900/50 backdrop-blur-sm">
           <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mb-4 border-2 border-primary shadow-[0_0_15px_rgba(255,215,0,0.3)]">
@@ -118,7 +130,7 @@ function PerfilPage() {
           {menuItems.map((item, index) => (
             <button
               key={index}
-              onClick={() => item.path !== "#" && navigate({ to: item.path as any })}
+              onClick={() => handleItemClick(item)}
               className={`flex w-full items-center justify-between p-4 rounded-2xl border transition-all active:scale-[0.98] ${
                 item.highlight 
                   ? "bg-primary/5 border-primary/20 text-primary" 
