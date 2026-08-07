@@ -110,21 +110,24 @@ function Inicio() {
   return (
     <div className="flex min-h-full w-full flex-col overflow-x-hidden bg-black text-white">
       {/* Header */}
-      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 pt-5 pb-3">
-        <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-9 w-auto object-contain object-left" />
-        <button className="relative shrink-0 p-1 text-white" aria-label="Notificações">
-          <Bell className="h-6 w-6" />
-          <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-black" />
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-zinc-900/80 px-4 pb-3 pt-6">
+        <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-10 w-auto object-contain object-left" />
+        <button
+          className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full border border-zinc-800 bg-zinc-950 text-white"
+          aria-label="Notificações"
+        >
+          <Bell className="h-5 w-5" />
+          <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-zinc-950" />
         </button>
       </header>
 
-      <main className="flex-1 space-y-5 px-4 pb-28">
+      <main className="flex-1 space-y-4 px-4 pb-28 pt-4">
         {/* Entregar em */}
         <button
           onClick={() => navigate({ to: "/enderecos" })}
-          className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-primary/25 bg-zinc-950 px-3 py-3 text-left"
+          className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-zinc-950 to-black px-3 py-3 text-left shadow-[0_6px_24px_-12px_rgba(255,215,0,0.45)] transition-transform active:scale-[0.99]"
         >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/15">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/15 ring-1 ring-primary/25">
             <MapPin className="h-5 w-5 text-primary" />
           </span>
           <span className="min-w-0">
