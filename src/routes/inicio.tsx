@@ -2,6 +2,8 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { MOCK_MERCHANTS } from "@/lib/mock-data";
+import { useCart } from "@/contexts/CartContext";
+import { ShoppingBag } from "lucide-react";
 import {
   MapPin,
   Search,
@@ -56,6 +58,7 @@ export const Route = createFileRoute("/inicio")({
 
 function Inicio() {
   const navigate = useNavigate();
+  const { totalItems } = useCart();
   const [profile, setProfile] = useState<any>(null);
   const [defaultAddress, setDefaultAddress] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -118,11 +121,12 @@ function Inicio() {
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-zinc-900/80 px-4 pb-3 pt-6">
         <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-10 w-auto object-contain object-left" />
         <button
+          onClick={() => navigate({ to: "/sacola" })}
           className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full border border-zinc-800 bg-zinc-950 text-white"
-          aria-label="Notificações"
+          aria-label="Sacola"
         >
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-zinc-950" />
+          <ShoppingBag className="h-5 w-5" />
+          {totalItems > 0 && <span className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-primary text-[10px] font-bold text-black flex items-center justify-center ring-2 ring-zinc-950">{totalItems}</span>}
         </button>
       </header>
 
