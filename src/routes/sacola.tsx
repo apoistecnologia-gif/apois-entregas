@@ -40,12 +40,20 @@ function SacolaPage() {
 
   const [defaultAddress, setDefaultAddress] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cartao' | 'dinheiro'>('pix');
-  const [discount, setDiscount] = useState(5.00);
+
 
 
   useEffect(() => {
+    const savedMethod = sessionStorage.getItem('apois_payment_method');
+    if (savedMethod === 'pix' || savedMethod === 'cartao' || savedMethod === 'dinheiro') {
+      setPaymentMethod(savedMethod);
+    } else {
+      sessionStorage.setItem('apois_payment_method', 'pix');
+      setPaymentMethod('pix');
+    }
     fetchDefaultAddress();
   }, []);
+
 
   const fetchDefaultAddress = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -63,7 +71,7 @@ function SacolaPage() {
 
   const subtotal = totalPrice;
   const deliveryFee = merchant?.deliveryFee || 0;
-  const total = subtotal + deliveryFee - (subtotal > 0 ? discount : 0);
+  const total = subtotal + deliveryFee;
 
 
   const handleFinishOrder = () => {
@@ -209,12 +217,6 @@ function SacolaPage() {
                 </div>
                 <span>R$ {deliveryFee.toFixed(2).replace('.', ',')}</span>
               </div>
-              {discount > 0 && (
-                <div className="flex justify-between text-green-500">
-                  <span>Desconto</span>
-                  <span>- R$ {discount.toFixed(2).replace('.', ',')}</span>
-                </div>
-              )}
               <div className="flex justify-between border-t border-zinc-900 pt-3 text-lg font-black">
                 <span>Total</span>
                 <span className="text-primary text-xl">R$ {total.toFixed(2).replace('.', ',')}</span>

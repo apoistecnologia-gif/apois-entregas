@@ -55,7 +55,20 @@ function RateOrderPage() {
   };
 
   if (loading) return null;
-  if (!order) return null;
+  if (!order) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-black p-6 text-center text-white">
+        <h2 className="text-xl font-bold mb-4">Pedido não encontrado</h2>
+        <button 
+          onClick={() => navigate({ to: "/pedidos" })}
+          className="bg-primary text-black px-6 py-3 rounded-xl font-bold uppercase shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+        >
+          Voltar para Meus Pedidos
+        </button>
+      </div>
+    );
+  }
+
 
   const StarRating = ({ value, onChange }: { value: number, onChange: (v: number) => void }) => (
     <div className="flex gap-2">
