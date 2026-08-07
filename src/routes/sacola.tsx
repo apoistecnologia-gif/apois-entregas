@@ -146,12 +146,17 @@ function SacolaPage() {
                      src={item.image} 
                      alt={item.name}
                      className="h-full w-full rounded-xl object-cover ring-1 ring-white/5 bg-zinc-900"
+                     onError={(e) => {
+                       (e.target as HTMLImageElement).onerror = null;
+                       (e.target as HTMLImageElement).src = ""; // Clear src to trigger fallback div
+                       (e.target as HTMLImageElement).classList.add('hidden');
+                       (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                     }}
                    />
-                 ) : (
-                   <div className="h-full w-full rounded-xl bg-zinc-900 grid place-items-center ring-1 ring-white/10">
-                     <Store className="h-6 w-6 text-zinc-800" />
-                   </div>
-                 )}
+                 ) : null}
+                 <div className={`h-full w-full rounded-xl bg-zinc-900 grid place-items-center ring-1 ring-white/10 ${item.image ? 'hidden' : ''}`}>
+                   <Store className="h-6 w-6 text-zinc-800" />
+                 </div>
                 <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[12px] font-black text-black ring-2 ring-black">
                   {item.quantity}
                 </span>
@@ -249,7 +254,7 @@ function SacolaPage() {
                   {defaultAddress ? (
                     <>
                       <p className="font-bold text-white line-clamp-1">{defaultAddress.label}: {defaultAddress.street}, {defaultAddress.number}</p>
-                      <p className="text-[12px] text-zinc-500">Entregar até 22:00 • {merchant?.deliveryTime}</p>
+                      {merchant?.deliveryTime && <p className="text-[12px] text-zinc-500">{merchant.deliveryTime}</p>}
                     </>
                   ) : (
                     <p className="font-bold text-primary">Selecione um endereço</p>

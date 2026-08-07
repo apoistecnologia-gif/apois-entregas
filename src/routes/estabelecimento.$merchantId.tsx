@@ -17,7 +17,8 @@ import {
 import { 
   fetchMerchantById, 
   fetchMenuCategoriesByMerchant, 
-  fetchProductsByMerchant 
+  fetchProductsByMerchant,
+  fetchMerchantCategoryById
 } from "@/lib/catalog";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
@@ -33,7 +34,8 @@ function EstabelecimentoPage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [isFavorite, setIsFavorite] = useState(false);
   const [merchant, setMerchant] = useState<any>(null);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [menuCategories, setMenuCategories] = useState<any[]>([]);
+  const [merchantCategory, setMerchantCategory] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,15 +47,20 @@ function EstabelecimentoPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const [merchantData, catsData, prodsData] = await Promise.all([
+        const [merchantData, menuCatsData, prodsData] = await Promise.all([
           fetchMerchantById(merchantId),
           fetchMenuCategoriesByMerchant(merchantId),
           fetchProductsByMerchant(merchantId)
         ]);
         
         setMerchant(merchantData);
-        setCategories(catsData);
+        setMenuCategories(menuCatsData);
         setProducts(prodsData);
+
+        if (merchantData.category_id) {
+          const cat = await fetchMerchantCategoryById(merchantData.category_id);
+          setMerchantCategory(cat);
+        }
       } catch (err: any) {
         console.error("Error fetching merchant details:", err);
         setError("Estabelecimento não encontrado");
@@ -89,7 +96,7 @@ function EstabelecimentoPage() {
          ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
          : "",
        closeTime: merchant.closes_at || "",
-       category: categories.find(c => c.id === merchant.category_id)?.name || ""
+       category: merchantCategory?.name || ""
      });
     
     toast.success(`${product.name} adicionado à sacola!`);
@@ -231,7 +238,7 @@ function EstabelecimentoPage() {
           >
             Todos
           </button>
-          {categories.map((cat) => (
+          {menuCategories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}

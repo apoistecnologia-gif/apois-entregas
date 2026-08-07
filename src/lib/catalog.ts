@@ -56,3 +56,14 @@ export const fetchProductsByMerchant = async (merchantId: string) => {
   if (error) throw error;
   return data;
 };
+
+export const fetchMerchantCategoryById = async (id: string) => {
+  const { data, error } = await supabase
+    .from("merchant_categories")
+    .select("*")
+    .eq("id", id)
+    .single();
+    
+  if (error) throw error;
+  return data;
+};
