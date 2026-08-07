@@ -251,8 +251,8 @@ function Buscar() {
         </section>
       </main>
 
-      {/* Bottom nav - Copiado da Home conforme solicitado */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-900 bg-black/95 backdrop-blur-md">
+      {/* Bottom nav - Usando sticky para respeitar o container do app */}
+      <nav className="sticky bottom-0 z-50 border-t border-zinc-900 bg-black/95 backdrop-blur-md">
         <div className="relative grid grid-cols-5 items-end px-2 pb-2 pt-3">
           {navItems.slice(0, 2).map((item) => (
             <NavButton key={item.name} item={item} />
