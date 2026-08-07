@@ -218,14 +218,56 @@ function Inicio() {
             </span>
           </div>
 
-          <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/70 px-6 py-9 text-center">
-            <span className="grid h-16 w-16 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800">
-              <Store className="h-7 w-7 text-zinc-600" />
-            </span>
-            <h3 className="mt-1 text-[15px] font-semibold text-zinc-300">Tudo pronto para começar</h3>
-            <p className="max-w-[240px] text-xs leading-relaxed text-zinc-500">
-              Ainda não existem estabelecimentos cadastrados nesta região. Fique de olho!
-            </p>
+          <div className="flex flex-col gap-3">
+            {/* Estabelecimento de Exemplo (Brasa Burguer) */}
+            <button 
+              onClick={() => navigate({ to: "/estabelecimento/$merchantId", params: { merchantId: "brasa-burguer" } })}
+              className="group grid grid-cols-[84px_1fr] items-center gap-4 rounded-3xl border border-zinc-900 bg-zinc-950/50 p-3 text-left transition-all hover:bg-zinc-900/50 active:scale-[0.98] active:bg-zinc-900"
+            >
+              <div className="relative aspect-square w-full overflow-hidden rounded-2xl ring-1 ring-white/10">
+                <img 
+                  src="https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&q=80&w=200" 
+                  alt="Brasa Burguer"
+                  className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold backdrop-blur-sm">
+                  <Star className="h-2.5 w-2.5 fill-primary text-primary" />
+                  <span>4.8</span>
+                </div>
+              </div>
+              
+              <div className="flex flex-col justify-center gap-1.5 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="truncate text-base font-extrabold text-white">Brasa Burguer</h3>
+                  <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
+                </div>
+                
+                <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5 text-primary" /> 30-40 min
+                  </span>
+                  <span className="h-1 w-1 rounded-full bg-zinc-700" />
+                  <span className="flex items-center gap-1">
+                    <Bike className="h-3.5 w-3.5 text-primary" /> R$ 5,99
+                  </span>
+                </div>
+                
+                <p className="truncate text-[11px] text-zinc-500 italic">
+                  Hambúrgueres artesanais grelhados no braseiro...
+                </p>
+              </div>
+            </button>
+
+            {/* Placeholder de estado vazio (opcional, mantendo um item para demonstração) */}
+            <div className="flex flex-col items-center gap-2 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 px-6 py-8 text-center opacity-60">
+              <span className="grid h-12 w-12 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800">
+                <Store className="h-6 w-6 text-zinc-700" />
+              </span>
+              <p className="max-w-[200px] text-[10px] leading-relaxed text-zinc-600">
+                Mais estabelecimentos parceiros estarão disponíveis em breve.
+              </p>
+            </div>
           </div>
         </section>
 
