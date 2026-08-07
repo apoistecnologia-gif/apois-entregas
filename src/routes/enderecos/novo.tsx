@@ -5,7 +5,9 @@ import {
   ChevronLeft, 
   Loader2,
   Save,
-  MapPin
+  MapPin,
+  Home,
+  Briefcase
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
