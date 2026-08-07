@@ -32,27 +32,31 @@ function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("[LOGIN] Form submitted", { email });
     if (!email || !password || isLoading) return;
 
     setIsLoading(true);
     try {
+      console.log("[LOGIN] Attempting signInWithPassword...");
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error("[LOGIN] Error:", error);
         if (error.message.includes("Email not confirmed") || error.code === "email_not_confirmed") {
           toast.error("Seu e-mail ainda não foi confirmado. Acesse sua caixa de entrada e clique no link de confirmação.");
-        } else if (error.message.includes("Invalid login credentials")) {
+        } else if (error.message.includes("Invalid login credentials") || error.status === 400) {
           toast.error("E-mail ou senha incorretos.");
         } else {
-          toast.error("Não foi possível entrar agora. Verifique sua conexão e tente novamente.");
+          toast.error(`Não foi possível entrar agora: ${error.message}`);
         }
         setIsLoading(false);
         return;
       }
 
+      console.log("[LOGIN] Success, session:", !!data.session);
       if (data.session) {
         toast.success("Login realizado com sucesso!");
         const searchParams = new URLSearchParams(window.location.search);
@@ -65,6 +69,7 @@ function Login() {
         }
       }
     } catch (err) {
+      console.error("[LOGIN] Unexpected error:", err);
       toast.error("Não foi possível entrar agora. Verifique sua conexão e tente novamente.");
     } finally {
       setIsLoading(false);
