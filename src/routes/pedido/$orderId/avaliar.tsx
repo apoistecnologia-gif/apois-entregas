@@ -4,16 +4,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/pedido/$orderId/avaliar")({
-  beforeLoad: async ({ location }) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw redirect({
-        to: "/login",
-        search: { redirect: location.href },
-      });
-    }
-    return { session };
-  },
   component: RateOrderPage,
 });
 
@@ -21,30 +11,50 @@ function RateOrderPage() {
   const navigate = useNavigate();
   const { orderId } = useParams({ from: "/pedido/$orderId/avaliar" });
   const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [merchantRating, setMerchantRating] = useState(0);
   const [deliveryRating, setDeliveryRating] = useState(0);
   const [comment, setComment] = useState("");
 
   useEffect(() => {
-    const orders = JSON.parse(localStorage.getItem("apois_orders") || "[]");
-    const foundOrder = orders.find((o: any) => o.id === orderId);
-    if (foundOrder) {
-      if (foundOrder.status !== 'entregue' && foundOrder.status !== 'confirmado') {
-        // Realmente deveria ser apenas 'entregue', mas para teste permitimos se existir
+    const fetchOrder = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
       }
-      setOrder(foundOrder);
-    }
+      
+      const ordersKey = `apois_orders_${user.id}`;
+      const orders = JSON.parse(localStorage.getItem(ordersKey) || "[]");
+      const foundOrder = orders.find((o: any) => o.id === orderId);
+      
+      if (foundOrder) {
+        if (foundOrder.status !== 'entregue') {
+          navigate({ to: `/pedido/${orderId}` });
+          return;
+        }
+        setOrder(foundOrder);
+      }
+      setLoading(false);
+    };
+    
+    fetchOrder();
   }, [orderId]);
 
-  const handleSave = () => {
-    const orders = JSON.parse(localStorage.getItem("apois_orders") || "[]");
+  const handleSave = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const ordersKey = `apois_orders_${user.id}`;
+    const orders = JSON.parse(localStorage.getItem(ordersKey) || "[]");
     const updatedOrders = orders.map((o: any) => 
       o.id === orderId ? { ...o, rating: { merchant: merchantRating, delivery: deliveryRating, comment } } : o
     );
-    localStorage.setItem("apois_orders", JSON.stringify(updatedOrders));
+    localStorage.setItem(ordersKey, JSON.stringify(updatedOrders));
     navigate({ to: `/pedido/${orderId}` });
   };
 
+  if (loading) return null;
   if (!order) return null;
 
   const StarRating = ({ value, onChange }: { value: number, onChange: (v: number) => void }) => (

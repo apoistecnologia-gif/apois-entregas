@@ -99,6 +99,12 @@ function OrderDetailsPage() {
               <span>Subtotal</span>
               <span>R$ {order.subtotal.toFixed(2).replace('.', ',')}</span>
             </div>
+            {order.discount > 0 && (
+              <div className="flex justify-between text-xs text-green-500">
+                <span>Desconto</span>
+                <span>- R$ {order.discount.toFixed(2).replace('.', ',')}</span>
+              </div>
+            )}
             <div className="flex justify-between text-xs text-zinc-500">
               <span>Taxa de entrega</span>
               <span>R$ {order.deliveryFee.toFixed(2).replace('.', ',')}</span>
@@ -109,6 +115,13 @@ function OrderDetailsPage() {
             </div>
           </div>
         </section>
+
+        {order.observation && (
+          <section className="bg-zinc-950 p-4 rounded-2xl border border-zinc-900">
+            <p className="text-xs font-bold text-zinc-500 uppercase mb-1">Observação</p>
+            <p className="text-sm text-zinc-400 italic">"{order.observation}"</p>
+          </section>
+        )}
 
         {/* Delivery Address */}
         <section className="bg-zinc-950 p-4 rounded-2xl border border-zinc-900 flex gap-4">

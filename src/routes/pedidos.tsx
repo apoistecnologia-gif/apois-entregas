@@ -27,8 +27,16 @@ function PedidosPage() {
   const [orders, setOrders] = useState<any[]>([]);
 
   useEffect(() => {
-    const savedOrders = JSON.parse(localStorage.getItem("apois_orders") || "[]");
-    setOrders(savedOrders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    const fetchOrders = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const ordersKey = `apois_orders_${user.id}`;
+      const savedOrders = JSON.parse(localStorage.getItem(ordersKey) || "[]");
+      setOrders(savedOrders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    };
+    
+    fetchOrders();
   }, []);
 
   return (

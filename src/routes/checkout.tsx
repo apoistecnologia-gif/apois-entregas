@@ -48,7 +48,11 @@ function CheckoutPage() {
   const discount = 5.00;
   const total = subtotal + deliveryFee - discount;
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const paymentMethod = sessionStorage.getItem('apois_payment_method') || 'pix';
     const orderId = `APOIS-${Math.floor(100000 + Math.random() * 900000)}`;
     const newOrder = {
       id: orderId,
@@ -60,13 +64,14 @@ function CheckoutPage() {
       discount,
       total,
       address,
-      paymentMethod: 'pix',
+      paymentMethod,
       observation,
       status: 'confirmado'
     };
     
-    const existingOrders = JSON.parse(localStorage.getItem('apois_orders') || '[]');
-    localStorage.setItem('apois_orders', JSON.stringify([...existingOrders, newOrder]));
+    const ordersKey = `apois_orders_${user.id}`;
+    const existingOrders = JSON.parse(localStorage.getItem(ordersKey) || '[]');
+    localStorage.setItem(ordersKey, JSON.stringify([...existingOrders, newOrder]));
     
     clearCart();
     navigate({ to: "/pedido/confirmado", search: { orderId } });
@@ -93,6 +98,14 @@ function CheckoutPage() {
         <section className="bg-zinc-950 p-4 rounded-2xl border border-zinc-900">
           <p className="text-xs text-zinc-500 uppercase font-bold mb-2">Itens</p>
           {items.map(i => <div key={i.id} className="flex justify-between text-sm py-1"><span>{i.quantity}x {i.name}</span><span>R$ {(i.price * i.quantity).toFixed(2)}</span></div>)}
+        </section>
+
+        <section className="bg-zinc-950 p-4 rounded-2xl border border-zinc-900">
+          <p className="text-xs text-zinc-500 uppercase font-bold mb-2">Pagamento</p>
+          <div className="flex items-center gap-3">
+            <CreditCard className="text-primary h-5 w-5" />
+            <p className="font-bold uppercase">{typeof window !== 'undefined' ? sessionStorage.getItem('apois_payment_method') || 'pix' : 'pix'}</p>
+          </div>
         </section>
 
         <section className="bg-zinc-950 p-4 rounded-2xl border border-zinc-900">
