@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { 
   ArrowLeft, 
@@ -19,6 +19,18 @@ import { useCart } from "@/contexts/CartContext";
 // Dados do estabelecimento são obtidos do CartContext
 
 export const Route = createFileRoute("/sacola")({
+  beforeLoad: async ({ location }) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw redirect({
+        to: "/login",
+        search: {
+          redirect: location.href,
+        },
+      });
+    }
+    return { session };
+  },
   component: SacolaPage,
 });
 
