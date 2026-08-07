@@ -88,6 +88,7 @@ export type Database = {
         }
         Relationships: []
       }
+      }
       merchants: {
         Row: {
           address_line: string | null
@@ -267,6 +268,7 @@ export type Database = {
         }
         Relationships: []
       }
+      }
       user_roles: {
         Row: {
           id: string
@@ -284,6 +286,7 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
       merchant_hours: {
         Row: {
           closes_at: string | null
