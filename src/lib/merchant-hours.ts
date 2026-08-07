@@ -90,8 +90,6 @@ export const calculateMerchantStatus = (hours: MerchantHours[], customNow?: Date
   const todayHours = hours.find(h => h.weekday === currentWeekday);
   
   if (!todayHours) {
-    // Se não há registro hoje nem do dia anterior atravessando, o status depende se há registros na semana
-    // Mas a instrução diz: se não existir registro para hoje e não houver expediente da noite anterior -> unknown
     return { status: "unknown", message: "Horário não informado" };
   }
 
@@ -102,15 +100,12 @@ export const calculateMerchantStatus = (hours: MerchantHours[], customNow?: Date
   const openMins = timeToMinutes(todayHours.opens_at);
   const closeMins = timeToMinutes(todayHours.closes_at);
 
-  if (openMins === null || closeMins === null) {
+  if (openMins === null || closeMins === null || !todayHours.closes_at) {
     return { status: "unknown", message: "Horário não informado", hoursToday: todayHours };
   }
 
   const isOvernight = closeMins < openMins;
   
-  // Aberto hoje se:
-  // Se não atravessa meia-noite: entre opens e closes
-  // Se atravessa meia-noite: >= opens (o < closes é tratado pelo dia seguinte)
   const isOpen = isOvernight 
     ? (nowMinutes >= openMins)
     : (nowMinutes >= openMins && nowMinutes < closeMins);
