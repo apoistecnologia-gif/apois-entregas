@@ -96,6 +96,8 @@ function Buscar() {
           if (mers.length > 0) {
             const hours = await fetchMerchantsHoursBatch(mers.map(m => m.id));
             setMerchantsHours(hours);
+          } else {
+            setMerchantsHours([]);
           }
         } else {
           setMerchants([]);
