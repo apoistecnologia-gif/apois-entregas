@@ -259,14 +259,17 @@ function Buscar() {
         </div>
 
         {/* Contador de resultados */}
-        {(searchParams.q || searchParams.categoria) && (
-          <p className="text-[13px] font-medium text-zinc-500">
-            Nenhum resultado para{" "}
-            <span className="text-zinc-300">
-              "{searchParams.q || searchParams.categoria}"
-            </span>
-          </p>
-        )}
+         {(searchParams.q || searchParams.categoria) && (
+           <div className="flex flex-col gap-1">
+             <p className="text-[13px] font-medium text-zinc-500">
+               {filteredMerchants.length > 0 ? (
+                 <>Exibindo <span className="text-primary font-bold">{filteredMerchants.length}</span> resultados</>
+               ) : (
+                 <>Nenhum resultado para <span className="text-zinc-300">"{searchParams.q || (searchParams.categoria ? categories.find(c => c.id === searchParams.categoria)?.name : "")}"</span></>
+               )}
+             </p>
+           </div>
+         )}
 
         {/* Área de Resultados */}
         <section className="min-h-[40vh] pt-2">
