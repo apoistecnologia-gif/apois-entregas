@@ -42,11 +42,7 @@ function Login() {
       });
 
       if (error) {
-        if (error.message.includes("Email not confirmed") || error.code === "email_not_confirmed") {
-          toast.error("Seu e-mail ainda não foi confirmado. Acesse sua caixa de entrada.");
-        } else {
-          toast.error("E-mail ou senha incorretos.");
-        }
+        toast.error("E-mail ou senha incorretos.");
         setIsLoading(false);
         return;
       }

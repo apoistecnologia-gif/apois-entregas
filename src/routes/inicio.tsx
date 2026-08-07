@@ -302,6 +302,7 @@ function Inicio() {
           ))}
           <div className="flex justify-center">
             <button
+              onClick={() => navigate({ to: "/buscar" })}
               className="-mt-9 grid h-16 w-16 place-items-center rounded-full bg-gradient-to-b from-primary to-amber-500 text-black shadow-[0_10px_25px_-6px_rgba(255,215,0,0.55)] ring-4 ring-black transition-transform active:scale-95"
               aria-label="Pedir agora"
             >
