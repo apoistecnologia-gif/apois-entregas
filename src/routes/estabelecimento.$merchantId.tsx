@@ -15,22 +15,11 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
+import { MOCK_MERCHANTS } from "@/lib/mock-data";
 
 
-// Demonstração local de dados (isolados do banco)
-const MOCK_MERCHANT = {
-  id: "brasa-burguer",
-  name: "Brasa Burguer",
-  rating: 4.8,
-  reviewCount: 1248,
-  deliveryTime: "30-40 min",
-  deliveryFee: 5.99,
-  isOpen: true,
-  closeTime: "23:30",
-  description: "Hambúrgueres artesanais grelhados no braseiro, com ingredientes frescos e muito sabor. Do clássico ao smash, aqui é tudo feito com paixão pela brasa!",
-  coverImage: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?q=80&w=1000&auto=format&fit=crop",
-  logoImage: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?q=80&w=200&auto=format&fit=crop",
-};
+// Dados do estabelecimento centralizados em src/lib/mock-data.ts
+const getMerchantData = (id: string) => MOCK_MERCHANTS.find(m => m.id === id) || MOCK_MERCHANTS[0];
 
 const MOCK_CATEGORIES = [
   { id: "destaques", name: "Destaques" },
@@ -86,6 +75,8 @@ function EstabelecimentoPage() {
   const [activeCategory, setActiveCategory] = useState("destaques");
   const [isFavorite, setIsFavorite] = useState(false);
   const { items, addItem, totalPrice, totalItems } = useCart();
+  
+  const merchantData = getMerchantData(merchantId)!;
 
   // Futuramente buscar dados reais usando o merchantId
   // const { data: merchant } = useQuery(...)
@@ -100,11 +91,11 @@ function EstabelecimentoPage() {
       merchantId: merchantId || 'brasa-burguer'
     }, {
       id: merchantId || 'brasa-burguer',
-      name: MOCK_MERCHANT.name,
-      logo: MOCK_MERCHANT.logoImage,
-      deliveryFee: MOCK_MERCHANT.deliveryFee,
-      deliveryTime: MOCK_MERCHANT.deliveryTime,
-      closeTime: MOCK_MERCHANT.closeTime,
+      name: merchantData.name,
+      logo: merchantData.logoImage,
+      deliveryFee: merchantData.deliveryFee,
+      deliveryTime: merchantData.deliveryTime,
+      closeTime: merchantData.closeTime,
       category: "Hambúrgueres • Lanches"
     });
   };
@@ -114,8 +105,8 @@ function EstabelecimentoPage() {
       {/* Header com Capa */}
       <div className="relative h-60 w-full shrink-0">
         <img 
-          src={MOCK_MERCHANT.coverImage} 
-          alt={MOCK_MERCHANT.name}
+          src={merchantData.coverImage} 
+          alt={merchantData.name}
           className="h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black" />
@@ -140,7 +131,7 @@ function EstabelecimentoPage() {
         <div className="absolute -bottom-10 left-4 z-10">
           <div className="relative h-24 w-24 overflow-hidden rounded-full border-2 border-primary bg-zinc-950 shadow-2xl">
             <img 
-              src={MOCK_MERCHANT.logoImage} 
+              src={merchantData.logoImage} 
               alt="Logo"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "/favicon.png";
@@ -158,11 +149,11 @@ function EstabelecimentoPage() {
       {/* Info do Estabelecimento */}
       <div className="mt-12 px-4 space-y-4 pb-4">
         <div className="space-y-1">
-          <h1 className="text-2xl font-extrabold tracking-tight text-white">{MOCK_MERCHANT.name}</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-white">{merchantData.name}</h1>
           <div className="flex items-center gap-2">
             <Star className="h-4 w-4 fill-primary text-primary" />
-            <span className="text-[14px] font-bold text-primary">{MOCK_MERCHANT.rating}</span>
-            <span className="text-[14px] text-zinc-500">({MOCK_MERCHANT.reviewCount} avaliações)</span>
+            <span className="text-[14px] font-bold text-primary">{merchantData.rating}</span>
+            <span className="text-[14px] text-zinc-500">({merchantData.reviewCount} avaliações)</span>
           </div>
         </div>
 
@@ -170,18 +161,18 @@ function EstabelecimentoPage() {
         <div className="grid grid-cols-3 gap-0 rounded-2xl border border-zinc-800 bg-zinc-950/50 py-3 shadow-inner shadow-black/60">
           <div className="flex flex-col items-center justify-center gap-1 border-r border-zinc-800 px-2">
             <Clock className="h-5 w-5 text-primary" />
-            <span className="text-[12px] font-bold text-white">{MOCK_MERCHANT.deliveryTime}</span>
+            <span className="text-[12px] font-bold text-white">{merchantData.deliveryTime}</span>
             <span className="text-[10px] uppercase tracking-wider text-zinc-500">Tempo</span>
           </div>
           <div className="flex flex-col items-center justify-center gap-1 border-r border-zinc-800 px-2">
             <Bike className="h-5 w-5 text-primary" />
-            <span className="text-[12px] font-bold text-white">R$ {MOCK_MERCHANT.deliveryFee.toFixed(2).replace('.', ',')}</span>
+            <span className="text-[12px] font-bold text-white">R$ {merchantData.deliveryFee.toFixed(2).replace('.', ',')}</span>
             <span className="text-[10px] uppercase tracking-wider text-zinc-500">Taxa</span>
           </div>
           <button className="flex flex-col items-center justify-center gap-1 px-2 group">
             <div className="flex items-center gap-1">
-              <span className={`h-2 w-2 rounded-full ${MOCK_MERCHANT.isOpen ? "bg-green-500" : "bg-red-500"}`} />
-              <span className="text-[12px] font-bold text-green-500">Aberto até {MOCK_MERCHANT.closeTime}</span>
+              <span className={`h-2 w-2 rounded-full ${merchantData.isOpen ? "bg-green-500" : "bg-red-500"}`} />
+              <span className="text-[12px] font-bold text-green-500">Aberto até {merchantData.closeTime}</span>
             </div>
             <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500 group-active:text-primary">
               Ver horário <ChevronRight className="h-3 w-3" />
@@ -192,7 +183,7 @@ function EstabelecimentoPage() {
         {/* Descrição */}
         <div className="relative">
           <p className="text-[14px] leading-relaxed text-zinc-400 line-clamp-3">
-            {MOCK_MERCHANT.description}
+            {merchantData.description}
           </p>
           <button className="flex items-center gap-1 text-[13px] font-bold text-primary mt-1">
             Ver mais <ChevronDown className="h-4 w-4" />

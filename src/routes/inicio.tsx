@@ -1,6 +1,9 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { MOCK_MERCHANTS } from "@/lib/mock-data";
+import { useCart } from "@/contexts/CartContext";
+import { ShoppingBag } from "lucide-react";
 import {
   MapPin,
   Search,
@@ -55,6 +58,7 @@ export const Route = createFileRoute("/inicio")({
 
 function Inicio() {
   const navigate = useNavigate();
+  const { totalItems } = useCart();
   const [profile, setProfile] = useState<any>(null);
   const [defaultAddress, setDefaultAddress] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -106,9 +110,9 @@ function Inicio() {
 
   const navItems = [
     { name: "Início", icon: Home, active: true },
-    { name: "Pedidos", icon: Compass, active: false, to: "/buscar" },
-    { name: "Favoritos", icon: Heart, active: false, to: "/inicio" },
-    { name: "Perfil", icon: User, active: false, to: "/inicio" },
+    { name: "Pedidos", icon: Compass, active: false, to: "/pedidos" },
+    { name: "Favoritos", icon: Heart, active: false, to: "/favoritos" },
+    { name: "Perfil", icon: User, active: false, to: "/perfil" },
   ];
 
   return (
@@ -117,11 +121,12 @@ function Inicio() {
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-zinc-900/80 px-4 pb-3 pt-6">
         <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-10 w-auto object-contain object-left" />
         <button
+          onClick={() => navigate({ to: "/sacola" })}
           className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full border border-zinc-800 bg-zinc-950 text-white"
-          aria-label="Notificações"
+          aria-label="Sacola"
         >
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-zinc-950" />
+          <ShoppingBag className="h-5 w-5" />
+          {totalItems > 0 && <span className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-primary text-[10px] font-bold text-black flex items-center justify-center ring-2 ring-zinc-950">{totalItems}</span>}
         </button>
       </header>
 
@@ -221,45 +226,48 @@ function Inicio() {
           </div>
 
           <div className="flex flex-col gap-3">
-            {/* Estabelecimento de Exemplo (Brasa Burguer) */}
-            <button 
-              onClick={() => navigate({ to: "/estabelecimento/$merchantId", params: { merchantId: "brasa-burguer" } })}
-              className="group grid grid-cols-[84px_1fr] items-center gap-4 rounded-3xl border border-zinc-900 bg-zinc-950/50 p-3 text-left transition-all hover:bg-zinc-900/50 active:scale-[0.98] active:bg-zinc-900"
-            >
-              <div className="relative aspect-square w-full overflow-hidden rounded-2xl ring-1 ring-white/10">
-                <img 
-                  src="https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?auto=format&fit=crop&q=80&w=200" 
-                  alt="Brasa Burguer"
-                  className="h-full w-full object-cover transition-transform group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold backdrop-blur-sm">
-                  <Star className="h-2.5 w-2.5 fill-primary text-primary" />
-                  <span>4.8</span>
-                </div>
-              </div>
-              
-              <div className="flex flex-col justify-center gap-1.5 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="truncate text-base font-extrabold text-white">Brasa Burguer</h3>
-                  <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
+            {/* Lista de Estabelecimentos */}
+            {MOCK_MERCHANTS.map((merchant) => (
+              <button 
+                key={merchant.id}
+                onClick={() => navigate({ to: "/estabelecimento/$merchantId", params: { merchantId: merchant.id } })}
+                className="group grid grid-cols-[84px_1fr] items-center gap-4 rounded-3xl border border-zinc-900 bg-zinc-950/50 p-3 text-left transition-all hover:bg-zinc-900/50 active:scale-[0.98] active:bg-zinc-900"
+              >
+                <div className="relative aspect-square w-full overflow-hidden rounded-2xl ring-1 ring-white/10">
+                  <img 
+                    src={merchant.logoImage} 
+                    alt={merchant.name}
+                    className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold backdrop-blur-sm">
+                    <Star className="h-2.5 w-2.5 fill-primary text-primary" />
+                    <span>{merchant.rating}</span>
+                  </div>
                 </div>
                 
-                <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5 text-primary" /> 30-40 min
-                  </span>
-                  <span className="h-1 w-1 rounded-full bg-zinc-700" />
-                  <span className="flex items-center gap-1">
-                    <Bike className="h-3.5 w-3.5 text-primary" /> R$ 5,99
-                  </span>
+                <div className="flex flex-col justify-center gap-1.5 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="truncate text-base font-extrabold text-white">{merchant.name}</h3>
+                    <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5 text-primary" /> {merchant.deliveryTime}
+                    </span>
+                    <span className="h-1 w-1 rounded-full bg-zinc-700" />
+                    <span className="flex items-center gap-1">
+                      <Bike className="h-3.5 w-3.5 text-primary" /> R$ {merchant.deliveryFee.toFixed(2).replace('.', ',')}
+                    </span>
+                  </div>
+                  
+                  <p className="truncate text-[11px] text-zinc-500 italic">
+                    {merchant.description}
+                  </p>
                 </div>
-                
-                <p className="truncate text-[11px] text-zinc-500 italic">
-                  Hambúrgueres artesanais grelhados no braseiro...
-                </p>
-              </div>
-            </button>
+              </button>
+            ))}
 
             {/* Placeholder de estado vazio (opcional, mantendo um item para demonstração) */}
             <div className="flex flex-col items-center gap-2 rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/30 px-6 py-8 text-center opacity-60">
@@ -298,6 +306,7 @@ function Inicio() {
           ))}
           <div className="flex justify-center">
             <button
+              onClick={() => navigate({ to: "/buscar" })}
               className="-mt-9 grid h-16 w-16 place-items-center rounded-full bg-gradient-to-b from-primary to-amber-500 text-black shadow-[0_10px_25px_-6px_rgba(255,215,0,0.55)] ring-4 ring-black transition-transform active:scale-95"
               aria-label="Pedir agora"
             >
