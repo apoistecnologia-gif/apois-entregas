@@ -76,7 +76,7 @@ function EstabelecimentoPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const { items, addItem, totalPrice, totalItems } = useCart();
   
-  const merchantData = getMerchantData(merchantId);
+  const merchantData = getMerchantData(merchantId)!;
 
   // Futuramente buscar dados reais usando o merchantId
   // const { data: merchant } = useQuery(...)
