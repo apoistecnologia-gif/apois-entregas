@@ -284,6 +284,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      merchant_hours: {
+        Row: {
+          closes_at: string | null
+          created_at: string
+          id: string
+          is_closed: boolean
+          merchant_id: string
+          opens_at: string | null
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          closes_at?: string | null
+          created_at?: string
+          id?: string
+          is_closed?: boolean
+          merchant_id: string
+          opens_at?: string | null
+          updated_at?: string
+          weekday: number
+        }
+        Update: {
+          closes_at?: string | null
+          created_at?: string
+          id?: string
+          is_closed?: boolean
+          merchant_id?: string
+          opens_at?: string | null
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_hours_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       }
     }
     Views: {
