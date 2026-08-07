@@ -72,36 +72,36 @@ function Login() {
   };
 
   return (
-    <div className="flex min-h-full flex-col bg-black text-white overflow-x-hidden w-full">
+    <div className="flex h-full flex-col bg-black text-white overflow-hidden w-full">
       {/* Header with Back Button */}
-      <header className="flex items-center p-4 sticky top-0 z-50 bg-black">
+      <header className="flex items-center p-3 sticky top-0 z-50 bg-black">
         <button 
           onClick={() => navigate({ to: "/" })}
-          className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors"
+          className="p-2 -ml-1 hover:bg-white/10 rounded-full transition-colors"
           aria-label="Voltar"
         >
-          <ChevronLeft className="w-6 h-6 text-white" />
+          <ChevronLeft className="w-5 h-5 text-white" />
         </button>
       </header>
 
-      <main className="flex-1 flex flex-col px-6 pb-12">
+      <main className="flex-1 flex flex-col px-6 overflow-y-auto">
         {/* Logo and Greeting */}
-        <div className="flex flex-col items-center mt-4 mb-10 text-center">
+        <div className="flex flex-col items-center mt-2 mb-6 text-center">
           <img 
             src={logoAsset.url} 
             alt="APOIS ENTREGA" 
-            className="h-20 w-auto object-contain mb-6"
+            className="h-16 w-auto object-contain mb-4"
           />
-          <h1 className="text-2xl font-black text-white leading-tight">
+          <h1 className="text-[22px] font-black text-white leading-tight">
             Que bom ter você de volta
           </h1>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           <Button 
             type="button" 
             variant="outline"
-            className="w-full bg-transparent border-zinc-800 text-white hover:bg-white/5 font-bold h-14 text-base rounded-2xl flex items-center justify-center gap-3 transition-transform active:scale-[0.98]"
+            className="w-full bg-transparent border-zinc-800 text-white hover:bg-white/5 font-bold h-12 text-sm rounded-xl flex items-center justify-center gap-3 transition-transform active:scale-[0.98]"
           >
             <svg viewBox="0 0 24 24" className="w-5 h-5" xmlns="http://www.w3.org/2000/svg">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -112,15 +112,15 @@ function Login() {
             <span>Continuar com Google</span>
           </Button>
 
-          <div className="flex items-center gap-4 py-2">
+          <div className="flex items-center gap-4 py-1">
             <div className="h-px flex-1 bg-zinc-800" />
-            <span className="text-zinc-500 text-sm font-medium">ou</span>
+            <span className="text-zinc-500 text-xs font-medium uppercase tracking-wider">ou</span>
             <div className="h-px flex-1 bg-zinc-800" />
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-400 ml-1">
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-zinc-400 ml-1">
                 E-mail
               </label>
               <Input 
@@ -129,12 +129,12 @@ function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-zinc-900/50 border-zinc-800 h-14 rounded-2xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary"
+                className="bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 focus:ring-primary focus:border-primary text-sm"
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-400 ml-1">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-zinc-400 ml-1">
                 Senha
               </label>
               <div className="relative">
@@ -144,7 +144,7 @@ function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="bg-zinc-900/50 border-zinc-800 h-14 rounded-2xl text-white placeholder:text-zinc-600 pr-12 focus:ring-primary focus:border-primary"
+                  className="bg-zinc-900/50 border-zinc-800 h-12 rounded-xl text-white placeholder:text-zinc-600 pr-12 focus:ring-primary focus:border-primary text-sm"
                 />
                 <button 
                   type="button"
@@ -154,10 +154,10 @@ function Login() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              <div className="flex justify-end pt-1">
+              <div className="flex justify-end pt-0.5">
                 <button 
                   type="button"
-                  className="text-primary text-sm font-bold hover:underline"
+                  className="text-primary text-[12px] font-bold hover:underline"
                 >
                   Esqueci minha senha
                 </button>
@@ -167,13 +167,13 @@ function Login() {
             <Button 
               type="submit" 
               disabled={isLoading}
-              className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl mt-4 transition-transform active:scale-[0.98]"
+              className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-12 text-base rounded-xl mt-2 transition-transform active:scale-[0.98]"
             >
-              {isLoading ? <Loader2 className="w-6 h-6 animate-spin mx-auto" /> : "Entrar"}
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Entrar"}
             </Button>
 
-            <div className="text-center pt-8">
-              <p className="text-zinc-500 text-sm">
+            <div className="text-center pt-4 pb-4">
+              <p className="text-zinc-500 text-xs">
                 Ainda não tem uma conta?{" "}
                 <Link 
                   to="/register" 
@@ -188,9 +188,9 @@ function Login() {
       </main>
 
       {/* Footer */}
-      <footer className="py-8 bg-black border-t border-zinc-900 text-center">
-        <p className="text-zinc-600 text-xs font-medium">
-          © 2026 APOIS ENTREGA. Todos os direitos reservados.
+      <footer className="py-4 bg-black border-t border-zinc-900 text-center shrink-0">
+        <p className="text-zinc-600 text-[10px] font-medium uppercase tracking-wider">
+          © 2026 APOIS ENTREGA
         </p>
       </footer>
     </div>
