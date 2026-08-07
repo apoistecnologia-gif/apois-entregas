@@ -14,8 +14,10 @@ CREATE TABLE public.merchant_hours (
     )
 );
 
-GRANT SELECT ON public.merchant_hours TO authenticated;
-GRANT ALL ON public.merchant_hours TO service_role;
+REVOKE ALL PRIVILEGES ON TABLE public.merchant_hours FROM anon, authenticated;
+
+GRANT SELECT ON TABLE public.merchant_hours TO authenticated;
+GRANT ALL PRIVILEGES ON TABLE public.merchant_hours TO service_role;
 
 ALTER TABLE public.merchant_hours ENABLE ROW LEVEL SECURITY;
 
@@ -25,8 +27,9 @@ FOR SELECT
 TO authenticated
 USING (
     EXISTS (
-        SELECT 1 FROM public.merchants
-        WHERE id = public.merchant_hours.merchant_id
-        AND status = 'active'
+        SELECT 1
+        FROM public.merchants AS m
+        WHERE m.id = public.merchant_hours.merchant_id
+          AND m.is_active = true
     )
 );
