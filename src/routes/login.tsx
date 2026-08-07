@@ -32,45 +32,25 @@ function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("[LOGIN] Form submitted. Email:", email);
     if (!email || !password || isLoading) return;
 
     setIsLoading(true);
     try {
-      console.log("[LOGIN] Calling signInWithPassword...");
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      console.log("[LOGIN] Response:", { 
-        success: !!data.session, 
-        error: error?.message,
-        code: error?.code,
-        status: error?.status 
-      });
-
       if (error) {
-        // Tratamento específico para e-mail não confirmado
         if (error.message.includes("Email not confirmed") || error.code === "email_not_confirmed") {
           toast.error("Seu e-mail ainda não foi confirmado. Acesse sua caixa de entrada.");
-          setIsLoading(false);
-          return;
-        }
-        
-        // Tratamento para credenciais inválidas (Supabase retorna 400 em muitos casos de erro de credenciais)
-        if (error.status === 400 || error.code === "invalid_credentials" || error.message.toLowerCase().includes("invalid")) {
+        } else {
           toast.error("E-mail ou senha incorretos.");
-          setIsLoading(false);
-          return;
         }
-
-        toast.error(`Erro: ${error.message}`);
         setIsLoading(false);
         return;
       }
 
-      console.log("[LOGIN] Success, session data:", data);
       if (data.session) {
         toast.success("Login realizado com sucesso!");
         const searchParams = new URLSearchParams(window.location.search);
@@ -81,13 +61,9 @@ function Login() {
         } else {
           navigate({ to: "/inicio" });
         }
-      } else {
-        console.warn("[LOGIN] No session returned after success");
-        toast.error("Erro interno: sessão não iniciada.");
       }
     } catch (err: any) {
-      console.error("[LOGIN] Unexpected Exception:", err);
-      toast.error(`Erro inesperado: ${err.message || "Verifique sua conexão."}`);
+      toast.error("Erro ao realizar login. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
