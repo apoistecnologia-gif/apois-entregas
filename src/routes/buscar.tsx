@@ -1,6 +1,8 @@
 import { createFileRoute, redirect, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { MOCK_MERCHANTS } from "@/lib/mock-data";
+import { useCart } from "@/contexts/CartContext";
 import {
   MapPin,
   Search,
@@ -57,6 +59,7 @@ export const Route = createFileRoute("/buscar")({
 function Buscar() {
   const navigate = useNavigate();
   const searchParams = useSearch({ from: "/buscar" });
+  const { totalItems } = useCart();
   const [defaultAddress, setDefaultAddress] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(searchParams.q || "");
@@ -132,11 +135,24 @@ function Buscar() {
     { id: "lojas", name: "Lojas", image: catLojas, className: "from-violet-500/25 via-purple-900/10 to-black" },
   ];
 
+  const filteredMerchants = MOCK_MERCHANTS.filter(m => {
+    const query = searchParams.q?.toLowerCase() || "";
+    const cat = searchParams.categoria?.toLowerCase() || "";
+    
+    const matchesQuery = !query || 
+      m.name.toLowerCase().includes(query) || 
+      m.tags.some(t => t.toLowerCase().includes(query));
+      
+    const matchesCat = !cat || m.category.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(cat);
+    
+    return matchesQuery && matchesCat;
+  });
+
   const navItems = [
     { name: "Início", icon: Home, active: false, to: "/inicio" },
-    { name: "Pedidos", icon: Compass, active: false, to: "/buscar" },
-    { name: "Favoritos", icon: Heart, active: false, to: "/inicio" }, // Placeholder
-    { name: "Perfil", icon: User, active: false, to: "/perfil" }, // Placeholder
+    { name: "Pedidos", icon: Compass, active: false, to: "/pedidos" },
+    { name: "Favoritos", icon: Heart, active: false, to: "/favoritos" },
+    { name: "Perfil", icon: User, active: false, to: "/perfil" },
   ];
 
   return (
