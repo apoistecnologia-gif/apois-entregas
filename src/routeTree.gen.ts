@@ -32,6 +32,7 @@ import { Route as PerfilLegalRouteImport } from './routes/perfil/legal'
 import { Route as PerfilNotificacoesRouteImport } from './routes/perfil/notificacoes'
 import { Route as PerfilPagamentosRouteImport } from './routes/perfil/pagamentos'
 import { Route as EnderecosEditarAddressIdRouteImport } from './routes/enderecos/editar/$addressId'
+import { Route as PedidoOrderIdIndexRouteImport } from './routes/pedido/$orderId/index'
 import { Route as PedidoOrderIdAvaliarRouteImport } from './routes/pedido/$orderId/avaliar'
 
 const IndexRoute = IndexRouteImport.update({
@@ -151,6 +152,11 @@ const EnderecosEditarAddressIdRoute =
     path: '/editar/$addressId',
     getParentRoute: () => EnderecosRoute,
   } as any)
+const PedidoOrderIdIndexRoute = PedidoOrderIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PedidoOrderIdRoute,
+} as any)
 const PedidoOrderIdAvaliarRoute = PedidoOrderIdAvaliarRouteImport.update({
   id: '/avaliar',
   path: '/avaliar',
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/perfil/': typeof PerfilIndexRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
   '/pedido/$orderId/avaliar': typeof PedidoOrderIdAvaliarRoute
+  '/pedido/$orderId/': typeof PedidoOrderIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -197,7 +204,6 @@ export interface FileRoutesByTo {
   '/sacola': typeof SacolaRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
-  '/pedido/$orderId': typeof PedidoOrderIdRouteWithChildren
   '/pedido/confirmado': typeof PedidoConfirmadoRoute
   '/perfil/ajuda': typeof PerfilAjudaRoute
   '/perfil/dados-pessoais': typeof PerfilDadosPessoaisRoute
@@ -207,6 +213,7 @@ export interface FileRoutesByTo {
   '/perfil': typeof PerfilIndexRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
   '/pedido/$orderId/avaliar': typeof PedidoOrderIdAvaliarRoute
+  '/pedido/$orderId': typeof PedidoOrderIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -234,6 +241,7 @@ export interface FileRoutesById {
   '/perfil/': typeof PerfilIndexRoute
   '/enderecos/editar/$addressId': typeof EnderecosEditarAddressIdRoute
   '/pedido/$orderId/avaliar': typeof PedidoOrderIdAvaliarRoute
+  '/pedido/$orderId/': typeof PedidoOrderIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -262,6 +270,7 @@ export interface FileRouteTypes {
     | '/perfil/'
     | '/enderecos/editar/$addressId'
     | '/pedido/$orderId/avaliar'
+    | '/pedido/$orderId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -277,7 +286,6 @@ export interface FileRouteTypes {
     | '/sacola'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
-    | '/pedido/$orderId'
     | '/pedido/confirmado'
     | '/perfil/ajuda'
     | '/perfil/dados-pessoais'
@@ -287,6 +295,7 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/enderecos/editar/$addressId'
     | '/pedido/$orderId/avaliar'
+    | '/pedido/$orderId'
   id:
     | '__root__'
     | '/'
@@ -313,6 +322,7 @@ export interface FileRouteTypes {
     | '/perfil/'
     | '/enderecos/editar/$addressId'
     | '/pedido/$orderId/avaliar'
+    | '/pedido/$orderId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -496,6 +506,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EnderecosEditarAddressIdRouteImport
       parentRoute: typeof EnderecosRoute
     }
+    '/pedido/$orderId/': {
+      id: '/pedido/$orderId/'
+      path: '/'
+      fullPath: '/pedido/$orderId/'
+      preLoaderRoute: typeof PedidoOrderIdIndexRouteImport
+      parentRoute: typeof PedidoOrderIdRoute
+    }
     '/pedido/$orderId/avaliar': {
       id: '/pedido/$orderId/avaliar'
       path: '/avaliar'
@@ -543,10 +560,12 @@ const PerfilRouteWithChildren =
 
 interface PedidoOrderIdRouteChildren {
   PedidoOrderIdAvaliarRoute: typeof PedidoOrderIdAvaliarRoute
+  PedidoOrderIdIndexRoute: typeof PedidoOrderIdIndexRoute
 }
 
 const PedidoOrderIdRouteChildren: PedidoOrderIdRouteChildren = {
   PedidoOrderIdAvaliarRoute: PedidoOrderIdAvaliarRoute,
+  PedidoOrderIdIndexRoute: PedidoOrderIdIndexRoute,
 }
 
 const PedidoOrderIdRouteWithChildren = PedidoOrderIdRoute._addFileChildren(
