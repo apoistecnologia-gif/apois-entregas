@@ -55,6 +55,13 @@ function PerfilIndexPage() {
 
   useEffect(() => {
     getProfile();
+    
+    // Refresh profile when window gets focus (user returns to tab)
+    // or when the route becomes active again
+    window.addEventListener('focus', getProfile);
+    return () => {
+      window.removeEventListener('focus', getProfile);
+    };
   }, []);
 
   const handleLogout = async () => {
