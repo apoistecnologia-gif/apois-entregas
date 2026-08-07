@@ -3,6 +3,7 @@ import { ArrowLeft, ShoppingBag, User } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { AppBottomNav } from "@/components/AppBottomNav";
 
 export const Route = createFileRoute("/perfil")({
   component: PerfilPage,
@@ -27,13 +28,14 @@ function PerfilPage() {
           {totalItems > 0 && <span className="absolute -top-1 -right-1 bg-primary text-black text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">{totalItems}</span>}
         </button>
       </header>
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-6 pb-28">
         <div className="flex flex-col items-center mb-8">
             <div className="w-24 h-24 bg-zinc-900 rounded-full flex items-center justify-center mb-4 border-2 border-primary"><User className="w-10 h-10 text-primary" /></div>
             <h2 className="text-xl font-bold">{user?.email}</h2>
             <p className="text-zinc-500 text-sm">Cliente Apois</p>
         </div>
       </main>
+      <AppBottomNav activeTab="perfil" />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ShoppingBag, Heart } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { AppBottomNav } from "@/components/AppBottomNav";
 
 export const Route = createFileRoute("/favoritos")({
   component: FavoritosPage,
@@ -20,11 +21,12 @@ function FavoritosPage() {
           {totalItems > 0 && <span className="absolute -top-1 -right-1 bg-primary text-black text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">{totalItems}</span>}
         </button>
       </header>
-      <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+      <main className="flex-1 flex flex-col items-center justify-center p-6 pb-28 text-center">
         <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mb-4"><Heart className="w-8 h-8 text-zinc-600" /></div>
         <h2 className="text-lg font-bold">Nenhum favorito</h2>
         <p className="text-zinc-500 text-sm mt-2">Explore e favorite seus restaurantes preferidos.</p>
       </main>
+      <AppBottomNav activeTab="favoritos" />
     </div>
   );
 }
