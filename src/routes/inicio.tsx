@@ -94,7 +94,7 @@ function Inicio() {
   ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-black text-white overflow-x-hidden w-full">
+    <div className="flex min-h-full flex-col bg-black text-white overflow-x-hidden w-full">
       {/* Top Header */}
       <header className="px-6 pt-8 pb-4 sticky top-0 z-50 bg-black/80 backdrop-blur-lg">
         <div className="flex items-center justify-between mb-4">
