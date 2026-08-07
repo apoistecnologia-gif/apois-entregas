@@ -7,19 +7,13 @@ import {
   MapPin,
   Search,
   ChevronDown,
-  Bell,
-  Home,
-  Compass,
-  Heart,
-  User,
   Bike,
   Star,
   Clock,
-  Circle,
   X,
-  LogOut,
   ShoppingBag,
 } from "lucide-react";
+import { AppBottomNav } from "@/components/AppBottomNav";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import logoAsset from "@/assets/logo.png.asset.json";
@@ -120,14 +114,6 @@ function Buscar() {
     });
   };
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast.error("Erro ao sair da conta");
-    } else {
-      navigate({ to: "/login" });
-    }
-  };
 
   const categories = [
     { id: "restaurantes", name: "Restaurantes", image: catRestaurantes, className: "from-orange-500/25 via-orange-900/10 to-black" },
@@ -149,12 +135,6 @@ function Buscar() {
     return matchesQuery && matchesCat;
   });
 
-  const navItems = [
-    { name: "Início", icon: Home, active: false, to: "/inicio" },
-    { name: "Pedidos", icon: Compass, active: false, to: "/pedidos" },
-    { name: "Favoritos", icon: Heart, active: false, to: "/favoritos" },
-    { name: "Perfil", icon: User, active: false, to: "/perfil" },
-  ];
 
   return (
     <div className="flex min-h-full w-full flex-col overflow-x-hidden bg-black text-white selection:bg-primary selection:text-black">
@@ -331,49 +311,7 @@ function Buscar() {
         </section>
       </main>
 
-      {/* Bottom nav - Usando sticky para respeitar o container do app */}
-      <nav className="sticky bottom-0 z-50 border-t border-zinc-900 bg-black/95 backdrop-blur-md">
-        <div className="relative grid grid-cols-5 items-end px-2 pb-2 pt-3">
-          {navItems.slice(0, 2).map((item) => (
-            <NavButton key={item.name} item={item} />
-          ))}
-          <div className="flex justify-center">
-            <button
-              onClick={() => navigate({ to: "/inicio" })}
-              className="-mt-9 grid h-16 w-16 place-items-center rounded-full bg-gradient-to-b from-primary to-amber-500 text-black shadow-[0_10px_25px_-6px_rgba(255,215,0,0.55)] ring-4 ring-black transition-transform active:scale-95"
-              aria-label="Pedir agora"
-            >
-              <Bike className="h-8 w-8" />
-            </button>
-          </div>
-          {navItems.slice(2).map((item) => (
-            <NavButton key={item.name} item={item} />
-          ))}
-        </div>
-        <button
-          onClick={handleLogout}
-          className="flex w-full items-center justify-center gap-2 border-t border-zinc-900 py-2.5 text-[12px] text-zinc-600 transition-colors hover:text-red-400"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-          Sair da conta
-        </button>
-      </nav>
+      <AppBottomNav activeTab={"" as any} />
     </div>
-  );
-}
-
-function NavButton({ item }: { item: { name: string; icon: any; active: boolean; to: string } }) {
-  const navigate = useNavigate();
-  return (
-    <button 
-      onClick={() => navigate({ to: item.to })}
-      className="flex flex-col items-center gap-1"
-    >
-      <item.icon className={`h-6 w-6 transition-colors ${item.active ? "text-primary" : "text-zinc-500"}`} />
-      <span className={`text-[11px] transition-colors ${item.active ? "font-semibold text-primary" : "text-zinc-500"}`}>
-        {item.name}
-      </span>
-      <span className={`h-0.5 w-6 rounded-full transition-all ${item.active ? "bg-primary scale-100" : "bg-transparent scale-0"}`} />
-    </button>
   );
 }
