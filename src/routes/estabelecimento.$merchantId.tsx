@@ -44,7 +44,7 @@ const MOCK_PRODUCTS = [
     name: "Brasa Smash",
     description: "Dois smash burgers, queijo cheddar, cebola caramelizada e molho especial.",
     price: 32.90,
-    image: "https://images.unsplash.com/photo-1550317138-10000687ad32?auto=format&fit=crop&q=80&w=300",
+    image: "/favicon.png",
     category: "burgers",
     isPopular: true,
   },
@@ -53,7 +53,7 @@ const MOCK_PRODUCTS = [
     name: "Brasa Bacon",
     description: "Pão brioche, hambúrguer 160g, bacon crocante, queijo prato, alface, tomate e maionese da casa.",
     price: 29.90,
-    image: "https://images.unsplash.com/photo-1553979459-d2229ba7433b?auto=format&fit=crop&q=80&w=300",
+    image: "/favicon.png",
     category: "burgers",
   },
   {
@@ -61,7 +61,7 @@ const MOCK_PRODUCTS = [
     name: "Combo Brasa",
     description: "Brasa Burguer + batata frita + refrigerante lata.",
     price: 42.90,
-    image: "https://images.unsplash.com/photo-1513185158878-8d8c196b8965?auto=format&fit=crop&q=80&w=300",
+    image: "/favicon.png",
     category: "combos",
   },
   {
@@ -69,7 +69,7 @@ const MOCK_PRODUCTS = [
     name: "Coca-Cola Lata 350ml",
     description: "Coca-Cola geladinha para acompanhar seu pedido.",
     price: 6.90,
-    image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=300",
+    image: "/favicon.png",
     category: "bebidas",
   },
 ];
@@ -240,7 +240,10 @@ function EstabelecimentoPage() {
                 <img 
                   src={product.image} 
                   alt={product.name}
-                  className="aspect-square w-full rounded-xl object-cover ring-1 ring-white/5"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "/favicon.png";
+                  }}
+                  className="aspect-square w-full rounded-xl object-cover ring-1 ring-white/5 bg-zinc-900"
                 />
                 <div className="flex flex-col justify-center min-w-0">
                   <div className="flex items-center gap-2">

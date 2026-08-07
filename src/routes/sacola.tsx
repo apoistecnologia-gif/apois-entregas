@@ -165,7 +165,10 @@ function SacolaPage() {
                 <img 
                   src={item.image} 
                   alt={item.name}
-                  className="h-full w-full rounded-xl object-cover ring-1 ring-white/5"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "/favicon.png";
+                  }}
+                  className="h-full w-full rounded-xl object-cover ring-1 ring-white/5 bg-zinc-900"
                 />
                 <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[12px] font-black text-black ring-2 ring-black">
                   {item.quantity}
