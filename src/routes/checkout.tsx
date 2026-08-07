@@ -69,7 +69,7 @@ function CheckoutPage() {
     localStorage.setItem('apois_orders', JSON.stringify([...existingOrders, newOrder]));
     
     clearCart();
-    navigate({ to: "/pedido/confirmado", state: { orderId } });
+    navigate({ to: "/pedido/confirmado", search: { orderId } });
   };
 
   if (!merchant || items.length === 0) return null;

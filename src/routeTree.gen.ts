@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApoisPlusRouteImport } from './routes/apois-plus'
 import { Route as BuscarRouteImport } from './routes/buscar'
+import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as EnderecosRouteImport } from './routes/enderecos'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
 import { Route as InicioRouteImport } from './routes/inicio'
@@ -43,6 +44,11 @@ const ApoisPlusRoute = ApoisPlusRouteImport.update({
 const BuscarRoute = BuscarRouteImport.update({
   id: '/buscar',
   path: '/buscar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EnderecosRoute = EnderecosRouteImport.update({
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/apois-plus': typeof ApoisPlusRoute
   '/buscar': typeof BuscarRoute
+  '/checkout': typeof CheckoutRoute
   '/enderecos': typeof EnderecosRouteWithChildren
   '/favoritos': typeof FavoritosRoute
   '/inicio': typeof InicioRoute
@@ -159,6 +166,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/apois-plus': typeof ApoisPlusRoute
   '/buscar': typeof BuscarRoute
+  '/checkout': typeof CheckoutRoute
   '/enderecos': typeof EnderecosRouteWithChildren
   '/favoritos': typeof FavoritosRoute
   '/inicio': typeof InicioRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/apois-plus': typeof ApoisPlusRoute
   '/buscar': typeof BuscarRoute
+  '/checkout': typeof CheckoutRoute
   '/enderecos': typeof EnderecosRouteWithChildren
   '/favoritos': typeof FavoritosRoute
   '/inicio': typeof InicioRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/'
     | '/apois-plus'
     | '/buscar'
+    | '/checkout'
     | '/enderecos'
     | '/favoritos'
     | '/inicio'
@@ -227,6 +237,7 @@ export interface FileRouteTypes {
     | '/'
     | '/apois-plus'
     | '/buscar'
+    | '/checkout'
     | '/enderecos'
     | '/favoritos'
     | '/inicio'
@@ -248,6 +259,7 @@ export interface FileRouteTypes {
     | '/'
     | '/apois-plus'
     | '/buscar'
+    | '/checkout'
     | '/enderecos'
     | '/favoritos'
     | '/inicio'
@@ -271,6 +283,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApoisPlusRoute: typeof ApoisPlusRoute
   BuscarRoute: typeof BuscarRoute
+  CheckoutRoute: typeof CheckoutRoute
   EnderecosRoute: typeof EnderecosRouteWithChildren
   FavoritosRoute: typeof FavoritosRoute
   InicioRoute: typeof InicioRoute
@@ -303,6 +316,13 @@ declare module '@tanstack/react-router' {
       path: '/buscar'
       fullPath: '/buscar'
       preLoaderRoute: typeof BuscarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/enderecos': {
@@ -466,6 +486,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApoisPlusRoute: ApoisPlusRoute,
   BuscarRoute: BuscarRoute,
+  CheckoutRoute: CheckoutRoute,
   EnderecosRoute: EnderecosRouteWithChildren,
   FavoritosRoute: FavoritosRoute,
   InicioRoute: InicioRoute,
@@ -479,3 +500,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
