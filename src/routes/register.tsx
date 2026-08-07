@@ -113,7 +113,7 @@ function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    setSubmitted(true);
     if (!isFormValid) {
       setTouched({
         fullName: true,
