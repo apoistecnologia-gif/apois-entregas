@@ -315,8 +315,8 @@ function SacolaPage() {
       </main>
 
       {/* Footer CTA */}
-      <footer className="sticky bottom-0 z-[60] bg-black/90 p-4 pb-8 backdrop-blur-xl border-t border-zinc-900">
-        <div className="mx-auto max-w-[500px]">
+      <footer className="sticky bottom-0 z-[60] bg-black/90 p-4 pb-8 backdrop-blur-xl border-t border-zinc-900 w-full flex justify-center">
+        <div className="w-full max-w-[500px]">
           <button 
             onClick={handleFinishOrder}
             className="flex w-full items-center justify-between rounded-xl bg-primary px-6 py-4 text-black shadow-[0_8px_30px_rgba(255,215,0,0.3)] transition-transform active:scale-95"
