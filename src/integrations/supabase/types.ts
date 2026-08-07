@@ -14,6 +14,232 @@ export type Database = {
   }
   public: {
     Tables: {
+      menu_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          merchant_id: string
+          name: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          merchant_id: string
+          name: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          merchant_id?: string
+          name?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_categories_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merchant_categories: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      merchants: {
+        Row: {
+          address_line: string | null
+          category_id: string
+          city: string | null
+          closes_at: string | null
+          cover_url: string | null
+          created_at: string
+          delivery_fee: number
+          delivery_max_minutes: number | null
+          delivery_min_minutes: number | null
+          description: string | null
+          id: string
+          is_active: boolean
+          is_open: boolean
+          latitude: number | null
+          logo_url: string | null
+          longitude: number | null
+          name: string
+          neighborhood: string | null
+          owner_user_id: string | null
+          rating: number
+          review_count: number
+          slug: string
+          state: string | null
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          address_line?: string | null
+          category_id: string
+          city?: string | null
+          closes_at?: string | null
+          cover_url?: string | null
+          created_at?: string
+          delivery_fee?: number
+          delivery_max_minutes?: number | null
+          delivery_min_minutes?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_open?: boolean
+          latitude?: number | null
+          logo_url?: string | null
+          longitude?: number | null
+          name: string
+          neighborhood?: string | null
+          owner_user_id?: string | null
+          rating?: number
+          review_count?: number
+          slug: string
+          state?: string | null
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          address_line?: string | null
+          category_id?: string
+          city?: string | null
+          closes_at?: string | null
+          cover_url?: string | null
+          created_at?: string
+          delivery_fee?: number
+          delivery_max_minutes?: number | null
+          delivery_min_minutes?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_open?: boolean
+          latitude?: number | null
+          logo_url?: string | null
+          longitude?: number | null
+          name?: string
+          neighborhood?: string | null
+          owner_user_id?: string | null
+          rating?: number
+          review_count?: number
+          slug?: string
+          state?: string | null
+          tags?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchants_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_available: boolean
+          is_featured: boolean
+          menu_category_id: string | null
+          merchant_id: string
+          name: string
+          price: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_available?: boolean
+          is_featured?: boolean
+          menu_category_id?: string | null
+          merchant_id: string
+          name: string
+          price: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_available?: boolean
+          is_featured?: boolean
+          menu_category_id?: string | null
+          merchant_id?: string
+          name?: string
+          price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_menu_category_id_fkey"
+            columns: ["menu_category_id"]
+            isOneToOne: false
+            referencedRelation: "menu_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
