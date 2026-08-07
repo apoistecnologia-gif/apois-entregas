@@ -93,6 +93,10 @@ function Inicio() {
         if (addrData) {
           const mers = await fetchMerchants((addrData as any).city, (addrData as any).state);
           setMerchants(mers);
+          if (mers.length > 0) {
+            const hours = await fetchMerchantsHoursBatch(mers.map(m => m.id));
+            setMerchantsHours(hours);
+          }
 
         } else {
           setMerchants([]);
@@ -283,20 +287,33 @@ function Inicio() {
                         <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
                       </div>
                       
-                       <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
-                         <span className="flex items-center gap-1">
-                           <Clock className="h-3.5 w-3.5 text-primary" /> 
-                           {(() => {
-                             const mHours = merchantsHours.filter(h => h.merchant_id === merchant.id);
-                             const status = calculateMerchantStatus(mHours);
-                             return status.message;
-                           })()}
-                         </span>
-                        <span className="h-1 w-1 rounded-full bg-zinc-700" />
-                        <span className="flex items-center gap-1">
-                          <Bike className="h-3.5 w-3.5 text-primary" /> 
-                          {merchant.delivery_fee > 0 ? `R$ ${merchant.delivery_fee.toFixed(2).replace('.', ',')}` : "Grátis"}
-                        </span>
+                       <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5 text-primary" /> 
+                            {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
+                              ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
+                              : "Prazo não informado"}
+                          </span>
+                          <span className="h-1 w-1 rounded-full bg-zinc-700" />
+                          <span className="flex items-center gap-1">
+                            <Bike className="h-3.5 w-3.5 text-primary" /> 
+                            {merchant.delivery_fee > 0 ? `R$ ${merchant.delivery_fee.toFixed(2).replace('.', ',')}` : "Grátis"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[10px] font-bold">
+                          {(() => {
+                            const mHours = merchantsHours.filter(h => h.merchant_id === merchant.id);
+                            const status = calculateMerchantStatus(mHours);
+                            const colorClass = status.status === "open" ? "text-green-500" : status.status === "closed" ? "text-red-500" : "text-zinc-500";
+                            return (
+                              <>
+                                <span className={`h-1.5 w-1.5 rounded-full ${status.status === "open" ? "bg-green-500" : status.status === "closed" ? "bg-red-500" : "bg-zinc-500"}`} />
+                                <span className={colorClass}>{status.message}</span>
+                              </>
+                            );
+                          })()}
+                        </div>
                       </div>
 
                       

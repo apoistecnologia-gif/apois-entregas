@@ -93,12 +93,12 @@ function EstabelecimentoPage() {
   const handleAddToCart = (product: any) => {
     const status = calculateMerchantStatus(merchantHours);
     
-    if (!status.isOpen && status.message !== "Horário não informado") {
+    if (status.status === "closed") {
       toast.error("Este estabelecimento está fechado no momento.");
       return;
     }
 
-    if (status.message === "Horário não informado") {
+    if (status.status === "unknown") {
       toast.error("Horário não disponível. Não é possível iniciar novo pedido.");
       return;
     }
@@ -243,12 +243,12 @@ function EstabelecimentoPage() {
                 <div className="flex items-center gap-1">
                   {(() => {
                     const status = calculateMerchantStatus(merchantHours);
+                    const colorClass = status.status === "open" ? "text-green-500" : status.status === "closed" ? "text-red-500" : "text-zinc-500";
                     return (
                       <>
-                        <span className={`h-2 w-2 rounded-full ${status.isOpen ? "bg-green-500" : "bg-red-500"}`} />
-                        <span className={`text-[12px] font-bold ${status.isOpen ? "text-green-500" : "text-red-500"}`}>
-                          {status.isOpen ? "Aberto" : "Fechado"}
-                          {status.closesAt ? ` até ${status.closesAt}` : ""}
+                        <span className={`h-2 w-2 rounded-full ${status.status === "open" ? "bg-green-500" : status.status === "closed" ? "bg-red-500" : "bg-zinc-500"}`} />
+                        <span className={`text-[12px] font-bold ${colorClass}`}>
+                          {status.message}
                         </span>
                       </>
                     );

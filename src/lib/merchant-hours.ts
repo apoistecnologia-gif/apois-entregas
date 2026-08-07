@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-// Local types to avoid TS errors until DB sync is complete in this env
+// Local type for merchant_hours since it's not in generated types yet
 export interface MerchantHours {
   id: string;
   merchant_id: string;
@@ -8,6 +8,8 @@ export interface MerchantHours {
   opens_at: string | null;
   closes_at: string | null;
   is_closed: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export const fetchMerchantHours = async (merchantId: string) => {
@@ -34,59 +36,86 @@ export const fetchMerchantsHoursBatch = async (merchantIds: string[]) => {
   return data as unknown as MerchantHours[];
 };
 
+export type MerchantStatusType = "open" | "closed" | "unknown";
+
 export interface MerchantStatus {
-  isOpen: boolean;
+  status: MerchantStatusType;
   message: string;
   closesAt?: string;
   hoursToday?: MerchantHours;
 }
 
-export const calculateMerchantStatus = (hours: MerchantHours[]): MerchantStatus => {
+/**
+ * Lógica de status de funcionamento com suporte a horários que atravessam a meia-noite.
+ */
+export const calculateMerchantStatus = (hours: MerchantHours[], customNow?: Date): MerchantStatus => {
   if (!hours || hours.length === 0) {
-    return { isOpen: false, message: "Horário não informado" };
+    return { status: "unknown", message: "Horário não informado" };
   }
 
-  const now = new Date();
-  const currentWeekday = now.getDay();
-  const todayHours = hours.find((h) => h.weekday === currentWeekday);
+  const now = customNow || new Date();
+  const currentWeekday = now.getDay(); // 0 (Dom) - 6 (Sab)
+  const yesterdayWeekday = (currentWeekday + 6) % 7;
+  
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
+  // Helper para converter "HH:mm:ss" ou "HH:mm" para minutos totais do dia
+  const timeToMinutes = (timeStr: string | null) => {
+    if (!timeStr) return null;
+    const parts = timeStr.split(":");
+    return parseInt(parts[0] || "0", 10) * 60 + parseInt(parts[1] || "0", 10);
+  };
+
+  // 1. Verificar expediente do DIA ANTERIOR (atravessa meia-noite)
+  const yesterdayHours = hours.find(h => h.weekday === yesterdayWeekday);
+  if (yesterdayHours && !yesterdayHours.is_closed && yesterdayHours.opens_at && yesterdayHours.closes_at) {
+    const openMins = timeToMinutes(yesterdayHours.opens_at)!;
+    const closeMins = timeToMinutes(yesterdayHours.closes_at)!;
+    
+    if (closeMins < openMins) {
+      // Atravessa meia-noite. Ex: 20:00 - 02:00
+      // Se agora é 01:00 (sábado), ainda está no expediente de ontem (sexta)
+      if (nowMinutes < closeMins) {
+        return {
+          status: "open",
+          message: `Aberto até ${yesterdayHours.closes_at.substring(0, 5)}`,
+          closesAt: yesterdayHours.closes_at.substring(0, 5),
+          hoursToday: yesterdayHours
+        };
+      }
+    }
+  }
+
+  // 2. Verificar expediente do DIA ATUAL
+  const todayHours = hours.find(h => h.weekday === currentWeekday);
+  
   if (!todayHours) {
-    return { isOpen: false, message: "Fechado" };
+    return { status: "unknown", message: "Horário não informado" };
   }
 
   if (todayHours.is_closed) {
-    return { isOpen: false, message: "Fechado", hoursToday: todayHours };
+    return { status: "closed", message: "Fechado", hoursToday: todayHours };
   }
 
-  if (!todayHours.opens_at || !todayHours.closes_at) {
-    return { isOpen: false, message: "Horário não informado", hoursToday: todayHours };
+  const openMins = timeToMinutes(todayHours.opens_at);
+  const closeMins = timeToMinutes(todayHours.closes_at);
+
+  if (openMins === null || closeMins === null || !todayHours.closes_at) {
+    return { status: "unknown", message: "Horário não informado", hoursToday: todayHours };
   }
 
-  const nowTime = now.getHours() * 60 + now.getMinutes();
-  const openParts = todayHours.opens_at.split(":");
-  const closeParts = todayHours.closes_at.split(":");
-  
-  const openH = parseInt(openParts[0] || "0", 10);
-  const openM = parseInt(openParts[1] || "0", 10);
-  const closeH = parseInt(closeParts[0] || "0", 10);
-  const closeM = parseInt(closeParts[1] || "0", 10);
-  
-  const openMinutes = openH * 60 + openM;
-  const closeMinutes = closeH * 60 + closeM;
-
-  // Handle overnight logic (e.g., closes after midnight)
-  const isOvernight = closeMinutes < openMinutes;
+  const isOvernight = closeMins < openMins;
   
   const isOpen = isOvernight 
-    ? nowTime >= openMinutes || nowTime < closeMinutes
-    : nowTime >= openMinutes && nowTime < closeMinutes;
+    ? (nowMinutes >= openMins)
+    : (nowMinutes >= openMins && nowMinutes < closeMins);
 
   if (!isOpen) {
-    return { isOpen: false, message: "Fechado", hoursToday: todayHours };
+    return { status: "closed", message: "Fechado", hoursToday: todayHours };
   }
 
   return { 
-    isOpen: true, 
+    status: "open", 
     message: `Aberto até ${todayHours.closes_at.substring(0, 5)}`,
     closesAt: todayHours.closes_at.substring(0, 5),
     hoursToday: todayHours 
