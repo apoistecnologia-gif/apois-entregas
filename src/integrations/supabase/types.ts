@@ -88,7 +88,6 @@ export type Database = {
         }
         Relationships: []
       }
-      }
       merchants: {
         Row: {
           address_line: string | null
@@ -267,7 +266,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
-      }
       }
       user_roles: {
         Row: {
