@@ -37,6 +37,7 @@ function Register() {
     acceptTerms: false,
   });
 
+  const [submitted, setSubmitted] = useState(false);
   const [touched, setTouched] = useState({
     fullName: false,
     phone: false,
