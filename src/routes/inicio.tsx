@@ -1,5 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { MOCK_MERCHANTS } from "@/lib/mock-data";
 import {
   MapPin,
