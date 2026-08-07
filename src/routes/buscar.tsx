@@ -272,12 +272,24 @@ function Buscar() {
          )}
 
         {/* Área de Resultados */}
-        <section className="min-h-[40vh] pt-2">
-          {isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="mb-3 h-24 w-full animate-pulse rounded-3xl bg-zinc-900" />
-            ))
-          ) : filteredMerchants.length > 0 ? (
+       <section className="min-h-[40vh] pt-2">
+         {isLoading ? (
+           Array.from({ length: 4 }).map((_, i) => (
+             <div key={i} className="mb-3 h-24 w-full animate-pulse rounded-3xl bg-zinc-900" />
+           ))
+         ) : error ? (
+           <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-red-900/50 bg-red-950/10 px-6 py-16 text-center">
+             <div className="relative grid h-20 w-20 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800/50">
+               <X className="h-9 w-9 text-red-500" />
+             </div>
+             <div className="space-y-1">
+               <h3 className="text-lg font-bold text-zinc-200">Erro ao carregar</h3>
+               <p className="mx-auto max-w-[240px] text-[13px] leading-relaxed text-zinc-500">
+                 {error}
+               </p>
+             </div>
+           </div>
+         ) : filteredMerchants.length > 0 ? (
             <div className="flex flex-col gap-3">
               {filteredMerchants.map((merchant) => (
                 <button 
