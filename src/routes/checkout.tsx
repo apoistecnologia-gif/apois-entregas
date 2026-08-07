@@ -58,8 +58,10 @@ function CheckoutPage() {
     }
 
     const paymentMethod = sessionStorage.getItem('apois_payment_method') || 'pix';
+    const orderId = `APOIS-${Math.floor(100000 + Math.random() * 900000)}`;
 
     const newOrder = {
+
       id: orderId,
       createdAt: new Date().toISOString(),
       merchant,
