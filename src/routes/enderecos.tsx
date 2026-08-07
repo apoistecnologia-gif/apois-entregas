@@ -115,7 +115,7 @@ function EnderecosLayout() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-black text-white overflow-x-hidden w-full">
+    <div className="flex min-h-full flex-col bg-black text-white overflow-x-hidden w-full">
       <header className="flex items-center p-4 sticky top-0 z-50 bg-black/80 backdrop-blur-lg border-b border-white/10">
         <button 
           onClick={() => navigate({ to: "/inicio" })}
