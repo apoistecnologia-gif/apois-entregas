@@ -138,7 +138,7 @@ function Buscar() {
 
 
   return (
-    <div className="flex min-h-full w-full flex-col overflow-x-hidden bg-black text-white selection:bg-primary selection:text-black">
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-black text-white selection:bg-primary selection:text-black relative">
       {/* Header compactado com Logo e Notificações */}
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 pb-2 pt-6">
         <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-8 w-auto object-contain object-left" />
@@ -152,7 +152,7 @@ function Buscar() {
           </button>
       </header>
 
-      <main className="flex-1 space-y-4 px-4 pb-28 pt-2">
+      <main className="flex-1 overflow-y-auto space-y-4 px-4 pb-20 pt-2 scrollbar-none">
         {/* Endereço - Menor que na home */}
         <button
           onClick={() => navigate({ to: "/enderecos" })}

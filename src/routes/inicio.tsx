@@ -99,7 +99,7 @@ function Inicio() {
 
 
   return (
-    <div className="flex min-h-full w-full flex-col overflow-x-hidden bg-black text-white">
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-black text-white relative">
       {/* Header */}
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-zinc-900/80 px-4 pb-3 pt-6">
         <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-10 w-auto object-contain object-left" />
@@ -113,7 +113,7 @@ function Inicio() {
         </button>
       </header>
 
-      <main className="flex-1 space-y-4 px-4 pb-28 pt-4">
+      <main className="flex-1 overflow-y-auto space-y-4 px-4 pb-20 pt-4 scrollbar-none">
         {/* Entregar em */}
         <button
           onClick={() => navigate({ to: "/enderecos" })}
