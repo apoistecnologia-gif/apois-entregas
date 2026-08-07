@@ -81,23 +81,6 @@ function Index() {
         </div>
       </div>
 
-      {/* Service Grid Cards */}
-      <div className="px-6 grid grid-cols-4 gap-2 mb-4 shrink-0 relative z-20">
-        {[
-          { icon: UtensilsCrossed, label: "Comida" },
-          { icon: ShoppingBasket, label: "Mercado" },
-          { icon: Pill, label: "Farmácia" },
-          { icon: ShoppingBag, label: "Lojas" },
-        ].map((item, idx) => (
-          <div key={idx} className="group flex flex-col items-center py-2.5 px-1 rounded-2xl border border-white/5 bg-zinc-900/40 backdrop-blur-xl text-center transition-all active:scale-90 hover:border-[#FFD700]/30 shadow-lg">
-            <div className="w-8 h-8 flex items-center justify-center mb-1 rounded-full bg-white/5 group-hover:bg-[#FFD700]/10 transition-colors">
-              <item.icon className="w-4 h-4 text-[#FFD700]" strokeWidth={2.5} />
-            </div>
-            <span className="text-[9px] font-bold text-zinc-100 block">{item.label}</span>
-          </div>
-        ))}
-      </div>
-
       {/* Main Actions */}
       <div className="px-7 space-y-2.5 pb-6 w-full shrink-0 relative z-20">
         <Button 
