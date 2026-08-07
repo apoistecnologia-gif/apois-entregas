@@ -118,7 +118,7 @@ function SacolaPage() {
   };
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-black text-white selection:bg-primary selection:text-black">
+    <div className="flex min-h-screen w-full flex-col overflow-x-hidden bg-black text-white selection:bg-primary selection:text-black">
       {/* Header */}
       <header className="sticky top-0 z-50 flex items-center gap-4 bg-black/80 p-4 backdrop-blur-lg">
         <button 
