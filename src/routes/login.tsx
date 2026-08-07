@@ -38,25 +38,32 @@ function Login() {
     setIsLoading(true);
     try {
       console.log("[LOGIN] Attempting signInWithPassword...");
+      // Forçamos o uso do cliente importado para garantir que as configurações de auditoria sejam aplicadas
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        console.error("[LOGIN] Error:", error);
+        console.error("[LOGIN] Supabase Auth Error:", error);
+        
+        // Verificamos o status 400 que geralmente indica credenciais inválidas ou e-mail não confirmado
         if (error.message.includes("Email not confirmed") || error.code === "email_not_confirmed") {
           toast.error("Seu e-mail ainda não foi confirmado. Acesse sua caixa de entrada e clique no link de confirmação.");
-        } else if (error.message.includes("Invalid login credentials") || error.status === 400) {
+        } else if (
+          error.message.includes("Invalid login credentials") || 
+          error.status === 400 || 
+          error.message.includes("invalid_credentials")
+        ) {
           toast.error("E-mail ou senha incorretos.");
         } else {
-          toast.error(`Não foi possível entrar agora: ${error.message}`);
+          toast.error(`Não foi possível entrar: ${error.message}`);
         }
         setIsLoading(false);
         return;
       }
 
-      console.log("[LOGIN] Success, session:", !!data.session);
+      console.log("[LOGIN] Success, session data:", data);
       if (data.session) {
         toast.success("Login realizado com sucesso!");
         const searchParams = new URLSearchParams(window.location.search);
@@ -67,10 +74,13 @@ function Login() {
         } else {
           navigate({ to: "/inicio" });
         }
+      } else {
+        console.warn("[LOGIN] No session returned after success");
+        toast.error("Erro interno: sessão não iniciada.");
       }
-    } catch (err) {
-      console.error("[LOGIN] Unexpected error:", err);
-      toast.error("Não foi possível entrar agora. Verifique sua conexão e tente novamente.");
+    } catch (err: any) {
+      console.error("[LOGIN] Unexpected Exception:", err);
+      toast.error(`Erro inesperado: ${err.message || "Verifique sua conexão."}`);
     } finally {
       setIsLoading(false);
     }
