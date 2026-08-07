@@ -289,7 +289,9 @@ function SacolaPage() {
             onClick={handleFinishOrder}
             className="flex w-full items-center justify-between rounded-xl bg-primary px-6 py-4 text-black shadow-[0_8px_30px_rgba(255,215,0,0.3)] transition-transform active:scale-95"
           >
-            <span className="text-lg font-black uppercase tracking-tight">Fazer pedido</span>
+            <span className="text-lg font-black uppercase tracking-tight">
+              {items.length === 0 ? "Escolher produtos" : "Fazer pedido"}
+            </span>
             <div className="flex items-center gap-2">
               <span className="text-lg font-black">R$ {total.toFixed(2).replace('.', ',')}</span>
               <ChevronRight className="h-5 w-5" />
