@@ -290,12 +290,12 @@ function NovoEndereco() {
         </form>
       </main>
 
-      <div className="sticky bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black to-transparent pt-10">
+      <div className="sticky bottom-0 left-0 right-0 px-5 pb-5 pt-10 bg-gradient-to-t from-black via-black to-transparent">
         <Button 
           type="button"
           onClick={handleSubmit}
           disabled={isLoading}
-          className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl shadow-xl flex items-center justify-center gap-2"
+          className="w-full bg-gradient-to-b from-primary to-amber-500 text-black hover:opacity-90 font-extrabold h-14 text-[17px] rounded-2xl shadow-[0_10px_30px_-10px_hsl(var(--primary))] flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
         >
           {isLoading ? (
             <Loader2 className="w-6 h-6 animate-spin" />
