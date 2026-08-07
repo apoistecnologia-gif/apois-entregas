@@ -45,7 +45,7 @@ function SacolaPage() {
       name: "Brasa Burger",
       description: "Pão brioche, 180g de blend, queijo cheddar, alface, tomate e molho da casa.",
       price: 25.90,
-      image: "https://images.unsplash.com/photo-1550317138-10000687ad32?auto=format&fit=crop&q=80&w=300",
+      image: "/favicon.png", // Usando placeholder local
       quantity: 1,
     },
     {
@@ -53,7 +53,7 @@ function SacolaPage() {
       name: "Batata Rústica",
       description: "Porção de batata rústica temperada.",
       price: 9.90,
-      image: "https://images.unsplash.com/photo-1513185158878-8d8c196b8965?auto=format&fit=crop&q=80&w=300",
+      image: "/favicon.png",
       quantity: 1,
     },
     {
@@ -61,7 +61,7 @@ function SacolaPage() {
       name: "Coca-Cola Lata 350ml",
       description: "Lata gelada.",
       price: 6.00,
-      image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=80&w=300",
+      image: "/favicon.png",
       quantity: 1,
     }
   ]);
@@ -309,7 +309,7 @@ function SacolaPage() {
       </main>
 
       {/* Footer CTA */}
-      <footer className="fixed bottom-0 left-0 right-0 z-[60] bg-black/90 p-4 pb-8 backdrop-blur-xl border-t border-zinc-900">
+      <footer className="sticky bottom-0 z-[60] bg-black/90 p-4 pb-8 backdrop-blur-xl border-t border-zinc-900">
         <div className="mx-auto max-w-[500px]">
           <button 
             onClick={handleFinishOrder}
