@@ -93,10 +93,15 @@ function Buscar() {
         if (addrData) {
           const mers = await fetchMerchants((addrData as any).city, (addrData as any).state);
           setMerchants(mers);
-
+          if (mers.length > 0) {
+            const hours = await fetchMerchantsHoursBatch(mers.map(m => m.id));
+            setMerchantsHours(hours);
+          }
         } else {
           setMerchants([]);
+          setMerchantsHours([]);
         }
+
       }
     } catch (err: any) {
       console.error("Error fetching data:", err);
