@@ -105,8 +105,8 @@ function Inicio() {
   const navItems = [
     { name: "Início", icon: Home, active: true },
     { name: "Pedidos", icon: Compass, active: false, to: "/buscar" },
-    { name: "Favoritos", icon: Heart, active: false },
-    { name: "Perfil", icon: User, active: false },
+    { name: "Favoritos", icon: Heart, active: false, to: "/inicio" },
+    { name: "Perfil", icon: User, active: false, to: "/inicio" },
   ];
 
   return (
