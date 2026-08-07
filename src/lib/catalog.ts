@@ -75,3 +75,4 @@ export const fetchMerchantCategoryById = async (id: string) => {
   if (error) throw error;
   return data;
 };
+

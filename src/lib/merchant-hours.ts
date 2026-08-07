@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
+// Local types to avoid TS errors until DB sync is complete in this env
 export interface MerchantHours {
   id: string;
   merchant_id: string;
@@ -11,24 +12,26 @@ export interface MerchantHours {
 
 export const fetchMerchantHours = async (merchantId: string) => {
   const { data, error } = await supabase
-    .from("merchant_hours")
+    .from("merchant_hours" as any)
     .select("*")
     .eq("merchant_id", merchantId)
     .order("weekday", { ascending: true });
 
   if (error) throw error;
-  return data as MerchantHours[];
+  return data as unknown as MerchantHours[];
 };
 
 export const fetchMerchantsHoursBatch = async (merchantIds: string[]) => {
+  if (merchantIds.length === 0) return [];
+  
   const { data, error } = await supabase
-    .from("merchant_hours")
+    .from("merchant_hours" as any)
     .select("*")
     .in("merchant_id", merchantIds)
     .order("weekday", { ascending: true });
 
   if (error) throw error;
-  return data as MerchantHours[];
+  return data as unknown as MerchantHours[];
 };
 
 export interface MerchantStatus {
@@ -60,8 +63,13 @@ export const calculateMerchantStatus = (hours: MerchantHours[]): MerchantStatus 
   }
 
   const nowTime = now.getHours() * 60 + now.getMinutes();
-  const [openH, openM] = todayHours.opens_at.split(":").map(Number);
-  const [closeH, closeM] = todayHours.closes_at.split(":").map(Number);
+  const openParts = todayHours.opens_at.split(":");
+  const closeParts = todayHours.closes_at.split(":");
+  
+  const openH = parseInt(openParts[0] || "0", 10);
+  const openM = parseInt(openParts[1] || "0", 10);
+  const closeH = parseInt(closeParts[0] || "0", 10);
+  const closeM = parseInt(closeParts[1] || "0", 10);
   
   const openMinutes = openH * 60 + openM;
   const closeMinutes = closeH * 60 + closeM;
