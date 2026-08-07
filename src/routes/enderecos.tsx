@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   ChevronLeft, 
+  ChevronRight,
+  Star,
+
   MapPin, 
   Plus, 
   Trash2, 
@@ -116,28 +119,33 @@ function EnderecosLayout() {
 
   return (
     <div className="flex min-h-full flex-col bg-black text-white overflow-x-hidden w-full">
-      <header className="flex items-center p-4 sticky top-0 z-50 bg-black/80 backdrop-blur-lg border-b border-white/10">
-        <button 
+      <header className="relative flex items-center justify-center px-4 py-4 sticky top-0 z-50 bg-black/85 backdrop-blur-lg">
+        <button
           onClick={() => navigate({ to: "/inicio" })}
-          className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors"
+          className="absolute left-3 p-2 text-primary hover:bg-white/10 rounded-full transition-colors"
+          aria-label="Voltar"
         >
-          <ChevronLeft className="w-6 h-6" />
+          <ChevronLeft className="w-7 h-7" strokeWidth={2.5} />
         </button>
-        <h1 className="text-lg font-bold ml-2">Meus Endereços</h1>
+        <h1 className="text-xl font-extrabold tracking-tight">Meus Endereços</h1>
       </header>
 
-      <main className="flex-1 px-6 py-6 pb-24">
+      <main className="flex-1 px-5 pt-3 pb-28">
+        <p className="text-zinc-400 text-[15px] mb-5">
+          Selecione um endereço para suas entregas
+        </p>
+
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : addresses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-            <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mb-2">
+          <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
+            <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center ring-1 ring-white/10">
               <MapPin className="w-10 h-10 text-zinc-700" />
             </div>
-            <h2 className="text-xl font-bold">Nenhum endereço salvo</h2>
-            <p className="text-zinc-500 text-sm px-10">
+            <h2 className="text-lg font-bold">Nenhum endereço salvo</h2>
+            <p className="text-zinc-500 text-sm px-8">
               Adicione um endereço para ver as opções de entrega na sua região.
             </p>
           </div>
@@ -146,63 +154,80 @@ function EnderecosLayout() {
             {addresses.map((addr) => {
               const Icon = getLabelIcon(addr.label);
               return (
-                <div 
+                <div
                   key={addr.id}
-                  className={`p-4 rounded-3xl border transition-all ${
-                    addr.is_default 
-                      ? "bg-primary/5 border-primary/30" 
-                      : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
+                  onClick={() => !addr.is_default && handleSetDefault(addr.id)}
+                  className={`relative rounded-3xl border p-4 pr-12 transition-all cursor-pointer ${
+                    addr.is_default
+                      ? "bg-zinc-950 border-primary/70 shadow-[0_0_20px_-8px_hsl(var(--primary)/0.5)]"
+                      : "bg-zinc-950 border-zinc-800 hover:border-zinc-700"
                   }`}
                 >
-                  <div 
-                    className="flex items-start justify-between cursor-pointer"
-                    onClick={() => !addr.is_default && handleSetDefault(addr.id)}
+                  {/* Selection indicator */}
+                  <span
+                    className={`absolute top-4 right-4 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                      addr.is_default ? "border-primary" : "border-zinc-600"
+                    }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className={`p-3 rounded-2xl ${addr.is_default ? "bg-primary text-black" : "bg-zinc-800 text-zinc-400"}`}>
-                        <Icon className="w-5 h-5" />
+                    {addr.is_default && (
+                      <span className="w-3 h-3 rounded-full bg-primary block" />
+                    )}
+                  </span>
+
+                  <div className="flex items-start gap-3">
+                    <div className="shrink-0 w-12 h-12 rounded-full bg-primary/10 ring-1 ring-primary/40 flex items-center justify-center">
+                      <Icon className="w-6 h-6 text-primary" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-extrabold text-white text-lg leading-none">
+                          {addr.label}
+                        </span>
+                        {addr.is_default && (
+                          <span className="inline-flex items-center gap-1 bg-primary text-black text-[11px] px-2.5 py-1 rounded-full font-bold">
+                            <Star className="w-3 h-3 fill-black" />
+                            Padrão
+                          </span>
+                        )}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-white">{addr.label}</span>
-                          {addr.is_default && (
-                            <span className="bg-primary/20 text-primary text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                              Padrão
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-zinc-400 text-sm mt-1 leading-snug">
-                          {addr.street}, {addr.number}
-                          {addr.complement && ` - ${addr.complement}`}
-                        </p>
-                        <p className="text-zinc-500 text-xs mt-0.5">
-                          {addr.neighborhood}, {addr.city} - {addr.state}
-                        </p>
-                      </div>
+                      <p className="text-white font-semibold text-[15px] mt-2 leading-snug truncate">
+                        {addr.street}, {addr.number}
+                        {addr.complement && ` - ${addr.complement}`}
+                      </p>
+                      <p className="text-zinc-400 text-sm mt-0.5 truncate">
+                        {addr.neighborhood}
+                      </p>
+                      <p className="text-zinc-500 text-[13px] mt-0.5 truncate">
+                        {addr.city} - {addr.state}
+                        {addr.zip_code ? ` • CEP ${addr.zip_code}` : ""}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-white/5">
-                    {!addr.is_default && (
-                      <button 
-                        onClick={() => handleSetDefault(addr.id)}
-                        className="text-xs font-bold text-primary px-3 py-2 hover:bg-primary/10 rounded-xl transition-colors"
-                      >
-                        Tornar padrão
-                      </button>
-                    )}
-                    <button 
-                      onClick={() => navigate({ to: `/enderecos/editar/${addr.id}` })}
-                      className="p-2 text-zinc-500 hover:text-white transition-colors"
+                  {/* Actions */}
+                  <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-end gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate({ to: `/enderecos/editar/${addr.id}` });
+                      }}
+                      className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-primary px-3 py-2 rounded-xl transition-colors"
                     >
                       <Edit2 className="w-4 h-4" />
+                      Editar
                     </button>
-                    <button 
-                      onClick={() => handleDelete(addr.id, addr.is_default)}
-                      className="p-2 text-zinc-500 hover:text-red-500 transition-colors"
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(addr.id, addr.is_default);
+                      }}
+                      className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-red-500 px-3 py-2 rounded-xl transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
+                      Excluir
                     </button>
+                    <ChevronRight className="w-5 h-5 text-primary ml-1" />
                   </div>
                 </div>
               );
@@ -211,11 +236,13 @@ function EnderecosLayout() {
         )}
 
         <div className="mt-8">
-          <Button 
+          <Button
             onClick={() => navigate({ to: "/enderecos/novo" })}
-            className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl shadow-xl flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full bg-primary text-black hover:bg-primary/90 font-extrabold h-14 text-lg rounded-2xl shadow-[0_8px_30px_-10px_hsl(var(--primary)/0.8)] flex items-center justify-center gap-3 cursor-pointer"
           >
-            <Plus className="w-5 h-5" />
+            <span className="w-7 h-7 rounded-full bg-black/90 text-primary flex items-center justify-center">
+              <Plus className="w-4 h-4" strokeWidth={3} />
+            </span>
             Adicionar endereço
           </Button>
         </div>
@@ -225,3 +252,4 @@ function EnderecosLayout() {
     </div>
   );
 }
+
