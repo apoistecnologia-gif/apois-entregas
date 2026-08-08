@@ -1,6 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, MapPin, ChevronRight, CircleDollarSign, CreditCard, ShieldCheck } from "lucide-react";
-import { useCart } from "@/contexts/CartContext";
+import { useCart, CartMerchant } from "@/contexts/CartContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { LocalOrder, LocalOrderItem, getLocalOrders, saveLocalOrders, LocalAddressSnapshot } from "@/lib/local-orders";
