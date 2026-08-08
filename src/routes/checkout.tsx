@@ -194,7 +194,7 @@ function CheckoutPage() {
         address: { ...address },
         paymentMethod: data.paymentMethod,
         paymentStatus: data.paymentStatus,
-        observation: data.observation ?? undefined,
+        ...(data.observation ? { observation: data.observation } : {}),
         status: "confirmado",
         backendStatus: data.status,
       };
