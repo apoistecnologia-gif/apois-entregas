@@ -93,28 +93,56 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [items, merchant]);
 
-  const addItem = (newItem: Omit<CartItem, 'quantity'>, merchantData: CartMerchant) => {
-     if (!merchant || merchant.id !== merchantData.id) {
-       setMerchant(merchantData);
-     }
+  const addItem = (
+    newItem: Omit<CartItem, 'quantity' | 'lineId' | 'price' | 'basePrice' | 'selectedOptions'> & { 
+      price: number;
+      basePrice?: number;
+      selectedOptions?: CartSelectedOption[];
+    }, 
+    merchantData: CartMerchant
+  ) => {
+    if (!merchant || merchant.id !== merchantData.id) {
+      setMerchant(merchantData);
+    }
     
+    const basePrice = newItem.basePrice !== undefined ? newItem.basePrice : newItem.price;
+    const selectedOptions = newItem.selectedOptions || [];
+    
+    // Calcula o preço unitário final
+    const priceDelta = selectedOptions.reduce((acc, opt) => acc + opt.priceDelta, 0);
+    const finalUnitPrice = basePrice + priceDelta;
+
+    // Gera o lineId determinístico
+    let lineId = newItem.id;
+    if (selectedOptions.length > 0) {
+      const sortedOptionIds = [...selectedOptions].map(o => o.optionId).sort().join(',');
+      lineId = `${newItem.id}::${sortedOptionIds}`;
+    }
+
     setItems(prev => {
-      const existingItem = prev.find(item => item.id === newItem.id);
+      const existingItem = prev.find(item => item.lineId === lineId);
       if (existingItem) {
         return prev.map(item => 
-          item.id === newItem.id 
+          item.lineId === lineId 
             ? { ...item, quantity: item.quantity + 1 } 
             : item
         );
       }
-      return [...prev, { ...newItem, quantity: 1 }];
+      return [...prev, { 
+        ...newItem, 
+        lineId,
+        basePrice,
+        price: finalUnitPrice,
+        selectedOptions,
+        quantity: 1 
+      } as CartItem];
     });
   };
 
-  const updateQuantity = (id: string, delta: number) => {
+  const updateQuantity = (lineId: string, delta: number) => {
     setItems(prev => {
       const newItems = prev.map(item => {
-        if (item.id === id) {
+        if (item.lineId === lineId) {
           const newQty = item.quantity + delta;
           return newQty > 0 ? { ...item, quantity: newQty } : item;
         }
@@ -129,9 +157,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const removeItem = (id: string) => {
+  const removeItem = (lineId: string) => {
     setItems(prev => {
-      const newItems = prev.filter(item => item.id !== id);
+      const newItems = prev.filter(item => item.lineId !== lineId);
       if (newItems.length === 0) {
         setMerchant(null);
       }
