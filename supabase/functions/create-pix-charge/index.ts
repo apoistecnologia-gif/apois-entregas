@@ -8,8 +8,8 @@ const corsHeaders = {
 const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" };
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-// TEMPORÁRIO: homologação oficial do PIX com credenciais de teste do Mercado Pago.
-// Antes de trocar para credenciais de produção, definir como false/remover este bloco.
+// TEMPORÁRIO: homologação com credenciais de teste do Mercado Pago.
+// O cenário APRO é de teste, mas o valor deve continuar sendo o valor real do pedido.
 const MERCADO_PAGO_PIX_TEST_HOMOLOGATION = true;
 
 type JsonRecord = Record<string, unknown>;
@@ -106,16 +106,10 @@ Deno.serve(async (request: Request) => {
   if (!Number.isFinite(amount) || amount <= 0) {
     return response(409, { error: "Valor do pedido inválido.", code: "INVALID_AMOUNT" });
   }
-  if (MERCADO_PAGO_PIX_TEST_HOMOLOGATION && Math.round(amount * 100) !== 5000) {
-    return response(409, {
-      error: "A homologação PIX do Mercado Pago exige pedido de teste exatamente em R$ 50,00.",
-      code: "TEST_AMOUNT_REQUIRED",
-    });
-  }
 
   const amountText = amount.toFixed(2);
   const idempotencyKey = MERCADO_PAGO_PIX_TEST_HOMOLOGATION
-    ? `mercadopago:order:${order.id}:pix:test:v2`
+    ? `mercadopago:order:${order.id}:pix:test:v3`
     : `mercadopago:order:${order.id}:pix:v1`;
   const externalReference = `apois-order-${order.id}`;
 
@@ -147,7 +141,7 @@ Deno.serve(async (request: Request) => {
     ? {
         type: "online",
         external_reference: externalReference,
-        total_amount: "50.00",
+        total_amount: amountText,
         payer: {
           email: "test_user_br@testuser.com",
           first_name: "APRO",
@@ -155,7 +149,7 @@ Deno.serve(async (request: Request) => {
         transactions: {
           payments: [
             {
-              amount: "50.00",
+              amount: amountText,
               payment_method: { id: "pix", type: "bank_transfer" },
             },
           ],
