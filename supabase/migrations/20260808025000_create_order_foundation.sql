@@ -47,12 +47,12 @@ CREATE TABLE public.order_status_history (
 
 -- 4. Create updated_at trigger for orders
 CREATE OR REPLACE FUNCTION public.handle_orders_updated_at()
-RETURNS TRIGGER AS 18399
+RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = now();
     RETURN NEW;
 END;
-18399 LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE TRIGGER on_orders_updated
     BEFORE UPDATE ON public.orders
