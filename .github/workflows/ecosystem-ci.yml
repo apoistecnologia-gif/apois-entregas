@@ -1,0 +1,40 @@
+name: Ecosystem CI
+
+on:
+  push:
+    branches:
+      - agent/apois-entregas-completo
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install root dependencies
+        run: bun install --frozen-lockfile
+      - name: Customer typecheck
+        run: bunx tsc --noEmit
+      - name: Customer lint
+        run: bun run lint
+      - name: Customer build
+        run: bun run build
+      - name: Admin typecheck
+        run: bunx tsc -p apps/admin/tsconfig.json --noEmit
+      - name: Admin build
+        working-directory: apps/admin
+        run: bunx vite build
+      - name: Merchant typecheck
+        run: bunx tsc -p apps/merchant/tsconfig.json --noEmit
+      - name: Merchant build
+        working-directory: apps/merchant
+        run: bunx vite build
+      - name: Courier typecheck
+        run: bunx tsc -p apps/courier/tsconfig.json --noEmit
+      - name: Courier build
+        working-directory: apps/courier
+        run: bunx vite build
