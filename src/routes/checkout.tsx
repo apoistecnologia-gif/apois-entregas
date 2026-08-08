@@ -120,6 +120,11 @@ function CheckoutPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handlePaymentConfirmed = () => {
+    clearCart();
+    sessionStorage.removeItem("apois_checkout_request_key");
+  };
+
   const handleConfirm = async () => {
     if (isProcessing) return;
 
@@ -204,9 +209,9 @@ function CheckoutPage() {
         total: Number(payment.amount) || total,
       });
 
-      clearCart();
-      sessionStorage.removeItem("apois_checkout_request_key");
-      toast.success("Pedido criado com sucesso!");
+      // A sacola permanece intacta enquanto o PIX estiver pendente.
+      // Ela só é limpa após o backend confirmar payment_status=paid.
+      toast.success("PIX gerado. Aguardando confirmação do pagamento.");
     } catch (error: any) {
       const message =
         typeof error?.message === "string" && error.message.trim()
@@ -228,6 +233,7 @@ function CheckoutPage() {
         onCopy={handleCopyPix}
         copied={copied}
         total={pixData.total}
+        onPaymentConfirmed={handlePaymentConfirmed}
       />
     );
   }
@@ -374,16 +380,48 @@ function PixPaymentScreen({
   onCopy,
   copied,
   total,
+  onPaymentConfirmed,
 }: {
   pixData: { qrCodeImageUrl: string; qrCodeText: string; orderId: string };
   onCopy: () => void;
   copied: boolean;
   total: number;
+  onPaymentConfirmed: () => void;
 }) {
   const navigate = useNavigate();
   const [paymentStatus, setPaymentStatus] = useState<string>("pending");
 
   useEffect(() => {
+    let disposed = false;
+    let completed = false;
+    let redirectTimer: number | undefined;
+
+    const finishPayment = () => {
+      if (disposed || completed) return;
+      completed = true;
+      setPaymentStatus("paid");
+      onPaymentConfirmed();
+      toast.success("Pagamento confirmado!");
+      redirectTimer = window.setTimeout(() => {
+        navigate({
+          to: "/pedido/confirmado",
+          search: { orderId: pixData.orderId },
+        });
+      }, 800);
+    };
+
+    const checkCurrentStatus = async () => {
+      const { data, error } = await supabase
+        .from("orders" as any)
+        .select("payment_status")
+        .eq("id", pixData.orderId)
+        .maybeSingle();
+
+      if (!error && data?.payment_status === "paid") {
+        finishPayment();
+      }
+    };
+
     const channel = supabase
       .channel(`checkout_payment_${pixData.orderId}`)
       .on(
@@ -396,23 +434,22 @@ function PixPaymentScreen({
         },
         (payload) => {
           if (payload.new["payment_status"] === "paid") {
-            setPaymentStatus("paid");
-            toast.success("Pagamento confirmado!");
-            setTimeout(() => {
-              navigate({
-                to: "/pedido/confirmado",
-                search: { orderId: pixData.orderId },
-              });
-            }, 1500);
+            finishPayment();
           }
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          void checkCurrentStatus();
+        }
+      });
 
     return () => {
+      disposed = true;
+      if (redirectTimer !== undefined) window.clearTimeout(redirectTimer);
       void supabase.removeChannel(channel);
     };
-  }, [pixData.orderId]);
+  }, [pixData.orderId, navigate, onPaymentConfirmed]);
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-black p-6 text-white">
