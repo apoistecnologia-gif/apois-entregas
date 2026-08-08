@@ -1,79 +1,117 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { 
-  ArrowLeft, 
-  ShoppingBag, 
-  User, 
-  ChevronRight, 
-  MapPin, 
-  CreditCard, 
-  ClipboardList, 
-  Heart, 
-  Bell, 
-  HelpCircle, 
-  FileText, 
-  Star, 
-  LogOut 
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import {
+  ArrowLeft,
+  Bell,
+  ChevronRight,
+  ClipboardList,
+  CreditCard,
+  FileText,
+  Heart,
+  HelpCircle,
+  LogOut,
+  MapPin,
+  ShoppingBag,
+  Star,
+  User,
 } from "lucide-react";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useCart } from "@/contexts/CartContext";
-import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppBottomNav } from "@/components/AppBottomNav";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/perfil/")({
+  beforeLoad: async ({ location }) => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      throw redirect({ to: "/login", search: { redirect: location.href } });
+    }
+    return { session };
+  },
   component: PerfilIndexPage,
 });
+
+type ProfileRow = {
+  full_name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+};
+
+type ProfileRoute =
+  | "/perfil/dados-pessoais"
+  | "/enderecos"
+  | "/perfil/pagamentos"
+  | "/pedidos"
+  | "/favoritos"
+  | "/perfil/notificacoes"
+  | "/perfil/ajuda"
+  | "/perfil/legal"
+  | "/apois-plus";
+
+type MenuItem = {
+  icon: typeof User;
+  label: string;
+  path: ProfileRoute;
+  highlight?: boolean;
+};
 
 function PerfilIndexPage() {
   const navigate = useNavigate();
   const { totalItems } = useCart();
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const getProfile = async () => {
+  const getProfile = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+      setUser(currentUser);
 
-      if (user) {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-
-        if (error) throw error;
-        setProfile(data);
+      if (!currentUser) {
+        setProfile(null);
+        return;
       }
-    } catch (error) {
-      console.error("Erro ao carregar perfil:", error);
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name,phone,avatar_url")
+        .eq("id", currentUser.id)
+        .single();
+
+      if (error) throw error;
+      setProfile(data as ProfileRow);
+    } catch (profileError) {
+      console.error(
+        "Erro ao carregar perfil:",
+        profileError instanceof Error ? profileError.message : "unknown",
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    getProfile();
-    
-    // Refresh profile when window gets focus (user returns to tab)
-    // or when the route becomes active again
-    window.addEventListener('focus', getProfile);
-    return () => {
-      window.removeEventListener('focus', getProfile);
-    };
-  }, []);
+    void getProfile();
+    const refresh = () => void getProfile();
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [getProfile]);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast.error("Erro ao sair da conta");
-    } else {
-      navigate({ to: "/login" });
+      return;
     }
+    void navigate({ to: "/login" });
   };
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     { icon: User, label: "Dados pessoais", path: "/perfil/dados-pessoais" },
     { icon: MapPin, label: "Meus endereços", path: "/enderecos" },
     { icon: CreditCard, label: "Formas de pagamento", path: "/perfil/pagamentos" },
@@ -85,78 +123,86 @@ function PerfilIndexPage() {
     { icon: Star, label: "APOIS+", path: "/apois-plus", highlight: true },
   ];
 
-  const handleItemClick = (item: typeof menuItems[0]) => {
-    navigate({ to: item.path as any });
-  };
-
   return (
-    <div className="flex h-screen w-full flex-col bg-black text-white overflow-hidden relative">
-      <header className="shrink-0 z-50 flex items-center justify-between p-4 bg-black/80 backdrop-blur-lg border-b border-zinc-900">
-        <button onClick={() => navigate({ to: "/inicio" })} className="p-2 rounded-full bg-zinc-900 shadow-lg">
-          <ArrowLeft className="w-5 h-5 text-zinc-300" />
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
+      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 p-4 backdrop-blur-lg">
+        <button
+          type="button"
+          onClick={() => void navigate({ to: "/inicio" })}
+          className="rounded-full bg-zinc-900 p-2 shadow-lg"
+          aria-label="Voltar ao início"
+        >
+          <ArrowLeft className="h-5 w-5 text-zinc-300" />
         </button>
         <h1 className="text-xl font-bold text-primary">Conta</h1>
-        <button onClick={() => navigate({ to: "/sacola" })} className="relative p-2 rounded-full bg-zinc-900 shadow-lg">
-          <ShoppingBag className="w-5 h-5 text-zinc-300" />
+        <button
+          type="button"
+          onClick={() => void navigate({ to: "/sacola" })}
+          className="relative rounded-full bg-zinc-900 p-2 shadow-lg"
+          aria-label="Abrir sacola"
+        >
+          <ShoppingBag className="h-5 w-5 text-zinc-300" />
           {totalItems > 0 && (
-            <span className="absolute -top-1 -right-1 bg-primary text-black text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-black">
+            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-black bg-primary text-[10px] font-bold text-black">
               {totalItems}
             </span>
           )}
         </button>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 pb-20 scrollbar-none">
-        {/* Profile Header */}
-        <div className="flex flex-col items-center mb-8 bg-zinc-900/40 p-6 rounded-3xl border border-zinc-900/50 backdrop-blur-sm">
-          <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mb-4 border-2 border-primary shadow-[0_0_15px_rgba(255,215,0,0.3)]">
-            <User className="w-10 h-10 text-primary" />
+      <main className="scrollbar-none flex-1 overflow-y-auto p-4 pb-20">
+        <div className="mb-8 flex flex-col items-center rounded-3xl border border-zinc-900/50 bg-zinc-900/40 p-6 backdrop-blur-sm">
+          <div className="mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-zinc-900 shadow-[0_0_15px_rgba(255,215,0,0.3)]">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="Foto do perfil" className="h-full w-full object-cover" />
+            ) : (
+              <User className="h-10 w-10 text-primary" />
+            )}
           </div>
-          <h2 className="text-xl font-bold mb-1">
+          <h2 className="mb-1 text-xl font-bold">
             {loading ? "Carregando..." : profile?.full_name || "Usuário"}
           </h2>
-          <p className="text-zinc-500 text-sm mb-1">{user?.email}</p>
-          {profile?.phone && (
-            <p className="text-zinc-500 text-xs">{profile.phone}</p>
-          )}
-          <span className="mt-3 px-3 py-1 bg-primary/10 border border-primary/20 text-primary text-[10px] uppercase font-black tracking-widest rounded-full">
-            Cliente Apois
+          <p className="mb-1 text-sm text-zinc-500">{user?.email ?? ""}</p>
+          {profile?.phone && <p className="text-xs text-zinc-500">{profile.phone}</p>}
+          <span className="mt-3 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
+            Cliente APOIS
           </span>
         </div>
 
-        {/* Menu Items */}
         <div className="space-y-2">
-          {menuItems.map((item, index) => (
+          {menuItems.map((item) => (
             <button
-              key={index}
-              onClick={() => handleItemClick(item)}
-              className={`flex w-full items-center justify-between p-4 rounded-2xl border transition-all active:scale-[0.98] ${
-                item.highlight 
-                  ? "bg-primary/5 border-primary/20 text-primary" 
-                  : "bg-zinc-900/40 border-zinc-900/50 text-zinc-300 hover:bg-zinc-900/60"
+              type="button"
+              key={item.path}
+              onClick={() => void navigate({ to: item.path })}
+              className={`flex w-full items-center justify-between rounded-2xl border p-4 transition-all active:scale-[0.98] ${
+                item.highlight
+                  ? "border-primary/20 bg-primary/5 text-primary"
+                  : "border-zinc-900/50 bg-zinc-900/40 text-zinc-300 hover:bg-zinc-900/60"
               }`}
             >
               <div className="flex items-center gap-4">
-                <div className={`p-2.5 rounded-xl ${item.highlight ? "bg-primary/10" : "bg-zinc-800"}`}>
-                  <item.icon className="w-5 h-5" />
+                <div className={`rounded-xl p-2.5 ${item.highlight ? "bg-primary/10" : "bg-zinc-800"}`}>
+                  <item.icon className="h-5 w-5" />
                 </div>
-                <span className="font-medium text-sm">{item.label}</span>
+                <span className="text-sm font-medium">{item.label}</span>
               </div>
-              <ChevronRight className={`w-4 h-4 ${item.highlight ? "text-primary/50" : "text-zinc-600"}`} />
+              <ChevronRight className={`h-4 w-4 ${item.highlight ? "text-primary/50" : "text-zinc-600"}`} />
             </button>
           ))}
 
           <button
-            onClick={handleLogout}
-            className="flex w-full items-center justify-between p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-400 mt-6 transition-all active:scale-[0.98] hover:bg-red-500/10"
+            type="button"
+            onClick={() => void handleLogout()}
+            className="mt-6 flex w-full items-center justify-between rounded-2xl border border-red-500/10 bg-red-500/5 p-4 text-red-400 transition-all active:scale-[0.98] hover:bg-red-500/10"
           >
             <div className="flex items-center gap-4">
-              <div className="p-2.5 rounded-xl bg-red-500/10">
-                <LogOut className="w-5 h-5" />
+              <div className="rounded-xl bg-red-500/10 p-2.5">
+                <LogOut className="h-5 w-5" />
               </div>
-              <span className="font-medium text-sm">Sair da conta</span>
+              <span className="text-sm font-medium">Sair da conta</span>
             </div>
-            <ChevronRight className="w-4 h-4 opacity-30" />
+            <ChevronRight className="h-4 w-4 opacity-30" />
           </button>
         </div>
       </main>
