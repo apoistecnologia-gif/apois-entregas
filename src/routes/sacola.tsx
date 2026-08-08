@@ -137,7 +137,7 @@ function SacolaPage() {
         <section className="space-y-4 rounded-2xl border border-zinc-900 bg-zinc-950/50 p-1">
           {items.map((item) => (
             <div 
-              key={item.id}
+              key={item.lineId}
               className="group relative flex gap-4 p-3 border-b border-zinc-900/50 last:border-0"
             >
               <div className="relative h-20 w-20 shrink-0">
@@ -168,6 +168,15 @@ function SacolaPage() {
                   <p className="line-clamp-2 text-[12px] leading-snug text-zinc-500">
                     {item.description}
                   </p>
+                  {item.selectedOptions && item.selectedOptions.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {item.selectedOptions.map((opt, idx) => (
+                        <span key={idx} className="text-[10px] text-zinc-400 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+                          + {opt.optionName}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <p className="text-[15px] font-black text-primary">
                   R$ {item.price.toFixed(2).replace('.', ',')}
@@ -176,21 +185,21 @@ function SacolaPage() {
 
               <div className="flex flex-col items-center justify-between py-1">
                 <button 
-                  onClick={() => removeItem(item.id)}
+                  onClick={() => removeItem(item.lineId)}
                   className="p-1 text-zinc-600 transition-colors hover:text-red-500"
                 >
                   <Trash2 className="h-5 w-5" />
                 </button>
                 <div className="flex items-center gap-2 rounded-lg bg-zinc-900 p-1 ring-1 ring-white/10">
                   <button 
-                    onClick={() => updateQuantity(item.id, -1)}
+                    onClick={() => updateQuantity(item.lineId, -1)}
                     className="grid h-6 w-6 place-items-center rounded-md bg-zinc-800 text-zinc-400 active:bg-zinc-700"
                   >
                     <Minus className="h-4 w-4" />
                   </button>
                   <span className="min-w-[20px] text-center text-[14px] font-bold">{item.quantity}</span>
                   <button 
-                    onClick={() => updateQuantity(item.id, 1)}
+                    onClick={() => updateQuantity(item.lineId, 1)}
                     className="grid h-6 w-6 place-items-center rounded-md bg-zinc-800 text-white active:bg-zinc-700"
                   >
                     <Plus className="h-4 w-4" />
