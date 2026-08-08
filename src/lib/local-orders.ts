@@ -22,7 +22,7 @@ export interface LocalAddressSnapshot {
   updated_at: string;
 }
 
-export interface LocalOrderItem extends Omit<CartItem, 'id'> {
+export interface LocalOrderItem extends Omit<CartItem, "id"> {
   id: string;
   lineId: string;
   basePrice: number;
@@ -31,6 +31,7 @@ export interface LocalOrderItem extends Omit<CartItem, 'id'> {
 
 export interface LocalOrder {
   id: string;
+  orderNumber?: number;
   createdAt: string;
   merchant: CartMerchant;
   items: LocalOrderItem[];
@@ -40,8 +41,10 @@ export interface LocalOrder {
   total: number;
   address: LocalAddressSnapshot;
   paymentMethod: string;
+  paymentStatus?: string;
   observation?: string;
   status: string;
+  backendStatus?: string;
   rating?: {
     merchant: number;
     delivery: number;
@@ -49,26 +52,22 @@ export interface LocalOrder {
   };
 }
 
-// Auxiliares de validação de tipo
-const isRecord = (value: unknown): value is Record<string, unknown> => 
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
 
-const isString = (value: unknown): value is string => typeof value === 'string';
+const isString = (value: unknown): value is string => typeof value === "string";
 
-const isFiniteNumber = (value: unknown): value is number => 
-  typeof value === 'number' && Number.isFinite(value);
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
 
-/**
- * Normaliza uma opção selecionada, garantindo que todos os campos obrigatórios existam.
- */
 const normalizeSelectedOption = (option: unknown): CartSelectedOption | null => {
   if (!isRecord(option)) return null;
 
-  const groupId = option['groupId'];
-  const groupName = option['groupName'];
-  const optionId = option['optionId'];
-  const optionName = option['optionName'];
-  const priceDelta = option['priceDelta'];
+  const groupId = option["groupId"];
+  const groupName = option["groupName"];
+  const optionId = option["optionId"];
+  const optionName = option["optionName"];
+  const priceDelta = option["priceDelta"];
 
   if (
     isString(groupId) && groupId.trim() !== "" &&
@@ -77,180 +76,133 @@ const normalizeSelectedOption = (option: unknown): CartSelectedOption | null => 
     isString(optionName) && optionName.trim() !== "" &&
     isFiniteNumber(priceDelta)
   ) {
-    return {
-      groupId,
-      groupName,
-      optionId,
-      optionName,
-      priceDelta
-    };
+    return { groupId, groupName, optionId, optionName, priceDelta };
   }
 
   return null;
 };
 
-/**
- * Normaliza um item de pedido recuperado do localStorage para garantir
- * compatibilidade com versões anteriores e snapshots íntegros.
- */
 export const normalizeLocalOrderItem = (item: unknown): LocalOrderItem | null => {
   if (!isRecord(item)) return null;
 
-  const rawId = item['id'];
-  const id = isString(rawId) ? rawId : (rawId !== undefined && rawId !== null ? String(rawId) : '');
+  const rawId = item["id"];
+  const id = isString(rawId) ? rawId : rawId !== undefined && rawId !== null ? String(rawId) : "";
   if (!id) return null;
 
-  const price = isFiniteNumber(item['price']) ? item['price'] : 0;
-  const basePrice = isFiniteNumber(item['basePrice']) ? item['basePrice'] : price;
-  const quantity = (isFiniteNumber(item['quantity']) && (item['quantity'] as number) > 0) ? item['quantity'] : 1;
+  const price = isFiniteNumber(item["price"]) ? item["price"] : 0;
+  const basePrice = isFiniteNumber(item["basePrice"]) ? item["basePrice"] : price;
+  const quantity = isFiniteNumber(item["quantity"]) && item["quantity"] > 0 ? item["quantity"] : 1;
 
-  const selectedOptions: CartSelectedOption[] = Array.isArray(item['selectedOptions'])
-    ? (item['selectedOptions'] as unknown[])
+  const selectedOptions: CartSelectedOption[] = Array.isArray(item["selectedOptions"])
+    ? (item["selectedOptions"] as unknown[])
         .map(normalizeSelectedOption)
-        .filter((opt): opt is CartSelectedOption => opt !== null)
+        .filter((option): option is CartSelectedOption => option !== null)
     : [];
 
-  const rawLineId = item['lineId'];
-  const rawName = item['name'];
-  const rawDesc = item['description'];
-  const rawImage = item['image'];
-  const rawMerchantId = item['merchantId'];
+  const rawLineId = item["lineId"];
+  const rawName = item["name"];
+  const rawDescription = item["description"];
+  const rawImage = item["image"];
+  const rawMerchantId = item["merchantId"];
 
   return {
     id,
     lineId: isString(rawLineId) ? rawLineId : id,
-    name: isString(rawName) ? rawName : 'Produto',
-    description: isString(rawDesc) ? rawDesc : '',
+    name: isString(rawName) ? rawName : "Produto",
+    description: isString(rawDescription) ? rawDescription : "",
     price,
     basePrice,
-    image: isString(rawImage) ? rawImage : '',
-    quantity: quantity as number,
-    merchantId: isString(rawMerchantId) ? rawMerchantId : '',
-    selectedOptions
+    image: isString(rawImage) ? rawImage : "",
+    quantity,
+    merchantId: isString(rawMerchantId) ? rawMerchantId : "",
+    selectedOptions,
   };
 };
 
-/**
- * Normaliza um snapshot de endereço.
- */
-const normalizeAddressSnapshot = (addr: unknown): LocalAddressSnapshot | null => {
-  if (!isRecord(addr)) return null;
-  
-  const id = addr['id'];
-  const user_id = addr['user_id'];
-  const label = addr['label'];
-  const street = addr['street'];
-  const number = addr['number'];
-  const complement = addr['complement'];
-  const neighborhood = addr['neighborhood'];
-  const city = addr['city'];
-  const state = addr['state'];
-  const postal_code = addr['postal_code'];
-  const reference = addr['reference'];
-  const latitude = addr['latitude'];
-  const longitude = addr['longitude'];
-  const is_default = addr['is_default'];
-  const created_at = addr['created_at'];
-  const updated_at = addr['updated_at'];
+const normalizeAddressSnapshot = (address: unknown): LocalAddressSnapshot | null => {
+  if (!isRecord(address)) return null;
 
   return {
-    id: isString(id) ? id : '',
-    user_id: isString(user_id) ? user_id : '',
-    label: isString(label) ? label : 'Endereço',
-    street: isString(street) ? street : '',
-    number: isString(number) ? number : '',
-    complement: isString(complement) ? complement : null,
-    neighborhood: isString(neighborhood) ? neighborhood : '',
-    city: isString(city) ? city : '',
-    state: isString(state) ? state : '',
-    postal_code: isString(postal_code) ? postal_code : '',
-    reference: isString(reference) ? reference : null,
-    latitude: isFiniteNumber(latitude) ? latitude : null,
-    longitude: isFiniteNumber(longitude) ? longitude : null,
-    is_default: !!is_default,
-    created_at: isString(created_at) ? created_at : new Date().toISOString(),
-    updated_at: isString(updated_at) ? updated_at : new Date().toISOString(),
+    id: isString(address["id"]) ? address["id"] : "",
+    user_id: isString(address["user_id"]) ? address["user_id"] : "",
+    label: isString(address["label"]) ? address["label"] : "Endereço",
+    street: isString(address["street"]) ? address["street"] : "",
+    number: isString(address["number"]) ? address["number"] : "",
+    complement: isString(address["complement"]) ? address["complement"] : null,
+    neighborhood: isString(address["neighborhood"]) ? address["neighborhood"] : "",
+    city: isString(address["city"]) ? address["city"] : "",
+    state: isString(address["state"]) ? address["state"] : "",
+    postal_code: isString(address["postal_code"]) ? address["postal_code"] : "",
+    reference: isString(address["reference"]) ? address["reference"] : null,
+    latitude: isFiniteNumber(address["latitude"]) ? address["latitude"] : null,
+    longitude: isFiniteNumber(address["longitude"]) ? address["longitude"] : null,
+    is_default: Boolean(address["is_default"]),
+    created_at: isString(address["created_at"]) ? address["created_at"] : new Date().toISOString(),
+    updated_at: isString(address["updated_at"]) ? address["updated_at"] : new Date().toISOString(),
   };
 };
 
-/**
- * Normaliza um pedido completo.
- */
 const normalizeLocalOrder = (order: unknown): LocalOrder | null => {
   if (!isRecord(order)) return null;
 
-  const rawId = order['id'];
-  const id = isString(rawId) ? rawId : '';
+  const id = isString(order["id"]) ? order["id"] : "";
   if (!id) return null;
 
-  const merchant = order['merchant'];
+  const merchant = order["merchant"];
   if (!isRecord(merchant)) return null;
 
-  const items = Array.isArray(order['items'])
-    ? (order['items'] as unknown[])
+  const items = Array.isArray(order["items"])
+    ? (order["items"] as unknown[])
         .map(normalizeLocalOrderItem)
         .filter((item): item is LocalOrderItem => item !== null)
     : [];
 
-  const address = normalizeAddressSnapshot(order['address']);
+  const address = normalizeAddressSnapshot(order["address"]);
   if (!address) return null;
 
-  const createdAt = order['createdAt'];
-  const subtotal = order['subtotal'];
-  const deliveryFee = order['deliveryFee'];
-  const discount = order['discount'];
-  const total = order['total'];
-  const paymentMethod = order['paymentMethod'];
-  const status = order['status'];
-
   return {
-    ...order, // Preserva campos extras
+    ...order,
     id,
-    createdAt: isString(createdAt) ? createdAt : new Date().toISOString(),
+    orderNumber: isFiniteNumber(order["orderNumber"]) ? order["orderNumber"] : undefined,
+    createdAt: isString(order["createdAt"]) ? order["createdAt"] : new Date().toISOString(),
     merchant: merchant as unknown as CartMerchant,
     items,
-    subtotal: isFiniteNumber(subtotal) ? subtotal : 0,
-    deliveryFee: isFiniteNumber(deliveryFee) ? deliveryFee : 0,
-    discount: isFiniteNumber(discount) ? discount : 0,
-    total: isFiniteNumber(total) ? total : 0,
+    subtotal: isFiniteNumber(order["subtotal"]) ? order["subtotal"] : 0,
+    deliveryFee: isFiniteNumber(order["deliveryFee"]) ? order["deliveryFee"] : 0,
+    discount: isFiniteNumber(order["discount"]) ? order["discount"] : 0,
+    total: isFiniteNumber(order["total"]) ? order["total"] : 0,
     address,
-    paymentMethod: isString(paymentMethod) ? paymentMethod : 'pix',
-    status: isString(status) ? status : 'confirmado',
+    paymentMethod: isString(order["paymentMethod"]) ? order["paymentMethod"] : "pix",
+    paymentStatus: isString(order["paymentStatus"]) ? order["paymentStatus"] : undefined,
+    observation: isString(order["observation"]) ? order["observation"] : undefined,
+    status: isString(order["status"]) ? order["status"] : "confirmado",
+    backendStatus: isString(order["backendStatus"]) ? order["backendStatus"] : undefined,
   } as LocalOrder;
 };
 
-/**
- * Recupera e normaliza a lista de pedidos de um usuário.
- */
 export const getLocalOrders = (userId: string): LocalOrder[] => {
   const ordersKey = `apois_orders_${userId}`;
   try {
     const stored = localStorage.getItem(ordersKey);
     if (!stored) return [];
-    
-    const rawOrders = JSON.parse(stored);
+
+    const rawOrders: unknown = JSON.parse(stored);
     if (!Array.isArray(rawOrders)) return [];
 
     return rawOrders
       .map(normalizeLocalOrder)
       .filter((order): order is LocalOrder => order !== null);
-  } catch (e) {
-    console.error("Erro ao ler pedidos locais:", e);
+  } catch (error) {
+    console.error("Erro ao ler pedidos locais:", error);
     return [];
   }
 };
 
-/**
- * Recupera um pedido específico por ID.
- */
 export const getLocalOrderById = (userId: string, orderId: string): LocalOrder | null => {
   const orders = getLocalOrders(userId);
-  return orders.find(o => o.id === orderId) || null;
+  return orders.find((order) => order.id === orderId) || null;
 };
 
-/**
- * Salva ou atualiza a lista de pedidos.
- */
 export const saveLocalOrders = (userId: string, orders: LocalOrder[]): void => {
   const ordersKey = `apois_orders_${userId}`;
   localStorage.setItem(ordersKey, JSON.stringify(orders));
