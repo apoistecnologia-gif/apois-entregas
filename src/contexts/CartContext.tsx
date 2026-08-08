@@ -1,13 +1,24 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+export type CartSelectedOption = {
+  groupId: string;
+  groupName: string;
+  optionId: string;
+  optionName: string;
+  priceDelta: number;
+};
+
 export type CartItem = {
-  id: string;
+  id: string; // ID real do produto
+  lineId: string; // Identificador único da linha na sacola
   name: string;
   description: string;
-  price: number;
+  price: number; // Preço unitário FINAL (base + deltas)
+  basePrice: number;
   image: string;
   quantity: number;
   merchantId: string;
+  selectedOptions: CartSelectedOption[];
 };
 
 export type CartMerchant = {
@@ -23,9 +34,16 @@ export type CartMerchant = {
 interface CartContextType {
   items: CartItem[];
   merchant: CartMerchant | null;
-  addItem: (item: Omit<CartItem, 'quantity'>, merchantData: CartMerchant) => void;
-  updateQuantity: (id: string, delta: number) => void;
-  removeItem: (id: string) => void;
+  addItem: (
+    item: Omit<CartItem, 'quantity' | 'lineId' | 'price' | 'basePrice' | 'selectedOptions'> & { 
+      price: number;
+      basePrice?: number;
+      selectedOptions?: CartSelectedOption[];
+    }, 
+    merchantData: CartMerchant
+  ) => void;
+  updateQuantity: (lineId: string, delta: number) => void;
+  removeItem: (lineId: string) => void;
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
@@ -43,7 +61,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedMerchant = localStorage.getItem('apois_merchant');
     if (savedCart) {
       try {
-        setItems(JSON.parse(savedCart));
+        const parsedCart = JSON.parse(savedCart);
+        // Normalização para compatibilidade com localStorage antigo
+        const normalizedCart = parsedCart.map((item: any) => ({
+          ...item,
+          lineId: item.lineId || item.id,
+          basePrice: item.basePrice !== undefined ? item.basePrice : item.price,
+          selectedOptions: item.selectedOptions || []
+        }));
+        setItems(normalizedCart);
       } catch (e) {
         console.error('Erro ao carregar itens da sacola:', e);
       }
