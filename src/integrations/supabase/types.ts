@@ -14,6 +14,138 @@ export type Database = {
   }
   public: {
     Tables: {
+      merchant_hours: {
+        Row: {
+          closes_at: string | null
+          created_at: string
+          id: string
+          is_closed: boolean
+          merchant_id: string
+          opens_at: string | null
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          closes_at?: string | null
+          created_at?: string
+          id?: string
+          is_closed?: boolean
+          merchant_id: string
+          opens_at?: string | null
+          updated_at?: string
+          weekday: number
+        }
+        Update: {
+          closes_at?: string | null
+          created_at?: string
+          id?: string
+          is_closed?: boolean
+          merchant_id?: string
+          opens_at?: string | null
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_hours_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_option_groups: {
+        Row: {
+          id: string
+          product_id: string
+          name: string
+          description: string | null
+          min_selections: number
+          max_selections: number
+          sort_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          name: string
+          description?: string | null
+          min_selections?: number
+          max_selections?: number
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          name?: string
+          description?: string | null
+          min_selections?: number
+          max_selections?: number
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_option_groups_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_options: {
+        Row: {
+          id: string
+          option_group_id: string
+          name: string
+          description: string | null
+          price_delta: number
+          sort_order: number
+          is_available: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          option_group_id: string
+          name: string
+          description?: string | null
+          price_delta?: number
+          sort_order?: number
+          is_available?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          option_group_id?: string
+          name?: string
+          description?: string | null
+          price_delta?: number
+          sort_order?: number
+          is_available?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_options_option_group_id_fkey"
+            columns: ["option_group_id"]
+            isOneToOne: false
+            referencedRelation: "product_option_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_categories: {
         Row: {
           created_at: string
@@ -180,163 +312,6 @@ export type Database = {
           },
         ]
       }
-      order_items: {
-        Row: {
-          base_price: number
-          created_at: string
-          id: string
-          line_total: number
-          order_id: string
-          product_description: string | null
-          product_id: string | null
-          product_name: string
-          quantity: number
-          selected_options: Json
-          unit_price: number
-        }
-        Insert: {
-          base_price: number
-          created_at?: string
-          id?: string
-          line_total: number
-          order_id: string
-          product_description?: string | null
-          product_id?: string | null
-          product_name: string
-          quantity: number
-          selected_options?: Json
-          unit_price: number
-        }
-        Update: {
-          base_price?: number
-          created_at?: string
-          id?: string
-          line_total?: number
-          order_id?: string
-          product_description?: string | null
-          product_id?: string | null
-          product_name?: string
-          quantity?: number
-          selected_options?: Json
-          unit_price?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "order_items_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      order_status_history: {
-        Row: {
-          changed_by_user_id: string | null
-          created_at: string
-          id: string
-          order_id: string
-          status: string
-        }
-        Insert: {
-          changed_by_user_id?: string | null
-          created_at?: string
-          id?: string
-          order_id: string
-          status: string
-        }
-        Update: {
-          changed_by_user_id?: string | null
-          created_at?: string
-          id?: string
-          order_id?: string
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "order_status_history_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      orders: {
-        Row: {
-          cancellation_reason: string | null
-          created_at: string
-          customer_user_id: string | null
-          delivery_address: Json
-          delivery_fee: number
-          discount: number
-          id: string
-          merchant_id: string
-          observation: string | null
-          order_number: number
-          payment_method: string
-          payment_status: string
-          request_key: string
-          status: string
-          subtotal: number
-          total: number
-          updated_at: string
-        }
-        Insert: {
-          cancellation_reason?: string | null
-          created_at?: string
-          customer_user_id?: string | null
-          delivery_address: Json
-          delivery_fee?: number
-          discount?: number
-          id?: string
-          merchant_id: string
-          observation?: string | null
-          order_number?: never
-          payment_method: string
-          payment_status?: string
-          request_key: string
-          status?: string
-          subtotal: number
-          total: number
-          updated_at?: string
-        }
-        Update: {
-          cancellation_reason?: string | null
-          created_at?: string
-          customer_user_id?: string | null
-          delivery_address?: Json
-          delivery_fee?: number
-          discount?: number
-          id?: string
-          merchant_id?: string
-          observation?: string | null
-          order_number?: never
-          payment_method?: string
-          payment_status?: string
-          request_key?: string
-          status?: string
-          subtotal?: number
-          total?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orders_merchant_id_fkey"
-            columns: ["merchant_id"]
-            isOneToOne: false
-            referencedRelation: "merchants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       products: {
         Row: {
           created_at: string
@@ -447,18 +422,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      create_order_atomic: {
-        Args: {
-          p_customer_user_id: string
-          p_delivery_address: Json
-          p_items: Json
-          p_merchant_id: string
-          p_observation: string
-          p_payment_method: string
-          p_request_key: string
-        }
-        Returns: Json
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
