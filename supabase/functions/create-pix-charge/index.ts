@@ -172,9 +172,11 @@ Deno.serve(async (request: Request) => {
   const qrCodeBase64 = paymentMethod ? text(paymentMethod.qr_code_base64) : null;
   const qrCodeImageUrl = qrCodeBase64 ? `data:image/png;base64,${qrCodeBase64}` : null;
   const providerStatus = text(providerPayload.status) ?? (providerPayment ? text(providerPayment.status) : null);
+  const providerStatusDetail = text(providerPayload.status_detail) ?? (providerPayment ? text(providerPayment.status_detail) : null);
+  const paidImmediately = providerStatus === "processed" && providerStatusDetail === "accredited";
 
   if (!providerOrderId || !qrCodeText) {
-    console.error("create-pix-charge invalid Mercado Pago response", { orderId, providerStatus });
+    console.error("create-pix-charge invalid Mercado Pago response", { orderId, providerStatus, providerStatusDetail });
     return response(502, { error: "O Mercado Pago não retornou um PIX válido.", code: "INVALID_PROVIDER_RESPONSE" });
   }
 
@@ -186,13 +188,13 @@ Deno.serve(async (request: Request) => {
       provider: "mercadopago",
       provider_charge_id: providerOrderId,
       method: "pix",
-      status: providerStatus === "processed" ? "paid" : "pending",
+      status: paidImmediately ? "paid" : "pending",
       amount,
       currency: "BRL",
       qr_code_text: qrCodeText,
       qr_code_image_url: qrCodeImageUrl,
       expires_at: expiresAt,
-      paid_at: providerStatus === "processed" ? new Date().toISOString() : null,
+      paid_at: paidImmediately ? new Date().toISOString() : null,
       idempotency_key: idempotencyKey,
     })
     .select("id,status,amount,qr_code_text,qr_code_image_url,expires_at,provider_charge_id")
@@ -232,14 +234,14 @@ Deno.serve(async (request: Request) => {
         provider_transaction_id: providerTransactionId,
         transaction_type: "charge",
         amount,
-        status: providerStatus === "processed" ? "completed" : "pending",
-        processed_at: providerStatus === "processed" ? new Date().toISOString() : null,
+        status: paidImmediately ? "completed" : "pending",
+        processed_at: paidImmediately ? new Date().toISOString() : null,
       },
       { onConflict: "payment_id,provider_transaction_id,transaction_type", ignoreDuplicates: true },
     );
   }
 
-  if (providerStatus === "processed") {
+  if (paidImmediately) {
     await admin.from("orders").update({ payment_status: "paid" }).eq("id", order.id);
   }
 
