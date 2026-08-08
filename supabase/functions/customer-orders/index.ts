@@ -60,6 +60,90 @@ Deno.serve(async (request: Request) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authorization } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  if (payload.action === "review") {
+    const orderId = payload.orderId;
+    const merchantRating = payload.merchantRating;
+    const courierRating = payload.courierRating;
+    const comment = payload.comment;
+
+    if (typeof orderId !== "string" || !UUID_RE.test(orderId)) {
+      return response(400, { error: "Pedido inválido.", code: "INVALID_ORDER_ID" });
+    }
+    if (typeof merchantRating !== "number" || !Number.isInteger(merchantRating) || merchantRating < 1 || merchantRating > 5) {
+      return response(400, { error: "Avaliação do estabelecimento inválida.", code: "INVALID_MERCHANT_RATING" });
+    }
+    if (
+      courierRating !== null &&
+      courierRating !== undefined &&
+      (typeof courierRating !== "number" || !Number.isInteger(courierRating) || courierRating < 1 || courierRating > 5)
+    ) {
+      return response(400, { error: "Avaliação da entrega inválida.", code: "INVALID_COURIER_RATING" });
+    }
+    if (comment !== null && comment !== undefined && typeof comment !== "string") {
+      return response(400, { error: "Comentário inválido.", code: "INVALID_COMMENT" });
+    }
+    if (typeof comment === "string" && comment.length > 1000) {
+      return response(400, { error: "Comentário muito longo.", code: "INVALID_COMMENT" });
+    }
+
+    const { data: reviewId, error } = await userClient.rpc("submit_order_review", {
+      _order_id: orderId,
+      _merchant_rating: merchantRating,
+      _courier_rating: courierRating ?? null,
+      _comment: typeof comment === "string" ? comment.trim() || null : null,
+    });
+
+    if (error) {
+      const alreadyReviewed = error.message.includes("already reviewed");
+      const notDelivered = error.message.includes("not delivered");
+      console.error("customer-orders review failed", { code: error.code, orderId });
+      return response(alreadyReviewed || notDelivered ? 409 : 400, {
+        error: alreadyReviewed
+          ? "Este pedido já foi avaliado."
+          : notDelivered
+            ? "O pedido só pode ser avaliado depois da entrega."
+            : "Não foi possível enviar sua avaliação.",
+        code: alreadyReviewed ? "ALREADY_REVIEWED" : notDelivered ? "NOT_DELIVERED" : "REVIEW_FAILED",
+      });
+    }
+
+    return response(200, { reviewId });
+  }
+
+  if (payload.action === "cancel") {
+    const orderId = payload.orderId;
+    const reason = payload.reason;
+
+    if (typeof orderId !== "string" || !UUID_RE.test(orderId)) {
+      return response(400, { error: "Pedido inválido.", code: "INVALID_ORDER_ID" });
+    }
+    if (typeof reason !== "string" || reason.trim().length < 3 || reason.trim().length > 500) {
+      return response(400, { error: "Informe um motivo válido para o cancelamento.", code: "INVALID_REASON" });
+    }
+
+    const { data: cancellation, error } = await userClient.rpc("customer_cancel_order", {
+      _order_id: orderId,
+      _reason: reason.trim(),
+    });
+
+    if (error) {
+      const notAllowed = error.message.includes("can no longer be cancelled");
+      console.error("customer-orders cancel failed", { code: error.code, orderId });
+      return response(notAllowed ? 409 : 400, {
+        error: notAllowed
+          ? "Este pedido já avançou e não pode mais ser cancelado pelo aplicativo."
+          : "Não foi possível cancelar o pedido.",
+        code: notAllowed ? "CANCEL_NOT_ALLOWED" : "CANCEL_FAILED",
+      });
+    }
+
+    return response(200, { cancellation });
+  }
 
   if (payload.action === "list") {
     const limit = typeof payload.limit === "number" && Number.isInteger(payload.limit)
@@ -260,11 +344,22 @@ Deno.serve(async (request: Request) => {
       pin = secret?.pin_code ?? null;
     }
 
+    const { data: review, error: reviewError } = await adminClient
+      .from("reviews")
+      .select("id, merchant_rating, courier_rating, comment, created_at")
+      .eq("order_id", orderId)
+      .eq("customer_user_id", authData.user.id)
+      .maybeSingle();
+    if (reviewError) {
+      console.error("customer-orders review load failed", { code: reviewError.code, orderId });
+    }
+
     return response(200, {
       order: {
         ...order,
         delivery,
         deliveryPin: pin,
+        review: review ?? null,
       },
     });
   }
