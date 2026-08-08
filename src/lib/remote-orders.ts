@@ -96,6 +96,14 @@ export type CustomerDeliveryDetail = {
   couriers: CustomerCourier | null;
 };
 
+export type CustomerOrderReview = {
+  id: string;
+  merchant_rating: number | null;
+  courier_rating: number | null;
+  comment: string | null;
+  created_at: string;
+};
+
 export type CustomerOrderDetail = CustomerOrderListItem & {
   platform_fee: number;
   merchant_net: number | null;
@@ -109,10 +117,20 @@ export type CustomerOrderDetail = CustomerOrderListItem & {
   order_status_history: CustomerOrderHistoryEntry[];
   delivery: CustomerDeliveryDetail | null;
   deliveryPin: string | null;
+  review: CustomerOrderReview | null;
 };
 
 type ListResponse = { orders: CustomerOrderListItem[] };
 type DetailResponse = { order: CustomerOrderDetail };
+type ReviewResponse = { reviewId: string };
+type CancelResponse = {
+  cancellation: {
+    order_id?: string;
+    status?: string;
+    refund_id?: string | null;
+    refund_pending?: boolean;
+  };
+};
 
 type FunctionErrorBody = {
   error?: string;
@@ -218,4 +236,25 @@ export async function fetchCustomerOrderDetail(orderId: string): Promise<Custome
         }
       : null,
   };
+}
+
+export async function submitCustomerOrderReview(input: {
+  orderId: string;
+  merchantRating: number;
+  courierRating: number | null;
+  comment: string;
+}): Promise<string> {
+  const data = await invokeOrders<ReviewResponse>({
+    action: "review",
+    orderId: input.orderId,
+    merchantRating: input.merchantRating,
+    courierRating: input.courierRating,
+    comment: input.comment,
+  });
+  return data.reviewId;
+}
+
+export async function cancelCustomerOrder(orderId: string, reason: string): Promise<CancelResponse["cancellation"]> {
+  const data = await invokeOrders<CancelResponse>({ action: "cancel", orderId, reason });
+  return data.cancellation;
 }
