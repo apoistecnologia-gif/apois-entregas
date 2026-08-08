@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Database } from "@/integrations/supabase/types";
+import { CartSelectedOption } from "@/contexts/CartContext";
 
 type Product = Database["public"]["Tables"]["products"]["Row"];
 type OptionGroup = Database["public"]["Tables"]["product_option_groups"]["Row"];
@@ -20,7 +21,7 @@ interface ProductCustomizationSheetProps {
   options: Option[];
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (selectedOptions: any[]) => void;
+  onConfirm: (selectedOptions: CartSelectedOption[]) => void;
 }
 
 export const ProductCustomizationSheet: React.FC<ProductCustomizationSheetProps> = ({
@@ -111,17 +112,21 @@ export const ProductCustomizationSheet: React.FC<ProductCustomizationSheetProps>
   const handleConfirm = () => {
     if (!isAllValid) return;
 
-    const formattedOptions = Object.entries(selections).flatMap(([groupId, optionIds]) => {
+    const formattedOptions: CartSelectedOption[] = Object.entries(selections).flatMap(([groupId, optionIds]) => {
       const group = groups.find((g) => g.id === groupId);
-      return optionIds.map((optId) => {
+      if (!group) return [];
+      
+      return optionIds.flatMap((optId) => {
         const opt = options.find((o) => o.id === optId);
-        return {
-          groupId: group?.id,
-          groupName: group?.name,
-          optionId: opt?.id,
-          optionName: opt?.name,
-          priceDelta: Number(opt?.price_delta || 0),
-        };
+        if (!opt) return [];
+        
+        return [{
+          groupId: group.id,
+          groupName: group.name,
+          optionId: opt.id,
+          optionName: opt.name,
+          priceDelta: Number(opt.price_delta || 0),
+        }];
       });
     });
 
