@@ -81,7 +81,7 @@ function CheckoutPage() {
     const newOrder: LocalOrder = {
       id: orderId,
       createdAt: new Date().toISOString(),
-      merchant: { ...merchant },
+      merchant: { ...merchant } as CartMerchant,
       items: orderItems,
       subtotal,
       deliveryFee,
