@@ -28,13 +28,19 @@ function CheckoutPage() {
   const [observation, setObservation] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [pixData, setPixData] = useState<{
-    qrCode: string;
-    copyPaste: string;
+    qrCodeImageUrl: string;
+    qrCodeText: string;
     orderId: string;
     total: number;
   } | null>(null);
   const [copied, setCopied] = useState(false);
-  const [requestKey] = useState(() => crypto.randomUUID());
+  const [requestKey] = useState(() => {
+    const saved = sessionStorage.getItem('apois_checkout_request_key');
+    if (saved) return saved;
+    const newKey = crypto.randomUUID();
+    sessionStorage.setItem('apois_checkout_request_key', newKey);
+    return newKey;
+  });
 
   const paymentMethod = typeof window !== 'undefined' ? sessionStorage.getItem('apois_payment_method') || 'pix' : 'pix';
 
@@ -63,7 +69,7 @@ function CheckoutPage() {
 
   const handleCopyPix = () => {
     if (pixData) {
-      navigator.clipboard.writeText(pixData.copyPaste);
+      navigator.clipboard.writeText(pixData.qrCodeText);
       setCopied(true);
       toast.success("Código PIX copiado!");
       setTimeout(() => setCopied(false), 2000);
@@ -115,16 +121,23 @@ function CheckoutPage() {
 
       if (pixError) throw pixError;
 
+      // Validar dados essenciais do PIX
+      const payment = pixResponse?.payment;
+      if (!payment?.qrCodeText || !payment?.qrCodeImageUrl) {
+        throw new Error("Dados do PIX incompletos. Por favor, tente novamente.");
+      }
+
       // 3. Exibir tela PIX
       setPixData({
-        qrCode: pixResponse.qr_code_base64,
-        copyPaste: pixResponse.qr_code,
+        qrCodeImageUrl: payment.qrCodeImageUrl,
+        qrCodeText: payment.qrCodeText,
         orderId,
-        total: total
+        total: Number(payment.amount) || total
       });
 
-      // 4. Limpar sacola após sucesso real
+      // 4. Limpar sacola e requestKey após sucesso real
       clearCart();
+      sessionStorage.removeItem('apois_checkout_request_key');
       toast.success("Pedido criado com sucesso!");
 
     } catch (error: any) {
@@ -136,59 +149,7 @@ function CheckoutPage() {
   };
 
   if (pixData) {
-    return (
-      <div className="flex min-h-screen w-full flex-col bg-black text-white p-6">
-        <header className="flex flex-col items-center justify-center space-y-2 mb-8 mt-4">
-          <div className="h-12 w-12 bg-primary/20 rounded-full flex items-center justify-center">
-            <QrCode className="text-primary h-6 w-6" />
-          </div>
-          <h1 className="text-2xl font-black uppercase">Pagamento PIX</h1>
-          <p className="text-zinc-500 text-sm">Escaneie o código ou copie o código abaixo</p>
-        </header>
-
-        <main className="flex-1 flex flex-col items-center space-y-8">
-          <div className="bg-white p-4 rounded-3xl shadow-[0_0_40px_rgba(255,215,0,0.2)]">
-            <img src={`data:image/png;base64,${pixData.qrCode}`} alt="QR Code PIX" className="w-64 h-64" />
-          </div>
-
-          <div className="w-full space-y-4">
-            <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-4">
-              <p className="text-xs text-zinc-500 font-bold uppercase mb-2">Valor total</p>
-              <p className="text-3xl font-black text-primary">R$ {pixData.total.toFixed(2).replace('.', ',')}</p>
-            </div>
-
-            <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-4">
-              <p className="text-xs text-zinc-500 font-bold uppercase mb-2">Código Copia e Cola</p>
-              <div className="bg-zinc-900 rounded-xl p-3 flex items-center gap-3">
-                <p className="text-xs text-zinc-400 font-mono truncate flex-1">{pixData.copyPaste}</p>
-                <button 
-                  onClick={handleCopyPix}
-                  className="p-2 bg-primary text-black rounded-lg active:scale-95 transition-transform"
-                >
-                  {copied ? <Check size={18} /> : <Copy size={18} />}
-                </button>
-              </div>
-            </div>
-          </div>
-        </main>
-
-        <footer className="mt-8 space-y-3">
-          <Button 
-            onClick={handleCopyPix}
-            className="w-full h-14 bg-primary text-black font-black uppercase rounded-2xl"
-          >
-            Copiar código PIX
-          </Button>
-          <Button 
-            variant="ghost"
-            onClick={() => navigate({ to: "/pedido/confirmado", search: { orderId: pixData.orderId } })}
-            className="w-full text-zinc-500 font-bold uppercase"
-          >
-            Já realizei o pagamento
-          </Button>
-        </footer>
-      </div>
-    );
+    return <PixPaymentScreen pixData={pixData} onCopy={handleCopyPix} copied={copied} total={pixData.total} />;
   }
 
   if (!merchant || items.length === 0) return null;
