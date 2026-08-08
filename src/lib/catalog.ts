@@ -96,7 +96,7 @@ export const fetchProductOptionsByGroupIds = async (groupIds: string[]) => {
     .from("product_options")
     .select("*")
     .in("option_group_id", groupIds)
-    .eq("is_active", true)
+    .eq("is_available", true)
     .order("sort_order", { ascending: true });
 
   if (error) throw error;
