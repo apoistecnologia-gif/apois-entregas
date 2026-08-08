@@ -64,7 +64,11 @@ const isFiniteNumber = (value: unknown): value is number =>
 const normalizeSelectedOption = (option: unknown): CartSelectedOption | null => {
   if (!isRecord(option)) return null;
 
-  const { groupId, groupName, optionId, optionName, priceDelta } = option;
+  const groupId = option['groupId'];
+  const groupName = option['groupName'];
+  const optionId = option['optionId'];
+  const optionName = option['optionName'];
+  const priceDelta = option['priceDelta'];
 
   if (
     isString(groupId) && groupId.trim() !== "" &&
@@ -92,29 +96,36 @@ const normalizeSelectedOption = (option: unknown): CartSelectedOption | null => 
 export const normalizeLocalOrderItem = (item: unknown): LocalOrderItem | null => {
   if (!isRecord(item)) return null;
 
-  const id = isString(item.id) ? item.id : String(item.id || '');
+  const rawId = item['id'];
+  const id = isString(rawId) ? rawId : (rawId !== undefined && rawId !== null ? String(rawId) : '');
   if (!id) return null;
 
-  const price = isFiniteNumber(item.price) ? item.price : 0;
-  const basePrice = isFiniteNumber(item.basePrice) ? item.basePrice : price;
-  const quantity = (isFiniteNumber(item.quantity) && item.quantity > 0) ? item.quantity : 1;
+  const price = isFiniteNumber(item['price']) ? item['price'] : 0;
+  const basePrice = isFiniteNumber(item['basePrice']) ? item['basePrice'] : price;
+  const quantity = (isFiniteNumber(item['quantity']) && (item['quantity'] as number) > 0) ? item['quantity'] : 1;
 
-  const selectedOptions: CartSelectedOption[] = Array.isArray(item.selectedOptions)
-    ? item.selectedOptions
+  const selectedOptions: CartSelectedOption[] = Array.isArray(item['selectedOptions'])
+    ? (item['selectedOptions'] as unknown[])
         .map(normalizeSelectedOption)
         .filter((opt): opt is CartSelectedOption => opt !== null)
     : [];
 
+  const rawLineId = item['lineId'];
+  const rawName = item['name'];
+  const rawDesc = item['description'];
+  const rawImage = item['image'];
+  const rawMerchantId = item['merchantId'];
+
   return {
     id,
-    lineId: isString(item.lineId) ? item.lineId : id,
-    name: isString(item.name) ? item.name : 'Produto',
-    description: isString(item.description) ? item.description : '',
+    lineId: isString(rawLineId) ? rawLineId : id,
+    name: isString(rawName) ? rawName : 'Produto',
+    description: isString(rawDesc) ? rawDesc : '',
     price,
     basePrice,
-    image: isString(item.image) ? item.image : '',
-    quantity,
-    merchantId: isString(item.merchantId) ? item.merchantId : '',
+    image: isString(rawImage) ? rawImage : '',
+    quantity: quantity as number,
+    merchantId: isString(rawMerchantId) ? rawMerchantId : '',
     selectedOptions
   };
 };
@@ -125,24 +136,40 @@ export const normalizeLocalOrderItem = (item: unknown): LocalOrderItem | null =>
 const normalizeAddressSnapshot = (addr: unknown): LocalAddressSnapshot | null => {
   if (!isRecord(addr)) return null;
   
-  // Garantimos apenas os campos mínimos necessários para exibição, mas tentamos preservar a estrutura.
+  const id = addr['id'];
+  const user_id = addr['user_id'];
+  const label = addr['label'];
+  const street = addr['street'];
+  const number = addr['number'];
+  const complement = addr['complement'];
+  const neighborhood = addr['neighborhood'];
+  const city = addr['city'];
+  const state = addr['state'];
+  const postal_code = addr['postal_code'];
+  const reference = addr['reference'];
+  const latitude = addr['latitude'];
+  const longitude = addr['longitude'];
+  const is_default = addr['is_default'];
+  const created_at = addr['created_at'];
+  const updated_at = addr['updated_at'];
+
   return {
-    id: isString(addr.id) ? addr.id : '',
-    user_id: isString(addr.user_id) ? addr.user_id : '',
-    label: isString(addr.label) ? addr.label : 'Endereço',
-    street: isString(addr.street) ? addr.street : '',
-    number: isString(addr.number) ? addr.number : '',
-    complement: isString(addr.complement) ? addr.complement : null,
-    neighborhood: isString(addr.neighborhood) ? addr.neighborhood : '',
-    city: isString(addr.city) ? addr.city : '',
-    state: isString(addr.state) ? addr.state : '',
-    postal_code: isString(addr.postal_code) ? addr.postal_code : '',
-    reference: isString(addr.reference) ? addr.reference : null,
-    latitude: isFiniteNumber(addr.latitude) ? addr.latitude : null,
-    longitude: isFiniteNumber(addr.longitude) ? addr.longitude : null,
-    is_default: !!addr.is_default,
-    created_at: isString(addr.created_at) ? addr.created_at : new Date().toISOString(),
-    updated_at: isString(addr.updated_at) ? addr.updated_at : new Date().toISOString(),
+    id: isString(id) ? id : '',
+    user_id: isString(user_id) ? user_id : '',
+    label: isString(label) ? label : 'Endereço',
+    street: isString(street) ? street : '',
+    number: isString(number) ? number : '',
+    complement: isString(complement) ? complement : null,
+    neighborhood: isString(neighborhood) ? neighborhood : '',
+    city: isString(city) ? city : '',
+    state: isString(state) ? state : '',
+    postal_code: isString(postal_code) ? postal_code : '',
+    reference: isString(reference) ? reference : null,
+    latitude: isFiniteNumber(latitude) ? latitude : null,
+    longitude: isFiniteNumber(longitude) ? longitude : null,
+    is_default: !!is_default,
+    created_at: isString(created_at) ? created_at : new Date().toISOString(),
+    updated_at: isString(updated_at) ? updated_at : new Date().toISOString(),
   };
 };
 
@@ -152,34 +179,43 @@ const normalizeAddressSnapshot = (addr: unknown): LocalAddressSnapshot | null =>
 const normalizeLocalOrder = (order: unknown): LocalOrder | null => {
   if (!isRecord(order)) return null;
 
-  const id = isString(order.id) ? order.id : '';
+  const rawId = order['id'];
+  const id = isString(rawId) ? rawId : '';
   if (!id) return null;
 
-  const merchant = isRecord(order.merchant) ? order.merchant : null;
-  if (!merchant) return null;
+  const merchant = order['merchant'];
+  if (!isRecord(merchant)) return null;
 
-  const items = Array.isArray(order.items)
-    ? order.items
+  const items = Array.isArray(order['items'])
+    ? (order['items'] as unknown[])
         .map(normalizeLocalOrderItem)
         .filter((item): item is LocalOrderItem => item !== null)
     : [];
 
-  const address = normalizeAddressSnapshot(order.address);
+  const address = normalizeAddressSnapshot(order['address']);
   if (!address) return null;
+
+  const createdAt = order['createdAt'];
+  const subtotal = order['subtotal'];
+  const deliveryFee = order['deliveryFee'];
+  const discount = order['discount'];
+  const total = order['total'];
+  const paymentMethod = order['paymentMethod'];
+  const status = order['status'];
 
   return {
     ...order, // Preserva campos extras
     id,
-    createdAt: isString(order.createdAt) ? order.createdAt : new Date().toISOString(),
-    merchant: merchant as CartMerchant,
+    createdAt: isString(createdAt) ? createdAt : new Date().toISOString(),
+    merchant: merchant as unknown as CartMerchant,
     items,
-    subtotal: isFiniteNumber(order.subtotal) ? order.subtotal : 0,
-    deliveryFee: isFiniteNumber(order.deliveryFee) ? order.deliveryFee : 0,
-    discount: isFiniteNumber(order.discount) ? order.discount : 0,
-    total: isFiniteNumber(order.total) ? order.total : 0,
+    subtotal: isFiniteNumber(subtotal) ? subtotal : 0,
+    deliveryFee: isFiniteNumber(deliveryFee) ? deliveryFee : 0,
+    discount: isFiniteNumber(discount) ? discount : 0,
+    total: isFiniteNumber(total) ? total : 0,
     address,
-    paymentMethod: isString(order.paymentMethod) ? order.paymentMethod : 'pix',
-    status: isString(order.status) ? order.status : 'confirmado',
+    paymentMethod: isString(paymentMethod) ? paymentMethod : 'pix',
+    status: isString(status) ? status : 'confirmado',
   } as LocalOrder;
 };
 
