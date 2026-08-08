@@ -76,3 +76,40 @@ export const fetchMerchantCategoryById = async (id: string) => {
   return data;
 };
 
+
+export const fetchProductOptionGroups = async (productId: string) => {
+  const { data, error } = await supabase
+    .from("product_option_groups")
+    .select("*")
+    .eq("product_id", productId)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error) throw error;
+  return data;
+};
+
+export const fetchProductOptionsByGroupIds = async (groupIds: string[]) => {
+  if (groupIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("product_options")
+    .select("*")
+    .in("option_group_id", groupIds)
+    .eq("is_available", true)
+    .order("sort_order", { ascending: true });
+
+  if (error) throw error;
+  return data;
+};
+
+export const fetchProductCustomization = async (productId: string) => {
+  const groups = await fetchProductOptionGroups(productId);
+  const groupIds = groups.map((g) => g.id);
+  const options = await fetchProductOptionsByGroupIds(groupIds);
+
+  return {
+    groups,
+    options,
+  };
+};
