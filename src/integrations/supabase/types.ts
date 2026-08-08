@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.15"
   }
@@ -85,47 +87,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      merchant_hours: {
-        Row: {
-          closes_at: string | null
-          created_at: string
-          id: string
-          is_closed: boolean
-          merchant_id: string
-          opens_at: string | null
-          updated_at: string
-          weekday: number
-        }
-        Insert: {
-          closes_at?: string | null
-          created_at?: string
-          id?: string
-          is_closed?: boolean
-          merchant_id: string
-          opens_at?: string | null
-          updated_at?: string
-          weekday: number
-        }
-        Update: {
-          closes_at?: string | null
-          created_at?: string
-          id?: string
-          is_closed?: boolean
-          merchant_id?: string
-          opens_at?: string | null
-          updated_at?: string
-          weekday?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "merchant_hours_merchant_id_fkey"
-            columns: ["merchant_id"]
-            isOneToOne: false
-            referencedRelation: "merchants"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       merchants: {
         Row: {
@@ -215,97 +176,6 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "merchant_categories"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      product_option_groups: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          is_active: boolean
-          max_selections: number
-          min_selections: number
-          name: string
-          product_id: string
-          sort_order: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          max_selections?: number
-          min_selections?: number
-          name: string
-          product_id: string
-          sort_order?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          max_selections?: number
-          min_selections?: number
-          name?: string
-          product_id?: string
-          sort_order?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_option_groups_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      product_options: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          is_available: boolean
-          name: string
-          option_group_id: string
-          price_delta: number
-          sort_order: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_available?: boolean
-          name: string
-          option_group_id: string
-          price_delta?: number
-          sort_order?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_available?: boolean
-          name?: string
-          option_group_id?: string
-          price_delta?: number
-          sort_order?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_options_option_group_id_fkey"
-            columns: ["option_group_id"]
-            isOneToOne: false
-            referencedRelation: "product_option_groups"
             referencedColumns: ["id"]
           },
         ]
