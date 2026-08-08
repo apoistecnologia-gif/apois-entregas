@@ -24,7 +24,7 @@ export interface SelectedAddress {
 
 interface GoogleMapsAddressSelectorProps {
   onAddressSelected: (address: SelectedAddress) => void;
-  initialCenter?: { lat: number; lng: number } | null;
+  initialCenter?: { lat: number; lng: number } | null | undefined;
 }
 
 type Suggestion = google.maps.places.AutocompletePrediction;
@@ -59,8 +59,8 @@ export function GoogleMapsAddressSelector({
   initialCenter,
 }: GoogleMapsAddressSelectorProps) {
   const browserKey =
-    import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY ||
-    import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY ||
+    import.meta.env["VITE_GOOGLE_MAPS_BROWSER_KEY"] ||
+    import.meta.env["VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY"] ||
     "";
 
   if (!browserKey) {
