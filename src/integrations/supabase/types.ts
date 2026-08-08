@@ -283,6 +283,7 @@ export type Database = {
           order_number: number
           payment_method: string
           payment_status: string
+          request_key: string
           status: string
           subtotal: number
           total: number
@@ -301,6 +302,7 @@ export type Database = {
           order_number?: never
           payment_method: string
           payment_status?: string
+          request_key: string
           status?: string
           subtotal: number
           total: number
@@ -319,6 +321,7 @@ export type Database = {
           order_number?: never
           payment_method?: string
           payment_status?: string
+          request_key?: string
           status?: string
           subtotal?: number
           total?: number
@@ -444,6 +447,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_order_atomic: {
+        Args: {
+          p_customer_user_id: string
+          p_delivery_address: Json
+          p_items: Json
+          p_merchant_id: string
+          p_observation: string
+          p_payment_method: string
+          p_request_key: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
