@@ -15,6 +15,23 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 
 type JsonRecord = Record<string, unknown>;
 
+type CourierRelation = {
+  id: string;
+  user_id: string;
+  photo_url: string | null;
+  vehicle_type: string | null;
+  vehicle_model: string | null;
+  vehicle_plate: string | null;
+  rating: number;
+  review_count: number;
+};
+
+type CourierProfile = {
+  full_name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+};
+
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -312,11 +329,11 @@ Deno.serve(async (request: Request) => {
       console.error("customer-orders delivery detail failed", { code: deliveryError.code, orderId });
     }
 
-    let delivery = deliveryJob ?? null;
     const courierRelation = deliveryJob?.couriers;
-    const courier = Array.isArray(courierRelation) ? courierRelation[0] : courierRelation;
+    const courier = (Array.isArray(courierRelation) ? courierRelation[0] : courierRelation) as CourierRelation | null | undefined;
+    let courierProfile: CourierProfile | null = null;
     if (courier?.user_id) {
-      const { data: courierProfile, error: profileError } = await adminClient
+      const { data: profile, error: profileError } = await adminClient
         .from("profiles")
         .select("full_name, phone, avatar_url")
         .eq("id", courier.user_id)
@@ -324,14 +341,31 @@ Deno.serve(async (request: Request) => {
       if (profileError) {
         console.error("customer-orders courier profile failed", { code: profileError.code, orderId });
       }
-      delivery = {
-        ...deliveryJob,
-        couriers: {
-          ...courier,
-          profile: courierProfile ?? null,
-        },
-      };
+      courierProfile = (profile ?? null) as CourierProfile | null;
     }
+
+    const delivery = deliveryJob
+      ? {
+          id: deliveryJob.id,
+          status: deliveryJob.status,
+          courier_id: deliveryJob.courier_id,
+          pickup_address: deliveryJob.pickup_address,
+          delivery_address: deliveryJob.delivery_address,
+          pickup_latitude: deliveryJob.pickup_latitude,
+          pickup_longitude: deliveryJob.pickup_longitude,
+          delivery_latitude: deliveryJob.delivery_latitude,
+          delivery_longitude: deliveryJob.delivery_longitude,
+          estimated_distance_meters: deliveryJob.estimated_distance_meters,
+          estimated_duration_seconds: deliveryJob.estimated_duration_seconds,
+          estimated_earnings: deliveryJob.estimated_earnings,
+          accepted_at: deliveryJob.accepted_at,
+          pickup_arrived_at: deliveryJob.pickup_arrived_at,
+          picked_up_at: deliveryJob.picked_up_at,
+          destination_arrived_at: deliveryJob.destination_arrived_at,
+          delivered_at: deliveryJob.delivered_at,
+          couriers: courier ? { ...courier, profile: courierProfile } : null,
+        }
+      : null;
 
     let pin: string | null = null;
     if (deliveryJob && !["delivered", "cancelled"].includes(deliveryJob.status)) {
