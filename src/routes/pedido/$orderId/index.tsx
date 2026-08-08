@@ -110,6 +110,7 @@ function OrderDetailsPage() {
 
   const stepStatus = (idx: number) => {
     if (currentStepIdx < 0) return 'pending';
+    if (order.status === 'delivered' && idx <= currentStepIdx) return 'completed';
     if (idx < currentStepIdx) return 'completed';
     if (idx === currentStepIdx) return 'current';
     return 'pending';
