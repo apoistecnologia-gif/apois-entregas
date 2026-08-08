@@ -1,7 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, MapPin, CreditCard, Copy, Check, Loader2, QrCode } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { LocalAddressSnapshot } from "@/lib/local-orders";
 import { toast } from "sonner";
@@ -120,10 +120,10 @@ function CheckoutPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handlePaymentConfirmed = () => {
+  const handlePaymentConfirmed = useCallback(() => {
     clearCart();
     sessionStorage.removeItem("apois_checkout_request_key");
-  };
+  }, [clearCart]);
 
   const handleConfirm = async () => {
     if (isProcessing) return;
