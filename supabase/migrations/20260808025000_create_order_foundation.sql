@@ -52,7 +52,7 @@ BEGIN
     NEW.updated_at = now();
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER on_orders_updated
     BEFORE UPDATE ON public.orders
@@ -69,12 +69,17 @@ CREATE INDEX idx_order_status_history_order_id ON public.order_status_history(or
 CREATE INDEX idx_order_status_history_created_at ON public.order_status_history(created_at DESC);
 
 -- 6. Grants
-GRANT SELECT ON public.orders TO authenticated;
-GRANT ALL ON public.orders TO service_role;
-GRANT SELECT ON public.order_items TO authenticated;
-GRANT ALL ON public.order_items TO service_role;
-GRANT SELECT ON public.order_status_history TO authenticated;
-GRANT ALL ON public.order_status_history TO service_role;
+-- Endurecer privilégios antes dos GRANTs
+REVOKE ALL PRIVILEGES ON TABLE public.orders FROM anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.order_items FROM anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.order_status_history FROM anon, authenticated;
+
+GRANT SELECT ON TABLE public.orders TO authenticated;
+GRANT ALL ON TABLE public.orders TO service_role;
+GRANT SELECT ON TABLE public.order_items TO authenticated;
+GRANT ALL ON TABLE public.order_items TO service_role;
+GRANT SELECT ON TABLE public.order_status_history TO authenticated;
+GRANT ALL ON TABLE public.order_status_history TO service_role;
 
 -- 7. RLS
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
