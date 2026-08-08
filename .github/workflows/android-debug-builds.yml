@@ -1,0 +1,85 @@
+name: Android Debug Builds
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }} APK
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: customer
+            label: APOIS Cliente
+            working_dir: .
+            apk_path: android/app/build/outputs/apk/debug/app-debug.apk
+          - app: courier
+            label: APOIS Entregador
+            working_dir: apps/courier
+            apk_path: apps/courier/android/app/build/outputs/apk/debug/app-debug.apk
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build web bundle
+        working-directory: ${{ matrix.working_dir }}
+        run: |
+          bun install
+          bun run build
+
+      - name: Install Capacitor tooling
+        working-directory: ${{ matrix.working_dir }}
+        run: npm install --no-save @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8
+
+      - name: Create Android wrapper
+        working-directory: ${{ matrix.working_dir }}
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Add location permissions for courier
+        if: matrix.app == 'courier'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          manifest = Path('apps/courier/android/app/src/main/AndroidManifest.xml')
+          text = manifest.read_text()
+          marker = '<manifest xmlns:android="http://schemas.android.com/apk/res/android">'
+          permissions = '''\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />'''
+          if 'ACCESS_FINE_LOCATION' not in text:
+              text = text.replace(marker, marker + permissions)
+              manifest.write_text(text)
+          PY
+
+      - name: Build debug APK
+        working-directory: ${{ matrix.working_dir }}/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-debug-apk
+          path: ${{ matrix.apk_path }}
+          if-no-files-found: error
