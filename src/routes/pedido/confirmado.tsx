@@ -3,7 +3,6 @@ import { CheckCircle2, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { getLocalOrderById, LocalOrder } from "@/lib/local-orders";
 
 const orderSearchSchema = z.object({
   orderId: z.string(),
@@ -22,23 +21,30 @@ export const Route = createFileRoute("/pedido/confirmado")({
     return { session };
   },
   component: OrderConfirmedPage,
+  head: () => ({
+    meta: [{ title: "Pedido Confirmado | APOIS ENTREGA" }]
+  }),
 });
 
 function OrderConfirmedPage() {
   const navigate = useNavigate();
   const { orderId } = Route.useSearch();
-  const [order, setOrder] = useState<LocalOrder | null>(null);
+  const [order, setOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchOrder = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
+      const { data, error } = await supabase
+        .from("orders" as any)
+        .select("*, merchants(*)")
+        .eq("id", orderId)
+        .single();
+
+      if (error) {
+        console.error("Erro ao carregar pedido real:", error);
+      } else {
+        setOrder(data);
       }
-      const foundOrder = getLocalOrderById(user.id, orderId);
-      if (foundOrder) setOrder(foundOrder);
       setLoading(false);
     };
     fetchOrder();
@@ -66,6 +72,9 @@ function OrderConfirmedPage() {
     );
   }
 
+  const deliveryAddress = typeof order.delivery_address === 'string' 
+    ? JSON.parse(order.delivery_address) 
+    : order.delivery_address;
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center bg-black p-6 text-center text-white">
@@ -79,11 +88,11 @@ function OrderConfirmedPage() {
       <div className="mb-10 w-full space-y-4 rounded-2xl border border-zinc-900 bg-zinc-950 p-6 text-left">
         <div className="flex justify-between border-b border-zinc-900 pb-3">
           <span className="text-xs font-bold uppercase text-zinc-500">Número</span>
-          <span className="font-mono font-bold text-primary">{order.id}</span>
+          <span className="font-mono font-bold text-primary">#{order.order_number}</span>
         </div>
         <div className="flex justify-between border-b border-zinc-900 py-3">
           <span className="text-xs font-bold uppercase text-zinc-500">Estabelecimento</span>
-          <span className="font-bold text-white">{order.merchant.name}</span>
+          <span className="font-bold text-white">{order.merchants?.name || "Estabelecimento"}</span>
         </div>
         <div className="flex justify-between border-b border-zinc-900 py-3">
           <span className="text-xs font-bold uppercase text-zinc-500">Total</span>
@@ -92,7 +101,7 @@ function OrderConfirmedPage() {
         <div className="pt-3">
           <span className="text-xs font-bold uppercase text-zinc-500">Entrega</span>
           <p className="mt-1 text-sm font-medium text-zinc-400 line-clamp-1">
-            {order.address.street}, {order.address.number}
+            {deliveryAddress?.street}, {deliveryAddress?.number}
           </p>
         </div>
       </div>
