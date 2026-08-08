@@ -410,14 +410,14 @@ BEGIN
   FROM public.couriers c WHERE c.id = _courier_id;
   IF v_before IS NULL THEN RAISE EXCEPTION 'courier not found'; END IF;
 
-  UPDATE public.couriers
+  UPDATE public.couriers AS c
   SET status = _status,
       rejection_reason = CASE WHEN _status IN ('rejected','blocked') THEN NULLIF(btrim(_reason), '') ELSE NULL END,
-      approved_at = CASE WHEN _status = 'approved' THEN now() ELSE approved_at END,
-      approved_by = CASE WHEN _status = 'approved' THEN (SELECT auth.uid()) ELSE approved_by END,
-      is_active = CASE WHEN _status = 'blocked' THEN false ELSE is_active END
-  WHERE id = _courier_id
-  RETURNING to_jsonb(public.couriers) INTO v_after;
+      approved_at = CASE WHEN _status = 'approved' THEN now() ELSE c.approved_at END,
+      approved_by = CASE WHEN _status = 'approved' THEN (SELECT auth.uid()) ELSE c.approved_by END,
+      is_active = CASE WHEN _status = 'approved' THEN true WHEN _status = 'blocked' THEN false ELSE c.is_active END
+  WHERE c.id = _courier_id
+  RETURNING to_jsonb(c) INTO v_after;
 
   IF _status = 'approved' THEN
     INSERT INTO public.user_roles(user_id, role)
@@ -425,7 +425,7 @@ BEGIN
     ON CONFLICT (user_id, role) DO NOTHING;
   END IF;
 
-  IF _status = 'blocked' THEN
+  IF _status <> 'approved' THEN
     UPDATE public.courier_availability
     SET is_online = false, online_since = NULL
     WHERE courier_id = _courier_id;
@@ -461,14 +461,14 @@ BEGIN
   SELECT to_jsonb(m) INTO v_before FROM public.merchants m WHERE m.id = _merchant_id;
   IF v_before IS NULL THEN RAISE EXCEPTION 'merchant not found'; END IF;
 
-  UPDATE public.merchants
+  UPDATE public.merchants AS m
   SET approval_status = _status,
       rejection_reason = CASE WHEN _status IN ('rejected','blocked') THEN NULLIF(btrim(_reason), '') ELSE NULL END,
-      approved_at = CASE WHEN _status = 'approved' THEN now() ELSE approved_at END,
-      approved_by = CASE WHEN _status = 'approved' THEN (SELECT auth.uid()) ELSE approved_by END,
-      is_active = CASE WHEN _status = 'approved' THEN true WHEN _status IN ('rejected','blocked') THEN false ELSE is_active END
-  WHERE id = _merchant_id
-  RETURNING to_jsonb(public.merchants) INTO v_after;
+      approved_at = CASE WHEN _status = 'approved' THEN now() ELSE m.approved_at END,
+      approved_by = CASE WHEN _status = 'approved' THEN (SELECT auth.uid()) ELSE m.approved_by END,
+      is_active = CASE WHEN _status = 'approved' THEN true WHEN _status IN ('rejected','blocked') THEN false ELSE m.is_active END
+  WHERE m.id = _merchant_id
+  RETURNING to_jsonb(m) INTO v_after;
 
   INSERT INTO public.admin_audit_logs(admin_id, action, entity_type, entity_id, before_data, after_data)
   VALUES ((SELECT auth.uid()), 'review_merchant', 'merchant', _merchant_id::text, v_before, v_after);
@@ -491,7 +491,6 @@ ALTER TABLE public.courier_availability ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.courier_locations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Profiles: preserve own access and add explicit admin visibility.
 DROP POLICY IF EXISTS "Admins can view profiles" ON public.profiles;
 CREATE POLICY "Admins can view profiles"
 ON public.profiles FOR SELECT TO authenticated
@@ -503,8 +502,6 @@ ON public.profiles FOR UPDATE TO authenticated
 USING (public.current_user_is_admin())
 WITH CHECK (public.current_user_is_admin());
 
--- Merchants: members can read their own merchant even if pending/blocked and can
--- update operational data only while their membership is active.
 DROP POLICY IF EXISTS "Merchant members can view own merchant" ON public.merchants;
 CREATE POLICY "Merchant members can view own merchant"
 ON public.merchants FOR SELECT TO authenticated
@@ -522,7 +519,6 @@ ON public.merchants FOR ALL TO authenticated
 USING (public.current_user_is_admin())
 WITH CHECK (public.current_user_is_admin());
 
--- Memberships.
 CREATE POLICY "Members can view own memberships"
 ON public.merchant_members FOR SELECT TO authenticated
 USING (user_id = (SELECT auth.uid()) OR public.current_user_is_merchant_manager(merchant_id) OR public.current_user_is_admin());
@@ -532,7 +528,6 @@ ON public.merchant_members FOR ALL TO authenticated
 USING (public.current_user_is_merchant_manager(merchant_id) OR public.current_user_is_admin())
 WITH CHECK (public.current_user_is_merchant_manager(merchant_id) OR public.current_user_is_admin());
 
--- Merchant documents.
 CREATE POLICY "Merchant members can view documents"
 ON public.merchant_documents FOR SELECT TO authenticated
 USING (public.current_user_is_merchant_member(merchant_id) OR public.current_user_is_admin());
@@ -551,14 +546,19 @@ ON public.merchant_documents FOR ALL TO authenticated
 USING (public.current_user_is_admin())
 WITH CHECK (public.current_user_is_admin());
 
--- Courier profile.
 CREATE POLICY "Couriers can view own profile"
 ON public.couriers FOR SELECT TO authenticated
 USING (user_id = (SELECT auth.uid()) OR public.current_user_is_admin());
 
 CREATE POLICY "Users can create own courier application"
 ON public.couriers FOR INSERT TO authenticated
-WITH CHECK (user_id = (SELECT auth.uid()) AND status = 'pending');
+WITH CHECK (
+  user_id = (SELECT auth.uid())
+  AND status = 'pending'
+  AND approved_by IS NULL
+  AND approved_at IS NULL
+  AND rejection_reason IS NULL
+);
 
 CREATE POLICY "Couriers can update pending application"
 ON public.couriers FOR UPDATE TO authenticated
@@ -570,14 +570,19 @@ ON public.couriers FOR ALL TO authenticated
 USING (public.current_user_is_admin())
 WITH CHECK (public.current_user_is_admin());
 
--- Courier documents.
 CREATE POLICY "Couriers can view own documents"
 ON public.courier_documents FOR SELECT TO authenticated
 USING (courier_id = public.current_user_courier_id() OR public.current_user_is_admin());
 
 CREATE POLICY "Couriers can add own documents"
 ON public.courier_documents FOR INSERT TO authenticated
-WITH CHECK (courier_id = public.current_user_courier_id());
+WITH CHECK (
+  courier_id = public.current_user_courier_id()
+  AND status = 'pending'
+  AND reviewed_by IS NULL
+  AND reviewed_at IS NULL
+  AND rejection_reason IS NULL
+);
 
 CREATE POLICY "Couriers can replace pending documents"
 ON public.courier_documents FOR UPDATE TO authenticated
@@ -589,7 +594,6 @@ ON public.courier_documents FOR ALL TO authenticated
 USING (public.current_user_is_admin())
 WITH CHECK (public.current_user_is_admin());
 
--- Availability and location are private to courier/admin. Writes use RPCs.
 CREATE POLICY "Couriers can view own availability"
 ON public.courier_availability FOR SELECT TO authenticated
 USING (courier_id = public.current_user_courier_id() OR public.current_user_is_admin());
@@ -598,13 +602,51 @@ CREATE POLICY "Couriers can view own location"
 ON public.courier_locations FOR SELECT TO authenticated
 USING (courier_id = public.current_user_courier_id() OR public.current_user_is_admin());
 
--- Administrative audit is visible only to admins; inserts are performed by
--- privileged RPCs/service_role.
 CREATE POLICY "Admins can read audit logs"
 ON public.admin_audit_logs FOR SELECT TO authenticated
 USING (public.current_user_is_admin());
 
--- service_role remains the trusted backend principal.
+-- -----------------------------------------------------------------------------
+-- Table/column privileges. RLS is not a replacement for PostgreSQL privileges.
+-- ----------------------------------------------------------------------------
+REVOKE ALL ON public.profiles FROM anon;
+REVOKE INSERT, DELETE, TRUNCATE, TRIGGER, REFERENCES ON public.profiles FROM authenticated;
+REVOKE UPDATE ON public.profiles FROM authenticated;
+GRANT SELECT ON public.profiles TO authenticated;
+GRANT UPDATE (full_name, phone, avatar_url, birth_date) ON public.profiles TO authenticated;
+
+REVOKE UPDATE ON public.merchants FROM authenticated;
+GRANT UPDATE (
+  name, legal_name, document, contact_phone, contact_email, description,
+  logo_url, cover_url, minimum_order, pickup_enabled, delivery_enabled,
+  address_line, neighborhood, city, state, latitude, longitude, delivery_fee,
+  delivery_min_minutes, delivery_max_minutes, tags, temporarily_closed,
+  is_open, closes_at
+) ON public.merchants TO authenticated;
+
+REVOKE ALL ON public.merchant_members, public.merchant_documents, public.couriers,
+  public.courier_documents, public.courier_availability, public.courier_locations,
+  public.admin_audit_logs FROM anon;
+
+REVOKE ALL ON public.merchant_members, public.merchant_documents, public.couriers,
+  public.courier_documents, public.courier_availability, public.courier_locations,
+  public.admin_audit_logs FROM authenticated;
+
+GRANT SELECT ON public.merchant_members TO authenticated;
+GRANT SELECT, INSERT ON public.merchant_documents TO authenticated;
+GRANT UPDATE (storage_path) ON public.merchant_documents TO authenticated;
+
+GRANT SELECT, INSERT ON public.couriers TO authenticated;
+GRANT UPDATE (
+  cpf, birth_date, address, vehicle_type, vehicle_model, vehicle_plate,
+  cnh_number, pix_key, photo_url
+) ON public.couriers TO authenticated;
+
+GRANT SELECT, INSERT ON public.courier_documents TO authenticated;
+GRANT UPDATE (storage_path) ON public.courier_documents TO authenticated;
+GRANT SELECT ON public.courier_availability, public.courier_locations TO authenticated;
+GRANT SELECT ON public.admin_audit_logs TO authenticated;
+
 GRANT ALL ON public.merchant_members, public.merchant_documents, public.couriers,
   public.courier_documents, public.courier_availability, public.courier_locations,
   public.admin_audit_logs TO service_role;
