@@ -285,6 +285,7 @@ export type Database = {
         }
         Relationships: []
       merchant_hours: {
+      }
         Row: {
           closes_at: string | null
           created_at: string
