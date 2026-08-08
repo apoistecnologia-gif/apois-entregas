@@ -1,17 +1,14 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, CreditCard, Landmark, Wallet, Plus, ChevronRight } from "lucide-react";
+import { ArrowLeft, CircleDollarSign, CreditCard, ShieldCheck, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/perfil/pagamentos")({
   beforeLoad: async ({ location }) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
-      throw redirect({
-        to: "/login",
-        search: {
-          redirect: location.href,
-        },
-      });
+      throw redirect({ to: "/login", search: { redirect: location.href } });
     }
     return { session };
   },
@@ -21,75 +18,80 @@ export const Route = createFileRoute("/perfil/pagamentos")({
 function PagamentosPage() {
   const navigate = useNavigate();
 
-  const paymentMethods = [
-    { id: "pix", label: "Pix", icon: Landmark, description: "Pagamento instantâneo", color: "text-emerald-400" },
-    { id: "card", label: "Cartão de Crédito/Débito", icon: CreditCard, description: "Visa, Mastercard, Elo", color: "text-blue-400" },
-    { id: "money", label: "Dinheiro", icon: Wallet, description: "Pagamento na entrega", color: "text-primary" },
-  ];
-
   return (
-    <div className="flex h-screen w-full flex-col bg-black text-white overflow-hidden relative">
-      <header className="shrink-0 z-50 flex items-center justify-between p-4 bg-black/80 backdrop-blur-lg border-b border-zinc-900">
-        <button onClick={() => navigate({ to: "/perfil" })} className="p-2 rounded-full bg-zinc-900 shadow-lg">
-          <ArrowLeft className="w-5 h-5 text-zinc-300" />
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
+      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 p-4 backdrop-blur-lg">
+        <button
+          type="button"
+          onClick={() => void navigate({ to: "/perfil" })}
+          className="rounded-full bg-zinc-900 p-2 shadow-lg"
+          aria-label="Voltar ao perfil"
+        >
+          <ArrowLeft className="h-5 w-5 text-zinc-300" />
         </button>
-        <h1 className="text-xl font-bold text-primary text-center flex-1">Pagamentos</h1>
+        <h1 className="flex-1 text-center text-xl font-bold text-primary">Pagamentos</h1>
         <div className="w-9" />
       </header>
 
-      <main className="flex-1 overflow-y-auto p-6 scrollbar-none space-y-8">
-        <section className="space-y-4">
-          <h2 className="text-xs font-bold text-primary uppercase tracking-widest ml-1">Métodos disponíveis</h2>
-          <div className="space-y-3">
-            {paymentMethods.map((method) => (
-              <div
-                key={method.id}
-                className="flex items-center justify-between p-4 rounded-2xl bg-zinc-900/40 border border-zinc-900/50 backdrop-blur-sm"
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-xl bg-zinc-900 border border-zinc-800 ${method.color}`}>
-                    <method.icon className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-zinc-200">{method.label}</p>
-                    <p className="text-xs text-zinc-500">{method.description}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-xs font-bold text-primary uppercase tracking-widest ml-1 text-center">Cartões Salvos</h2>
-          <div className="p-8 rounded-3xl border border-dashed border-zinc-800 bg-zinc-900/20 flex flex-col items-center justify-center text-center space-y-4">
-            <div className="p-4 rounded-full bg-zinc-900/50 text-zinc-700">
-              <CreditCard className="w-10 h-10" />
+      <main className="scrollbar-none flex-1 space-y-7 overflow-y-auto p-6">
+        <section className="rounded-3xl border border-primary/25 bg-primary/5 p-5">
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
+              <CircleDollarSign className="h-6 w-6" />
             </div>
-            <div className="space-y-1">
-              <p className="text-sm font-bold text-zinc-400">Nenhum cartão salvo</p>
-              <p className="text-xs text-zinc-600 px-4">
-                Por segurança, cartões salvos serão configurados quando integrarmos nosso provedor de pagamentos oficial.
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-black">PIX</h2>
+                <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-black uppercase text-green-400">
+                  Disponível
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-zinc-400">
+                O PIX é gerado para cada pedido e processado pela integração OpenPix/Woovi.
               </p>
             </div>
-            <button className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-zinc-900 text-zinc-400 font-bold text-xs opacity-50 cursor-not-allowed border border-zinc-800">
-              <Plus className="w-4 h-4" />
-              Adicionar cartão (Em breve)
-            </button>
           </div>
         </section>
 
-        <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-start gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Landmark className="w-4 h-4 text-primary" />
+        <section className="space-y-3">
+          <h2 className="ml-1 text-xs font-bold uppercase tracking-widest text-zinc-500">
+            Outras formas
+          </h2>
+          <div className="grid gap-3">
+            <div className="flex items-center gap-4 rounded-2xl border border-zinc-900 bg-zinc-950 p-4 text-zinc-600">
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-zinc-900">
+                <CreditCard className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold">Cartão de crédito/débito</p>
+                <p className="text-xs">Indisponível até a integração de um adquirente.</p>
+              </div>
+              <span className="text-[10px] font-bold uppercase">Em breve</span>
+            </div>
+            <div className="flex items-center gap-4 rounded-2xl border border-zinc-900 bg-zinc-950 p-4 text-zinc-600">
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-zinc-900">
+                <Wallet className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold">Dinheiro na entrega</p>
+                <p className="text-xs">Indisponível enquanto a conciliação de dinheiro não estiver implementada.</p>
+              </div>
+              <span className="text-[10px] font-bold uppercase">Indisponível</span>
+            </div>
           </div>
-          <div className="space-y-1">
-            <p className="text-xs font-bold text-primary">Pagamento Seguro</p>
-            <p className="text-[10px] text-zinc-400 leading-relaxed">
-              O APOIS utiliza criptografia de ponta a ponta. Seus dados financeiros são processados por parceiros certificados PCI-DSS.
+        </section>
+
+        <section className="flex items-start gap-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
+          <div className="rounded-lg bg-primary/10 p-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-primary">Cobrança no servidor</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
+              O aplicativo não armazena credenciais financeiras. A cobrança PIX é criada no backend e a confirmação chega por webhook do provedor.
             </p>
           </div>
-        </div>
+        </section>
       </main>
     </div>
   );
