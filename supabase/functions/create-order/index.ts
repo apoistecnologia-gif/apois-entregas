@@ -69,11 +69,11 @@ function mapOrderError(message: string) {
   if (normalized.includes("merchant is inactive") || normalized.includes("merchant not found")) {
     return { status: 409, code: "MERCHANT_UNAVAILABLE", error: "O estabelecimento não está disponível." };
   }
-  if (normalized.includes("unavailable") || normalized.includes("product") || normalized.includes("option")) {
-    return { status: 409, code: "ITEM_UNAVAILABLE", error: "Um item ou adicional não está mais disponível. Revise a sacola." };
-  }
   if (normalized.includes("group") || normalized.includes("selection")) {
     return { status: 409, code: "CUSTOMIZATION_INVALID", error: "Revise as opções de personalização do pedido." };
+  }
+  if (normalized.includes("unavailable") || normalized.includes("product") || normalized.includes("option")) {
+    return { status: 409, code: "ITEM_UNAVAILABLE", error: "Um item ou adicional não está mais disponível. Revise a sacola." };
   }
   return { status: 409, code: "ORDER_CREATION_FAILED", error: "Não foi possível criar o pedido. Tente novamente." };
 }
@@ -193,8 +193,61 @@ Deno.serve(async (request: Request) => {
     });
   }
 
+  const { data: snapshot, error: snapshotError } = await adminClient
+    .from("orders")
+    .select(`
+      id,
+      order_number,
+      created_at,
+      status,
+      payment_method,
+      payment_status,
+      subtotal,
+      delivery_fee,
+      discount,
+      total,
+      observation,
+      order_items (
+        id,
+        product_id,
+        product_name,
+        product_description,
+        base_price,
+        unit_price,
+        quantity,
+        line_total,
+        selected_options
+      )
+    `)
+    .eq("id", created.order_id)
+    .single();
+
+  if (snapshotError || !snapshot) {
+    console.error("create-order could not load authoritative snapshot", {
+      code: snapshotError?.code,
+      requestKey,
+    });
+    return new Response(JSON.stringify({ error: "Pedido criado, mas não foi possível carregar o resumo.", code: "SNAPSHOT_FAILED" }), {
+      status: 500,
+      headers: jsonHeaders,
+    });
+  }
+
   return new Response(
-    JSON.stringify({ orderId: created.order_id, orderNumber: created.order_number }),
+    JSON.stringify({
+      orderId: snapshot.id,
+      orderNumber: snapshot.order_number,
+      createdAt: snapshot.created_at,
+      status: snapshot.status,
+      paymentMethod: snapshot.payment_method,
+      paymentStatus: snapshot.payment_status,
+      subtotal: snapshot.subtotal,
+      deliveryFee: snapshot.delivery_fee,
+      discount: snapshot.discount,
+      total: snapshot.total,
+      observation: snapshot.observation,
+      items: snapshot.order_items,
+    }),
     { status: 200, headers: jsonHeaders },
   );
 });
