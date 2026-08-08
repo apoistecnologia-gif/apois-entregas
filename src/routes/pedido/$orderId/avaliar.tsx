@@ -2,6 +2,7 @@ import { createFileRoute, redirect, useNavigate, useParams } from "@tanstack/rea
 import { ArrowLeft, Star, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getLocalOrderById, getLocalOrders, LocalOrder, saveLocalOrders } from "@/lib/local-orders";
 
 export const Route = createFileRoute("/pedido/$orderId/avaliar")({
   component: RateOrderPage,
@@ -10,7 +11,7 @@ export const Route = createFileRoute("/pedido/$orderId/avaliar")({
 function RateOrderPage() {
   const navigate = useNavigate();
   const { orderId } = useParams({ from: "/pedido/$orderId/avaliar" });
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<LocalOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [merchantRating, setMerchantRating] = useState(0);
   const [deliveryRating, setDeliveryRating] = useState(0);
@@ -24,9 +25,7 @@ function RateOrderPage() {
         return;
       }
       
-      const ordersKey = `apois_orders_${user.id}`;
-      const orders = JSON.parse(localStorage.getItem(ordersKey) || "[]");
-      const foundOrder = orders.find((o: any) => o.id === orderId);
+      const foundOrder = getLocalOrderById(user.id, orderId);
       
       if (foundOrder) {
         if (foundOrder.status !== 'entregue') {
@@ -45,12 +44,11 @@ function RateOrderPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     
-    const ordersKey = `apois_orders_${user.id}`;
-    const orders = JSON.parse(localStorage.getItem(ordersKey) || "[]");
-    const updatedOrders = orders.map((o: any) => 
+    const orders = getLocalOrders(user.id);
+    const updatedOrders = orders.map((o) => 
       o.id === orderId ? { ...o, rating: { merchant: merchantRating, delivery: deliveryRating, comment } } : o
     );
-    localStorage.setItem(ordersKey, JSON.stringify(updatedOrders));
+    saveLocalOrders(user.id, updatedOrders);
     navigate({ to: `/pedido/${orderId}` });
   };
 

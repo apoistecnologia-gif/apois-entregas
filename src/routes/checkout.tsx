@@ -3,6 +3,7 @@ import { ArrowLeft, MapPin, ChevronRight, CircleDollarSign, CreditCard, ShieldCh
 import { useCart } from "@/contexts/CartContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { LocalOrder, LocalOrderItem } from "@/lib/local-orders";
 
 export const Route = createFileRoute("/checkout")({
   beforeLoad: async ({ location }) => {
@@ -60,12 +61,25 @@ function CheckoutPage() {
     const paymentMethod = sessionStorage.getItem('apois_payment_method') || 'pix';
     const orderId = `APOIS-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    const newOrder = {
+    // Snapshot normalizado dos itens
+    const orderItems: LocalOrderItem[] = items.map(item => ({
+      id: item.id,
+      lineId: item.lineId,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      basePrice: item.basePrice,
+      image: item.image,
+      quantity: item.quantity,
+      merchantId: item.merchantId,
+      selectedOptions: [...item.selectedOptions]
+    }));
 
+    const newOrder: LocalOrder = {
       id: orderId,
       createdAt: new Date().toISOString(),
-      merchant,
-      items,
+      merchant: { ...merchant },
+      items: orderItems,
       subtotal,
       deliveryFee,
       discount: 0,
@@ -104,7 +118,19 @@ function CheckoutPage() {
 
         <section className="bg-zinc-950 p-4 rounded-2xl border border-zinc-900">
           <p className="text-xs text-zinc-500 uppercase font-bold mb-2">Itens</p>
-          {items.map(i => <div key={i.id} className="flex justify-between text-sm py-1"><span>{i.quantity}x {i.name}</span><span>R$ {(i.price * i.quantity).toFixed(2)}</span></div>)}
+          {items.map(i => (
+            <div key={i.lineId} className="space-y-1 py-2 border-b border-zinc-900 last:border-0">
+              <div className="flex justify-between text-sm">
+                <span className="font-bold">{i.quantity}x {i.name}</span>
+                <span>R$ {(i.price * i.quantity).toFixed(2).replace('.', ',')}</span>
+              </div>
+              {i.selectedOptions.length > 0 && (
+                <p className="text-[10px] text-zinc-500 line-clamp-1">
+                  {i.selectedOptions.map(opt => opt.optionName).join(' • ')}
+                </p>
+              )}
+            </div>
+          ))}
         </section>
 
         <section className="bg-zinc-950 p-4 rounded-2xl border border-zinc-900">

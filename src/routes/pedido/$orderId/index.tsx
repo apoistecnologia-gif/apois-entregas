@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { ArrowLeft, MapPin, CheckCircle2, Bike, PackageCheck, UtensilsCrossed, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getLocalOrderById, LocalOrder } from "@/lib/local-orders";
 
 export const Route = createFileRoute("/pedido/$orderId/")({
   component: OrderDetailsPage,
@@ -10,7 +11,7 @@ export const Route = createFileRoute("/pedido/$orderId/")({
 function OrderDetailsPage() {
   const navigate = useNavigate();
   const { orderId } = useParams({ from: "/pedido/$orderId/" });
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<LocalOrder | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,9 +22,7 @@ function OrderDetailsPage() {
         return;
       }
       
-      const ordersKey = `apois_orders_${user.id}`;
-      const orders = JSON.parse(localStorage.getItem(ordersKey) || "[]");
-      const foundOrder = orders.find((o: any) => o.id === orderId);
+      const foundOrder = getLocalOrderById(user.id, orderId);
       if (foundOrder) setOrder(foundOrder);
       setLoading(false);
     };
@@ -115,10 +114,17 @@ function OrderDetailsPage() {
         <section className="bg-zinc-950 p-4 rounded-2xl border border-zinc-900 space-y-4">
           <h3 className="text-sm font-black uppercase text-zinc-500 tracking-wider">Resumo do pedido</h3>
           <div className="space-y-3">
-            {order.items.map((i: any) => (
-              <div key={i.id} className="flex justify-between text-sm">
-                <span className="text-zinc-300">{i.quantity}x {i.name}</span>
-                <span className="font-bold">R$ {(i.price * i.quantity).toFixed(2).replace('.', ',')}</span>
+            {order.items.map((i) => (
+              <div key={i.lineId} className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-300">{i.quantity}x {i.name}</span>
+                  <span className="font-bold">R$ {(i.price * i.quantity).toFixed(2).replace('.', ',')}</span>
+                </div>
+                {i.selectedOptions.length > 0 && (
+                  <p className="text-[10px] text-zinc-500">
+                    {i.selectedOptions.map(opt => opt.optionName).join(' • ')}
+                  </p>
+                )}
               </div>
             ))}
           </div>
