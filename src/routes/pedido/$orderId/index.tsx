@@ -81,18 +81,46 @@ function OrderDetailsPage() {
   }
 
   const getStatusStep = (status: string) => {
-    const states = ['pendente', 'confirmado', 'preparando', 'pronto', 'saiu_para_entrega', 'entregue'];
-    return states.indexOf(status);
+    switch (status) {
+      case 'confirmed':
+      case 'accepted':
+        return 0;
+      case 'preparing':
+        return 1;
+      case 'ready':
+      case 'ready_for_pickup':
+      case 'searching_driver':
+      case 'driver_assigned':
+      case 'driver_arriving_store':
+        return 2;
+      case 'picked_up':
+      case 'out_for_delivery':
+      case 'on_the_way':
+        return 3;
+      case 'delivered':
+        return 4;
+      default:
+        return -1;
+    }
   };
 
-  const currentStepIdx = getStatusStep(order.status || 'pendente');
+  const currentStepIdx = getStatusStep(order.status || 'confirmed');
+  const isCancelled = order.status === 'cancelled';
+  const isRefunded = order.status === 'refunded';
+
+  const stepStatus = (idx: number) => {
+    if (currentStepIdx < 0) return 'pending';
+    if (idx < currentStepIdx) return 'completed';
+    if (idx === currentStepIdx) return 'current';
+    return 'pending';
+  };
 
   const steps = [
-    { label: "Pedido confirmado", icon: CheckCircle2, status: currentStepIdx >= 1 ? (currentStepIdx === 1 ? "current" : "completed") : "pending" },
-    { label: "Estabelecimento preparando", icon: UtensilsCrossed, status: currentStepIdx >= 2 ? (currentStepIdx === 2 ? "current" : "completed") : "pending" },
-    { label: "Pedido pronto", icon: PackageCheck, status: currentStepIdx >= 3 ? (currentStepIdx === 3 ? "current" : "completed") : "pending" },
-    { label: "Saiu para entrega", icon: Bike, status: currentStepIdx >= 4 ? (currentStepIdx === 4 ? "current" : "completed") : "pending" },
-    { label: "Entregue", icon: CheckCircle2, status: currentStepIdx >= 5 ? (currentStepIdx === 5 ? "current" : "completed") : "pending" },
+    { label: "Pedido confirmado", icon: CheckCircle2, status: stepStatus(0) },
+    { label: "Estabelecimento preparando", icon: UtensilsCrossed, status: stepStatus(1) },
+    { label: "Pedido pronto", icon: PackageCheck, status: stepStatus(2) },
+    { label: "Saiu para entrega", icon: Bike, status: stepStatus(3) },
+    { label: "Entregue", icon: CheckCircle2, status: stepStatus(4) },
   ];
 
   const deliveryAddress = typeof order.delivery_address === 'string' 
@@ -110,31 +138,46 @@ function OrderDetailsPage() {
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 space-y-6 pb-20">
+        {(isCancelled || isRefunded) && (
+          <section className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
+            <p className="text-sm font-black uppercase text-zinc-300">
+              {isRefunded ? 'Pedido reembolsado' : 'Pedido cancelado'}
+            </p>
+            <p className="text-xs text-zinc-500 mt-1">
+              {isRefunded
+                ? 'O pagamento deste pedido foi reembolsado.'
+                : 'Este pedido foi cancelado e não seguirá para entrega.'}
+            </p>
+          </section>
+        )}
+
         {/* Status Timeline */}
-        <section className="bg-zinc-950 p-6 rounded-2xl border border-zinc-900">
-          <div className="space-y-6">
-            {steps.map((step, idx) => {
-              const Icon = step.icon;
-              return (
-                <div key={idx} className="flex gap-4 relative">
-                  {idx !== steps.length - 1 && (
-                    <div className={`absolute left-4 top-8 w-[2px] h-10 ${step.status === 'completed' ? 'bg-primary' : 'bg-zinc-800'}`} />
-                  )}
-                  <div className={`grid h-8 w-8 place-items-center rounded-full ring-2 ring-black shrink-0 ${step.status === 'completed' ? 'bg-primary text-black' : step.status === 'current' ? 'bg-zinc-800 text-primary ring-primary/20' : 'bg-zinc-900 text-zinc-700'}`}>
-                    <Icon className="h-4 w-4" />
+        {!isCancelled && !isRefunded && (
+          <section className="bg-zinc-950 p-6 rounded-2xl border border-zinc-900">
+            <div className="space-y-6">
+              {steps.map((step, idx) => {
+                const Icon = step.icon;
+                return (
+                  <div key={idx} className="flex gap-4 relative">
+                    {idx !== steps.length - 1 && (
+                      <div className={`absolute left-4 top-8 w-[2px] h-10 ${step.status === 'completed' ? 'bg-primary' : 'bg-zinc-800'}`} />
+                    )}
+                    <div className={`grid h-8 w-8 place-items-center rounded-full ring-2 ring-black shrink-0 ${step.status === 'completed' ? 'bg-primary text-black' : step.status === 'current' ? 'bg-zinc-800 text-primary ring-primary/20' : 'bg-zinc-900 text-zinc-700'}`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 pt-1">
+                      <p className={`text-sm font-bold ${step.status === 'pending' ? 'text-zinc-700' : 'text-white'}`}>{step.label}</p>
+                      {step.status === 'current' && <p className="text-[10px] text-primary font-bold animate-pulse">EM ANDAMENTO</p>}
+                    </div>
                   </div>
-                  <div className="flex-1 pt-1">
-                    <p className={`text-sm font-bold ${step.status === 'pending' ? 'text-zinc-700' : 'text-white'}`}>{step.label}</p>
-                    {step.status === 'current' && <p className="text-[10px] text-primary font-bold animate-pulse">EM ANDAMENTO</p>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Rating Section */}
-        {order.status === 'entregue' && (
+        {order.status === 'delivered' && (
           <button 
             onClick={() => navigate({ to: `/pedido/${orderId}/avaliar` })}
             className="w-full bg-primary/10 border border-primary/20 text-primary py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/5 active:scale-95 transition-transform"
