@@ -187,7 +187,7 @@ function OrderConfirmedPage() {
               </div>
               <div>
                 <h2 className="font-black">Pagar com PIX</h2>
-                <p className="text-xs text-zinc-500">Cobrança processada pela OpenPix/Woovi.</p>
+                <p className="text-xs text-zinc-500">Cobrança processada pelo Mercado Pago.</p>
               </div>
             </div>
 
