@@ -38,7 +38,6 @@ function OrderDetailsPage() {
     
     fetchOrder();
 
-    // Inscrição em tempo real para atualizações de status
     const channel = supabase
       .channel(`order_status_${orderId}`)
       .on(
@@ -152,7 +151,6 @@ function OrderDetailsPage() {
           </section>
         )}
 
-        {/* Status Timeline */}
         {!isCancelled && !isRefunded && (
           <section className="bg-zinc-950 p-6 rounded-2xl border border-zinc-900">
             <div className="space-y-6">
@@ -177,7 +175,6 @@ function OrderDetailsPage() {
           </section>
         )}
 
-        {/* Rating Section */}
         {order.status === 'delivered' && (
           <button 
             onClick={() => navigate({ to: `/pedido/${orderId}/avaliar` })}
@@ -188,7 +185,6 @@ function OrderDetailsPage() {
           </button>
         )}
 
-        {/* Items Summary */}
         <section className="bg-zinc-950 p-4 rounded-2xl border border-zinc-900 space-y-4">
           <h3 className="text-sm font-black uppercase text-zinc-500 tracking-wider">Resumo do pedido</h3>
           <div className="space-y-3">
@@ -226,7 +222,6 @@ function OrderDetailsPage() {
           </div>
         </section>
 
-        {/* Delivery Address */}
         <section className="bg-zinc-950 p-4 rounded-2xl border border-zinc-900 flex gap-4">
           <div className="grid h-10 w-10 place-items-center rounded-xl bg-zinc-900 shrink-0"><MapPin className="h-5 w-5 text-primary" /></div>
           <div>
@@ -236,7 +231,6 @@ function OrderDetailsPage() {
           </div>
         </section>
 
-        {/* Payment and Meta */}
         <div className="grid grid-cols-2 gap-4">
            <section className="bg-zinc-950 p-4 rounded-2xl border border-zinc-900">
               <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Pagamento</p>
