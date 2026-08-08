@@ -104,7 +104,7 @@ function OrderDetailsPage() {
     }
   };
 
-  const currentStepIdx = getStatusStep(order.status || 'confirmed');
+  const currentStepIdx = getStatusStep(order.status);
   const isCancelled = order.status === 'cancelled';
   const isRefunded = order.status === 'refunded';
 
