@@ -1,10 +1,9 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ShoppingBag } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Loader2 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { AppBottomNav } from "@/components/AppBottomNav";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
-import { getLocalOrders, LocalOrder } from "@/lib/local-orders";
 
 export const Route = createFileRoute("/pedidos")({
   beforeLoad: async ({ location }) => {
@@ -20,20 +19,30 @@ export const Route = createFileRoute("/pedidos")({
     return { session };
   },
   component: PedidosPage,
+  head: () => ({
+    meta: [{ title: "Meus Pedidos | APOIS ENTREGA" }]
+  }),
 });
 
 function PedidosPage() {
   const navigate = useNavigate();
   const { totalItems } = useCart();
-  const [orders, setOrders] = useState<LocalOrder[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchOrders = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      const savedOrders = getLocalOrders(user.id);
-      setOrders(savedOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      const { data, error } = await supabase
+        .from("orders" as any)
+        .select("*, merchants(name, logo_url)")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Erro ao carregar pedidos reais:", error);
+      } else {
+        setOrders(data || []);
+      }
+      setLoading(false);
     };
     
     fetchOrders();
@@ -51,23 +60,27 @@ function PedidosPage() {
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 pb-24 scrollbar-none space-y-4">
-        {orders.length > 0 ? (
+        {loading ? (
+          <div className="h-full flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : orders.length > 0 ? (
           orders.map((order) => (
             <button 
               key={order.id}
               onClick={() => navigate({ to: `/pedido/${order.id}` })}
               className="w-full flex items-center gap-4 bg-zinc-950 border border-zinc-900 p-4 rounded-2xl active:scale-[0.98] transition-transform text-left"
             >
-              <img src={order.merchant.logo} className="w-12 h-12 rounded-xl object-cover ring-1 ring-white/10" alt="" />
+              <img src={order.merchants?.logo_url || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c"} className="w-12 h-12 rounded-xl object-cover ring-1 ring-white/10" alt="" />
               <div className="flex-1">
                 <div className="flex justify-between items-start">
-                  <h3 className="font-bold text-white leading-tight">{order.merchant.name}</h3>
+                  <h3 className="font-bold text-white leading-tight">{order.merchants?.name || "Estabelecimento"}</h3>
                   <span className="text-[10px] font-black uppercase text-primary bg-primary/10 px-2 py-0.5 rounded-full ring-1 ring-primary/20">
                     {order.status}
                   </span>
                 </div>
                 <p className="text-[11px] text-zinc-500 mt-0.5">
-                  Pedido {order.id} • {new Date(order.createdAt).toLocaleDateString('pt-BR')}
+                  Pedido #{order.order_number} • {new Date(order.created_at).toLocaleDateString('pt-BR')}
                 </p>
                 <p className="text-sm font-bold text-white mt-1">
                   R$ {order.total.toFixed(2).replace('.', ',')}
