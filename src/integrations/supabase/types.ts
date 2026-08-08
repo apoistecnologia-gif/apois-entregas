@@ -88,34 +88,34 @@ export type Database = {
       }
       merchant_hours: {
         Row: {
-          close_time: string
+          closes_at: string | null
           created_at: string
-          day_of_week: number
           id: string
-          is_active: boolean
+          is_closed: boolean
           merchant_id: string
-          open_time: string
+          opens_at: string | null
           updated_at: string
+          weekday: number
         }
         Insert: {
-          close_time: string
+          closes_at?: string | null
           created_at?: string
-          day_of_week: number
           id?: string
-          is_active?: boolean
+          is_closed?: boolean
           merchant_id: string
-          open_time: string
+          opens_at?: string | null
           updated_at?: string
+          weekday: number
         }
         Update: {
-          close_time?: string
+          closes_at?: string | null
           created_at?: string
-          day_of_week?: number
           id?: string
-          is_active?: boolean
+          is_closed?: boolean
           merchant_id?: string
-          open_time?: string
+          opens_at?: string | null
           updated_at?: string
+          weekday?: number
         }
         Relationships: [
           {
@@ -222,10 +222,11 @@ export type Database = {
       product_option_groups: {
         Row: {
           created_at: string
+          description: string | null
           id: string
           is_active: boolean
-          max_options: number
-          min_options: number
+          max_selections: number
+          min_selections: number
           name: string
           product_id: string
           sort_order: number
@@ -233,10 +234,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
           is_active?: boolean
-          max_options?: number
-          min_options?: number
+          max_selections?: number
+          min_selections?: number
           name: string
           product_id: string
           sort_order?: number
@@ -244,10 +246,11 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
           is_active?: boolean
-          max_options?: number
-          min_options?: number
+          max_selections?: number
+          min_selections?: number
           name?: string
           product_id?: string
           sort_order?: number
@@ -271,7 +274,7 @@ export type Database = {
           is_available: boolean
           name: string
           option_group_id: string
-          price: number
+          price_delta: number
           sort_order: number
           updated_at: string
         }
@@ -282,7 +285,7 @@ export type Database = {
           is_available?: boolean
           name: string
           option_group_id: string
-          price?: number
+          price_delta?: number
           sort_order?: number
           updated_at?: string
         }
@@ -293,7 +296,7 @@ export type Database = {
           is_available?: boolean
           name?: string
           option_group_id?: string
-          price?: number
+          price_delta?: number
           sort_order?: number
           updated_at?: string
         }
