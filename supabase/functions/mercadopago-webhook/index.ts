@@ -139,7 +139,6 @@ Deno.serve(async (request: Request) => {
     return response(500, { error: "payment_lookup_failed" });
   }
   if (!payment) {
-    // The provider can notify immediately after order creation, before our local insert completes.
     return response(503, { error: "payment_not_ready" });
   }
 
@@ -180,10 +179,16 @@ Deno.serve(async (request: Request) => {
   const providerPayments = transactions && Array.isArray(transactions.payments) ? transactions.payments : [];
   const providerPayment = providerPayments.length > 0 && isRecord(providerPayments[0]) ? providerPayments[0] : null;
   const providerTransactionId = providerPayment ? text(providerPayment.id) : null;
+  const providerRefunds = transactions && Array.isArray(transactions.refunds) ? transactions.refunds : [];
+  const providerRefund = providerRefunds.length > 0 && isRecord(providerRefunds[0]) ? providerRefunds[0] : null;
+  const providerRefundId = providerRefund ? text(providerRefund.id) : null;
+  const providerRefundAmount = providerRefund && Number.isFinite(Number(providerRefund.amount))
+    ? Number(providerRefund.amount)
+    : Number(payment.amount);
   const now = new Date().toISOString();
 
   const paid = providerStatus === "processed" && providerStatusDetail === "accredited";
-  const refunded = providerStatus === "refunded";
+  const refunded = providerStatus === "refunded" || providerStatusDetail === "refunded";
   const failed = ["canceled", "expired", "failed"].includes(providerStatus);
   const processing = providerStatus === "processing";
 
@@ -202,7 +207,29 @@ Deno.serve(async (request: Request) => {
     }
   } else if (refunded) {
     await admin.from("payments").update({ status: "refunded" }).eq("id", payment.id);
-    await admin.from("orders").update({ payment_status: "refunded" }).eq("id", internalOrder.id);
+    const { data: transitionedOrder } = await admin
+      .from("orders")
+      .update({ payment_status: "refunded", status: "refunded" })
+      .eq("id", internalOrder.id)
+      .eq("status", "cancelled")
+      .select("id")
+      .maybeSingle();
+    if (!transitionedOrder) {
+      await admin.from("orders").update({ payment_status: "refunded" }).eq("id", internalOrder.id);
+    } else {
+      await admin.from("order_status_history").insert({ order_id: internalOrder.id, status: "refunded", changed_by_user_id: null });
+    }
+
+    const refundQuery = admin.from("refunds").update({
+      status: "completed",
+      provider_refund_id: providerRefundId,
+      processed_at: now,
+    }).eq("payment_id", payment.id).in("status", ["pending", "processing", "failed"]);
+    if (providerRefundId) {
+      await refundQuery.or(`provider_refund_id.is.null,provider_refund_id.eq.${providerRefundId}`);
+    } else {
+      await refundQuery;
+    }
   } else if (failed) {
     await admin
       .from("payments")
@@ -223,8 +250,21 @@ Deno.serve(async (request: Request) => {
         provider_transaction_id: providerTransactionId,
         transaction_type: "charge",
         amount: Number(payment.amount),
-        status: paid ? "completed" : failed ? "failed" : "pending",
-        processed_at: paid || failed || refunded ? now : null,
+        status: paid || refunded ? "completed" : failed ? "failed" : "pending",
+        processed_at: paid || refunded || failed ? now : null,
+      },
+      { onConflict: "payment_id,provider_transaction_id,transaction_type" },
+    );
+  }
+  if (refunded && providerRefundId) {
+    await admin.from("payment_transactions").upsert(
+      {
+        payment_id: payment.id,
+        provider_transaction_id: providerRefundId,
+        transaction_type: "refund",
+        amount: providerRefundAmount,
+        status: "completed",
+        processed_at: now,
       },
       { onConflict: "payment_id,provider_transaction_id,transaction_type" },
     );
