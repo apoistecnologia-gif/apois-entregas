@@ -1,76 +1,132 @@
 /// <reference types="@types/google.maps" />
-import { APIProvider, Map, AdvancedMarker } from "@vis.gl/react-google-maps";
-import { useState, useCallback, useEffect, useRef } from "react";
+import {
+  APIProvider,
+  AdvancedMarker,
+  Map,
+  useApiIsLoaded,
+} from "@vis.gl/react-google-maps";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, Search, Loader2 } from "lucide-react";
-import { useServerFn } from "@tanstack/react-start";
-import { geocodeAddress, autocompleteAddress, getPlaceDetails } from "@/lib/google-maps.functions";
+import { Navigation, Search, Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
-interface GoogleMapsAddressSelectorProps {
-  onAddressSelected: (address: {
-    street: string;
-    number: string;
-    neighborhood: string;
-    city: string;
-    state: string;
-    postal_code: string;
-    latitude?: number | null;
-    longitude?: number | null;
-  }) => void;
-  initialCenter?: { lat: number; lng: number } | null | undefined;
+export interface SelectedAddress {
+  street: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
-export function GoogleMapsAddressSelector({ onAddressSelected, initialCenter }: GoogleMapsAddressSelectorProps) {
-  const browserKey = (import.meta as any).env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
-  const [markerPos, setMarkerPos] = useState(initialCenter || { lat: -23.5505, lng: -46.6333 }); // Default SP
+interface GoogleMapsAddressSelectorProps {
+  onAddressSelected: (address: SelectedAddress) => void;
+  initialCenter?: { lat: number; lng: number } | null;
+}
+
+type Suggestion = google.maps.places.AutocompletePrediction;
+
+function parseAddressComponents(
+  components: google.maps.GeocoderAddressComponent[] | undefined,
+): Omit<SelectedAddress, "latitude" | "longitude"> {
+  const list = components ?? [];
+  const getComponent = (type: string) =>
+    list.find((component) => component.types.includes(type))?.long_name ?? "";
+  const getShortComponent = (type: string) =>
+    list.find((component) => component.types.includes(type))?.short_name ?? "";
+
+  return {
+    street: getComponent("route"),
+    number: getComponent("street_number"),
+    neighborhood:
+      getComponent("sublocality_level_1") ||
+      getComponent("neighborhood") ||
+      getComponent("sublocality"),
+    city:
+      getComponent("administrative_area_level_2") ||
+      getComponent("locality") ||
+      getComponent("administrative_area_level_3"),
+    state: getShortComponent("administrative_area_level_1"),
+    postal_code: getComponent("postal_code").replace(/\D/g, ""),
+  };
+}
+
+export function GoogleMapsAddressSelector({
+  onAddressSelected,
+  initialCenter,
+}: GoogleMapsAddressSelectorProps) {
+  const browserKey =
+    import.meta.env.VITE_GOOGLE_MAPS_BROWSER_KEY ||
+    import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY ||
+    "";
+
+  if (!browserKey) {
+    return (
+      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 text-center">
+        <MapPin className="mx-auto mb-3 h-8 w-8 text-primary" />
+        <p className="font-semibold text-white">Mapa temporariamente indisponível</p>
+        <p className="mt-1 text-sm text-zinc-400">
+          A chave pública do Google Maps ainda não foi configurada neste ambiente.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <APIProvider apiKey={browserKey} libraries={["places"]} region="BR" language="pt-BR">
+      <AddressSelectorContent
+        onAddressSelected={onAddressSelected}
+        initialCenter={initialCenter}
+      />
+    </APIProvider>
+  );
+}
+
+function AddressSelectorContent({
+  onAddressSelected,
+  initialCenter,
+}: GoogleMapsAddressSelectorProps) {
+  const apiLoaded = useApiIsLoaded();
+  const [markerPos, setMarkerPos] = useState(initialCenter ?? { lat: -23.5505, lng: -46.6333 });
   const [searchQuery, setSearchQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLocating, setIsLocating] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
-  
-  const geocodeFn = useServerFn(geocodeAddress);
-  const autocompleteFn = useServerFn(autocompleteAddress);
-  const detailsFn = useServerFn(getPlaceDetails);
+  const autocompleteRef = useRef<google.maps.places.AutocompleteService | null>(null);
+  const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
+  const placesHostRef = useRef<HTMLDivElement>(null);
 
-  const parseAddressComponents = (components: any[]) => {
-    const getComponent = (type: string) => 
-      components.find((c: any) => c.types.includes(type))?.long_name || "";
-    
-    const getShortComponent = (type: string) => 
-      components.find((c: any) => c.types.includes(type))?.short_name || "";
+  useEffect(() => {
+    if (!apiLoaded || !placesHostRef.current) return;
+    autocompleteRef.current = new google.maps.places.AutocompleteService();
+    placesServiceRef.current = new google.maps.places.PlacesService(placesHostRef.current);
+  }, [apiLoaded]);
 
-    const street = getComponent("route");
-    const neighborhood = getComponent("sublocality_level_1") || getComponent("neighborhood") || getComponent("political");
-    const city = getComponent("administrative_area_level_2") || getComponent("locality");
-    const state = getShortComponent("administrative_area_level_1");
-    const postalCode = getComponent("postal_code").replace(/\D/g, "");
-    const number = getComponent("street_number");
+  const reverseGeocode = async (lat: number, lng: number) => {
+    const geocoder = new google.maps.Geocoder();
+    const response = await geocoder.geocode({ location: { lat, lng } });
+    const result = response.results[0];
+    if (!result) throw new Error("ADDRESS_NOT_FOUND");
 
     return {
-      street,
-      number,
-      neighborhood,
-      city,
-      state,
-      postal_code: postalCode,
-    };
+      ...parseAddressComponents(result.address_components),
+      latitude: lat,
+      longitude: lng,
+    } satisfies SelectedAddress;
   };
 
-  const handleMarkerDragEnd = async (e: google.maps.MapMouseEvent) => {
-    if (!e.latLng) return;
-    const lat = e.latLng.lat();
-    const lng = e.latLng.lng();
+  const handleMarkerDragEnd = async (event: google.maps.MapMouseEvent) => {
+    if (!event.latLng) return;
+    const lat = event.latLng.lat();
+    const lng = event.latLng.lng();
     setMarkerPos({ lat, lng });
-    
+
     try {
-      const data = await geocodeFn({ data: { lat, lng } });
-      if (data.results && data.results[0]) {
-        const addr = parseAddressComponents(data.results[0].address_components);
-        onAddressSelected({ ...addr, latitude: lat, longitude: lng });
-      }
+      onAddressSelected(await reverseGeocode(lat, lng));
     } catch (error) {
       console.error("Geocoding error:", error);
       toast.error("Erro ao obter endereço do mapa");
@@ -88,147 +144,180 @@ export function GoogleMapsAddressSelector({ onAddressSelected, initialCenter }: 
       async (position) => {
         const { latitude: lat, longitude: lng } = position.coords;
         setMarkerPos({ lat, lng });
-        
+
         try {
-          const data = await geocodeFn({ data: { lat, lng } });
-          if (data.results && data.results[0]) {
-            const addr = parseAddressComponents(data.results[0].address_components);
-            onAddressSelected({ ...addr, latitude: lat, longitude: lng });
-            toast.success("Localização encontrada!");
-          }
+          onAddressSelected(await reverseGeocode(lat, lng));
+          toast.success("Localização encontrada!");
         } catch (error) {
+          console.error("Reverse geocoding error:", error);
           toast.error("Erro ao identificar endereço");
         } finally {
           setIsLocating(false);
         }
       },
       (error) => {
+        console.error("Geolocation error:", error.code);
         setIsLocating(false);
         toast.error("Erro ao obter sua localização. Verifique as permissões.");
-      }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
     );
   };
 
-  const handleSearch = async (val: string) => {
-    setSearchQuery(val);
-    if (val.length < 3) {
+  const handleSearch = (value: string) => {
+    setSearchQuery(value);
+    if (value.trim().length < 3 || !autocompleteRef.current) {
       setSuggestions([]);
       return;
     }
 
-    try {
-      const data = await autocompleteFn({ data: { input: val } });
-      setSuggestions(data.predictions || []);
-    } catch (error) {
-      console.error("Autocomplete error:", error);
-    }
+    autocompleteRef.current.getPlacePredictions(
+      {
+        input: value,
+        componentRestrictions: { country: "br" },
+        types: ["geocode"],
+      },
+      (predictions, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+          setSuggestions(predictions);
+        } else {
+          setSuggestions([]);
+        }
+      },
+    );
   };
 
-  const handleSuggestionSelect = async (suggestion: any) => {
+  const handleSuggestionSelect = (suggestion: Suggestion) => {
+    const service = placesServiceRef.current;
+    if (!service) return;
+
     setIsSearching(true);
     setSearchQuery(suggestion.description);
     setSuggestions([]);
-    
-    try {
-      const data = await detailsFn({ data: { placeId: suggestion.place_id } });
-      if (data.result && data.result.geometry) {
-        const { lat, lng } = data.result.geometry.location;
-        const newPos = { lat, lng };
-        setMarkerPos(newPos);
-        
-        const addr = parseAddressComponents(data.result.address_components);
-        onAddressSelected({ ...addr, latitude: lat, longitude: lng });
-      }
-    } catch (error) {
-      toast.error("Erro ao carregar detalhes do endereço");
-    } finally {
-      setIsSearching(false);
-    }
+
+    service.getDetails(
+      {
+        placeId: suggestion.place_id,
+        fields: ["address_components", "geometry", "formatted_address"],
+      },
+      (place, status) => {
+        try {
+          if (
+            status !== google.maps.places.PlacesServiceStatus.OK ||
+            !place?.geometry?.location
+          ) {
+            toast.error("Erro ao carregar detalhes do endereço");
+            return;
+          }
+
+          const lat = place.geometry.location.lat();
+          const lng = place.geometry.location.lng();
+          setMarkerPos({ lat, lng });
+          onAddressSelected({
+            ...parseAddressComponents(place.address_components),
+            latitude: lat,
+            longitude: lng,
+          });
+        } finally {
+          setIsSearching(false);
+        }
+      },
+    );
   };
 
   return (
-    <APIProvider apiKey={browserKey}>
-      <div className="space-y-4">
+    <div className="space-y-4">
+      <div ref={placesHostRef} className="hidden" aria-hidden="true" />
+
+      <div className="relative">
         <div className="relative">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Buscar endereço ou CEP..."
-              className="bg-zinc-900 border-zinc-800 h-12 pl-10 rounded-xl focus:ring-primary text-white"
-            />
-          </div>
-          
-          {suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 z-50 bg-zinc-900 border border-zinc-800 mt-1 rounded-xl shadow-2xl overflow-hidden">
-              {suggestions.map((s) => (
-                <button
-                  key={s.place_id}
-                  onClick={() => handleSuggestionSelect(s)}
-                  className="w-full text-left p-3 hover:bg-zinc-800 text-sm border-b border-zinc-800 last:border-0"
-                >
-                  <p className="font-medium">{s.structured_formatting?.main_text}</p>
-                  <p className="text-zinc-500 text-xs truncate">{s.structured_formatting?.secondary_text}</p>
-                </button>
-              ))}
-            </div>
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+          <Input
+            value={searchQuery}
+            onChange={(event) => handleSearch(event.target.value)}
+            placeholder="Buscar endereço ou CEP..."
+            autoComplete="off"
+            className="h-12 rounded-xl border-zinc-800 bg-zinc-900 pl-10 text-white focus:ring-primary"
+          />
+          {isSearching && (
+            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
           )}
         </div>
 
-        <Button
+        {suggestions.length > 0 && (
+          <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl">
+            {suggestions.map((suggestion) => (
+              <button
+                type="button"
+                key={suggestion.place_id}
+                onClick={() => handleSuggestionSelect(suggestion)}
+                className="w-full border-b border-zinc-800 p-3 text-left text-sm last:border-0 hover:bg-zinc-800"
+              >
+                <p className="font-medium">
+                  {suggestion.structured_formatting?.main_text ?? suggestion.description}
+                </p>
+                <p className="truncate text-xs text-zinc-500">
+                  {suggestion.structured_formatting?.secondary_text ?? ""}
+                </p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <Button
+        type="button"
+        onClick={handleGetCurrentLocation}
+        disabled={isLocating || !apiLoaded}
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFD700] font-bold text-black shadow-lg transition-all hover:bg-[#FFD700]/90 active:scale-[0.98]"
+      >
+        {isLocating ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : (
+          <>
+            <Navigation className="h-5 w-5 fill-current" />
+            Usar minha localização atual
+          </>
+        )}
+      </Button>
+
+      <div className="relative h-48 w-full overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+        <Map
+          center={markerPos}
+          zoom={15}
+          gestureHandling="greedy"
+          disableDefaultUI
+          mapId="APOIS_ADDRESS_PICKER"
+          onTilesLoaded={() => setIsMapLoaded(true)}
+        >
+          <AdvancedMarker position={markerPos} draggable onDragEnd={handleMarkerDragEnd} />
+        </Map>
+
+        <button
           type="button"
-          onClick={handleGetCurrentLocation}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            handleGetCurrentLocation();
+          }}
           disabled={isLocating}
-          className="w-full bg-[#FFD700] text-black hover:bg-[#FFD700]/90 font-bold h-12 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all"
+          className="absolute bottom-4 right-4 z-[150] flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border-2 border-black bg-[#FFD700] p-0 text-black shadow-lg transition-all hover:bg-[#FFD700]/90 active:scale-90"
+          title="Usar minha localização atual"
+          aria-label="Usar minha localização atual"
         >
           {isLocating ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Loader2 className="h-6 w-6 animate-spin" />
           ) : (
-            <>
-              <Navigation className="w-5 h-5 fill-current" />
-              Usar minha localização atual
-            </>
+            <Navigation className="h-6 w-6 fill-current" />
           )}
-        </Button>
+        </button>
 
-        <div className="relative h-48 w-full rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900">
-          <Map
-            center={markerPos}
-            zoom={15}
-            gestureHandling={'greedy'}
-            disableDefaultUI={true}
-            mapId="DEMO_MAP_ID"
-            onTilesLoaded={() => setIsMapLoaded(true)}
-          >
-            <AdvancedMarker
-              position={markerPos}
-              draggable={true}
-              onDragEnd={handleMarkerDragEnd}
-            />
-          </Map>
-          
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleGetCurrentLocation();
-            }}
-            disabled={isLocating}
-            className="absolute bottom-4 right-4 bg-[#FFD700] text-black hover:bg-[#FFD700]/90 w-12 h-12 p-0 rounded-full shadow-lg z-[150] border-2 border-black active:scale-90 transition-all flex items-center justify-center cursor-pointer"
-            title="Usar minha localização atual"
-          >
-            {isLocating ? <Loader2 className="w-6 h-6 animate-spin" /> : <Navigation className="w-6 h-6 fill-current" />}
-          </button>
-
-          {!isMapLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 z-20">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          )}
-        </div>
+        {!isMapLoaded && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-zinc-900">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
       </div>
-    </APIProvider>
+    </div>
   );
 }
