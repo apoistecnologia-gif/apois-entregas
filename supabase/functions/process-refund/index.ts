@@ -124,7 +124,6 @@ Deno.serve(async (request: Request) => {
   }
 
   if (!providerResponse.ok || !isRecord(providerPayload)) {
-    // A retry can encounter an already-refunded provider order. Verify the source of truth before failing.
     const verifyResponse = await fetch(`${apiBase}/v1/orders/${encodeURIComponent(payment.provider_charge_id)}`, {
       headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
     });
@@ -153,7 +152,6 @@ Deno.serve(async (request: Request) => {
   const completed = providerStatus === "refunded" || providerStatusDetail === "refunded" || providerRefundStatus === "processed";
 
   if (!completed) {
-    // Provider accepted the request but refund is still processing. Keep it retryable/pollable.
     await admin.from("refunds").update({
       status: "processing",
       provider_refund_id: providerRefundId,
@@ -171,7 +169,23 @@ Deno.serve(async (request: Request) => {
     processed_at: now,
   }).eq("id", refund.id);
   await admin.from("payments").update({ status: "refunded" }).eq("id", payment.id);
-  await admin.from("orders").update({ payment_status: "refunded", status: "refunded" }).eq("id", order.id).eq("status", "cancelled");
+
+  const { data: transitionedOrder } = await admin
+    .from("orders")
+    .update({ payment_status: "refunded", status: "refunded" })
+    .eq("id", order.id)
+    .eq("status", "cancelled")
+    .select("id")
+    .maybeSingle();
+  if (!transitionedOrder) {
+    await admin.from("orders").update({ payment_status: "refunded" }).eq("id", order.id);
+  } else {
+    await admin.from("order_status_history").insert({
+      order_id: order.id,
+      status: "refunded",
+      changed_by_user_id: authData.user.id,
+    });
+  }
 
   if (providerRefundId) {
     await admin.from("payment_transactions").upsert({
