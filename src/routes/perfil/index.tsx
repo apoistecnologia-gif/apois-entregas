@@ -37,7 +37,6 @@ export const Route = createFileRoute("/perfil/")({
 type ProfileRow = {
   full_name: string | null;
   phone: string | null;
-  avatar_url: string | null;
 };
 
 type ProfileRoute =
@@ -79,7 +78,7 @@ function PerfilIndexPage() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("full_name,phone,avatar_url")
+        .select("full_name,phone")
         .eq("id", currentUser.id)
         .single();
 
@@ -153,11 +152,7 @@ function PerfilIndexPage() {
       <main className="scrollbar-none flex-1 overflow-y-auto p-4 pb-20">
         <div className="mb-8 flex flex-col items-center rounded-3xl border border-zinc-900/50 bg-zinc-900/40 p-6 backdrop-blur-sm">
           <div className="mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-zinc-900 shadow-[0_0_15px_rgba(255,215,0,0.3)]">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="Foto do perfil" className="h-full w-full object-cover" />
-            ) : (
-              <User className="h-10 w-10 text-primary" />
-            )}
+            <User className="h-10 w-10 text-primary" />
           </div>
           <h2 className="mb-1 text-xl font-bold">
             {loading ? "Carregando..." : profile?.full_name || "Usuário"}
