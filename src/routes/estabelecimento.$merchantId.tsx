@@ -480,7 +480,12 @@ function EstabelecimentoPage() {
           groups={customizationData.groups}
           options={customizationData.options}
           onClose={() => setCustomizationData(null)}
-          onConfirm={(selectedOptions) => executeAdd(customizationData.product, selectedOptions)}
+          onConfirm={(selectedOptions) => {
+            if (customizationData.shouldClearExistingCart) {
+              clearCart();
+            }
+            executeAdd(customizationData.product, selectedOptions);
+          }}
         />
       )}
 
