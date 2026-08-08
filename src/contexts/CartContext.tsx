@@ -141,13 +141,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateQuantity = (lineId: string, delta: number) => {
     setItems(prev => {
-      const newItems = prev.map(item => {
+      const newItems = prev.flatMap(item => {
         if (item.lineId === lineId) {
           const newQty = item.quantity + delta;
-          return newQty > 0 ? { ...item, quantity: newQty } : item;
+          return newQty > 0 ? [{ ...item, quantity: newQty }] : [];
         }
-        return item;
-      }).filter(item => item.quantity > 0);
+        return [item];
+      });
       
       if (newItems.length === 0) {
         setMerchant(null);
