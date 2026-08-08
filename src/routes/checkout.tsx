@@ -272,7 +272,7 @@ function PixPaymentScreen({ pixData, onCopy, copied, total }: {
           filter: `id=eq.${pixData.orderId}`
         },
         (payload) => {
-          if (payload.new.payment_status === 'paid') {
+          if (payload.new['payment_status'] === 'paid') {
             setPaymentStatus('paid');
             toast.success("Pagamento confirmado!");
             setTimeout(() => {
