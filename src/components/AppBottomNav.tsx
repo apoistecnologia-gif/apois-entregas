@@ -1,13 +1,15 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Home, Compass, Heart, User, Bike, type LucideIcon } from "lucide-react";
 
+type AppTab = "inicio" | "pedidos" | "favoritos" | "perfil";
+
 interface AppBottomNavProps {
-  activeTab: "inicio" | "pedidos" | "favoritos" | "perfil";
+  activeTab?: AppTab;
 }
 
 type NavItem = {
   name: string;
-  id: AppBottomNavProps["activeTab"];
+  id: AppTab;
   icon: LucideIcon;
   onClick: () => void;
 };
