@@ -49,7 +49,28 @@ interface CartContextType {
   totalPrice: number;
 }
 
-type UnknownRecord = Record<string, unknown>;
+type UnknownRecord = {
+  groupId?: unknown;
+  groupName?: unknown;
+  optionId?: unknown;
+  optionName?: unknown;
+  priceDelta?: unknown;
+  id?: unknown;
+  lineId?: unknown;
+  name?: unknown;
+  description?: unknown;
+  price?: unknown;
+  basePrice?: unknown;
+  image?: unknown;
+  quantity?: unknown;
+  merchantId?: unknown;
+  selectedOptions?: unknown;
+  logo?: unknown;
+  deliveryFee?: unknown;
+  deliveryTime?: unknown;
+  closeTime?: unknown;
+  category?: unknown;
+};
 
 const isRecord = (value: unknown): value is UnknownRecord =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -115,6 +136,8 @@ function parseStoredMerchant(value: unknown): CartMerchant | null {
   if (!isRecord(value)) return null;
   if (!isString(value.id) || !isString(value.name)) return null;
 
+  const category = isString(value.category) ? value.category : null;
+
   return {
     id: value.id,
     name: value.name,
@@ -122,7 +145,7 @@ function parseStoredMerchant(value: unknown): CartMerchant | null {
     deliveryFee: isFiniteNumber(value.deliveryFee) ? value.deliveryFee : 0,
     deliveryTime: isString(value.deliveryTime) ? value.deliveryTime : "",
     closeTime: isString(value.closeTime) ? value.closeTime : "",
-    category: isString(value.category) ? value.category : undefined,
+    ...(category ? { category } : {}),
   };
 }
 
