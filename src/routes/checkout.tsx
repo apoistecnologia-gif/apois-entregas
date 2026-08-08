@@ -1,9 +1,9 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, MapPin, ChevronRight, CircleDollarSign, CreditCard, ShieldCheck } from "lucide-react";
-import { useCart } from "@/contexts/CartContext";
+import { useCart, CartMerchant } from "@/contexts/CartContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { LocalOrder, LocalOrderItem } from "@/lib/local-orders";
+import { LocalOrder, LocalOrderItem, getLocalOrders, saveLocalOrders, LocalAddressSnapshot } from "@/lib/local-orders";
 
 export const Route = createFileRoute("/checkout")({
   beforeLoad: async ({ location }) => {
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/checkout")({
 function CheckoutPage() {
   const navigate = useNavigate();
   const { items, merchant, totalPrice, clearCart } = useCart();
-  const [address, setAddress] = useState<any>(null);
+  const [address, setAddress] = useState<LocalAddressSnapshot | null>(null);
   const [observation, setObservation] = useState("");
 
   useEffect(() => {
@@ -61,7 +61,7 @@ function CheckoutPage() {
     const paymentMethod = sessionStorage.getItem('apois_payment_method') || 'pix';
     const orderId = `APOIS-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    // Snapshot normalizado dos itens
+    // Snapshot normalizado dos itens (cópia real profunda das opções)
     const orderItems: LocalOrderItem[] = items.map(item => ({
       id: item.id,
       lineId: item.lineId,
@@ -72,27 +72,29 @@ function CheckoutPage() {
       image: item.image,
       quantity: item.quantity,
       merchantId: item.merchantId,
-      selectedOptions: [...item.selectedOptions]
+      selectedOptions: item.selectedOptions.map(opt => ({ ...opt }))
     }));
+
+    // Cópia profunda do endereço
+    const addressSnapshot: LocalAddressSnapshot = { ...address };
 
     const newOrder: LocalOrder = {
       id: orderId,
       createdAt: new Date().toISOString(),
-      merchant: { ...merchant },
+      merchant: { ...merchant } as CartMerchant,
       items: orderItems,
       subtotal,
       deliveryFee,
       discount: 0,
       total,
-      address,
+      address: addressSnapshot,
       paymentMethod,
       observation,
       status: 'confirmado'
     };
     
-    const ordersKey = `apois_orders_${user.id}`;
-    const existingOrders = JSON.parse(localStorage.getItem(ordersKey) || '[]');
-    localStorage.setItem(ordersKey, JSON.stringify([...existingOrders, newOrder]));
+    const existingOrders = getLocalOrders(user.id);
+    saveLocalOrders(user.id, [...existingOrders, newOrder]);
     
     clearCart();
     navigate({ to: "/pedido/confirmado", search: { orderId } });

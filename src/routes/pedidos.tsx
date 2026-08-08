@@ -52,7 +52,7 @@ function PedidosPage() {
 
       <main className="flex-1 overflow-y-auto p-4 pb-24 scrollbar-none space-y-4">
         {orders.length > 0 ? (
-          orders.map((order: any) => (
+          orders.map((order) => (
             <button 
               key={order.id}
               onClick={() => navigate({ to: `/pedido/${order.id}` })}
