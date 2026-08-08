@@ -8,34 +8,70 @@ const corsHeaders = {
 const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" };
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-// TEMPORÁRIO: homologação com credenciais de teste do Mercado Pago.
-// O cenário APRO é de teste, mas o valor deve continuar sendo o valor real do pedido.
+// TEMPORÁRIO: homologação oficial do PIX no Mercado Pago.
+// A Orders API exige, no sandbox PIX, cobrança pré-definida de R$ 50,00 com payer APRO.
+// O pedido APOIS mantém o seu valor real; somente a cobrança do provedor usa R$ 50,00.
 const MERCADO_PAGO_PIX_TEST_HOMOLOGATION = true;
+const MERCADO_PAGO_PIX_TEST_AMOUNT = 50;
 
 type JsonRecord = Record<string, unknown>;
+
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
 function response(status: number, body: JsonRecord) {
   return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 }
+
 function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
+
 function safeProviderError(payload: unknown) {
   if (!isRecord(payload)) return null;
+
+  const causes = Array.isArray(payload.cause)
+    ? payload.cause.slice(0, 5).map((cause) => {
+        if (!isRecord(cause)) return null;
+        return {
+          code: typeof cause.code === "string" || typeof cause.code === "number" ? cause.code : null,
+          description: text(cause.description),
+          data: text(cause.data),
+        };
+      }).filter(Boolean)
+    : [];
+
   return {
     message: text(payload.message),
     error: text(payload.error),
     status: text(payload.status),
     status_detail: text(payload.status_detail),
     code: typeof payload.code === "string" || typeof payload.code === "number" ? payload.code : null,
+    causes,
   };
 }
 
+function providerErrorReason(payload: ReturnType<typeof safeProviderError>, status: number) {
+  if (!payload) return `HTTP ${status}`;
+  const firstCause = Array.isArray(payload.causes) && payload.causes.length > 0 ? payload.causes[0] : null;
+  return (
+    payload.message ||
+    payload.error ||
+    payload.status_detail ||
+    firstCause?.description ||
+    (payload.code !== null ? String(payload.code) : null) ||
+    `HTTP ${status}`
+  );
+}
+
 Deno.serve(async (request: Request) => {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
-  if (request.method !== "POST") return response(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+  if (request.method !== "POST") {
+    return response(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
+  }
 
   const authorization = request.headers.get("Authorization");
   if (!authorization?.startsWith("Bearer ")) {
@@ -67,7 +103,10 @@ Deno.serve(async (request: Request) => {
     return response(401, { error: "Sessão inválida ou expirada.", code: "UNAUTHORIZED" });
   }
   if (!authData.user.email) {
-    return response(409, { error: "Sua conta precisa ter um e-mail válido para pagar com PIX.", code: "PAYER_EMAIL_REQUIRED" });
+    return response(409, {
+      error: "Sua conta precisa ter um e-mail válido para pagar com PIX.",
+      code: "PAYER_EMAIL_REQUIRED",
+    });
   }
 
   let body: unknown;
@@ -76,6 +115,7 @@ Deno.serve(async (request: Request) => {
   } catch {
     return response(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
   }
+
   if (!isRecord(body) || typeof body.orderId !== "string" || !UUID_RE.test(body.orderId)) {
     return response(400, { error: "Pedido inválido.", code: "INVALID_ORDER_ID" });
   }
@@ -84,6 +124,7 @@ Deno.serve(async (request: Request) => {
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
   const { data: order, error: orderError } = await admin
     .from("orders")
     .select("id,order_number,customer_user_id,status,payment_method,payment_status,total")
@@ -91,7 +132,9 @@ Deno.serve(async (request: Request) => {
     .eq("customer_user_id", authData.user.id)
     .single();
 
-  if (orderError || !order) return response(404, { error: "Pedido não encontrado.", code: "ORDER_NOT_FOUND" });
+  if (orderError || !order) {
+    return response(404, { error: "Pedido não encontrado.", code: "ORDER_NOT_FOUND" });
+  }
   if (["cancelled", "refunded"].includes(order.status)) {
     return response(409, { error: "Este pedido não pode mais ser pago.", code: "ORDER_NOT_PAYABLE" });
   }
@@ -102,14 +145,17 @@ Deno.serve(async (request: Request) => {
     return response(409, { error: "Este pedido já está pago.", code: "ORDER_ALREADY_PAID" });
   }
 
-  const amount = Number(order.total);
-  if (!Number.isFinite(amount) || amount <= 0) {
+  const orderAmount = Number(order.total);
+  if (!Number.isFinite(orderAmount) || orderAmount <= 0) {
     return response(409, { error: "Valor do pedido inválido.", code: "INVALID_AMOUNT" });
   }
 
-  const amountText = amount.toFixed(2);
+  const chargeAmount = MERCADO_PAGO_PIX_TEST_HOMOLOGATION
+    ? MERCADO_PAGO_PIX_TEST_AMOUNT
+    : orderAmount;
+  const chargeAmountText = chargeAmount.toFixed(2);
   const idempotencyKey = MERCADO_PAGO_PIX_TEST_HOMOLOGATION
-    ? `mercadopago:order:${order.id}:pix:test:v3`
+    ? `mercadopago:order:${order.id}:pix:test:v4`
     : `mercadopago:order:${order.id}:pix:v1`;
   const externalReference = `apois-order-${order.id}`;
 
@@ -120,9 +166,13 @@ Deno.serve(async (request: Request) => {
     .maybeSingle();
 
   if (existing) {
-    if (Number(existing.amount) !== amount) {
-      return response(409, { error: "Pagamento existente possui valor divergente.", code: "PAYMENT_AMOUNT_CONFLICT" });
+    if (Math.round(Number(existing.amount) * 100) !== Math.round(chargeAmount * 100)) {
+      return response(409, {
+        error: "Pagamento existente possui valor divergente.",
+        code: "PAYMENT_AMOUNT_CONFLICT",
+      });
     }
+
     return response(200, {
       payment: {
         id: existing.id,
@@ -133,6 +183,8 @@ Deno.serve(async (request: Request) => {
         expiresAt: existing.expires_at,
         providerChargeId: existing.provider_charge_id,
       },
+      orderAmount,
+      testMode: MERCADO_PAGO_PIX_TEST_HOMOLOGATION,
       reused: true,
     });
   }
@@ -141,7 +193,7 @@ Deno.serve(async (request: Request) => {
     ? {
         type: "online",
         external_reference: externalReference,
-        total_amount: amountText,
+        total_amount: "50.00",
         payer: {
           email: "test_user_br@testuser.com",
           first_name: "APRO",
@@ -149,7 +201,7 @@ Deno.serve(async (request: Request) => {
         transactions: {
           payments: [
             {
-              amount: amountText,
+              amount: "50.00",
               payment_method: { id: "pix", type: "bank_transfer" },
             },
           ],
@@ -157,19 +209,19 @@ Deno.serve(async (request: Request) => {
       }
     : {
         type: "online",
-        total_amount: amountText,
-        external_reference: externalReference,
         processing_mode: "automatic",
+        external_reference: externalReference,
+        total_amount: chargeAmountText,
+        payer: { email: authData.user.email },
         transactions: {
           payments: [
             {
-              amount: amountText,
+              amount: chargeAmountText,
               payment_method: { id: "pix", type: "bank_transfer" },
               expiration_time: "PT30M",
             },
           ],
         },
-        payer: { email: authData.user.email },
       };
 
   const providerResponse = await fetch(`${apiBase}/v1/orders`, {
@@ -187,11 +239,13 @@ Deno.serve(async (request: Request) => {
   try {
     providerPayload = await providerResponse.json();
   } catch {
-    // Provider may return a non-JSON error body.
+    // O provedor pode retornar corpo vazio/não JSON em falhas.
   }
 
   if (!providerResponse.ok || !isRecord(providerPayload)) {
     const safeError = safeProviderError(providerPayload);
+    const reason = providerErrorReason(safeError, providerResponse.status);
+
     console.error(JSON.stringify({
       event: "create-pix-charge Mercado Pago error",
       status: providerResponse.status,
@@ -199,8 +253,9 @@ Deno.serve(async (request: Request) => {
       provider: safeError,
       testHomologation: MERCADO_PAGO_PIX_TEST_HOMOLOGATION,
     }));
+
     return response(502, {
-      error: "O Mercado Pago recusou a geração do PIX de teste.",
+      error: `O Mercado Pago recusou a geração do PIX de teste: ${reason}.`,
       code: "PAYMENT_PROVIDER_ERROR",
       providerStatus: providerResponse.status,
       provider: safeError,
@@ -223,8 +278,15 @@ Deno.serve(async (request: Request) => {
   const paidImmediately = providerStatus === "processed" && providerStatusDetail === "accredited";
 
   if (!providerOrderId || !qrCodeText) {
-    console.error("create-pix-charge invalid Mercado Pago response", { orderId, providerStatus, providerStatusDetail });
-    return response(502, { error: "O Mercado Pago não retornou um PIX válido.", code: "INVALID_PROVIDER_RESPONSE" });
+    console.error("create-pix-charge invalid Mercado Pago response", {
+      orderId,
+      providerStatus,
+      providerStatusDetail,
+    });
+    return response(502, {
+      error: "O Mercado Pago não retornou um PIX válido.",
+      code: "INVALID_PROVIDER_RESPONSE",
+    });
   }
 
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
@@ -236,7 +298,7 @@ Deno.serve(async (request: Request) => {
       provider_charge_id: providerOrderId,
       method: "pix",
       status: paidImmediately ? "paid" : "pending",
-      amount,
+      amount: chargeAmount,
       currency: "BRL",
       qr_code_text: qrCodeText,
       qr_code_image_url: qrCodeImageUrl,
@@ -253,6 +315,7 @@ Deno.serve(async (request: Request) => {
       .select("id,status,amount,qr_code_text,qr_code_image_url,expires_at,provider_charge_id")
       .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
+
     if (concurrent) {
       return response(200, {
         payment: {
@@ -264,9 +327,12 @@ Deno.serve(async (request: Request) => {
           expiresAt: concurrent.expires_at,
           providerChargeId: concurrent.provider_charge_id,
         },
+        orderAmount,
+        testMode: MERCADO_PAGO_PIX_TEST_HOMOLOGATION,
         reused: true,
       });
     }
+
     console.error("create-pix-charge persistence error", { code: insertError?.code, orderId });
     return response(500, {
       error: "PIX gerado, mas não foi possível registrar o pagamento.",
@@ -280,11 +346,14 @@ Deno.serve(async (request: Request) => {
         payment_id: payment.id,
         provider_transaction_id: providerTransactionId,
         transaction_type: "charge",
-        amount,
+        amount: chargeAmount,
         status: paidImmediately ? "completed" : "pending",
         processed_at: paidImmediately ? new Date().toISOString() : null,
       },
-      { onConflict: "payment_id,provider_transaction_id,transaction_type", ignoreDuplicates: true },
+      {
+        onConflict: "payment_id,provider_transaction_id,transaction_type",
+        ignoreDuplicates: true,
+      },
     );
   }
 
@@ -302,6 +371,8 @@ Deno.serve(async (request: Request) => {
       expiresAt: payment.expires_at,
       providerChargeId: payment.provider_charge_id,
     },
+    orderAmount,
+    testMode: MERCADO_PAGO_PIX_TEST_HOMOLOGATION,
     reused: false,
   });
 });
