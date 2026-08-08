@@ -212,17 +212,13 @@ Deno.serve(async (request: Request) => {
         delivered_at,
         couriers (
           id,
+          user_id,
           photo_url,
           vehicle_type,
           vehicle_model,
           vehicle_plate,
           rating,
-          review_count,
-          profiles:user_id (
-            full_name,
-            phone,
-            avatar_url
-          )
+          review_count
         )
       `)
       .eq("order_id", orderId)
@@ -230,6 +226,27 @@ Deno.serve(async (request: Request) => {
 
     if (deliveryError) {
       console.error("customer-orders delivery detail failed", { code: deliveryError.code, orderId });
+    }
+
+    let delivery = deliveryJob ?? null;
+    const courierRelation = deliveryJob?.couriers;
+    const courier = Array.isArray(courierRelation) ? courierRelation[0] : courierRelation;
+    if (courier?.user_id) {
+      const { data: courierProfile, error: profileError } = await adminClient
+        .from("profiles")
+        .select("full_name, phone, avatar_url")
+        .eq("id", courier.user_id)
+        .maybeSingle();
+      if (profileError) {
+        console.error("customer-orders courier profile failed", { code: profileError.code, orderId });
+      }
+      delivery = {
+        ...deliveryJob,
+        couriers: {
+          ...courier,
+          profile: courierProfile ?? null,
+        },
+      };
     }
 
     let pin: string | null = null;
@@ -246,7 +263,7 @@ Deno.serve(async (request: Request) => {
     return response(200, {
       order: {
         ...order,
-        delivery: deliveryJob ?? null,
+        delivery,
         deliveryPin: pin,
       },
     });
