@@ -14,138 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      merchant_hours: {
-        Row: {
-          closes_at: string | null
-          created_at: string
-          id: string
-          is_closed: boolean
-          merchant_id: string
-          opens_at: string | null
-          updated_at: string
-          weekday: number
-        }
-        Insert: {
-          closes_at?: string | null
-          created_at?: string
-          id?: string
-          is_closed?: boolean
-          merchant_id: string
-          opens_at?: string | null
-          updated_at?: string
-          weekday: number
-        }
-        Update: {
-          closes_at?: string | null
-          created_at?: string
-          id?: string
-          is_closed?: boolean
-          merchant_id?: string
-          opens_at?: string | null
-          updated_at?: string
-          weekday?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "merchant_hours_merchant_id_fkey"
-            columns: ["merchant_id"]
-            isOneToOne: false
-            referencedRelation: "merchants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      product_option_groups: {
-        Row: {
-          id: string
-          product_id: string
-          name: string
-          description: string | null
-          min_selections: number
-          max_selections: number
-          sort_order: number
-          is_active: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          product_id: string
-          name: string
-          description?: string | null
-          min_selections?: number
-          max_selections?: number
-          sort_order?: number
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          product_id?: string
-          name?: string
-          description?: string | null
-          min_selections?: number
-          max_selections?: number
-          sort_order?: number
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_option_groups_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      product_options: {
-        Row: {
-          id: string
-          option_group_id: string
-          name: string
-          description: string | null
-          price_delta: number
-          sort_order: number
-          is_available: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          option_group_id: string
-          name: string
-          description?: string | null
-          price_delta?: number
-          sort_order?: number
-          is_available?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          option_group_id?: string
-          name?: string
-          description?: string | null
-          price_delta?: number
-          sort_order?: number
-          is_available?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_options_option_group_id_fkey"
-            columns: ["option_group_id"]
-            isOneToOne: false
-            referencedRelation: "product_option_groups"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       menu_categories: {
         Row: {
           created_at: string
@@ -219,6 +87,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      merchant_hours: {
+        Row: {
+          closes_at: string | null
+          created_at: string
+          id: string
+          is_closed: boolean
+          merchant_id: string
+          opens_at: string | null
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          closes_at?: string | null
+          created_at?: string
+          id?: string
+          is_closed?: boolean
+          merchant_id: string
+          opens_at?: string | null
+          updated_at?: string
+          weekday: number
+        }
+        Update: {
+          closes_at?: string | null
+          created_at?: string
+          id?: string
+          is_closed?: boolean
+          merchant_id?: string
+          opens_at?: string | null
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_hours_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       merchants: {
         Row: {
@@ -308,6 +217,91 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "merchant_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_option_groups: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          max_selections: number | null
+          min_selections: number | null
+          name: string
+          product_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_selections?: number | null
+          min_selections?: number | null
+          name: string
+          product_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_selections?: number | null
+          min_selections?: number | null
+          name?: string
+          product_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_option_groups_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_options: {
+        Row: {
+          created_at: string
+          id: string
+          is_available: boolean
+          name: string
+          option_group_id: string
+          price_delta: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          name: string
+          option_group_id: string
+          price_delta?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          name?: string
+          option_group_id?: string
+          price_delta?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_options_option_group_id_fkey"
+            columns: ["option_group_id"]
+            isOneToOne: false
+            referencedRelation: "product_option_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -465,7 +459,7 @@ export type Tables<
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
         DefaultSchema["Views"])
     ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Database["public"]["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R

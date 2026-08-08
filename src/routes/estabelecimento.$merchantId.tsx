@@ -14,14 +14,16 @@ import {
   ChevronDown,
   Store,
   Calendar,
-  X
+  X,
+  Loader2
 } from "lucide-react";
 
 import { 
   fetchMerchantById, 
   fetchMenuCategoriesByMerchant, 
   fetchProductsByMerchant,
-  fetchMerchantCategoryById
+  fetchMerchantCategoryById,
+  fetchProductCustomization
 } from "@/lib/catalog";
 import { fetchMerchantHours, calculateMerchantStatus, MerchantHours } from "@/lib/merchant-hours";
 import { useCart } from "@/contexts/CartContext";
@@ -33,6 +35,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { ProductCustomizationSheet } from "@/components/ProductCustomizationSheet";
+
 
 
 
@@ -52,8 +56,15 @@ function EstabelecimentoPage() {
   const [merchantHours, setMerchantHours] = useState<MerchantHours[]>([]);
   const [isHoursDialogOpen, setIsHoursDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCustomizing, setIsCustomizing] = useState(false);
+  const [customizationData, setCustomizationData] = useState<{
+    product: any;
+    groups: any[];
+    options: any[];
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { addItem, totalPrice, totalItems, merchant: cartMerchant, clearCart } = useCart();
+
 
   
   useEffect(() => {
@@ -90,7 +101,7 @@ function EstabelecimentoPage() {
     fetchData();
   }, [merchantId]);
 
-  const handleAddToCart = (product: any) => {
+  const handleAddToCart = async (product: any) => {
     const status = calculateMerchantStatus(merchantHours);
     
     if (status.status === "closed") {
@@ -103,6 +114,7 @@ function EstabelecimentoPage() {
       return;
     }
 
+    // Verificar se já existe item de outro estabelecimento
     if (cartMerchant && cartMerchant.id !== merchantId) {
       if (!window.confirm("Você já tem itens de outro estabelecimento na sacola. Deseja limpar a sacola e iniciar um novo pedido aqui?")) {
         return;
@@ -110,28 +122,56 @@ function EstabelecimentoPage() {
       clearCart();
     }
 
+    // Buscar personalizações
+    setIsCustomizing(true);
+    try {
+      const { groups, options } = await fetchProductCustomization(product.id);
+      
+      if (groups.length > 0) {
+        setCustomizationData({
+          product,
+          groups,
+          options
+        });
+        return;
+      }
 
+      // Se não tiver grupos, adiciona direto
+      executeAdd(product, []);
+    } catch (err) {
+      console.error("Erro ao buscar personalização:", err);
+      toast.error("Não foi possível carregar as opções do produto.");
+    } finally {
+      setIsCustomizing(false);
+    }
+  };
+
+  const executeAdd = (product: any, selectedOptions: any[]) => {
     addItem({
       id: product.id,
       name: product.name,
       description: product.description || "",
       price: product.price,
+      basePrice: product.price,
       image: product.image_url || "",
-       merchantId: merchantId
-     }, {
-       id: merchantId,
-       name: merchant.name,
-       logo: merchant.logo_url || "",
-       deliveryFee: merchant.delivery_fee,
-       deliveryTime: merchant.delivery_min_minutes && merchant.delivery_max_minutes 
-         ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
-         : "",
-       closeTime: calculateMerchantStatus(merchantHours).closesAt || "",
-       category: merchantCategory?.name || ""
-     });
+      merchantId: merchantId,
+      selectedOptions
+    }, {
+      id: merchantId,
+      name: merchant.name,
+      logo: merchant.logo_url || "",
+      deliveryFee: merchant.delivery_fee,
+      deliveryTime: merchant.delivery_min_minutes && merchant.delivery_max_minutes 
+        ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
+        : "",
+      closeTime: calculateMerchantStatus(merchantHours).closesAt || "",
+      category: merchantCategory?.name || ""
+    });
     
     toast.success(`${product.name} adicionado à sacola!`);
+    setCustomizationData(null);
   };
+
 
   if (isLoading) {
     return (
@@ -377,12 +417,18 @@ function EstabelecimentoPage() {
                 </div>
                 <div className="flex items-center pl-1">
                   <button 
-                    onClick={() => handleAddToCart(product)}
-                    className="grid h-10 w-10 place-items-center rounded-full border border-primary/20 bg-primary/5 text-primary shadow-sm ring-1 ring-primary/20 transition-transform active:scale-90"
+                    onClick={() => !isCustomizing && handleAddToCart(product)}
+                    disabled={isCustomizing}
+                    className="grid h-10 w-10 place-items-center rounded-full border border-primary/20 bg-primary/5 text-primary shadow-sm ring-1 ring-primary/20 transition-transform active:scale-90 disabled:opacity-50"
                   >
-                    <Plus className="h-6 w-6" />
+                    {isCustomizing ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Plus className="h-6 w-6" />
+                    )}
                   </button>
                 </div>
+
               </div>
             ))}
             
@@ -415,8 +461,21 @@ function EstabelecimentoPage() {
         </div>
       )}
 
+      {/* Modal de Personalização */}
+      {customizationData && (
+        <ProductCustomizationSheet
+          isOpen={!!customizationData}
+          product={customizationData.product}
+          groups={customizationData.groups}
+          options={customizationData.options}
+          onClose={() => setCustomizationData(null)}
+          onConfirm={(selectedOptions) => executeAdd(customizationData.product, selectedOptions)}
+        />
+      )}
+
       {/* Margem final para o scroll */}
       <div className="h-10 shrink-0" />
     </div>
+
   );
 }
