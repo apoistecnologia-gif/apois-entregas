@@ -250,3 +250,101 @@ function CheckoutPage() {
     </div>
   );
 }
+
+function PixPaymentScreen({ pixData, onCopy, copied, total }: { 
+  pixData: { qrCodeImageUrl: string, qrCodeText: string, orderId: string }, 
+  onCopy: () => void, 
+  copied: boolean,
+  total: number
+}) {
+  const navigate = useNavigate();
+  const [paymentStatus, setPaymentStatus] = useState<string>('pending');
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`checkout_payment_${pixData.orderId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${pixData.orderId}`
+        },
+        (payload) => {
+          if (payload.new.payment_status === 'paid') {
+            setPaymentStatus('paid');
+            toast.success("Pagamento confirmado!");
+            setTimeout(() => {
+              navigate({ to: "/pedido/confirmado", search: { orderId: pixData.orderId } });
+            }, 1500);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pixData.orderId]);
+
+  return (
+    <div className="flex min-h-screen w-full flex-col bg-black text-white p-6">
+      <header className="flex flex-col items-center justify-center space-y-2 mb-8 mt-4">
+        <div className="h-12 w-12 bg-primary/20 rounded-full flex items-center justify-center">
+          <QrCode className="text-primary h-6 w-6" />
+        </div>
+        <h1 className="text-2xl font-black uppercase">Pagamento PIX</h1>
+        <p className="text-zinc-500 text-sm">Escaneie o código ou copie o código abaixo</p>
+      </header>
+
+      <main className="flex-1 flex flex-col items-center space-y-8">
+        <div className="bg-white p-4 rounded-3xl shadow-[0_0_40px_rgba(255,215,0,0.2)]">
+          <img src={pixData.qrCodeImageUrl} alt="QR Code PIX" className="w-64 h-64" />
+        </div>
+
+        <div className="w-full space-y-4">
+          <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-4">
+            <p className="text-xs text-zinc-500 font-bold uppercase mb-2">Valor total</p>
+            <p className="text-3xl font-black text-primary">R$ {total.toFixed(2).replace('.', ',')}</p>
+          </div>
+
+          <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-4">
+            <p className="text-xs text-zinc-500 font-bold uppercase mb-2">Código Copia e Cola</p>
+            <div className="bg-zinc-900 rounded-xl p-3 flex items-center gap-3">
+              <p className="text-[10px] text-zinc-400 font-mono truncate flex-1">{pixData.qrCodeText}</p>
+              <button 
+                onClick={onCopy}
+                className="p-2 bg-primary text-black rounded-lg active:scale-95 transition-transform"
+              >
+                {copied ? <Check size={18} /> : <Copy size={18} />}
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer className="mt-8 space-y-3">
+        {paymentStatus === 'paid' ? (
+          <div className="flex flex-col items-center justify-center p-4 bg-primary/10 rounded-2xl border border-primary/20">
+            <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
+            <p className="text-primary font-bold uppercase text-sm">Pagamento Confirmado! Redirecionando...</p>
+          </div>
+        ) : (
+          <>
+            <Button 
+              onClick={onCopy}
+              className="w-full h-14 bg-primary text-black font-black uppercase rounded-2xl"
+            >
+              Copiar código PIX
+            </Button>
+            <div className="flex flex-col items-center justify-center p-4 text-zinc-500 italic text-xs text-center">
+              <Loader2 className="h-4 w-4 animate-spin mb-2 opacity-50" />
+              <p>Aguardando confirmação do pagamento pelo banco...</p>
+            </div>
+          </>
+        )}
+      </footer>
+    </div>
+  );
+}
