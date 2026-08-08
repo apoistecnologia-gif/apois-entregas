@@ -102,8 +102,23 @@ Deno.serve(async (request: Request) => {
     return response(409, { error: "Este pedido já está pago.", code: "ORDER_ALREADY_PAID" });
   }
 
-  const idempotencyKey = `mercadopago:order:${order.id}:pix:v1`;
+  const amount = Number(order.total);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return response(409, { error: "Valor do pedido inválido.", code: "INVALID_AMOUNT" });
+  }
+  if (MERCADO_PAGO_PIX_TEST_HOMOLOGATION && Math.round(amount * 100) !== 5000) {
+    return response(409, {
+      error: "A homologação PIX do Mercado Pago exige pedido de teste exatamente em R$ 50,00.",
+      code: "TEST_AMOUNT_REQUIRED",
+    });
+  }
+
+  const amountText = amount.toFixed(2);
+  const idempotencyKey = MERCADO_PAGO_PIX_TEST_HOMOLOGATION
+    ? `mercadopago:order:${order.id}:pix:test:v2`
+    : `mercadopago:order:${order.id}:pix:v1`;
   const externalReference = `apois-order-${order.id}`;
+
   const { data: existing } = await admin
     .from("payments")
     .select("id,status,amount,qr_code_text,qr_code_image_url,expires_at,provider_charge_id")
@@ -111,7 +126,7 @@ Deno.serve(async (request: Request) => {
     .maybeSingle();
 
   if (existing) {
-    if (Number(existing.amount) !== Number(order.total)) {
+    if (Number(existing.amount) !== amount) {
       return response(409, { error: "Pagamento existente possui valor divergente.", code: "PAYMENT_AMOUNT_CONFLICT" });
     }
     return response(200, {
@@ -128,15 +143,40 @@ Deno.serve(async (request: Request) => {
     });
   }
 
-  const amount = Number(order.total);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return response(409, { error: "Valor do pedido inválido.", code: "INVALID_AMOUNT" });
-  }
-  const amountText = amount.toFixed(2);
-
-  const payer = MERCADO_PAGO_PIX_TEST_HOMOLOGATION
-    ? { email: "test_user_br@testuser.com", first_name: "APRO" }
-    : { email: authData.user.email };
+  const providerBody = MERCADO_PAGO_PIX_TEST_HOMOLOGATION
+    ? {
+        type: "online",
+        external_reference: externalReference,
+        total_amount: "50.00",
+        payer: {
+          email: "test_user_br@testuser.com",
+          first_name: "APRO",
+        },
+        transactions: {
+          payments: [
+            {
+              amount: "50.00",
+              payment_method: { id: "pix", type: "bank_transfer" },
+            },
+          ],
+        },
+      }
+    : {
+        type: "online",
+        total_amount: amountText,
+        external_reference: externalReference,
+        processing_mode: "automatic",
+        transactions: {
+          payments: [
+            {
+              amount: amountText,
+              payment_method: { id: "pix", type: "bank_transfer" },
+              expiration_time: "PT30M",
+            },
+          ],
+        },
+        payer: { email: authData.user.email },
+      };
 
   const providerResponse = await fetch(`${apiBase}/v1/orders`, {
     method: "POST",
@@ -146,22 +186,7 @@ Deno.serve(async (request: Request) => {
       Authorization: `Bearer ${mercadoPagoAccessToken}`,
       "X-Idempotency-Key": idempotencyKey,
     },
-    body: JSON.stringify({
-      type: "online",
-      total_amount: amountText,
-      external_reference: externalReference,
-      processing_mode: "automatic",
-      transactions: {
-        payments: [
-          {
-            amount: amountText,
-            payment_method: { id: "pix", type: "bank_transfer" },
-            expiration_time: "PT30M",
-          },
-        ],
-      },
-      payer,
-    }),
+    body: JSON.stringify(providerBody),
   });
 
   let providerPayload: unknown = null;
@@ -173,12 +198,13 @@ Deno.serve(async (request: Request) => {
 
   if (!providerResponse.ok || !isRecord(providerPayload)) {
     const safeError = safeProviderError(providerPayload);
-    console.error("create-pix-charge Mercado Pago error", {
+    console.error(JSON.stringify({
+      event: "create-pix-charge Mercado Pago error",
       status: providerResponse.status,
       orderId,
       provider: safeError,
       testHomologation: MERCADO_PAGO_PIX_TEST_HOMOLOGATION,
-    });
+    }));
     return response(502, {
       error: "O Mercado Pago recusou a geração do PIX de teste.",
       code: "PAYMENT_PROVIDER_ERROR",
