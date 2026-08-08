@@ -29,16 +29,26 @@ SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-Integração PIX OpenPix/Woovi:
+Integração PIX atual — Mercado Pago Checkout Transparente / Orders API:
 
 ```env
-OPENPIX_APP_ID=
-OPENPIX_WEBHOOK_SECRET=
-# opcional; usa o endpoint oficial padrão quando ausente
-OPENPIX_API_URL=
+MERCADO_PAGO_ACCESS_TOKEN=
+MERCADO_PAGO_WEBHOOK_SECRET=
+# opcional; usa https://api.mercadopago.com quando ausente
+MERCADO_PAGO_API_URL=
 ```
 
-O webhook deve ser configurado no provedor apontando para a Edge Function `openpix-webhook` e enviar o mesmo segredo por `Authorization`, `Authorization: Bearer ...` ou `x-webhook-secret`.
+O `MERCADO_PAGO_ACCESS_TOKEN` é privado e deve existir somente nas Edge Functions. A cobrança PIX é criada pela Edge Function `create-pix-charge` usando a Orders API e uma chave de idempotência por pedido.
+
+O webhook do Mercado Pago deve apontar para:
+
+```text
+https://sbvhdgyuuperszlsllji.supabase.co/functions/v1/mercadopago-webhook
+```
+
+Configure notificações do tópico **Order**. A Edge Function `mercadopago-webhook` não exige JWT do aplicativo porque é chamada pelo provedor; em vez disso, valida `x-signature`/`x-request-id` com HMAC-SHA256 usando `MERCADO_PAGO_WEBHOOK_SECRET` e consulta a order diretamente na API do Mercado Pago antes de alterar o estado local.
+
+A antiga integração OpenPix/Woovi permanece apenas no histórico do repositório e não é o gateway ativo.
 
 ## Push
 
