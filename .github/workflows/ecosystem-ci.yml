@@ -15,6 +15,9 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
       - name: Install root dependencies
         run: bun install --frozen-lockfile
       - name: Customer typecheck
@@ -38,3 +41,5 @@ jobs:
       - name: Courier build
         working-directory: apps/courier
         run: bunx vite build
+      - name: Edge Functions typecheck
+        run: deno check supabase/functions/*/index.ts
