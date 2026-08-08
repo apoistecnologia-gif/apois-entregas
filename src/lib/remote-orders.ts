@@ -129,7 +129,17 @@ type CancelResponse = {
     status?: string;
     refund_id?: string | null;
     refund_pending?: boolean;
+    refund_completed?: boolean;
+    refund_status?: string;
   };
+};
+type RefundProcessResponse = {
+  refund?: {
+    id?: string;
+    status?: string;
+    providerRefundId?: string | null;
+  };
+  reused?: boolean;
 };
 
 type FunctionErrorBody = {
@@ -254,7 +264,31 @@ export async function submitCustomerOrderReview(input: {
   return data.reviewId;
 }
 
-export async function cancelCustomerOrder(orderId: string, reason: string): Promise<CancelResponse["cancellation"]> {
+export async function cancelCustomerOrder(
+  orderId: string,
+  reason: string,
+): Promise<CancelResponse["cancellation"]> {
   const data = await invokeOrders<CancelResponse>({ action: "cancel", orderId, reason });
-  return data.cancellation;
+  const cancellation = data.cancellation;
+
+  if (cancellation.refund_pending && cancellation.refund_id) {
+    try {
+      const { data: refundData } = await supabase.functions.invoke<RefundProcessResponse>("process-refund", {
+        body: { refundId: cancellation.refund_id },
+      });
+      const refundStatus = refundData?.refund?.status;
+      if (refundStatus) {
+        return {
+          ...cancellation,
+          refund_status: refundStatus,
+          refund_completed: refundStatus === "completed",
+          refund_pending: refundStatus !== "completed",
+        };
+      }
+    } catch {
+      // Cancellation is already authoritative. A failed provider attempt stays pending and can be retried safely.
+    }
+  }
+
+  return cancellation;
 }
