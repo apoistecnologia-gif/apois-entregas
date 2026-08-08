@@ -47,7 +47,7 @@ function constantTimeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-async function validSignature(request: Request, dataId: string, secret: string): Promise<boolean> {
+async function validSignature(request: Request, dataId: string, secrets: string[]): Promise<boolean> {
   const signature = request.headers.get("x-signature")?.trim();
   if (!signature) return false;
 
@@ -55,27 +55,26 @@ async function validSignature(request: Request, dataId: string, secret: string):
   if (!ts || !v1 || !/^\d+$/.test(ts)) return false;
 
   const requestId = request.headers.get("x-request-id")?.trim();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-
-  // Mercado Pago Orders exige data.id alfanumérico em minúsculas no manifesto
-  // de validação das notificações reais. Mantemos fallback com o valor bruto
-  // para compatibilidade com o simulador do painel, que pode assinar o ID como enviado.
   const candidates = Array.from(new Set([dataId.toLowerCase(), dataId]));
 
-  for (const candidate of candidates) {
-    const parts = [`id:${candidate}`];
-    if (requestId) parts.push(`request-id:${requestId}`);
-    parts.push(`ts:${ts}`);
-    const manifest = `${parts.join(";")};`;
+  for (const secret of secrets) {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
 
-    const digest = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(manifest));
-    if (constantTimeEqual(toHex(digest), v1.toLowerCase())) return true;
+    for (const candidate of candidates) {
+      const parts = [`id:${candidate}`];
+      if (requestId) parts.push(`request-id:${requestId}`);
+      parts.push(`ts:${ts}`);
+      const manifest = `${parts.join(";")};`;
+
+      const digest = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(manifest));
+      if (constantTimeEqual(toHex(digest), v1.toLowerCase())) return true;
+    }
   }
 
   return false;
@@ -87,10 +86,15 @@ Deno.serve(async (request: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const accessToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
-  const webhookSecret = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET");
+  const webhookSecretTest = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET_TEST")?.trim() || null;
+  const webhookSecretProduction = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET_PRODUCTION")?.trim() || null;
+  const webhookSecretLegacy = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET")?.trim() || null;
+  const webhookSecrets = Array.from(
+    new Set([webhookSecretTest, webhookSecretProduction, webhookSecretLegacy].filter((value): value is string => Boolean(value))),
+  );
   const apiBase = (Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com").replace(/\/$/, "");
 
-  if (!supabaseUrl || !serviceRoleKey || !accessToken || !webhookSecret) {
+  if (!supabaseUrl || !serviceRoleKey || !accessToken || webhookSecrets.length === 0) {
     console.error("mercadopago-webhook environment incomplete");
     return response(500, { error: "server_configuration" });
   }
@@ -109,7 +113,12 @@ Deno.serve(async (request: Request) => {
   const dataId = url.searchParams.get("data.id")?.trim() ?? text(bodyData?.id);
   if (!dataId) return response(400, { error: "missing_data_id" });
 
-  if (!(await validSignature(request, dataId, webhookSecret))) {
+  if (!(await validSignature(request, dataId, webhookSecrets))) {
+    console.warn("mercadopago webhook invalid signature", {
+      dataId,
+      testSecretConfigured: Boolean(webhookSecretTest),
+      productionSecretConfigured: Boolean(webhookSecretProduction || webhookSecretLegacy),
+    });
     return response(401, { error: "invalid_signature" });
   }
 
