@@ -26,7 +26,7 @@ import {
   fetchProductCustomization
 } from "@/lib/catalog";
 import { fetchMerchantHours, calculateMerchantStatus, MerchantHours } from "@/lib/merchant-hours";
-import { useCart } from "@/contexts/CartContext";
+import { useCart, CartSelectedOption } from "@/contexts/CartContext";
 import { 
   Dialog,
   DialogContent,
@@ -36,6 +36,11 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ProductCustomizationSheet } from "@/components/ProductCustomizationSheet";
+import { Database } from "@/integrations/supabase/types";
+
+type Product = Database["public"]["Tables"]["products"]["Row"];
+type OptionGroup = Database["public"]["Tables"]["product_option_groups"]["Row"];
+type Option = Database["public"]["Tables"]["product_options"]["Row"];
 
 
 
@@ -52,15 +57,16 @@ function EstabelecimentoPage() {
   const [merchant, setMerchant] = useState<any>(null);
   const [menuCategories, setMenuCategories] = useState<any[]>([]);
   const [merchantCategory, setMerchantCategory] = useState<any>(null);
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [merchantHours, setMerchantHours] = useState<MerchantHours[]>([]);
   const [isHoursDialogOpen, setIsHoursDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isCustomizing, setIsCustomizing] = useState(false);
   const [customizationData, setCustomizationData] = useState<{
-    product: any;
-    groups: any[];
-    options: any[];
+    product: Product;
+    groups: OptionGroup[];
+    options: Option[];
+    shouldClearExistingCart: boolean;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { addItem, totalPrice, totalItems, merchant: cartMerchant, clearCart } = useCart();
@@ -101,7 +107,7 @@ function EstabelecimentoPage() {
     fetchData();
   }, [merchantId]);
 
-  const handleAddToCart = async (product: any) => {
+  const handleAddToCart = async (product: Product) => {
     const status = calculateMerchantStatus(merchantHours);
     
     if (status.status === "closed") {
@@ -114,12 +120,13 @@ function EstabelecimentoPage() {
       return;
     }
 
+    let shouldClearExistingCart = false;
     // Verificar se já existe item de outro estabelecimento
     if (cartMerchant && cartMerchant.id !== merchantId) {
       if (!window.confirm("Você já tem itens de outro estabelecimento na sacola. Deseja limpar a sacola e iniciar um novo pedido aqui?")) {
         return;
       }
-      clearCart();
+      shouldClearExistingCart = true;
     }
 
     // Buscar personalizações
@@ -131,12 +138,16 @@ function EstabelecimentoPage() {
         setCustomizationData({
           product,
           groups,
-          options
+          options,
+          shouldClearExistingCart
         });
         return;
       }
 
-      // Se não tiver grupos, adiciona direto
+      // Se não tiver grupos, adiciona direto, mas limpa se necessário
+      if (shouldClearExistingCart) {
+        clearCart();
+      }
       executeAdd(product, []);
     } catch (err) {
       console.error("Erro ao buscar personalização:", err);
@@ -146,7 +157,7 @@ function EstabelecimentoPage() {
     }
   };
 
-  const executeAdd = (product: any, selectedOptions: any[]) => {
+  const executeAdd = (product: Product, selectedOptions: CartSelectedOption[]) => {
     addItem({
       id: product.id,
       name: product.name,
