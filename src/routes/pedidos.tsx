@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ShoppingBag, Loader2 } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Loader2, RefreshCw } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { AppBottomNav } from "@/components/AppBottomNav";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,23 +29,40 @@ function PedidosPage() {
   const { totalItems } = useCart();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    setLoadError(null);
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error("Erro ao identificar cliente para carregar pedidos:", userError);
+      setOrders([]);
+      setLoadError("Não foi possível identificar sua sessão. Tente novamente.");
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("orders" as any)
+      .select("*, merchants(name, logo_url)")
+      .eq("customer_user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Erro ao carregar pedidos reais:", error);
+      setOrders([]);
+      setLoadError("Não foi possível carregar seus pedidos agora.");
+    } else {
+      setOrders(data || []);
+    }
+
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      const { data, error } = await supabase
-        .from("orders" as any)
-        .select("*, merchants(name, logo_url)")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Erro ao carregar pedidos reais:", error);
-      } else {
-        setOrders(data || []);
-      }
-      setLoading(false);
-    };
-    
-    fetchOrders();
+    void fetchOrders();
   }, []);
 
   return (
@@ -63,6 +80,22 @@ function PedidosPage() {
         {loading ? (
           <div className="h-full flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : loadError ? (
+          <div className="h-full flex flex-col items-center justify-center text-center py-20">
+            <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mb-4">
+              <ShoppingBag className="w-8 h-8 text-zinc-600" />
+            </div>
+            <h2 className="text-lg font-bold">Não foi possível carregar seus pedidos</h2>
+            <p className="text-zinc-500 text-sm mt-2 max-w-xs">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => void fetchOrders()}
+              className="mt-6 flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-black uppercase text-black active:scale-95 transition-transform"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Tentar novamente
+            </button>
           </div>
         ) : orders.length > 0 ? (
           orders.map((order) => (
@@ -83,7 +116,7 @@ function PedidosPage() {
                   Pedido #{order.order_number} • {new Date(order.created_at).toLocaleDateString('pt-BR')}
                 </p>
                 <p className="text-sm font-bold text-white mt-1">
-                  R$ {order.total.toFixed(2).replace('.', ',')}
+                  R$ {Number(order.total).toFixed(2).replace('.', ',')}
                 </p>
               </div>
             </button>
