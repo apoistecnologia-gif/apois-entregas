@@ -7,6 +7,15 @@ import { LocalAddressSnapshot } from "@/lib/local-orders";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
+const ACTIVE_PIX_STORAGE_KEY = "apois_active_pix";
+
+type PixData = {
+  qrCodeImageUrl: string;
+  qrCodeText: string;
+  orderId: string;
+  total: number;
+};
+
 export const Route = createFileRoute("/checkout")({
   beforeLoad: async ({ location }) => {
     const {
@@ -61,12 +70,30 @@ function CheckoutPage() {
   const [observation, setObservation] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [pixData, setPixData] = useState<{
-    qrCodeImageUrl: string;
-    qrCodeText: string;
-    orderId: string;
-    total: number;
-  } | null>(null);
+  const [pixData, setPixData] = useState<PixData | null>(() => {
+    if (typeof window === "undefined") return null;
+
+    try {
+      const saved = sessionStorage.getItem(ACTIVE_PIX_STORAGE_KEY);
+      if (!saved) return null;
+
+      const parsed = JSON.parse(saved) as Partial<PixData>;
+      if (
+        typeof parsed.orderId !== "string" ||
+        typeof parsed.qrCodeText !== "string" ||
+        typeof parsed.qrCodeImageUrl !== "string" ||
+        typeof parsed.total !== "number"
+      ) {
+        sessionStorage.removeItem(ACTIVE_PIX_STORAGE_KEY);
+        return null;
+      }
+
+      return parsed as PixData;
+    } catch {
+      sessionStorage.removeItem(ACTIVE_PIX_STORAGE_KEY);
+      return null;
+    }
+  });
   const [copied, setCopied] = useState(false);
   const [requestKey] = useState(() => {
     const saved = sessionStorage.getItem("apois_checkout_request_key");
@@ -88,7 +115,43 @@ function CheckoutPage() {
     }
 
     void fetchDefaultAddress();
-  }, [items, pixData]);
+  }, [items, pixData, navigate]);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const recoverAlreadyPaidOrder = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user || disposed) return;
+
+      const { data, error } = await supabase
+        .from("orders" as any)
+        .select("id,payment_status")
+        .eq("request_key", requestKey)
+        .eq("customer_user_id", user.id)
+        .maybeSingle();
+
+      if (disposed || error || data?.payment_status !== "paid") return;
+
+      clearCart();
+      sessionStorage.removeItem("apois_checkout_request_key");
+      sessionStorage.removeItem(ACTIVE_PIX_STORAGE_KEY);
+      toast.success("Pagamento confirmado!");
+      navigate({
+        to: "/pedido/confirmado",
+        search: { orderId: data.id },
+      });
+    };
+
+    void recoverAlreadyPaidOrder();
+
+    return () => {
+      disposed = true;
+    };
+  }, [requestKey, clearCart, navigate]);
 
   const fetchDefaultAddress = async () => {
     const {
@@ -123,6 +186,7 @@ function CheckoutPage() {
   const handlePaymentConfirmed = useCallback(() => {
     clearCart();
     sessionStorage.removeItem("apois_checkout_request_key");
+    sessionStorage.removeItem(ACTIVE_PIX_STORAGE_KEY);
   }, [clearCart]);
 
   const handleConfirm = async () => {
@@ -202,12 +266,15 @@ function CheckoutPage() {
         throw new Error("O Mercado Pago não retornou os dados completos do PIX.");
       }
 
-      setPixData({
+      const nextPixData: PixData = {
         qrCodeImageUrl: payment.qrCodeImageUrl,
         qrCodeText: payment.qrCodeText,
         orderId,
         total: Number(payment.amount) || total,
-      });
+      };
+
+      setPixData(nextPixData);
+      sessionStorage.setItem(ACTIVE_PIX_STORAGE_KEY, JSON.stringify(nextPixData));
 
       // A sacola permanece intacta enquanto o PIX estiver pendente.
       // Ela só é limpa após o backend confirmar payment_status=paid.
@@ -395,6 +462,7 @@ function PixPaymentScreen({
     let disposed = false;
     let completed = false;
     let redirectTimer: number | undefined;
+    let pollTimer: number | undefined;
 
     const finishPayment = () => {
       if (disposed || completed) return;
@@ -411,13 +479,22 @@ function PixPaymentScreen({
     };
 
     const checkCurrentStatus = async () => {
+      if (disposed || completed) return;
+
       const { data, error } = await supabase
         .from("orders" as any)
         .select("payment_status")
         .eq("id", pixData.orderId)
         .maybeSingle();
 
-      if (!error && data?.payment_status === "paid") {
+      if (disposed || completed) return;
+
+      if (error) {
+        console.error("Erro ao consultar status do PIX:", error);
+        return;
+      }
+
+      if (data?.payment_status === "paid") {
         finishPayment();
       }
     };
@@ -444,9 +521,25 @@ function PixPaymentScreen({
         }
       });
 
+    // Realtime continua sendo o caminho principal, mas o polling fecha qualquer
+    // janela perdida de evento e também funciona em redes móveis instáveis.
+    void checkCurrentStatus();
+    pollTimer = window.setInterval(() => {
+      void checkCurrentStatus();
+    }, 2000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void checkCurrentStatus();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       disposed = true;
       if (redirectTimer !== undefined) window.clearTimeout(redirectTimer);
+      if (pollTimer !== undefined) window.clearInterval(pollTimer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       void supabase.removeChannel(channel);
     };
   }, [pixData.orderId, navigate, onPaymentConfirmed]);
