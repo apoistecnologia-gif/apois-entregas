@@ -120,7 +120,7 @@ type FunctionErrorBody = {
 };
 
 export class CustomerOrdersError extends Error {
-  readonly code?: string;
+  readonly code: string | undefined;
 
   constructor(message: string, code?: string) {
     super(message);
@@ -218,46 +218,4 @@ export async function fetchCustomerOrderDetail(orderId: string): Promise<Custome
         }
       : null,
   };
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  created: "Criado",
-  pending_payment: "Aguardando pagamento",
-  paid: "Pago",
-  confirmed: "Confirmado",
-  accepted: "Aceito",
-  preparing: "Em preparo",
-  ready: "Pronto",
-  ready_for_pickup: "Pronto para coleta",
-  searching_driver: "Buscando entregador",
-  driver_assigned: "Entregador a caminho",
-  driver_arriving_store: "Entregador chegando ao estabelecimento",
-  picked_up: "Pedido coletado",
-  out_for_delivery: "Saiu para entrega",
-  on_the_way: "A caminho",
-  delivered: "Entregue",
-  cancelled: "Cancelado",
-  refunded: "Reembolsado",
-};
-
-export function getOrderStatusLabel(status: string): string {
-  return STATUS_LABELS[status] ?? status.replaceAll("_", " ");
-}
-
-export function isOrderActive(status: string): boolean {
-  return !["delivered", "cancelled", "refunded"].includes(status);
-}
-
-export function formatMoney(value: number): string {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
-}
-
-export function formatOrderDate(value: string): string {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
 }
