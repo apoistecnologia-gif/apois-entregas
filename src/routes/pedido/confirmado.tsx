@@ -3,6 +3,7 @@ import { CheckCircle2, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { getLocalOrderById, LocalOrder } from "@/lib/local-orders";
 
 const orderSearchSchema = z.object({
   orderId: z.string(),
@@ -26,7 +27,7 @@ export const Route = createFileRoute("/pedido/confirmado")({
 function OrderConfirmedPage() {
   const navigate = useNavigate();
   const { orderId } = Route.useSearch();
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<LocalOrder | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,9 +37,7 @@ function OrderConfirmedPage() {
         setLoading(false);
         return;
       }
-      const ordersKey = `apois_orders_${user.id}`;
-      const orders = JSON.parse(localStorage.getItem(ordersKey) || "[]");
-      const foundOrder = orders.find((o: any) => o.id === orderId);
+      const foundOrder = getLocalOrderById(user.id, orderId);
       if (foundOrder) setOrder(foundOrder);
       setLoading(false);
     };

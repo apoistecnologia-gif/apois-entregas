@@ -4,6 +4,7 @@ import { useCart } from "@/contexts/CartContext";
 import { AppBottomNav } from "@/components/AppBottomNav";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import { getLocalOrders, LocalOrder } from "@/lib/local-orders";
 
 export const Route = createFileRoute("/pedidos")({
   beforeLoad: async ({ location }) => {
@@ -24,16 +25,15 @@ export const Route = createFileRoute("/pedidos")({
 function PedidosPage() {
   const navigate = useNavigate();
   const { totalItems } = useCart();
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<LocalOrder[]>([]);
 
   useEffect(() => {
     const fetchOrders = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      const ordersKey = `apois_orders_${user.id}`;
-      const savedOrders = JSON.parse(localStorage.getItem(ordersKey) || "[]");
-      setOrders(savedOrders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      const savedOrders = getLocalOrders(user.id);
+      setOrders(savedOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     };
     
     fetchOrders();
