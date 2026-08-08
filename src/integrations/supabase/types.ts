@@ -180,6 +180,160 @@ export type Database = {
           },
         ]
       }
+      order_items: {
+        Row: {
+          base_price: number
+          created_at: string
+          id: string
+          line_total: number
+          order_id: string
+          product_description: string | null
+          product_id: string | null
+          product_name: string
+          quantity: number
+          selected_options: Json
+          unit_price: number
+        }
+        Insert: {
+          base_price: number
+          created_at?: string
+          id?: string
+          line_total: number
+          order_id: string
+          product_description?: string | null
+          product_id?: string | null
+          product_name: string
+          quantity: number
+          selected_options?: Json
+          unit_price: number
+        }
+        Update: {
+          base_price?: number
+          created_at?: string
+          id?: string
+          line_total?: number
+          order_id?: string
+          product_description?: string | null
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          selected_options?: Json
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_status_history: {
+        Row: {
+          changed_by_user_id: string | null
+          created_at: string
+          id: string
+          order_id: string
+          status: string
+        }
+        Insert: {
+          changed_by_user_id?: string | null
+          created_at?: string
+          id?: string
+          order_id: string
+          status: string
+        }
+        Update: {
+          changed_by_user_id?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          cancellation_reason: string | null
+          created_at: string
+          customer_user_id: string | null
+          delivery_address: Json
+          delivery_fee: number
+          discount: number
+          id: string
+          merchant_id: string
+          observation: string | null
+          order_number: number
+          payment_method: string
+          payment_status: string
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          cancellation_reason?: string | null
+          created_at?: string
+          customer_user_id?: string | null
+          delivery_address: Json
+          delivery_fee?: number
+          discount?: number
+          id?: string
+          merchant_id: string
+          observation?: string | null
+          order_number?: never
+          payment_method: string
+          payment_status?: string
+          status?: string
+          subtotal: number
+          total: number
+          updated_at?: string
+        }
+        Update: {
+          cancellation_reason?: string | null
+          created_at?: string
+          customer_user_id?: string | null
+          delivery_address?: Json
+          delivery_fee?: number
+          discount?: number
+          id?: string
+          merchant_id?: string
+          observation?: string | null
+          order_number?: never
+          payment_method?: string
+          payment_status?: string
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           created_at: string
