@@ -284,8 +284,8 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      merchant_hours: {
       }
+      merchant_hours: {
         Row: {
           closes_at: string | null
           created_at: string
