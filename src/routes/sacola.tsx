@@ -60,15 +60,9 @@ function SacolaPage() {
   };
 
   const subtotal = totalPrice;
-  const deliveryFee = merchant?.deliveryFee || 0;
-  const total = subtotal + deliveryFee;
 
   const handleFinishOrder = () => {
     if (items.length === 0) return;
-    if (!defaultAddress) {
-      alert("Selecione um endereço de entrega!");
-      return;
-    }
     sessionStorage.setItem("apois_payment_method", "pix");
     navigate({ to: "/checkout" });
   };
@@ -247,12 +241,12 @@ function SacolaPage() {
                     i
                   </span>
                 </div>
-                <span>R$ {deliveryFee.toFixed(2).replace(".", ",")}</span>
+                <span className="text-right text-xs">Calculada no checkout</span>
               </div>
               <div className="flex justify-between border-t border-zinc-900 pt-3 text-lg font-black">
-                <span>Total</span>
+                <span>Subtotal dos itens</span>
                 <span className="text-xl text-primary">
-                  R$ {total.toFixed(2).replace(".", ",")}
+                  R$ {subtotal.toFixed(2).replace(".", ",")}
                 </span>
               </div>
             </section>
@@ -278,7 +272,7 @@ function SacolaPage() {
                       )}
                     </>
                   ) : (
-                    <p className="font-bold text-primary">Selecione um endereço</p>
+                    <p className="font-bold text-primary">Escolha no checkout ou retire no local</p>
                   )}
                 </div>
                 <ChevronRight className="h-5 w-5 text-zinc-700 transition-transform group-active:translate-x-1" />
@@ -348,7 +342,7 @@ function SacolaPage() {
               {items.length === 0 ? "Escolher produtos" : "Fazer pedido"}
             </span>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-black">R$ {total.toFixed(2).replace(".", ",")}</span>
+              <span className="text-lg font-black">R$ {subtotal.toFixed(2).replace(".", ",")}</span>
               <ChevronRight className="h-5 w-5" />
             </div>
           </button>
