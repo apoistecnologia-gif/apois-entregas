@@ -49,8 +49,30 @@ jobs:
               errors.push(`requestfailed:${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`),
             );
 
-            // Login has no long-lived Realtime subscription; networkidle here is an intentional
-            // hydration barrier so the button click cannot fall back to native form submission.
+            const debugState = async (label) => {
+              const state = await page.evaluate(() => {
+                const supabaseKeys = {};
+                for (let i = 0; i < localStorage.length; i += 1) {
+                  const key = localStorage.key(i);
+                  if (key && key.startsWith('sb-')) supabaseKeys[key] = Boolean(localStorage.getItem(key));
+                }
+                return {
+                  href: location.href,
+                  pathname: location.pathname,
+                  search: location.search,
+                  cart: localStorage.getItem('apois_cart'),
+                  merchant: localStorage.getItem('apois_merchant'),
+                  activePix: sessionStorage.getItem('apois_active_pix'),
+                  attempt: sessionStorage.getItem('apois_checkout_attempt'),
+                  supabaseKeys,
+                  visibilityState: document.visibilityState,
+                };
+              });
+              console.log(`${label}_STATE=${JSON.stringify(state)}`);
+              console.log(`${label}_ERRORS=${JSON.stringify(errors)}`);
+              console.log(`${label}_BODY=${(await page.locator('body').innerText()).slice(0, 3000)}`);
+            };
+
             await page.goto(`${process.env.E2E_BASE_URL}/login`, { waitUntil: 'networkidle' });
             await page.waitForTimeout(1200);
             await page.getByPlaceholder('Digite seu e-mail').fill(process.env.E2E_EMAIL);
@@ -59,9 +81,7 @@ jobs:
             try {
               await page.waitForURL(/\/inicio(?:\?|$)/, { timeout: 20000 });
             } catch (error) {
-              console.log(`LOGIN_DEBUG_URL=${page.url()}`);
-              console.log(`LOGIN_DEBUG_ERRORS=${JSON.stringify(errors)}`);
-              console.log(`LOGIN_DEBUG_BODY=${(await page.locator('body').innerText()).slice(0, 2000)}`);
+              await debugState('LOGIN_DEBUG');
               throw error;
             }
 
@@ -98,33 +118,35 @@ jobs:
             try {
               await expect(page.getByText('Rua de Homologação, 1')).toBeVisible({ timeout: 20000 });
             } catch (error) {
-              console.log(`CHECKOUT_DEBUG_URL=${page.url()}`);
-              console.log(`CHECKOUT_DEBUG_ERRORS=${JSON.stringify(errors)}`);
-              console.log(`CHECKOUT_DEBUG_BODY=${(await page.locator('body').innerText()).slice(0, 2500)}`);
-              console.log(`CHECKOUT_DEBUG_STORAGE=${JSON.stringify(await page.evaluate(() => ({
-                cart: localStorage.getItem('apois_cart'),
-                merchant: localStorage.getItem('apois_merchant'),
-                activePix: sessionStorage.getItem('apois_active_pix'),
-                attempt: sessionStorage.getItem('apois_checkout_attempt'),
-              })))}`);
+              await debugState('CHECKOUT_DEBUG');
               throw error;
             }
 
             await expect(page.getByRole('button', { name: 'Finalizar Pedido' })).toBeEnabled();
             await page.getByRole('button', { name: 'Finalizar Pedido' }).click();
-
             await expect(page.getByText('Pagamento PIX')).toBeVisible({ timeout: 25000 });
+
             const activePixBeforeReload = await page.evaluate(() => sessionStorage.getItem('apois_active_pix'));
             expect(activePixBeforeReload).not.toBeNull();
 
-            // Realtime/polling intentionally keep requests open, so wait for DOM load instead
-            // of networkidle when exercising the hard-reload recovery path.
             await page.reload({ waitUntil: 'domcontentloaded' });
-            if (!/\/pedido\/confirmado\?orderId=/.test(page.url())) {
+            if (!/\/pedido\/confirmado(?:\?|$)/.test(page.url())) {
               await expect(page.getByText('Pagamento PIX')).toBeVisible({ timeout: 15000 });
+              const activePixAfterReload = await page.evaluate(() => sessionStorage.getItem('apois_active_pix'));
+              expect(activePixAfterReload).not.toBeNull();
             }
 
-            await page.waitForURL(/\/pedido\/confirmado\?orderId=/, { timeout: 50000 });
+            try {
+              await page.waitForFunction(
+                () => location.pathname === '/pedido/confirmado' && new URLSearchParams(location.search).has('orderId'),
+                null,
+                { timeout: 50000 },
+              );
+            } catch (error) {
+              await debugState('CONFIRMATION_DEBUG');
+              throw error;
+            }
+
             await expect(page.getByRole('heading', { name: /Pedido confirmado/i })).toBeVisible({ timeout: 15000 });
 
             const confirmedUrl = new URL(page.url());
@@ -199,3 +221,11 @@ jobs:
       - name: Show app log on failure
         if: failure()
         run: cat /tmp/apois-vite.log || true
+
+      - name: Upload browser diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-pix-homologation-diagnostics
+          path: test-results/
+          if-no-files-found: ignore
