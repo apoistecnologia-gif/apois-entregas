@@ -1,0 +1,74 @@
+name: Merchant order printing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/merchant-order-printing.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Add printable operational receipt
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          path = Path('src/routes/merchant.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          if '  Printer,\n' not in text:
+              text = text.replace('  Plus,\n', '  Plus,\n  Printer,\n', 1)
+
+          helper_anchor = 'function OrderRow({ order, busy, onTransition, onReject, detailed = false }: any) {'
+          helper = '''function formatOrderAddress(address: any) {\n  if (!address || typeof address !== "object") return "Não informado";\n  return [\n    [address.street || address.address_line, address.number].filter(Boolean).join(", "),\n    address.neighborhood,\n    [address.city, address.state].filter(Boolean).join(" - "),\n    address.complement,\n    address.reference ? `Referência: ${address.reference}` : null,\n  ]\n    .filter(Boolean)\n    .join(" · ");\n}\n\nfunction printMerchantOrder(order: any) {\n  const popup = window.open("", "_blank", "width=520,height=760");\n  if (!popup) {\n    toast.error("O navegador bloqueou a janela de impressão.");\n    return;\n  }\n  popup.opener = null;\n  popup.document.title = `Pedido ${order.order_number} - APOIS ENTREGA`;\n\n  const style = popup.document.createElement("style");\n  style.textContent =\n    "body{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin:24px;color:#111}h1{font-size:18px;margin:0 0 4px}.muted{color:#555;font-size:12px}hr{border:0;border-top:1px dashed #777;margin:16px 0}pre{white-space:pre-wrap;font:inherit;line-height:1.5}@media print{body{margin:0}}";\n  popup.document.head.appendChild(style);\n\n  const heading = popup.document.createElement("h1");\n  heading.textContent = `APOIS ENTREGA · PEDIDO #${order.order_number}`;\n  const meta = popup.document.createElement("div");\n  meta.className = "muted";\n  meta.textContent = `${dateTime(order.created_at)} · ${String(order.status ?? "").toUpperCase()}`;\n  const separator = popup.document.createElement("hr");\n  const receipt = popup.document.createElement("pre");\n\n  const itemLines = (order.order_items ?? []).map(\n    (item: any) => `${item.quantity}x ${item.product_name}    ${money(item.line_total)}`,\n  );\n  const customer = order.customer_user_id\n    ? `Cliente #${String(order.customer_user_id).slice(0, 8).toUpperCase()}`\n    : "Cliente não identificado";\n  const details = [\n    customer,\n    `Modalidade: ${String(order.fulfillment_type ?? "delivery").toUpperCase()}`,\n    `Pagamento: ${String(order.payment_method ?? "pix").toUpperCase()} · ${String(order.payment_status ?? "").toUpperCase()}`,\n    order.fulfillment_type === "pickup"\n      ? "Retirada no estabelecimento"\n      : `Endereço: ${formatOrderAddress(order.delivery_address)}`,\n    "",\n    ...itemLines,\n    "",\n    `Subtotal: ${money(order.subtotal)}`,\n    `Desconto: ${money(order.discount)}`,\n    `Taxa de entrega: ${money(order.delivery_fee)}`,\n    `TOTAL: ${money(order.total)}`,\n    order.observation ? `\\nOBSERVAÇÃO: ${order.observation}` : "",\n  ].filter((line) => line !== "");\n  receipt.textContent = details.join("\\n");\n\n  popup.document.body.append(heading, meta, separator, receipt);\n  popup.focus();\n  window.setTimeout(() => popup.print(), 150);\n}\n\n'''
+          if helper not in text:
+              if helper_anchor not in text:
+                  raise SystemExit('OrderRow anchor not found')
+              text = text.replace(helper_anchor, helper + helper_anchor, 1)
+
+          detail_anchor = '''          {order.observation ? (\n            <p className="mt-2 rounded-lg bg-zinc-950 p-2 text-xs text-zinc-400">\n              Obs.: {order.observation}\n            </p>\n          ) : null}\n'''
+          detail_extra = '''          <div className="mt-3 grid gap-2 rounded-xl border border-zinc-900 bg-zinc-950 p-3 text-xs text-zinc-500 sm:grid-cols-2">\n            <p>Cliente: #{String(order.customer_user_id ?? "").slice(0, 8).toUpperCase() || "—"}</p>\n            <p>Modalidade: {String(order.fulfillment_type ?? "delivery").toUpperCase()}</p>\n            <p>Pagamento: {String(order.payment_method ?? "pix").toUpperCase()}</p>\n            <p>Status financeiro: {String(order.payment_status ?? "—").toUpperCase()}</p>\n            <p className="sm:col-span-2">\n              {order.fulfillment_type === "pickup"\n                ? "Retirada no estabelecimento"\n                : `Endereço: ${formatOrderAddress(order.delivery_address)}`}\n            </p>\n          </div>\n'''
+          if detail_extra not in text:
+              if detail_anchor not in text:
+                  raise SystemExit('order observation anchor not found')
+              text = text.replace(detail_anchor, detail_anchor + detail_extra, 1)
+
+          action_anchor = '''      {nextActions.length > 0 || canReject ? (\n'''
+          print_button = '''      <Button\n        type="button"\n        size="sm"\n        variant="outline"\n        onClick={() => printMerchantOrder(order)}\n        className="mt-4 border-zinc-800 bg-zinc-950"\n      >\n        <Printer className="mr-1 h-3.5 w-3.5" />\n        Imprimir pedido\n      </Button>\n'''
+          if print_button not in text:
+              if action_anchor not in text:
+                  raise SystemExit('order action anchor not found')
+              text = text.replace(action_anchor, print_button + action_anchor, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+          bunx prettier src/routes/merchant.tsx --write
+      - name: Full verification
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit integration and remove workflow
+        run: |
+          rm .github/workflows/merchant-order-printing.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(merchant): add printable order receipt"
+          git push
