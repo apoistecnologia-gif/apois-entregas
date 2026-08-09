@@ -303,7 +303,14 @@ function CourierApp() {
   const toggleOnline = async () => {
     if (!courier?.id) return;
     const target = !availability?.is_online;
-    if (target && navigator.geolocation) {
+
+    if (target) {
+      if (!navigator.geolocation) {
+        toast.error(
+          "Este dispositivo não disponibiliza localização. Ative o GPS para ficar online.",
+        );
+        return;
+      }
       try {
         const position = await new Promise<GeolocationPosition>((resolve, reject) =>
           navigator.geolocation.getCurrentPosition(resolve, reject, {
