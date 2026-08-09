@@ -85,7 +85,7 @@ jobs:
             expect(await page.evaluate(() => sessionStorage.getItem('apois_active_pix'))).not.toBeNull();
 
             await page.reload({ waitUntil: 'domcontentloaded' });
-            if (location.pathname !== '/pedido/confirmado') {
+            if (!/\/pedido\/confirmado(?:\?|$)/.test(page.url())) {
               await expect(page.getByText('Pagamento PIX')).toBeVisible({ timeout: 15000 });
             }
 
