@@ -26,7 +26,9 @@ export function GoogleMapsAddressSelector({
   onAddressSelected,
   initialCenter,
 }: GoogleMapsAddressSelectorProps) {
-  const browserKey = (import.meta as any).env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
+  const browserKey =
+    (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY ||
+    (import.meta as any).env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
   const [markerPos, setMarkerPos] = useState(initialCenter || { lat: -23.5505, lng: -46.6333 }); // Default SP
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);

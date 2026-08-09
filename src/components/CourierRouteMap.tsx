@@ -140,7 +140,9 @@ export function CourierRouteMap({
   job: any;
   currentPosition: CourierPosition | null;
 }) {
-  const browserKey = (import.meta as any).env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
+  const browserKey =
+    (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY ||
+    (import.meta as any).env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
   const goingToDelivery = ["picked_up", "on_the_way", "arrived_destination"].includes(job.status);
   const target = useMemo(() => {
     const latitude = parseCoordinate(goingToDelivery ? job.delivery_latitude : job.pickup_latitude);

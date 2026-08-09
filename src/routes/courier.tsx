@@ -19,7 +19,7 @@ import {
   WalletCards,
   XCircle,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -29,6 +29,8 @@ import {
   CourierHistoryPanel,
   CourierProfilePanel,
 } from "@/components/CourierPanels";
+import { CourierLocationTracker, type CourierPosition } from "@/components/CourierLocationTracker";
+import { CourierRouteMap } from "@/components/CourierRouteMap";
 
 export const Route = createFileRoute("/courier")({
   ssr: false,
@@ -80,7 +82,7 @@ function CourierApp() {
     document: "",
     amount: "",
   });
-  const locationWatchRef = useRef<number | null>(null);
+  const [currentPosition, setCurrentPosition] = useState<CourierPosition | null>(null);
 
   const loadCourierOperations = useCallback(async (courierId: string) => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
@@ -235,38 +237,6 @@ function CourierApp() {
     };
   }, [courier?.id, courier?.status, loadCourierOperations]);
 
-  const sendLocation = useCallback((position: GeolocationPosition) => {
-    void rpc("update_courier_location", {
-      _latitude: position.coords.latitude,
-      _longitude: position.coords.longitude,
-      _accuracy_meters: position.coords.accuracy,
-      _heading: position.coords.heading,
-      _speed_mps: position.coords.speed,
-    }).then(({ error }: any) => {
-      if (error && !String(error.message).includes("online"))
-        console.warn("courier location update failed", error.message);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!availability?.is_online || !navigator.geolocation) {
-      if (locationWatchRef.current !== null)
-        navigator.geolocation?.clearWatch(locationWatchRef.current);
-      locationWatchRef.current = null;
-      return;
-    }
-    locationWatchRef.current = navigator.geolocation.watchPosition(sendLocation, () => undefined, {
-      enableHighAccuracy: true,
-      maximumAge: 10000,
-      timeout: 15000,
-    });
-    return () => {
-      if (locationWatchRef.current !== null)
-        navigator.geolocation.clearWatch(locationWatchRef.current);
-      locationWatchRef.current = null;
-    };
-  }, [availability?.is_online, sendLocation]);
-
   const logout = async () => {
     if (availability?.is_online) await rpc("set_courier_online", { _is_online: false });
     await supabase.auth.signOut();
@@ -344,7 +314,20 @@ function CourierApp() {
         setBusy("online");
         const { error } = await rpc("set_courier_online", { _is_online: true });
         if (error) throw error;
-        sendLocation(position);
+        setCurrentPosition({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : null,
+          heading:
+            position.coords.heading !== null && Number.isFinite(position.coords.heading)
+              ? position.coords.heading
+              : null,
+          speed:
+            position.coords.speed !== null && Number.isFinite(position.coords.speed)
+              ? position.coords.speed
+              : null,
+          recordedAt: Date.now(),
+        });
       } catch (error: any) {
         setBusy(null);
         return toast.error(error?.message || "Ative a localização para ficar online.");
@@ -356,6 +339,7 @@ function CourierApp() {
         setBusy(null);
         return toast.error(error.message);
       }
+      setCurrentPosition(null);
     }
     setBusy(null);
     await loadCourierOperations(courier.id);
@@ -610,6 +594,11 @@ function CourierApp() {
           ) : null}
         </section>
 
+        <CourierLocationTracker
+          enabled={Boolean(availability?.is_online)}
+          onPosition={setCurrentPosition}
+        />
+
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
             <p className="text-[10px] font-black uppercase text-zinc-500">Saldo disponível</p>
@@ -624,16 +613,19 @@ function CourierApp() {
         </div>
 
         {activeJob ? (
-          <ActiveDelivery
-            job={activeJob}
-            busy={busy === "delivery" || busy === "support"}
-            supportBusy={busy === "support"}
-            pin={pin}
-            setPin={setPin}
-            onTransition={transitionDelivery}
-            onComplete={completeDelivery}
-            onReport={reportDeliveryProblem}
-          />
+          <>
+            <CourierRouteMap job={activeJob} currentPosition={currentPosition} />
+            <ActiveDelivery
+              job={activeJob}
+              busy={busy === "delivery" || busy === "support"}
+              supportBusy={busy === "support"}
+              pin={pin}
+              setPin={setPin}
+              onTransition={transitionDelivery}
+              onComplete={completeDelivery}
+              onReport={reportDeliveryProblem}
+            />
+          </>
         ) : null}
 
         {!activeJob && availability?.is_online ? (

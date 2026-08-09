@@ -31,7 +31,9 @@ export function CustomerDeliveryMap({ job }: { job: DeliveryJob | null | undefin
   const [location, setLocation] = useState<CourierLocation | null>(null);
   const [loading, setLoading] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
-  const browserKey = (import.meta as any).env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
+  const browserKey =
+    (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY ||
+    (import.meta as any).env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
 
   const target = useMemo(() => {
     const lat = Number(job?.delivery_latitude);
