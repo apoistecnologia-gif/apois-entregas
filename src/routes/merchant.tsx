@@ -612,26 +612,93 @@ function MerchantWorkspace() {
         </div>
       )}
 
-      {activeTab === "orders" && (
-        <div className="space-y-3">
-          {orders.map((order) => (
-            <OrderRow
-              key={order.id}
-              order={order}
-              busy={busyAction === `order:${order.id}`}
-              onTransition={transitionOrder}
-              onReject={rejectOrder}
-              detailed
-            />
-          ))}
-          {orders.length === 0 ? (
-            <EmptyState
-              title="Nenhum pedido"
-              description="Os novos pedidos aparecerão aqui automaticamente."
-            />
-          ) : null}
-        </div>
-      )}
+      {activeTab === "orders" &&
+        (() => {
+          const columns = [
+            {
+              id: "new",
+              label: "Novos pedidos",
+              statuses: ["confirmed"],
+              accent: "border-primary/30",
+            },
+            {
+              id: "preparing",
+              label: "Em preparo",
+              statuses: ["accepted", "preparing"],
+              accent: "border-orange-500/30",
+            },
+            {
+              id: "ready",
+              label: "Prontos para coleta",
+              statuses: ["ready", "searching_driver", "driver_assigned", "driver_arriving_store"],
+              accent: "border-emerald-500/30",
+            },
+            {
+              id: "completed",
+              label: "Concluídos",
+              statuses: [
+                "picked_up",
+                "out_for_delivery",
+                "on_the_way",
+                "delivered",
+                "cancelled",
+                "refunded",
+              ],
+              accent: "border-zinc-800",
+            },
+          ];
+
+          if (orders.length === 0) {
+            return (
+              <EmptyState
+                title="Nenhum pedido"
+                description="Os novos pedidos aparecerão aqui automaticamente."
+              />
+            );
+          }
+
+          return (
+            <div className="grid gap-4 xl:grid-cols-4">
+              {columns.map((column) => {
+                const columnOrders = orders.filter((order) =>
+                  column.statuses.includes(order.status),
+                );
+                return (
+                  <section
+                    key={column.id}
+                    className={`min-w-0 rounded-2xl border bg-zinc-950 p-3 ${column.accent}`}
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-2 px-1">
+                      <h2 className="text-sm font-black uppercase tracking-wide text-zinc-200">
+                        {column.label}
+                      </h2>
+                      <span className="grid h-7 min-w-7 place-items-center rounded-full bg-zinc-900 px-2 text-xs font-black text-primary">
+                        {columnOrders.length}
+                      </span>
+                    </div>
+                    <div className="space-y-3">
+                      {columnOrders.map((order) => (
+                        <OrderRow
+                          key={order.id}
+                          order={order}
+                          busy={busyAction === `order:${order.id}`}
+                          onTransition={transitionOrder}
+                          onReject={rejectOrder}
+                          detailed
+                        />
+                      ))}
+                      {columnOrders.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-zinc-800 bg-black/40 p-4 text-center text-xs text-zinc-600">
+                          Nenhum pedido nesta etapa.
+                        </div>
+                      ) : null}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          );
+        })()}
 
       {activeTab === "menu" && (
         <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
