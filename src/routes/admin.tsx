@@ -23,6 +23,7 @@ import { AdminCoveragePanel } from "@/components/AdminCoveragePanel";
 import { AdminSupportPanel } from "@/components/AdminSupportPanel";
 import { AdminRealtimeOperationsPanel } from "@/components/AdminRealtimeOperationsPanel";
 import { AdminReviewsPanel } from "@/components/AdminReviewsPanel";
+import { AdminOrdersPanel } from "@/components/AdminOrdersPanel";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -582,44 +583,7 @@ function AdminWorkspace() {
         </div>
       )}
 
-      {activeTab === "orders" && (
-        <div className="overflow-hidden rounded-2xl border border-zinc-900 bg-zinc-950">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-sm">
-              <thead className="bg-black text-xs uppercase text-zinc-500">
-                <tr>
-                  <th className="p-4">Pedido</th>
-                  <th>Estabelecimento</th>
-                  <th>Data</th>
-                  <th>Status</th>
-                  <th>Pagamento</th>
-                  <th>Total</th>
-                  <th>Cliente</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-900">
-                {orders.map((order) => (
-                  <tr key={order.id}>
-                    <td className="p-4 font-black">#{order.order_number}</td>
-                    <td>{order.merchants?.name || "—"}</td>
-                    <td>{dateTime(order.created_at)}</td>
-                    <td>
-                      <Status value={order.status} />
-                    </td>
-                    <td>
-                      <Status value={order.payment_status} />
-                    </td>
-                    <td className="font-bold text-primary">{money(order.total)}</td>
-                    <td className="font-mono text-xs text-zinc-500">
-                      {order.customer_user_id?.slice(0, 8) || "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {activeTab === "orders" && <AdminOrdersPanel />}
 
       {activeTab === "realtime" && <AdminRealtimeOperationsPanel />}
 

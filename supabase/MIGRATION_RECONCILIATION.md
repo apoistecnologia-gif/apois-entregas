@@ -118,6 +118,7 @@ A reconciliação foi registrada no Git sem alterar o histórico de produção.
 - `20260809200510` — `enforce_active_profile_role_helpers`
 - `20260809200812` — `customer_notification_feed`
 - `20260809212129` — `allow_customer_active_courier_tracking`
+- `20260809213849` — `harden_rpc_and_core_table_privileges`
 
 ## Verificação das migrations novas convergentes
 
@@ -141,6 +142,7 @@ A reconciliação foi registrada no Git sem alterar o histórico de produção.
 | `20260809200510` | `enforce_active_profile_role_helpers`         |            2124 | `7c4a024450e8caaa621676be3c8e7e89d92be2787e0374cfb8aa70fcd9eaee1b` |
 | `20260809200812` | `customer_notification_feed`                  |            4331 | `d3765e81c8bf1c091bb1fa8ecd0e1e8ef5e924b1e5a60d0bbe0c4beccf5d24ba` |
 | `20260809212129` | `allow_customer_active_courier_tracking`      |             628 | `852e11a19afc8735634ffdd3354d6bea5fbb19981a1515418a3f52e88149ac19` |
+| `20260809213849` | `harden_rpc_and_core_table_privileges`        |            3899 | `4508a1484e9b1711ba99f61366e5fb396c9ddc191a0ccbf30812f008259fb1a7` |
 
 O commit histórico `b9a06ac99970f622838be081df908bc323b202bd` preserva a primeira captura completa de hashes do ledger remoto. As migrations posteriores a `20260809153337` passam a usar o mesmo `version id` no Supabase e no Git.
 

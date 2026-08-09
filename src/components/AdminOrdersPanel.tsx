@@ -2,10 +2,8 @@ import {
   ChevronDown,
   ChevronUp,
   Clock3,
-  CreditCard,
   Loader2,
   MapPin,
-  PackageSearch,
   RefreshCw,
   Search,
   Truck,
@@ -162,9 +160,14 @@ function addressText(value: Record<string, unknown> | null) {
 
 function StatusPill({ value }: { value: string | null | undefined }) {
   const status = value ?? "unknown";
-  const positive = ["paid", "approved", "delivered", "refunded", "ready", "ready_for_pickup"].includes(
-    status,
-  );
+  const positive = [
+    "paid",
+    "approved",
+    "delivered",
+    "refunded",
+    "ready",
+    "ready_for_pickup",
+  ].includes(status);
   const negative = ["cancelled", "failed", "rejected"].includes(status);
   return (
     <span
@@ -313,13 +316,24 @@ export function AdminOrdersPanel() {
         .filter((value) => value !== null && value !== undefined)
         .some((value) => String(value).toLowerCase().includes(normalized));
     });
-  }, [cityFilter, courierById, dateFrom, dateTo, jobByOrder, orders, paymentFilter, profileById, query, statusFilter]);
+  }, [
+    cityFilter,
+    courierById,
+    dateFrom,
+    dateTo,
+    jobByOrder,
+    orders,
+    paymentFilter,
+    profileById,
+    query,
+    statusFilter,
+  ]);
 
   const selectedOrder = useMemo(
     () => orders.find((order) => order.id === selectedOrderId) ?? null,
     [orders, selectedOrderId],
   );
-  const selectedJob = selectedOrder ? jobByOrder.get(selectedOrder.id) ?? null : null;
+  const selectedJob = selectedOrder ? (jobByOrder.get(selectedOrder.id) ?? null) : null;
 
   const loadTimeline = useCallback(async (order: Order) => {
     setTimelineLoading(true);
@@ -366,7 +380,9 @@ export function AdminOrdersPanel() {
           source: "delivery",
           label: row.event_type ? statusLabel(row.event_type) : "Evento de entrega",
           status: row.to_status ?? null,
-          detail: row.from_status ? `${statusLabel(row.from_status)} → ${statusLabel(row.to_status)}` : null,
+          detail: row.from_status
+            ? `${statusLabel(row.from_status)} → ${statusLabel(row.to_status)}`
+            : null,
           createdAt: row.created_at,
         });
       }
@@ -424,11 +440,21 @@ export function AdminOrdersPanel() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">Investigação operacional</p>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
+            Investigação operacional
+          </p>
           <h2 className="mt-1 text-xl font-black">Pedidos</h2>
-          <p className="mt-1 text-xs text-zinc-500">Busca, filtros e timeline integral de pedido, pagamento, entrega e reembolso.</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Busca, filtros e timeline integral de pedido, pagamento, entrega e reembolso.
+          </p>
         </div>
-        <Button type="button" variant="outline" disabled={refreshing} onClick={() => void load(true)} className="border-zinc-800 bg-zinc-950">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={refreshing}
+          onClick={() => void load(true)}
+          className="border-zinc-800 bg-zinc-950"
+        >
           <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
           Atualizar
         </Button>
@@ -437,8 +463,17 @@ export function AdminOrdersPanel() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Pedidos carregados" value={orders.length} />
         <MetricCard label="Resultado atual" value={filtered.length} />
-        <MetricCard label="Em operação" value={orders.filter((order) => !["delivered", "cancelled", "refunded"].includes(order.status)).length} />
-        <MetricCard label="Volume do resultado" value={money(filtered.reduce((sum, order) => sum + Number(order.total || 0), 0))} />
+        <MetricCard
+          label="Em operação"
+          value={
+            orders.filter((order) => !["delivered", "cancelled", "refunded"].includes(order.status))
+              .length
+          }
+        />
+        <MetricCard
+          label="Volume do resultado"
+          value={money(filtered.reduce((sum, order) => sum + Number(order.total || 0), 0))}
+        />
       </div>
 
       <section className="space-y-3 rounded-3xl border border-zinc-900 bg-zinc-950 p-4">
@@ -453,31 +488,68 @@ export function AdminOrdersPanel() {
           />
         </label>
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="rounded-xl border border-zinc-800 bg-black px-3 py-2.5 text-sm">
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="rounded-xl border border-zinc-800 bg-black px-3 py-2.5 text-sm"
+          >
             <option value="all">Todos os status</option>
-            {statuses.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
+            {statuses.map((status) => (
+              <option key={status} value={status}>
+                {statusLabel(status)}
+              </option>
+            ))}
           </select>
-          <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)} className="rounded-xl border border-zinc-800 bg-black px-3 py-2.5 text-sm">
+          <select
+            value={paymentFilter}
+            onChange={(event) => setPaymentFilter(event.target.value)}
+            className="rounded-xl border border-zinc-800 bg-black px-3 py-2.5 text-sm"
+          >
             <option value="all">Todos os pagamentos</option>
-            {paymentStatuses.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
+            {paymentStatuses.map((status) => (
+              <option key={status} value={status}>
+                {statusLabel(status)}
+              </option>
+            ))}
           </select>
-          <select value={cityFilter} onChange={(event) => setCityFilter(event.target.value)} className="rounded-xl border border-zinc-800 bg-black px-3 py-2.5 text-sm">
+          <select
+            value={cityFilter}
+            onChange={(event) => setCityFilter(event.target.value)}
+            className="rounded-xl border border-zinc-800 bg-black px-3 py-2.5 text-sm"
+          >
             <option value="all">Todas as cidades</option>
-            {cities.map((city) => <option key={city} value={city}>{city}</option>)}
+            {cities.map((city) => (
+              <option key={city} value={city}>
+                {city}
+              </option>
+            ))}
           </select>
           <label className="text-[10px] font-black uppercase text-zinc-600">
             De
-            <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="mt-1 w-full rounded-xl border border-zinc-800 bg-black px-3 py-2 text-sm text-white" />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(event) => setDateFrom(event.target.value)}
+              className="mt-1 w-full rounded-xl border border-zinc-800 bg-black px-3 py-2 text-sm text-white"
+            />
           </label>
           <label className="text-[10px] font-black uppercase text-zinc-600">
             Até
-            <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="mt-1 w-full rounded-xl border border-zinc-800 bg-black px-3 py-2 text-sm text-white" />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(event) => setDateTo(event.target.value)}
+              className="mt-1 w-full rounded-xl border border-zinc-800 bg-black px-3 py-2 text-sm text-white"
+            />
           </label>
         </div>
       </section>
 
       {filtered.length === 0 ? (
-        <EmptyState title="Nenhum pedido encontrado" description="Ajuste a busca ou os filtros informados." />
+        <EmptyState
+          title="Nenhum pedido encontrado"
+          description="Ajuste a busca ou os filtros informados."
+        />
       ) : (
         <div className="space-y-2">
           {filtered.map((order) => {
@@ -487,23 +559,50 @@ export function AdminOrdersPanel() {
             const courierProfile = courier ? profileById.get(courier.user_id) : null;
             const expanded = selectedOrderId === order.id;
             return (
-              <article key={order.id} className="overflow-hidden rounded-2xl border border-zinc-900 bg-zinc-950">
-                <button type="button" onClick={() => void toggleOrder(order)} className="grid w-full gap-3 p-4 text-left md:grid-cols-[110px_1.2fr_1fr_1fr_120px_36px] md:items-center">
+              <article
+                key={order.id}
+                className="overflow-hidden rounded-2xl border border-zinc-900 bg-zinc-950"
+              >
+                <button
+                  type="button"
+                  onClick={() => void toggleOrder(order)}
+                  className="grid w-full gap-3 p-4 text-left md:grid-cols-[110px_1.2fr_1fr_1fr_120px_36px] md:items-center"
+                >
                   <div>
                     <p className="font-black">#{order.order_number}</p>
-                    <p className="mt-1 font-mono text-[9px] text-zinc-700">{order.id.slice(0, 12)}</p>
+                    <p className="mt-1 font-mono text-[9px] text-zinc-700">
+                      {order.id.slice(0, 12)}
+                    </p>
                   </div>
                   <div className="min-w-0">
                     <p className="truncate font-bold">{order.merchants?.name ?? "—"}</p>
-                    <p className="truncate text-xs text-zinc-500">{order.merchants?.city ?? "—"}/{order.merchants?.state ?? ""}</p>
+                    <p className="truncate text-xs text-zinc-500">
+                      {order.merchants?.city ?? "—"}/{order.merchants?.state ?? ""}
+                    </p>
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm">{customer?.full_name ?? `Cliente ${order.customer_user_id.slice(0, 8)}`}</p>
-                    <p className="truncate text-xs text-zinc-600">{courierProfile?.full_name ? `Entregador: ${courierProfile.full_name}` : "Sem entregador atribuído"}</p>
+                    <p className="truncate text-sm">
+                      {customer?.full_name ?? `Cliente ${order.customer_user_id.slice(0, 8)}`}
+                    </p>
+                    <p className="truncate text-xs text-zinc-600">
+                      {courierProfile?.full_name
+                        ? `Entregador: ${courierProfile.full_name}`
+                        : "Sem entregador atribuído"}
+                    </p>
                   </div>
-                  <div className="flex flex-wrap gap-1.5"><StatusPill value={order.status} /><StatusPill value={order.payment_status} /></div>
-                  <div><p className="font-black text-primary">{money(order.total)}</p><p className="text-[10px] text-zinc-600">{dateTime(order.created_at)}</p></div>
-                  {expanded ? <ChevronUp className="h-5 w-5 text-zinc-600" /> : <ChevronDown className="h-5 w-5 text-zinc-600" />}
+                  <div className="flex flex-wrap gap-1.5">
+                    <StatusPill value={order.status} />
+                    <StatusPill value={order.payment_status} />
+                  </div>
+                  <div>
+                    <p className="font-black text-primary">{money(order.total)}</p>
+                    <p className="text-[10px] text-zinc-600">{dateTime(order.created_at)}</p>
+                  </div>
+                  {expanded ? (
+                    <ChevronUp className="h-5 w-5 text-zinc-600" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-zinc-600" />
+                  )}
                 </button>
 
                 {expanded ? (
@@ -512,42 +611,115 @@ export function AdminOrdersPanel() {
                       <div className="space-y-3">
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div className="rounded-2xl bg-black p-4">
-                            <p className="flex items-center gap-1 text-[10px] font-black uppercase text-zinc-600"><UserRound className="h-3.5 w-3.5" /> Cliente</p>
-                            <p className="mt-2 font-bold">{customer?.full_name ?? "Nome não disponível"}</p>
-                            <p className="text-xs text-zinc-500">{customer?.phone ?? order.customer_user_id}</p>
+                            <p className="flex items-center gap-1 text-[10px] font-black uppercase text-zinc-600">
+                              <UserRound className="h-3.5 w-3.5" /> Cliente
+                            </p>
+                            <p className="mt-2 font-bold">
+                              {customer?.full_name ?? "Nome não disponível"}
+                            </p>
+                            <p className="text-xs text-zinc-500">
+                              {customer?.phone ?? order.customer_user_id}
+                            </p>
                           </div>
                           <div className="rounded-2xl bg-black p-4">
-                            <p className="flex items-center gap-1 text-[10px] font-black uppercase text-zinc-600"><Truck className="h-3.5 w-3.5" /> Entregador</p>
-                            <p className="mt-2 font-bold">{courierProfile?.full_name ?? "Não atribuído"}</p>
-                            <p className="text-xs text-zinc-500">{courier ? [courier.vehicle_type, courier.vehicle_model].filter(Boolean).join(" · ") : "—"}</p>
+                            <p className="flex items-center gap-1 text-[10px] font-black uppercase text-zinc-600">
+                              <Truck className="h-3.5 w-3.5" /> Entregador
+                            </p>
+                            <p className="mt-2 font-bold">
+                              {courierProfile?.full_name ?? "Não atribuído"}
+                            </p>
+                            <p className="text-xs text-zinc-500">
+                              {courier
+                                ? [courier.vehicle_type, courier.vehicle_model]
+                                    .filter(Boolean)
+                                    .join(" · ")
+                                : "—"}
+                            </p>
                           </div>
                         </div>
                         <div className="rounded-2xl bg-black p-4">
-                          <p className="flex items-center gap-1 text-[10px] font-black uppercase text-zinc-600"><MapPin className="h-3.5 w-3.5" /> Entrega</p>
-                          <p className="mt-2 text-sm text-zinc-300">{order.fulfillment_type === "pickup" ? "Retirada no estabelecimento" : addressText(order.delivery_address)}</p>
+                          <p className="flex items-center gap-1 text-[10px] font-black uppercase text-zinc-600">
+                            <MapPin className="h-3.5 w-3.5" /> Entrega
+                          </p>
+                          <p className="mt-2 text-sm text-zinc-300">
+                            {order.fulfillment_type === "pickup"
+                              ? "Retirada no estabelecimento"
+                              : addressText(order.delivery_address)}
+                          </p>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          <div className="rounded-2xl bg-black p-4"><p className="text-[10px] font-black uppercase text-zinc-600">Subtotal</p><p className="mt-1 font-black">{money(order.subtotal)}</p></div>
-                          <div className="rounded-2xl bg-black p-4"><p className="text-[10px] font-black uppercase text-zinc-600">Entrega</p><p className="mt-1 font-black">{money(order.delivery_fee)}</p></div>
-                          <div className="rounded-2xl bg-black p-4"><p className="text-[10px] font-black uppercase text-zinc-600">Desconto</p><p className="mt-1 font-black">{money(order.discount)}</p></div>
-                          <div className="rounded-2xl bg-black p-4"><p className="text-[10px] font-black uppercase text-zinc-600">Plataforma</p><p className="mt-1 font-black">{money(order.platform_fee ?? order.service_fee)}</p></div>
-                          <div className="rounded-2xl bg-black p-4"><p className="text-[10px] font-black uppercase text-zinc-600">Repasse parceiro</p><p className="mt-1 font-black">{money(order.merchant_net)}</p></div>
-                          <div className="rounded-2xl bg-black p-4"><p className="text-[10px] font-black uppercase text-zinc-600">Entregador</p><p className="mt-1 font-black text-primary">{money(order.courier_earnings ?? selectedJob?.estimated_earnings)}</p></div>
+                          <div className="rounded-2xl bg-black p-4">
+                            <p className="text-[10px] font-black uppercase text-zinc-600">
+                              Subtotal
+                            </p>
+                            <p className="mt-1 font-black">{money(order.subtotal)}</p>
+                          </div>
+                          <div className="rounded-2xl bg-black p-4">
+                            <p className="text-[10px] font-black uppercase text-zinc-600">
+                              Entrega
+                            </p>
+                            <p className="mt-1 font-black">{money(order.delivery_fee)}</p>
+                          </div>
+                          <div className="rounded-2xl bg-black p-4">
+                            <p className="text-[10px] font-black uppercase text-zinc-600">
+                              Desconto
+                            </p>
+                            <p className="mt-1 font-black">{money(order.discount)}</p>
+                          </div>
+                          <div className="rounded-2xl bg-black p-4">
+                            <p className="text-[10px] font-black uppercase text-zinc-600">
+                              Plataforma
+                            </p>
+                            <p className="mt-1 font-black">
+                              {money(order.platform_fee ?? order.service_fee)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl bg-black p-4">
+                            <p className="text-[10px] font-black uppercase text-zinc-600">
+                              Repasse parceiro
+                            </p>
+                            <p className="mt-1 font-black">{money(order.merchant_net)}</p>
+                          </div>
+                          <div className="rounded-2xl bg-black p-4">
+                            <p className="text-[10px] font-black uppercase text-zinc-600">
+                              Entregador
+                            </p>
+                            <p className="mt-1 font-black text-primary">
+                              {money(order.courier_earnings ?? selectedJob?.estimated_earnings)}
+                            </p>
+                          </div>
                         </div>
                         {order.observation || order.cancellation_reason ? (
                           <div className="rounded-2xl border border-zinc-900 bg-black p-4 text-sm text-zinc-400">
-                            {order.observation ? <p><strong className="text-zinc-200">Observação:</strong> {order.observation}</p> : null}
-                            {order.cancellation_reason ? <p className="mt-2 text-red-300"><strong>Cancelamento:</strong> {order.cancellation_reason}</p> : null}
+                            {order.observation ? (
+                              <p>
+                                <strong className="text-zinc-200">Observação:</strong>{" "}
+                                {order.observation}
+                              </p>
+                            ) : null}
+                            {order.cancellation_reason ? (
+                              <p className="mt-2 text-red-300">
+                                <strong>Cancelamento:</strong> {order.cancellation_reason}
+                              </p>
+                            ) : null}
                           </div>
                         ) : null}
                       </div>
 
                       <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
-                        <div className="flex items-center gap-2"><Clock3 className="h-4 w-4 text-primary" /><h3 className="font-black">Timeline integral</h3></div>
+                        <div className="flex items-center gap-2">
+                          <Clock3 className="h-4 w-4 text-primary" />
+                          <h3 className="font-black">Timeline integral</h3>
+                        </div>
                         {timelineLoading ? (
-                          <div className="flex items-center gap-2 py-8 text-sm text-zinc-500"><Loader2 className="h-4 w-4 animate-spin text-primary" /> Carregando timeline...</div>
+                          <div className="flex items-center gap-2 py-8 text-sm text-zinc-500">
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" /> Carregando
+                            timeline...
+                          </div>
                         ) : timeline.length === 0 ? (
-                          <div className="py-8 text-sm text-zinc-600">Nenhum evento adicional registrado.</div>
+                          <div className="py-8 text-sm text-zinc-600">
+                            Nenhum evento adicional registrado.
+                          </div>
                         ) : (
                           <ol className="mt-4 space-y-3">
                             {timeline.map((entry) => (
@@ -555,13 +727,19 @@ export function AdminOrdersPanel() {
                                 <span className="absolute -left-1 top-1 h-2 w-2 rounded-full bg-primary" />
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                   <p className="text-sm font-bold">{entry.label}</p>
-                                  <p className="text-[10px] text-zinc-600">{dateTime(entry.createdAt)}</p>
+                                  <p className="text-[10px] text-zinc-600">
+                                    {dateTime(entry.createdAt)}
+                                  </p>
                                 </div>
                                 <div className="mt-1 flex flex-wrap items-center gap-2">
                                   {entry.status ? <StatusPill value={entry.status} /> : null}
-                                  <span className="text-[9px] font-black uppercase tracking-wide text-zinc-700">{entry.source}</span>
+                                  <span className="text-[9px] font-black uppercase tracking-wide text-zinc-700">
+                                    {entry.source}
+                                  </span>
                                 </div>
-                                {entry.detail ? <p className="mt-1 text-xs text-zinc-500">{entry.detail}</p> : null}
+                                {entry.detail ? (
+                                  <p className="mt-1 text-xs text-zinc-500">{entry.detail}</p>
+                                ) : null}
                               </li>
                             ))}
                           </ol>
