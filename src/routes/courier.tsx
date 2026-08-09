@@ -65,6 +65,7 @@ function CourierApp() {
   const [deliveryHistory, setDeliveryHistory] = useState<any[]>([]);
   const [activeJob, setActiveJob] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
+  const [metrics, setMetrics] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [payoutAccount, setPayoutAccount] = useState<any>(null);
   const [payouts, setPayouts] = useState<any[]>([]);
@@ -82,7 +83,8 @@ function CourierApp() {
   const locationWatchRef = useRef<number | null>(null);
 
   const loadCourierOperations = useCallback(async (courierId: string) => {
-    const [availabilityRes, offersRes, jobsRes, walletRes] = await Promise.all([
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
+    const [availabilityRes, offersRes, jobsRes, walletRes, metricsRes] = await Promise.all([
       from("courier_availability").select("*").eq("courier_id", courierId).maybeSingle(),
       from("delivery_offers")
         .select("*, delivery_jobs(*, orders(order_number,total,status))")
@@ -105,11 +107,18 @@ function CourierApp() {
         .limit(1)
         .maybeSingle(),
       from("wallets").select("*").eq("courier_id", courierId).maybeSingle(),
+      rpc("get_courier_metrics", { _timezone: timezone }),
     ]);
     setAvailability(availabilityRes.data ?? null);
     setOffers(offersRes.data ?? []);
     setActiveJob(jobsRes.data ?? null);
     setWallet(walletRes.data ?? null);
+    if (metricsRes.error) {
+      console.warn("courier metrics load failed", metricsRes.error.message);
+      setMetrics(null);
+    } else {
+      setMetrics(metricsRes.data ?? null);
+    }
 
     const historyRes = await from("delivery_jobs")
       .select("*, orders(order_number,total,status,observation)")
@@ -527,6 +536,7 @@ function CourierApp() {
       <CourierFinance
         courier={courier}
         wallet={wallet}
+        metrics={metrics}
         transactions={transactions}
         payoutAccount={payoutAccount}
         payouts={payouts}
@@ -1027,6 +1037,7 @@ function ActiveDelivery({
 function CourierFinance({
   courier,
   wallet,
+  metrics,
   transactions,
   payoutAccount,
   payouts,
@@ -1054,6 +1065,56 @@ function CourierFinance({
             Saldo total {money(wallet?.balance)} · reservado {money(wallet?.reserved_balance)}
           </p>
         </div>
+
+        <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-wider text-primary">
+              Resumo operacional
+            </p>
+            <h2 className="mt-1 font-black">Seus ganhos e desempenho</h2>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <MetricCard label="Hoje" value={money(metrics?.earnings_today)} />
+            <MetricCard label="Semana" value={money(metrics?.earnings_week)} />
+            <MetricCard label="Mês" value={money(metrics?.earnings_month)} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <MetricCard
+              label="Taxa de aceitação"
+              value={`${Number(metrics?.acceptance_rate ?? 0)
+                .toFixed(1)
+                .replace(".", ",")}%`}
+            />
+            <MetricCard
+              label="Entregas concluídas"
+              value={String(metrics?.completed_deliveries ?? 0)}
+            />
+          </div>
+          <div className="rounded-xl border border-zinc-900 bg-black p-3">
+            <p className="text-[10px] font-black uppercase text-zinc-600">Horas online</p>
+            <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+              <div>
+                <p className="text-sm font-black text-white">
+                  {formatOnlineTime(metrics?.online_seconds_today)}
+                </p>
+                <p className="text-[9px] uppercase text-zinc-600">Hoje</p>
+              </div>
+              <div>
+                <p className="text-sm font-black text-white">
+                  {formatOnlineTime(metrics?.online_seconds_week)}
+                </p>
+                <p className="text-[9px] uppercase text-zinc-600">Semana</p>
+              </div>
+              <div>
+                <p className="text-sm font-black text-white">
+                  {formatOnlineTime(metrics?.online_seconds_month)}
+                </p>
+                <p className="text-[9px] uppercase text-zinc-600">Mês</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {!wallet ? (
           <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5 text-sm text-zinc-500">
             Sua carteira será criada automaticamente após a primeira entrega liquidada.
@@ -1139,6 +1200,23 @@ function CourierFinance({
       </main>
     </div>
   );
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-zinc-900 bg-black p-3">
+      <p className="text-[9px] font-black uppercase text-zinc-600">{label}</p>
+      <p className="mt-1 text-sm font-black text-primary">{value}</p>
+    </div>
+  );
+}
+
+function formatOnlineTime(value: unknown) {
+  const seconds = Math.max(0, Number(value ?? 0));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (hours <= 0) return `${minutes}min`;
+  return `${hours}h ${minutes}min`;
 }
 
 function AddressRow({ label, title, detail }: { label: string; title: string; detail?: string }) {
