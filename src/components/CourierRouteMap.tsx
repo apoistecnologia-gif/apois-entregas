@@ -2,7 +2,15 @@
 import { APIProvider, AdvancedMarker, Map, useMap } from "@vis.gl/react-google-maps";
 import { ExternalLink, MapPin, Navigation } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CourierPosition } from "@/components/CourierLocationTracker";
+
+export type CourierPosition = {
+  lat: number;
+  lng: number;
+  accuracy: number | null;
+  heading: number | null;
+  speed: number | null;
+  recordedAt: number;
+};
 
 type LatLng = { lat: number; lng: number };
 
@@ -18,7 +26,8 @@ const distanceMeters = (a: LatLng, b: LatLng) => {
   const deltaLat = ((b.lat - a.lat) * Math.PI) / 180;
   const deltaLng = ((b.lng - a.lng) * Math.PI) / 180;
   const haversine =
-    Math.sin(deltaLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
   return 2 * radius * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 };
 
@@ -77,12 +86,15 @@ function RouteMapContent({
           rendererRef.current?.setDirections(result);
           lastRouteRef.current = { origin, target, at: Date.now() };
           setRouteState("ready");
-        } else {
-          console.warn("Não foi possível traçar a rota do entregador:", status);
-          rendererRef.current?.setDirections({ routes: [] } as google.maps.DirectionsResult);
-          map.panTo(target);
-          setRouteState("error");
+          return;
         }
+
+        console.warn("Não foi possível traçar a rota do entregador:", status);
+        rendererRef.current?.setMap(null);
+        rendererRef.current = null;
+        lastRouteRef.current = null;
+        map.panTo(target);
+        setRouteState("error");
       },
     );
 
@@ -132,14 +144,18 @@ export function CourierRouteMap({
   const browserKey = (import.meta as any).env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
   const goingToDelivery = ["picked_up", "on_the_way", "arrived_destination"].includes(job.status);
   const target = useMemo(() => {
-    const latitude = parseCoordinate(
-      goingToDelivery ? job.delivery_latitude : job.pickup_latitude,
-    );
+    const latitude = parseCoordinate(goingToDelivery ? job.delivery_latitude : job.pickup_latitude);
     const longitude = parseCoordinate(
       goingToDelivery ? job.delivery_longitude : job.pickup_longitude,
     );
     return latitude === null || longitude === null ? null : { lat: latitude, lng: longitude };
-  }, [goingToDelivery, job.delivery_latitude, job.delivery_longitude, job.pickup_latitude, job.pickup_longitude]);
+  }, [
+    goingToDelivery,
+    job.delivery_latitude,
+    job.delivery_longitude,
+    job.pickup_latitude,
+    job.pickup_longitude,
+  ]);
 
   const openNavigation = () => {
     if (!target) return;
@@ -154,7 +170,8 @@ export function CourierRouteMap({
   if (!target) {
     return (
       <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-200">
-        A localização geográfica desta etapa não está disponível. Confira o endereço abaixo antes de seguir.
+        A localização geográfica desta etapa não está disponível. Confira o endereço abaixo antes de
+        seguir.
       </div>
     );
   }
@@ -167,7 +184,9 @@ export function CourierRouteMap({
             {goingToDelivery ? "Rota até o cliente" : "Rota até o estabelecimento"}
           </p>
           <p className="mt-0.5 text-xs text-zinc-500">
-            {currentPosition ? "Rota atualizada pela sua localização" : "Aguardando sua localização para traçar a rota"}
+            {currentPosition
+              ? "Rota atualizada pela sua localização"
+              : "Aguardando sua localização para traçar a rota"}
           </p>
         </div>
         <button
@@ -184,7 +203,9 @@ export function CourierRouteMap({
         <APIProvider apiKey={browserKey}>
           <div className="relative h-64 w-full bg-zinc-900">
             <Map
-              defaultCenter={currentPosition ? { lat: currentPosition.lat, lng: currentPosition.lng } : target}
+              defaultCenter={
+                currentPosition ? { lat: currentPosition.lat, lng: currentPosition.lng } : target
+              }
               defaultZoom={14}
               gestureHandling="greedy"
               disableDefaultUI
