@@ -1,0 +1,74 @@
+name: Integrate admin delivery coverage
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/integrate-admin-coverage.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Wire city and delivery-zone management
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          path = Path('src/routes/admin.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          if '  MapPinned,\n' not in text:
+              text = text.replace('  MapPin,\n', '  MapPin,\n  MapPinned,\n', 1)
+
+          shell_import = 'import { AdminCoveragePanel } from "@/components/AdminCoveragePanel";\n'
+          anchor = 'import { WorkspaceShell } from "@/components/WorkspaceShell";\n'
+          if shell_import not in text:
+              if anchor not in text:
+                  raise SystemExit('WorkspaceShell import anchor missing')
+              text = text.replace(anchor, anchor + shell_import, 1)
+
+          tab_anchor = '    { id: "ops", label: "Operação", icon: MapPin },\n'
+          tab_new = tab_anchor + '    { id: "coverage", label: "Cobertura", icon: MapPinned },\n'
+          if 'id: "coverage"' not in text:
+              if tab_anchor not in text:
+                  raise SystemExit('ops tab anchor missing')
+              text = text.replace(tab_anchor, tab_new, 1)
+
+          render_anchor = '''      {activeTab === "finance" && (\n'''
+          coverage_render = '''      {activeTab === "coverage" && (\n        <AdminCoveragePanel cities={cities} onRefresh={() => loadAll(true)} />\n      )}\n\n'''
+          if coverage_render not in text:
+              if render_anchor not in text:
+                  raise SystemExit('finance render anchor missing')
+              text = text.replace(render_anchor, coverage_render + render_anchor, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+          bunx prettier src/routes/admin.tsx src/components/AdminCoveragePanel.tsx --write
+      - name: Full verification
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit integration and remove workflow
+        run: |
+          rm .github/workflows/integrate-admin-coverage.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(admin): manage cities and delivery coverage"
+          git push
