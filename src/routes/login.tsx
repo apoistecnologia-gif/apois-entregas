@@ -60,6 +60,35 @@ function Login() {
         password,
       });
 
+      if (!error) {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError || !authData.user) {
+          await supabase.auth.signOut();
+          toast.error("Não foi possível validar sua conta. Tente novamente.");
+          setIsLoading(false);
+          return;
+        }
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("is_active,blocked_reason")
+          .eq("id", authData.user.id)
+          .maybeSingle();
+        if (profileError || !profile) {
+          await supabase.auth.signOut();
+          toast.error("Não foi possível validar seu perfil. Tente novamente.");
+          setIsLoading(false);
+          return;
+        }
+        if (profile.is_active === false) {
+          await supabase.auth.signOut();
+          toast.error(
+            profile.blocked_reason || "Sua conta está desativada. Entre em contato com o suporte.",
+          );
+          setIsLoading(false);
+          return;
+        }
+      }
+
       if (error) {
         toast.error("E-mail ou senha incorretos.");
         setIsLoading(false);
