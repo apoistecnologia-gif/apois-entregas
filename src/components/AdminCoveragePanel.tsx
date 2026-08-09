@@ -297,6 +297,7 @@ export function AdminCoveragePanel({
                         onChange={(value) =>
                           setEditingCity({ ...row, default_delivery_radius_km: value })
                         }
+                        placeholder="Raio km"
                         inputMode="decimal"
                       />
                     </label>
