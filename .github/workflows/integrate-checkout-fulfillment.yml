@@ -1,0 +1,140 @@
+name: Integrate pickup coupons and checkout summary
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/integrate-checkout-fulfillment.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Wire checkout fulfillment and coupons
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          path = Path('src/routes/checkout.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          old_import = 'import { ArrowLeft, Check, Copy, CreditCard, Loader2, MapPin, QrCode } from "lucide-react";'
+          new_import = '''import {\n  ArrowLeft,\n  Check,\n  Copy,\n  CreditCard,\n  Loader2,\n  MapPin,\n  QrCode,\n  Store,\n  Tag,\n  Truck,\n  X,\n} from "lucide-react";'''
+          if old_import in text:
+              text = text.replace(old_import, new_import, 1)
+
+          attempt_type = '''type CheckoutAttempt = {\n  key: string;\n  fingerprint: string;\n  createdAt: number;\n};\n'''
+          extra_types = '''\ntype FulfillmentType = "delivery" | "pickup";\n\ntype CouponPreview = {\n  coupon_id: string;\n  code: string;\n  discount_type: string;\n  discount_value: number;\n  discount_amount: number;\n};\n\ntype MerchantCheckoutConfig = {\n  delivery_fee: number | string | null;\n  minimum_order: number | string | null;\n  delivery_enabled: boolean;\n  pickup_enabled: boolean;\n  address_line: string | null;\n  neighborhood: string | null;\n  city: string | null;\n  state: string | null;\n};\n'''
+          if extra_types not in text:
+              if attempt_type not in text:
+                  raise SystemExit('CheckoutAttempt anchor not found')
+              text = text.replace(attempt_type, attempt_type + extra_types, 1)
+
+          fp_start = text.index('function checkoutFingerprint(input: {')
+          fp_end = text.index('\nfunction getCheckoutAttempt', fp_start)
+          new_fp = '''function checkoutFingerprint(input: {\n  merchantId: string;\n  paymentMethod: string;\n  fulfillmentType: FulfillmentType;\n  couponCode: string | null;\n  address: LocalAddressSnapshot | null;\n  observation: string;\n  items: Array<{ id: string; quantity: number; optionIds: string[] }>;\n}) {\n  return JSON.stringify({\n    merchantId: input.merchantId,\n    paymentMethod: input.paymentMethod,\n    fulfillmentType: input.fulfillmentType,\n    couponCode: input.couponCode,\n    address: input.fulfillmentType === "delivery" ? input.address : null,\n    observation: input.observation.trim(),\n    items: [...input.items]\n      .map((item) => ({ ...item, optionIds: [...item.optionIds].sort() }))\n      .sort((a, b) => a.id.localeCompare(b.id)),\n  });\n}\n'''
+          text = text[:fp_start] + new_fp + text[fp_end:]
+
+          state_anchor = '''  const [address, setAddress] = useState<LocalAddressSnapshot | null>(null);\n  const [observation, setObservation] = useState("");\n'''
+          state_new = '''  const [address, setAddress] = useState<LocalAddressSnapshot | null>(null);\n  const [merchantConfig, setMerchantConfig] = useState<MerchantCheckoutConfig | null>(null);\n  const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>("delivery");\n  const [couponInput, setCouponInput] = useState("");\n  const [appliedCoupon, setAppliedCoupon] = useState<CouponPreview | null>(null);\n  const [couponBusy, setCouponBusy] = useState(false);\n  const [observation, setObservation] = useState("");\n'''
+          if state_anchor not in text:
+              raise SystemExit('checkout state anchor not found')
+          text = text.replace(state_anchor, state_new, 1)
+
+          effect_end_anchor = '''  }, [isHydrated, items.length, pixData, navigate]);\n\n  const subtotal = totalPrice;\n  const deliveryFee = merchant?.deliveryFee || 0;\n  const total = subtotal + deliveryFee;\n'''
+          config_effect = '''  }, [isHydrated, items.length, pixData, navigate]);\n\n  useEffect(() => {\n    if (!merchant?.id) return;\n    let disposed = false;\n    const loadMerchantConfig = async () => {\n      const { data, error } = await supabase\n        .from("merchants")\n        .select(\n          "delivery_fee,minimum_order,delivery_enabled,pickup_enabled,address_line,neighborhood,city,state",\n        )\n        .eq("id", merchant.id)\n        .maybeSingle();\n      if (disposed) return;\n      if (error || !data) {\n        console.error("Erro ao carregar modalidades do estabelecimento:", error);\n        return;\n      }\n      const config = data as MerchantCheckoutConfig;\n      setMerchantConfig(config);\n      if (!config.delivery_enabled && config.pickup_enabled) setFulfillmentType("pickup");\n      if (config.delivery_enabled && !config.pickup_enabled) setFulfillmentType("delivery");\n    };\n    void loadMerchantConfig();\n    return () => {\n      disposed = true;\n    };\n  }, [merchant?.id]);\n\n  const subtotal = totalPrice;\n  const deliveryFee =\n    fulfillmentType === "delivery"\n      ? Number(merchantConfig?.delivery_fee ?? merchant?.deliveryFee ?? 0)\n      : 0;\n  const discount = Number(appliedCoupon?.discount_amount ?? 0);\n  const total = Math.max(0, subtotal + deliveryFee - discount);\n  const minimumOrder = Number(merchantConfig?.minimum_order ?? 0);\n  const minimumOrderMissing = Math.max(0, minimumOrder - subtotal);\n'''
+          if effect_end_anchor not in text:
+              raise SystemExit('checkout totals anchor not found')
+          text = text.replace(effect_end_anchor, config_effect, 1)
+
+          copy_anchor = '''  const handleCopyPix = () => {\n'''
+          coupon_handlers = '''  const applyCoupon = async () => {\n    const normalizedCode = couponInput.trim().toUpperCase();\n    if (!merchant?.id || !normalizedCode || couponBusy) return;\n    setCouponBusy(true);\n    const { data, error } = await (supabase.rpc as any)("preview_coupon", {\n      p_merchant_id: merchant.id,\n      p_code: normalizedCode,\n      p_subtotal: subtotal,\n    });\n    setCouponBusy(false);\n    if (error) {\n      setAppliedCoupon(null);\n      toast.error(\n        String(error.message || "Cupom inválido.").toLowerCase().includes("minimum")\n          ? "O valor mínimo necessário para usar este cupom ainda não foi atingido."\n          : "Cupom inválido, expirado ou sem usos disponíveis.",\n      );\n      return;\n    }\n    const preview = Array.isArray(data) ? data[0] : null;\n    if (!preview?.coupon_id) {\n      setAppliedCoupon(null);\n      toast.error("Este cupom não está disponível.");\n      return;\n    }\n    setAppliedCoupon({\n      ...preview,\n      discount_value: Number(preview.discount_value),\n      discount_amount: Number(preview.discount_amount),\n    });\n    setCouponInput(String(preview.code || normalizedCode));\n    sessionStorage.removeItem(CHECKOUT_ATTEMPT_STORAGE_KEY);\n    toast.success("Cupom aplicado.");\n  };\n\n  const removeCoupon = () => {\n    setAppliedCoupon(null);\n    setCouponInput("");\n    sessionStorage.removeItem(CHECKOUT_ATTEMPT_STORAGE_KEY);\n  };\n\n  const handleCopyPix = () => {\n'''
+          if copy_anchor not in text:
+              raise SystemExit('handleCopyPix anchor not found')
+          text = text.replace(copy_anchor, coupon_handlers, 1)
+
+          old_address_check = '      if (!address) throw new Error("Selecione um endereço de entrega antes de continuar.");\n'
+          new_address_check = '''      if (fulfillmentType === "delivery" && !address)\n        throw new Error("Selecione um endereço de entrega antes de continuar.");\n'''
+          text = text.replace(old_address_check, new_address_check, 1)
+
+          merchant_check = '''      if (!merchant?.id)\n        throw new Error("Não foi possível identificar o estabelecimento deste pedido.");\n'''
+          merchant_extra = '''      if (!merchant?.id)\n        throw new Error("Não foi possível identificar o estabelecimento deste pedido.");\n      if (minimumOrderMissing > 0)\n        throw new Error(\n          `Faltam R$ ${minimumOrderMissing.toFixed(2).replace(".", ",")} para atingir o pedido mínimo.`,\n        );\n      if (merchantConfig && fulfillmentType === "delivery" && !merchantConfig.delivery_enabled)\n        throw new Error("Este estabelecimento não está aceitando entrega no momento.");\n      if (merchantConfig && fulfillmentType === "pickup" && !merchantConfig.pickup_enabled)\n        throw new Error("Este estabelecimento não está aceitando retirada no momento.");\n'''
+          if merchant_check not in text:
+              raise SystemExit('merchant check anchor missing')
+          text = text.replace(merchant_check, merchant_extra, 1)
+
+          fp_call_old = '''        merchantId: merchant.id,\n        paymentMethod,\n        address,\n        observation,'''
+          fp_call_new = '''        merchantId: merchant.id,\n        paymentMethod,\n        fulfillmentType,\n        couponCode: appliedCoupon?.code ?? null,\n        address,\n        observation,'''
+          if fp_call_old not in text:
+              raise SystemExit('fingerprint call anchor missing')
+          text = text.replace(fp_call_old, fp_call_new, 1)
+
+          body_old = '''            paymentMethod: "pix",\n            deliveryAddress: address,\n            observation,'''
+          body_new = '''            paymentMethod: "pix",\n            fulfillmentType,\n            couponCode: appliedCoupon?.code ?? null,\n            deliveryAddress: fulfillmentType === "delivery" ? address : {},\n            observation,'''
+          if body_old not in text:
+              raise SystemExit('create-order body anchor missing')
+          text = text.replace(body_old, body_new, 1)
+
+          total_fallback_old = '        total: Number(payment.amount) || total,\n'
+          total_fallback_new = '        total: Number(payment.amount) || Number(orderResponse?.total) || total,\n'
+          text = text.replace(total_fallback_old, total_fallback_new, 1)
+
+          address_section_start = text.index('        <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">\n          <p className="mb-2 text-xs font-bold uppercase text-zinc-500">Endereço de Entrega</p>')
+          items_section_start = text.index('        <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">\n          <p className="mb-2 text-xs font-bold uppercase text-zinc-500">Itens</p>', address_section_start)
+          new_fulfillment = '''        <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">\n          <p className="mb-3 text-xs font-bold uppercase text-zinc-500">Como você quer receber?</p>\n          <div className="grid grid-cols-2 gap-2">\n            <button\n              type="button"\n              disabled={merchantConfig?.delivery_enabled === false}\n              onClick={() => {\n                setFulfillmentType("delivery");\n                sessionStorage.removeItem(CHECKOUT_ATTEMPT_STORAGE_KEY);\n              }}\n              className={`flex items-center gap-2 rounded-xl border p-3 text-left ${\n                fulfillmentType === "delivery"\n                  ? "border-primary bg-primary/5 text-white"\n                  : "border-zinc-900 text-zinc-500"\n              } disabled:cursor-not-allowed disabled:opacity-30`}\n            >\n              <Truck className="h-5 w-5 text-primary" />\n              <span className="text-sm font-bold">Entrega</span>\n            </button>\n            <button\n              type="button"\n              disabled={merchantConfig?.pickup_enabled === false}\n              onClick={() => {\n                setFulfillmentType("pickup");\n                sessionStorage.removeItem(CHECKOUT_ATTEMPT_STORAGE_KEY);\n              }}\n              className={`flex items-center gap-2 rounded-xl border p-3 text-left ${\n                fulfillmentType === "pickup"\n                  ? "border-primary bg-primary/5 text-white"\n                  : "border-zinc-900 text-zinc-500"\n              } disabled:cursor-not-allowed disabled:opacity-30`}\n            >\n              <Store className="h-5 w-5 text-primary" />\n              <span className="text-sm font-bold">Retirada</span>\n            </button>\n          </div>\n        </section>\n\n        {fulfillmentType === "delivery" ? (\n          <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">\n            <div className="mb-2 flex items-center justify-between gap-3">\n              <p className="text-xs font-bold uppercase text-zinc-500">Endereço de entrega</p>\n              <button\n                type="button"\n                onClick={() => navigate({ to: "/enderecos" })}\n                className="text-xs font-bold text-primary"\n              >\n                Alterar\n              </button>\n            </div>\n            <div className="flex items-center gap-3">\n              <MapPin className="text-primary" />\n              <div className="flex-1">\n                <p className="font-bold">\n                  {address ? `${address.street}, ${address.number}` : "Nenhum endereço padrão selecionado"}\n                </p>\n                <p className="text-xs text-zinc-500">{address?.neighborhood}</p>\n              </div>\n            </div>\n          </section>\n        ) : (\n          <section className="rounded-2xl border border-primary/20 bg-primary/5 p-4">\n            <div className="flex items-start gap-3">\n              <Store className="mt-0.5 h-5 w-5 text-primary" />\n              <div>\n                <p className="font-bold">Retirada no estabelecimento</p>\n                <p className="mt-1 text-xs leading-relaxed text-zinc-500">\n                  {[\n                    merchantConfig?.address_line,\n                    merchantConfig?.neighborhood,\n                    [merchantConfig?.city, merchantConfig?.state].filter(Boolean).join(" - "),\n                  ]\n                    .filter(Boolean)\n                    .join(" · ") || "O endereço de retirada será exibido no acompanhamento do pedido."}\n                </p>\n              </div>\n            </div>\n          </section>\n        )}\n\n'''
+          text = text[:address_section_start] + new_fulfillment + text[items_section_start:]
+
+          payment_section_marker = '        <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">\n          <p className="mb-2 text-xs font-bold uppercase text-zinc-500">Forma de Pagamento</p>'
+          coupon_section = '''        <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">\n          <div className="mb-3 flex items-center gap-2">\n            <Tag className="h-4 w-4 text-primary" />\n            <p className="text-xs font-bold uppercase text-zinc-500">Cupom de desconto</p>\n          </div>\n          {appliedCoupon ? (\n            <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">\n              <div>\n                <p className="text-sm font-black text-emerald-300">{appliedCoupon.code}</p>\n                <p className="text-xs text-zinc-500">\n                  Desconto de R$ {discount.toFixed(2).replace(".", ",")} aplicado\n                </p>\n              </div>\n              <button\n                type="button"\n                onClick={removeCoupon}\n                className="rounded-full bg-zinc-900 p-2 text-zinc-400"\n                aria-label="Remover cupom"\n              >\n                <X className="h-4 w-4" />\n              </button>\n            </div>\n          ) : (\n            <div className="flex gap-2">\n              <input\n                value={couponInput}\n                maxLength={80}\n                onChange={(event) => setCouponInput(event.target.value.toUpperCase())}\n                onKeyDown={(event) => {\n                  if (event.key === "Enter") {\n                    event.preventDefault();\n                    void applyCoupon();\n                  }\n                }}\n                className="min-w-0 flex-1 rounded-xl border border-zinc-800 bg-black px-4 py-3 text-sm font-bold uppercase outline-none focus:border-primary"\n                placeholder="Digite o código"\n              />\n              <Button\n                type="button"\n                variant="outline"\n                disabled={couponBusy || !couponInput.trim()}\n                onClick={() => void applyCoupon()}\n                className="border-zinc-800"\n              >\n                {couponBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aplicar"}\n              </Button>\n            </div>\n          )}\n        </section>\n\n'''
+          if payment_section_marker not in text:
+              raise SystemExit('payment section marker missing')
+          text = text.replace(payment_section_marker, coupon_section + payment_section_marker, 1)
+
+          text = text.replace(
+              '            placeholder="Alguma observação para o estabelecimento?"\n',
+              '            maxLength={1000}\n            placeholder="Alguma observação para o estabelecimento?"\n',
+              1,
+          )
+
+          summary_old = '''          <div className="flex justify-between">\n            <span>Taxa de entrega</span>\n            <span>R$ {deliveryFee.toFixed(2).replace(".", ",")}</span>\n          </div>\n          <div className="mt-2 flex justify-between border-t border-zinc-900 pt-2 text-lg font-black text-primary">'''
+          summary_new = '''          <div className="flex justify-between">\n            <span>{fulfillmentType === "delivery" ? "Taxa de entrega" : "Retirada"}</span>\n            <span>R$ {deliveryFee.toFixed(2).replace(".", ",")}</span>\n          </div>\n          {discount > 0 ? (\n            <div className="flex justify-between text-emerald-400">\n              <span>Desconto</span>\n              <span>- R$ {discount.toFixed(2).replace(".", ",")}</span>\n            </div>\n          ) : null}\n          {minimumOrder > 0 ? (\n            <div className={`rounded-xl p-3 text-xs ${minimumOrderMissing > 0 ? "bg-amber-500/10 text-amber-300" : "bg-emerald-500/10 text-emerald-300"}`}>\n              {minimumOrderMissing > 0\n                ? `Faltam R$ ${minimumOrderMissing.toFixed(2).replace(".", ",")} para o pedido mínimo de R$ ${minimumOrder.toFixed(2).replace(".", ",")}.`\n                : `Pedido mínimo de R$ ${minimumOrder.toFixed(2).replace(".", ",")} atingido.`}\n            </div>\n          ) : null}\n          <div className="mt-2 flex justify-between border-t border-zinc-900 pt-2 text-lg font-black text-primary">'''
+          if summary_old not in text:
+              raise SystemExit('summary anchor missing')
+          text = text.replace(summary_old, summary_new, 1)
+
+          text = text.replace(
+              '          disabled={isProcessing}\n',
+              '          disabled={isProcessing || minimumOrderMissing > 0 || (fulfillmentType === "delivery" && !address)}\n',
+              1,
+          )
+
+          path.write_text(text, encoding='utf-8')
+          PY
+          bunx prettier src/routes/checkout.tsx --write
+      - name: Full verification
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit integration and remove workflow
+        run: |
+          rm .github/workflows/integrate-checkout-fulfillment.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(checkout): support pickup coupons and authoritative totals"
+          git push
