@@ -1,5 +1,17 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Check, Copy, CreditCard, Loader2, MapPin, QrCode } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Copy,
+  CreditCard,
+  Loader2,
+  MapPin,
+  QrCode,
+  Store,
+  Tag,
+  Truck,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
@@ -23,6 +35,27 @@ type CheckoutAttempt = {
   key: string;
   fingerprint: string;
   createdAt: number;
+};
+
+type FulfillmentType = "delivery" | "pickup";
+
+type CouponPreview = {
+  coupon_id: string;
+  code: string;
+  discount_type: string;
+  discount_value: number;
+  discount_amount: number;
+};
+
+type MerchantCheckoutConfig = {
+  delivery_fee: number | string | null;
+  minimum_order: number | string | null;
+  delivery_enabled: boolean;
+  pickup_enabled: boolean;
+  address_line: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
 };
 
 export const Route = createFileRoute("/checkout")({
@@ -106,14 +139,18 @@ function loadActivePix(): PixData | null {
 function checkoutFingerprint(input: {
   merchantId: string;
   paymentMethod: string;
-  address: LocalAddressSnapshot;
+  fulfillmentType: FulfillmentType;
+  couponCode: string | null;
+  address: LocalAddressSnapshot | null;
   observation: string;
   items: Array<{ id: string; quantity: number; optionIds: string[] }>;
 }) {
   return JSON.stringify({
     merchantId: input.merchantId,
     paymentMethod: input.paymentMethod,
-    address: input.address,
+    fulfillmentType: input.fulfillmentType,
+    couponCode: input.couponCode,
+    address: input.fulfillmentType === "delivery" ? input.address : null,
     observation: input.observation.trim(),
     items: [...input.items]
       .map((item) => ({ ...item, optionIds: [...item.optionIds].sort() }))
@@ -152,6 +189,11 @@ function CheckoutPage() {
   const navigate = useNavigate();
   const { items, merchant, totalPrice, clearCart, isHydrated } = useCart();
   const [address, setAddress] = useState<LocalAddressSnapshot | null>(null);
+  const [merchantConfig, setMerchantConfig] = useState<MerchantCheckoutConfig | null>(null);
+  const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>("delivery");
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponPreview | null>(null);
+  const [couponBusy, setCouponBusy] = useState(false);
   const [observation, setObservation] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -192,9 +234,85 @@ function CheckoutPage() {
     };
   }, [isHydrated, items.length, pixData, navigate]);
 
+  useEffect(() => {
+    if (!merchant?.id) return;
+    let disposed = false;
+    const loadMerchantConfig = async () => {
+      const { data, error } = await supabase
+        .from("merchants")
+        .select(
+          "delivery_fee,minimum_order,delivery_enabled,pickup_enabled,address_line,neighborhood,city,state",
+        )
+        .eq("id", merchant.id)
+        .maybeSingle();
+      if (disposed) return;
+      if (error || !data) {
+        console.error("Erro ao carregar modalidades do estabelecimento:", error);
+        return;
+      }
+      const config = data as MerchantCheckoutConfig;
+      setMerchantConfig(config);
+      if (!config.delivery_enabled && config.pickup_enabled) setFulfillmentType("pickup");
+      if (config.delivery_enabled && !config.pickup_enabled) setFulfillmentType("delivery");
+    };
+    void loadMerchantConfig();
+    return () => {
+      disposed = true;
+    };
+  }, [merchant?.id]);
+
   const subtotal = totalPrice;
-  const deliveryFee = merchant?.deliveryFee || 0;
-  const total = subtotal + deliveryFee;
+  const deliveryFee =
+    fulfillmentType === "delivery"
+      ? Number(merchantConfig?.delivery_fee ?? merchant?.deliveryFee ?? 0)
+      : 0;
+  const discount = Number(appliedCoupon?.discount_amount ?? 0);
+  const total = Math.max(0, subtotal + deliveryFee - discount);
+  const minimumOrder = Number(merchantConfig?.minimum_order ?? 0);
+  const minimumOrderMissing = Math.max(0, minimumOrder - subtotal);
+
+  const applyCoupon = async () => {
+    const normalizedCode = couponInput.trim().toUpperCase();
+    if (!merchant?.id || !normalizedCode || couponBusy) return;
+    setCouponBusy(true);
+    const { data, error } = await (supabase.rpc as any)("preview_coupon", {
+      p_merchant_id: merchant.id,
+      p_code: normalizedCode,
+      p_subtotal: subtotal,
+    });
+    setCouponBusy(false);
+    if (error) {
+      setAppliedCoupon(null);
+      toast.error(
+        String(error.message || "Cupom inválido.")
+          .toLowerCase()
+          .includes("minimum")
+          ? "O valor mínimo necessário para usar este cupom ainda não foi atingido."
+          : "Cupom inválido, expirado ou sem usos disponíveis.",
+      );
+      return;
+    }
+    const preview = Array.isArray(data) ? data[0] : null;
+    if (!preview?.coupon_id) {
+      setAppliedCoupon(null);
+      toast.error("Este cupom não está disponível.");
+      return;
+    }
+    setAppliedCoupon({
+      ...preview,
+      discount_value: Number(preview.discount_value),
+      discount_amount: Number(preview.discount_amount),
+    });
+    setCouponInput(String(preview.code || normalizedCode));
+    sessionStorage.removeItem(CHECKOUT_ATTEMPT_STORAGE_KEY);
+    toast.success("Cupom aplicado.");
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput("");
+    sessionStorage.removeItem(CHECKOUT_ATTEMPT_STORAGE_KEY);
+  };
 
   const handleCopyPix = () => {
     if (!pixData) return;
@@ -229,15 +347,26 @@ function CheckoutPage() {
 
       if (userError || !user)
         throw new Error("Sua sessão expirou. Entre novamente para finalizar o pedido.");
-      if (!address) throw new Error("Selecione um endereço de entrega antes de continuar.");
+      if (fulfillmentType === "delivery" && !address)
+        throw new Error("Selecione um endereço de entrega antes de continuar.");
       if (!merchant?.id)
         throw new Error("Não foi possível identificar o estabelecimento deste pedido.");
+      if (minimumOrderMissing > 0)
+        throw new Error(
+          `Faltam R$ ${minimumOrderMissing.toFixed(2).replace(".", ",")} para atingir o pedido mínimo.`,
+        );
+      if (merchantConfig && fulfillmentType === "delivery" && !merchantConfig.delivery_enabled)
+        throw new Error("Este estabelecimento não está aceitando entrega no momento.");
+      if (merchantConfig && fulfillmentType === "pickup" && !merchantConfig.pickup_enabled)
+        throw new Error("Este estabelecimento não está aceitando retirada no momento.");
       if (items.length === 0) throw new Error("Sua sacola está vazia.");
       if (paymentMethod !== "pix") throw new Error("No momento, apenas PIX está disponível.");
 
       const fingerprint = checkoutFingerprint({
         merchantId: merchant.id,
         paymentMethod,
+        fulfillmentType,
+        couponCode: appliedCoupon?.code ?? null,
         address,
         observation,
         items: items.map((item) => ({
@@ -255,7 +384,9 @@ function CheckoutPage() {
             merchantId: merchant.id,
             requestKey: attempt.key,
             paymentMethod: "pix",
-            deliveryAddress: address,
+            fulfillmentType,
+            couponCode: appliedCoupon?.code ?? null,
+            deliveryAddress: fulfillmentType === "delivery" ? address : {},
             observation,
             items: items.map((item) => ({
               productId: item.id,
@@ -294,7 +425,7 @@ function CheckoutPage() {
         qrCodeImageUrl: payment.qrCodeImageUrl,
         qrCodeText: payment.qrCodeText,
         orderId,
-        total: Number(payment.amount) || total,
+        total: Number(payment.amount) || Number(orderResponse?.total) || total,
         expiresAt: typeof payment.expiresAt === "string" ? payment.expiresAt : null,
       };
       setPixData(nextPixData);
@@ -363,17 +494,87 @@ function CheckoutPage() {
 
       <main className="flex-1 space-y-6 overflow-y-auto p-4">
         <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
-          <p className="mb-2 text-xs font-bold uppercase text-zinc-500">Endereço de Entrega</p>
-          <div className="flex items-center gap-3">
-            <MapPin className="text-primary" />
-            <div className="flex-1">
-              <p className="font-bold">
-                {address ? `${address.street}, ${address.number}` : "Carregando..."}
-              </p>
-              <p className="text-xs text-zinc-500">{address?.neighborhood}</p>
-            </div>
+          <p className="mb-3 text-xs font-bold uppercase text-zinc-500">Como você quer receber?</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={merchantConfig?.delivery_enabled === false}
+              onClick={() => {
+                setFulfillmentType("delivery");
+                sessionStorage.removeItem(CHECKOUT_ATTEMPT_STORAGE_KEY);
+              }}
+              className={`flex items-center gap-2 rounded-xl border p-3 text-left ${
+                fulfillmentType === "delivery"
+                  ? "border-primary bg-primary/5 text-white"
+                  : "border-zinc-900 text-zinc-500"
+              } disabled:cursor-not-allowed disabled:opacity-30`}
+            >
+              <Truck className="h-5 w-5 text-primary" />
+              <span className="text-sm font-bold">Entrega</span>
+            </button>
+            <button
+              type="button"
+              disabled={merchantConfig?.pickup_enabled === false}
+              onClick={() => {
+                setFulfillmentType("pickup");
+                sessionStorage.removeItem(CHECKOUT_ATTEMPT_STORAGE_KEY);
+              }}
+              className={`flex items-center gap-2 rounded-xl border p-3 text-left ${
+                fulfillmentType === "pickup"
+                  ? "border-primary bg-primary/5 text-white"
+                  : "border-zinc-900 text-zinc-500"
+              } disabled:cursor-not-allowed disabled:opacity-30`}
+            >
+              <Store className="h-5 w-5 text-primary" />
+              <span className="text-sm font-bold">Retirada</span>
+            </button>
           </div>
         </section>
+
+        {fulfillmentType === "delivery" ? (
+          <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-xs font-bold uppercase text-zinc-500">Endereço de entrega</p>
+              <button
+                type="button"
+                onClick={() => navigate({ to: "/enderecos" })}
+                className="text-xs font-bold text-primary"
+              >
+                Alterar
+              </button>
+            </div>
+            <div className="flex items-center gap-3">
+              <MapPin className="text-primary" />
+              <div className="flex-1">
+                <p className="font-bold">
+                  {address
+                    ? `${address.street}, ${address.number}`
+                    : "Nenhum endereço padrão selecionado"}
+                </p>
+                <p className="text-xs text-zinc-500">{address?.neighborhood}</p>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+            <div className="flex items-start gap-3">
+              <Store className="mt-0.5 h-5 w-5 text-primary" />
+              <div>
+                <p className="font-bold">Retirada no estabelecimento</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                  {[
+                    merchantConfig?.address_line,
+                    merchantConfig?.neighborhood,
+                    [merchantConfig?.city, merchantConfig?.state].filter(Boolean).join(" - "),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") ||
+                    "O endereço de retirada será exibido no acompanhamento do pedido."}
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
 
         <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
           <p className="mb-2 text-xs font-bold uppercase text-zinc-500">Itens</p>
@@ -395,6 +596,56 @@ function CheckoutPage() {
               )}
             </div>
           ))}
+        </section>
+
+        <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <Tag className="h-4 w-4 text-primary" />
+            <p className="text-xs font-bold uppercase text-zinc-500">Cupom de desconto</p>
+          </div>
+          {appliedCoupon ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+              <div>
+                <p className="text-sm font-black text-emerald-300">{appliedCoupon.code}</p>
+                <p className="text-xs text-zinc-500">
+                  Desconto de R$ {discount.toFixed(2).replace(".", ",")} aplicado
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={removeCoupon}
+                className="rounded-full bg-zinc-900 p-2 text-zinc-400"
+                aria-label="Remover cupom"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                value={couponInput}
+                maxLength={80}
+                onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void applyCoupon();
+                  }
+                }}
+                className="min-w-0 flex-1 rounded-xl border border-zinc-800 bg-black px-4 py-3 text-sm font-bold uppercase outline-none focus:border-primary"
+                placeholder="Digite o código"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={couponBusy || !couponInput.trim()}
+                onClick={() => void applyCoupon()}
+                className="border-zinc-800"
+              >
+                {couponBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aplicar"}
+              </Button>
+            </div>
+          )}
         </section>
 
         <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
@@ -428,6 +679,7 @@ function CheckoutPage() {
           <textarea
             value={observation}
             onChange={(event) => setObservation(event.target.value)}
+            maxLength={1000}
             placeholder="Alguma observação para o estabelecimento?"
             className="min-h-[80px] w-full rounded-xl bg-zinc-900 p-3 text-sm focus:outline-none"
           />
@@ -439,9 +691,24 @@ function CheckoutPage() {
             <span>R$ {subtotal.toFixed(2).replace(".", ",")}</span>
           </div>
           <div className="flex justify-between">
-            <span>Taxa de entrega</span>
+            <span>{fulfillmentType === "delivery" ? "Taxa de entrega" : "Retirada"}</span>
             <span>R$ {deliveryFee.toFixed(2).replace(".", ",")}</span>
           </div>
+          {discount > 0 ? (
+            <div className="flex justify-between text-emerald-400">
+              <span>Desconto</span>
+              <span>- R$ {discount.toFixed(2).replace(".", ",")}</span>
+            </div>
+          ) : null}
+          {minimumOrder > 0 ? (
+            <div
+              className={`rounded-xl p-3 text-xs ${minimumOrderMissing > 0 ? "bg-amber-500/10 text-amber-300" : "bg-emerald-500/10 text-emerald-300"}`}
+            >
+              {minimumOrderMissing > 0
+                ? `Faltam R$ ${minimumOrderMissing.toFixed(2).replace(".", ",")} para o pedido mínimo de R$ ${minimumOrder.toFixed(2).replace(".", ",")}.`
+                : `Pedido mínimo de R$ ${minimumOrder.toFixed(2).replace(".", ",")} atingido.`}
+            </div>
+          ) : null}
           <div className="mt-2 flex justify-between border-t border-zinc-900 pt-2 text-lg font-black text-primary">
             <span>Total</span>
             <span>R$ {total.toFixed(2).replace(".", ",")}</span>
@@ -461,7 +728,9 @@ function CheckoutPage() {
         <Button
           type="button"
           onClick={handleConfirm}
-          disabled={isProcessing}
+          disabled={
+            isProcessing || minimumOrderMissing > 0 || (fulfillmentType === "delivery" && !address)
+          }
           className="w-full rounded-2xl bg-primary py-7 text-lg font-black uppercase text-black shadow-[0_8px_30px_-10px_hsl(var(--primary)/0.5)]"
         >
           {isProcessing ? (
