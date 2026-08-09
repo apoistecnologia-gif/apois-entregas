@@ -167,7 +167,9 @@ function NotificationCenterPage() {
     }
     setNotifications((current) =>
       current.map((item) =>
-        item.id === notification.id ? { ...item, read_at: item.read_at || new Date().toISOString() } : item,
+        item.id === notification.id
+          ? { ...item, read_at: item.read_at || new Date().toISOString() }
+          : item,
       ),
     );
     return true;
