@@ -700,6 +700,9 @@ function CourierApp() {
 }
 
 function CourierApplication({ user, busy, onSubmit, onBack }: any) {
+  const [vehicleType, setVehicleType] = useState("moto");
+  const motorized = vehicleType === "moto" || vehicleType === "carro";
+
   return (
     <div className="min-h-dvh bg-black p-4 text-white">
       <button type="button" onClick={onBack} className="mt-3 text-sm font-bold text-zinc-500">
@@ -729,6 +732,8 @@ function CourierApplication({ user, busy, onSubmit, onBack }: any) {
         <select
           name="vehicleType"
           required
+          value={vehicleType}
+          onChange={(event) => setVehicleType(event.target.value)}
           className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-4 text-sm"
         >
           <option value="moto">Moto</option>
@@ -736,8 +741,33 @@ function CourierApplication({ user, busy, onSubmit, onBack }: any) {
           <option value="bicicleta">Bicicleta</option>
         </select>
         <Input name="vehicleModel" placeholder="Modelo do veículo" required />
-        <Input name="vehiclePlate" placeholder="Placa do veículo" />
-        <Input name="cnh" placeholder="Número da CNH" inputMode="numeric" />
+        {motorized ? (
+          <>
+            <Input
+              name="vehiclePlate"
+              placeholder="Placa do veículo"
+              required
+              autoCapitalize="characters"
+              maxLength={8}
+            />
+            <Input
+              name="cnh"
+              placeholder="Número da CNH (11 dígitos)"
+              required
+              inputMode="numeric"
+              maxLength={14}
+            />
+            <p className="rounded-2xl border border-zinc-900 bg-zinc-950 p-3 text-xs text-zinc-500">
+              Para moto ou carro, placa, CNH e documento do veículo serão validados antes da
+              aprovação.
+            </p>
+          </>
+        ) : (
+          <p className="rounded-2xl border border-zinc-900 bg-zinc-950 p-3 text-xs text-zinc-500">
+            Para bicicleta, CNH e documento do veículo não são exigidos. A foto do entregador
+            continua obrigatória.
+          </p>
+        )}
         <p className="text-xs text-zinc-600">Conta: {user?.email}</p>
         <Button disabled={busy} className="h-14 w-full rounded-2xl font-black uppercase">
           {busy ? (
@@ -762,8 +792,12 @@ function CourierReviewState({
   onLogout,
 }: any) {
   const required = [
-    { type: "cnh", label: "CNH" },
-    { type: "documento_veiculo", label: "Documento do veículo" },
+    ...(courier.vehicle_type === "bicicleta"
+      ? []
+      : [
+          { type: "cnh", label: "CNH" },
+          { type: "documento_veiculo", label: "Documento do veículo" },
+        ]),
     { type: "foto_perfil", label: "Foto do entregador" },
   ];
   return (
