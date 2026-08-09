@@ -90,7 +90,7 @@ function PerfilIndexPage() {
       },
       {
         icon: Bike,
-        label: roles.includes("courier") ? "App do entregador" : "Quero fazer entregas",
+        label: roles.includes("driver") ? "App do entregador" : "Quero fazer entregas",
         path: "/courier",
         work: true,
       },
