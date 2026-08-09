@@ -1,8 +1,9 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, FileText, Shield, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronRight, FileText, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/perfil/legal")({
+  ssr: false,
   beforeLoad: async ({ location }) => {
     const {
       data: { session },
@@ -18,63 +19,74 @@ export const Route = createFileRoute("/perfil/legal")({
     return { session };
   },
   component: LegalPage,
+  head: () => ({ meta: [{ title: "Legal | APOIS ENTREGA" }] }),
 });
 
 function LegalPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex h-screen w-full flex-col bg-black text-white overflow-hidden relative">
-      <header className="shrink-0 z-50 flex items-center justify-between p-4 bg-black/80 backdrop-blur-lg border-b border-zinc-900">
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
+      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 p-4 backdrop-blur-lg">
         <button
+          type="button"
           onClick={() => navigate({ to: "/perfil" })}
-          className="p-2 rounded-full bg-zinc-900 shadow-lg"
+          className="rounded-full bg-zinc-900 p-2 shadow-lg"
+          aria-label="Voltar para o perfil"
         >
-          <ArrowLeft className="w-5 h-5 text-zinc-300" />
+          <ArrowLeft className="h-5 w-5 text-zinc-300" />
         </button>
-        <h1 className="text-xl font-bold text-primary text-center flex-1">Legal</h1>
+        <h1 className="flex-1 text-center text-xl font-bold text-primary">Legal</h1>
         <div className="w-9" />
       </header>
 
-      <main className="flex-1 overflow-y-auto p-6 scrollbar-none space-y-6">
+      <main className="scrollbar-none flex-1 space-y-6 overflow-y-auto p-6">
         <div className="space-y-4">
-          <button className="flex w-full items-center justify-between p-5 rounded-3xl bg-zinc-900/40 border border-zinc-900/50 active:scale-[0.98] transition-all">
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/termos" })}
+            className="flex w-full items-center justify-between rounded-3xl border border-zinc-900/50 bg-zinc-900/40 p-5 text-left transition-all active:scale-[0.98]"
+          >
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800">
-                <FileText className="w-6 h-6 text-primary" />
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-3">
+                <FileText className="h-6 w-6 text-primary" />
               </div>
-              <div className="text-left">
+              <div>
                 <p className="text-sm font-bold text-zinc-200">Termos de Uso</p>
                 <p className="text-xs text-zinc-500">Regras e condições do serviço</p>
               </div>
             </div>
-            <ChevronRight className="w-5 h-5 text-zinc-700" />
+            <ChevronRight className="h-5 w-5 text-zinc-700" />
           </button>
 
-          <button className="flex w-full items-center justify-between p-5 rounded-3xl bg-zinc-900/40 border border-zinc-900/50 active:scale-[0.98] transition-all">
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/privacidade" })}
+            className="flex w-full items-center justify-between rounded-3xl border border-zinc-900/50 bg-zinc-900/40 p-5 text-left transition-all active:scale-[0.98]"
+          >
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800">
-                <Shield className="w-6 h-6 text-emerald-400" />
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-3">
+                <Shield className="h-6 w-6 text-emerald-400" />
               </div>
-              <div className="text-left">
+              <div>
                 <p className="text-sm font-bold text-zinc-200">Política de Privacidade</p>
-                <p className="text-xs text-zinc-500">Como tratamos seus dados</p>
+                <p className="text-xs text-zinc-500">Como tratamos e protegemos seus dados</p>
               </div>
             </div>
-            <ChevronRight className="w-5 h-5 text-zinc-700" />
+            <ChevronRight className="h-5 w-5 text-zinc-700" />
           </button>
         </div>
 
-        <section className="bg-zinc-900/20 rounded-3xl p-6 border border-zinc-900/50 space-y-4">
-          <h2 className="text-xs font-bold text-primary uppercase tracking-widest">
-            Informações Adicionais
+        <section className="space-y-4 rounded-3xl border border-zinc-900/50 bg-zinc-900/20 p-6">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-primary">
+            Informações adicionais
           </h2>
-          <div className="space-y-4 text-[11px] text-zinc-500 leading-relaxed">
+          <div className="space-y-4 text-[11px] leading-relaxed text-zinc-500">
             <p>
-              O APOIS ENTREGA é uma plataforma de tecnologia que conecta usuários a estabelecimentos
-              parceiros e entregadores independentes.
+              O APOIS ENTREGA é uma plataforma de tecnologia que conecta usuários a
+              estabelecimentos parceiros e entregadores independentes.
             </p>
-            <p>Versão do Aplicativo: 1.0.0 (Build 2026.08.07)</p>
+            <p>Versão dos documentos legais: 09/08/2026.</p>
             <p className="pt-2 italic">© 2026 APOIS ENTREGA. Todos os direitos reservados.</p>
           </div>
         </section>
