@@ -24,6 +24,11 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { clearPayoutAttemptKey, getPayoutAttemptKey } from "@/lib/payout-attempt";
+import {
+  CourierBottomNav,
+  CourierHistoryPanel,
+  CourierProfilePanel,
+} from "@/components/CourierPanels";
 
 export const Route = createFileRoute("/courier")({
   ssr: false,
@@ -57,6 +62,7 @@ function CourierApp() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [availability, setAvailability] = useState<any>(null);
   const [offers, setOffers] = useState<any[]>([]);
+  const [deliveryHistory, setDeliveryHistory] = useState<any[]>([]);
   const [activeJob, setActiveJob] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -65,6 +71,8 @@ function CourierApp() {
   const [busy, setBusy] = useState<string | null>(null);
   const [pin, setPin] = useState("");
   const [financeOpen, setFinanceOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [payoutDraft, setPayoutDraft] = useState({
     pixKey: "",
     holderName: "",
@@ -102,6 +110,14 @@ function CourierApp() {
     setOffers(offersRes.data ?? []);
     setActiveJob(jobsRes.data ?? null);
     setWallet(walletRes.data ?? null);
+
+    const historyRes = await from("delivery_jobs")
+      .select("*, orders(order_number,total,status,observation)")
+      .eq("courier_id", courierId)
+      .in("status", ["delivered", "cancelled"])
+      .order("updated_at", { ascending: false })
+      .limit(100);
+    setDeliveryHistory(historyRes.data ?? []);
 
     if (walletRes.data) {
       const [txRes, accountRes, payoutsRes] = await Promise.all([
@@ -484,6 +500,28 @@ function CourierApp() {
       />
     );
 
+  if (historyOpen) {
+    return <CourierHistoryPanel jobs={deliveryHistory} onClose={() => setHistoryOpen(false)} />;
+  }
+
+  if (profileOpen) {
+    return (
+      <CourierProfilePanel
+        courier={courier}
+        user={user}
+        documents={documents}
+        availability={availability}
+        wallet={wallet}
+        onFinance={() => {
+          setProfileOpen(false);
+          setFinanceOpen(true);
+        }}
+        onLogout={() => void logout()}
+        onClose={() => setProfileOpen(false)}
+      />
+    );
+  }
+
   if (financeOpen) {
     return (
       <CourierFinance
@@ -642,6 +680,12 @@ function CourierApp() {
           </p>
         ) : null}
       </main>
+      <CourierBottomNav
+        onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        onHistory={() => setHistoryOpen(true)}
+        onFinance={() => setFinanceOpen(true)}
+        onProfile={() => setProfileOpen(true)}
+      />
     </div>
   );
 }

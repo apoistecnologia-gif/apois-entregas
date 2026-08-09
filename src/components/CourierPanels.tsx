@@ -66,13 +66,7 @@ export function CourierBottomNav({
   );
 }
 
-export function CourierHistoryPanel({
-  jobs,
-  onClose,
-}: {
-  jobs: any[];
-  onClose: () => void;
-}) {
+export function CourierHistoryPanel({ jobs, onClose }: { jobs: any[]; onClose: () => void }) {
   return (
     <div className="min-h-dvh bg-black text-white">
       <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-zinc-900 bg-black/95 p-4 backdrop-blur">
@@ -85,7 +79,9 @@ export function CourierHistoryPanel({
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">APOIS ENTREGADOR</p>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
+            APOIS ENTREGADOR
+          </p>
           <h1 className="text-lg font-black">Corridas</h1>
         </div>
       </header>
@@ -200,7 +196,9 @@ export function CourierProfilePanel({
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">APOIS ENTREGADOR</p>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
+            APOIS ENTREGADOR
+          </p>
           <h1 className="text-lg font-black">Perfil</h1>
         </div>
       </header>
@@ -226,12 +224,20 @@ export function CourierProfilePanel({
           <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
             <FileCheck2 className="h-5 w-5 text-primary" />
             <p className="mt-3 text-[10px] font-black uppercase text-zinc-500">Documentos</p>
-            <p className="mt-1 text-lg font-black">{approvedDocs}/{documents.length || 3}</p>
+            <p className="mt-1 text-lg font-black">
+              {approvedDocs}/{documents.length || 3}
+            </p>
           </section>
           <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
             <Bike className="h-5 w-5 text-primary" />
             <p className="mt-3 text-[10px] font-black uppercase text-zinc-500">Status</p>
-            <p className={availability?.is_online ? "mt-1 font-black text-emerald-400" : "mt-1 font-black text-zinc-400"}>
+            <p
+              className={
+                availability?.is_online
+                  ? "mt-1 font-black text-emerald-400"
+                  : "mt-1 font-black text-zinc-400"
+              }
+            >
               {availability?.is_online ? "ONLINE" : "OFFLINE"}
             </p>
           </section>
@@ -241,7 +247,9 @@ export function CourierProfilePanel({
           <h2 className="font-black">Veículo</h2>
           <p className="text-sm text-zinc-400">{vehicle || "Veículo não informado"}</p>
           {courier.vehicle_plate ? (
-            <p className="text-xs font-bold uppercase tracking-wider text-zinc-600">Placa {courier.vehicle_plate}</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-zinc-600">
+              Placa {courier.vehicle_plate}
+            </p>
           ) : null}
         </section>
 
