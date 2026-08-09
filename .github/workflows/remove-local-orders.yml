@@ -18,19 +18,41 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
-      - name: Remove obsolete local order persistence
+      - name: Move address type and remove obsolete persistence
         run: |
+          mkdir -p src/types
+          cat > src/types/address.ts <<'EOF'
+          export interface LocalAddressSnapshot {
+            id: string;
+            user_id: string;
+            label: string;
+            street: string;
+            number: string;
+            complement: string | null;
+            neighborhood: string;
+            city: string;
+            state: string;
+            postal_code: string;
+            reference: string | null;
+            latitude: number | null;
+            longitude: number | null;
+            is_default: boolean;
+            created_at: string;
+            updated_at: string;
+          }
+          EOF
           python <<'PY'
           from pathlib import Path
           checkout = Path('src/routes/checkout.tsx')
           text = checkout.read_text(encoding='utf-8')
-          target = 'import type { LocalAddressSnapshot } from "@/lib/local-orders";\n'
-          if target not in text:
+          old = 'import type { LocalAddressSnapshot } from "@/lib/local-orders";'
+          new = 'import type { LocalAddressSnapshot } from "@/types/address";'
+          if old not in text:
               raise SystemExit('local-orders checkout import not found')
-          checkout.write_text(text.replace(target, '', 1), encoding='utf-8')
+          checkout.write_text(text.replace(old, new, 1), encoding='utf-8')
           Path('src/lib/local-orders.ts').unlink()
           PY
-          bunx prettier src/routes/checkout.tsx --write
+          bunx prettier src/types/address.ts src/routes/checkout.tsx --write
       - name: Full verification
         env:
           VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
