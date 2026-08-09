@@ -32,10 +32,15 @@ if ledger_line not in doc:
         raise SystemExit("migration ledger anchor missing")
     doc = doc.replace(ledger_anchor, ledger_anchor + ledger_line, 1)
 
-table_anchor = "| `20260809212129` | `allow_customer_active_courier_tracking` | 628 | `852e11a19afc8735634ffdd3354d6bea5fbb19981a1515418a3f52e88149ac19` |\n"
-table_line = "| `20260809213849` | `harden_rpc_and_core_table_privileges` | 3899 | `4508a1484e9b1711ba99f61366e5fb396c9ddc191a0ccbf30812f008259fb1a7` |\n"
-if table_line not in doc:
-    if table_anchor not in doc:
+version_marker = "| `20260809212129` |"
+table_line = "| `20260809213849` | `harden_rpc_and_core_table_privileges` | 3899 | `4508a1484e9b1711ba99f61366e5fb396c9ddc191a0ccbf30812f008259fb1a7` |"
+if "| `20260809213849` |" not in doc:
+    lines = doc.splitlines()
+    for index, line in enumerate(lines):
+        if line.startswith(version_marker):
+            lines.insert(index + 1, table_line)
+            break
+    else:
         raise SystemExit("migration hash table anchor missing")
-    doc = doc.replace(table_anchor, table_anchor + table_line, 1)
+    doc = "\n".join(lines) + "\n"
 doc_path.write_text(doc, encoding="utf-8")
