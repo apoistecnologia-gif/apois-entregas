@@ -1,0 +1,92 @@
+name: Complete auth recovery flow
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/complete-auth-recovery.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Wire password reset and remove unavailable social auth controls
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          login = Path('src/routes/login.tsx')
+          text = login.read_text(encoding='utf-8')
+
+          state_anchor = '  const [password, setPassword] = useState("");\n'
+          handler = '''\n  const handlePasswordReset = async () => {\n    const normalizedEmail = email.trim().toLowerCase();\n    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(normalizedEmail)) {\n      toast.error("Digite seu e-mail para receber o link de recuperação.");\n      return;\n    }\n    if (isLoading) return;\n    setIsLoading(true);\n    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {\n      redirectTo: `${window.location.origin}/redefinir-senha`,\n    });\n    setIsLoading(false);\n    if (error) {\n      toast.error("Não foi possível enviar o link de recuperação agora.");\n      return;\n    }\n    toast.success("Se este e-mail estiver cadastrado, você receberá o link de recuperação.");\n  };\n'''
+          if 'const handlePasswordReset = async' not in text:
+              if state_anchor not in text:
+                  raise SystemExit('login state anchor not found')
+              text = text.replace(state_anchor, state_anchor + handler, 1)
+
+          social_start = text.find('            <Button\n              type="button"\n              variant="outline"')
+          if social_start != -1:
+              social_end = text.find('            </Button>', social_start)
+              if social_end == -1:
+                  raise SystemExit('login social button end not found')
+              social_end += len('            </Button>\n')
+              text = text[:social_start] + text[social_end:]
+
+          separator = '''            <div className="flex items-center gap-4 py-0.5">\n              <div className="h-px flex-1 bg-zinc-800" />\n              <span className="text-zinc-500 text-[10px] font-medium uppercase tracking-wider">\n                ou\n              </span>\n              <div className="h-px flex-1 bg-zinc-800" />\n            </div>\n\n'''
+          text = text.replace(separator, '', 1)
+
+          forgot_old = '''                  <button\n                    type="button"\n                    className="text-primary text-[11px] font-bold hover:underline"\n                  >\n                    Esqueci minha senha\n                  </button>'''
+          forgot_new = '''                  <button\n                    type="button"\n                    disabled={isLoading}\n                    onClick={() => void handlePasswordReset()}\n                    className="text-primary text-[11px] font-bold hover:underline disabled:opacity-50"\n                  >\n                    Esqueci minha senha\n                  </button>'''
+          if forgot_new not in text:
+              if forgot_old not in text:
+                  raise SystemExit('forgot password anchor not found')
+              text = text.replace(forgot_old, forgot_new, 1)
+          login.write_text(text, encoding='utf-8')
+
+          register = Path('src/routes/register.tsx')
+          text = register.read_text(encoding='utf-8')
+          social_start = text.find('        {/* Google */}\n        <Button')
+          if social_start != -1:
+              social_end = text.find('        {/* Register Form */}', social_start)
+              if social_end == -1:
+                  raise SystemExit('register form anchor not found')
+              text = text[:social_start] + '        {/* Register Form */}\n' + text[social_end + len('        {/* Register Form */}\n'):]
+
+          metadata_old = '''          data: {\n            full_name: formData.fullName,\n            phone: formData.phone,\n          },'''
+          metadata_new = '''          data: {\n            full_name: formData.fullName,\n            phone: formData.phone,\n            terms_accepted_at: new Date().toISOString(),\n            privacy_accepted_at: new Date().toISOString(),\n            legal_version: "2026-08-09",\n          },'''
+          if metadata_new not in text:
+              if metadata_old not in text:
+                  raise SystemExit('signup metadata anchor not found')
+              text = text.replace(metadata_old, metadata_new, 1)
+          register.write_text(text, encoding='utf-8')
+          PY
+          bunx prettier src/routes/login.tsx src/routes/register.tsx src/routes/auth.callback.tsx src/routes/redefinir-senha.tsx --write
+      - name: Full verification
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit integration and remove workflow
+        run: |
+          rm .github/workflows/complete-auth-recovery.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(auth): complete password recovery flow"
+          git push
