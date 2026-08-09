@@ -35,7 +35,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p e2e-temp
-          cat > e2e-temp/pix-ui-homol.spec.js <<'EOF'
+          cat > e2e-temp/pix-ui-homol.spec.cjs <<'EOF'
           const { test, expect } = require('@playwright/test');
 
           test('PIX sandbox confirma automaticamente, limpa a sacola e aparece em Pedidos', async ({ page }) => {
@@ -124,7 +124,7 @@ jobs:
           });
           EOF
 
-          cat > e2e-temp/playwright.config.js <<'EOF'
+          cat > e2e-temp/playwright.config.cjs <<'EOF'
           const { defineConfig } = require('@playwright/test');
           module.exports = defineConfig({
             testDir: './',
@@ -156,7 +156,7 @@ jobs:
           exit 1
 
       - name: Run browser homologation
-        run: npx playwright test --config=e2e-temp/playwright.config.js
+        run: npx playwright test --config=e2e-temp/playwright.config.cjs
 
       - name: Show app log on failure
         if: failure()
