@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 export type CartSelectedOption = {
   groupId: string;
@@ -182,10 +182,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const clearCart = () => {
+  // Payment confirmation depends on this callback identity. Keeping it stable prevents
+  // the PIX reconciliation effect from being torn down between clearing the cart and
+  // executing its redirect timer.
+  const clearCart = useCallback(() => {
     setItems([]);
     setMerchant(null);
-  };
+  }, []);
 
   const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
   const totalPrice = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
