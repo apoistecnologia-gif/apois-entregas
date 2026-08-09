@@ -1,0 +1,103 @@
+name: Integrate secure pickup completion UI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/integrate-pickup-completion-ui.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Wire merchant pickup confirmation and customer labels
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          merchant = Path('src/routes/merchant.tsx')
+          text = merchant.read_text(encoding='utf-8')
+          text = text.replace(
+              '          "ready",\n          "searching_driver",',
+              '          "ready",\n          "ready_for_pickup",\n          "searching_driver",',
+              1,
+          )
+          text = text.replace(
+              'statuses: ["ready", "searching_driver", "driver_assigned", "driver_arriving_store"],',
+              'statuses: [\n                "ready",\n                "ready_for_pickup",\n                "searching_driver",\n                "driver_assigned",\n                "driver_arriving_store",\n              ],',
+              1,
+          )
+
+          old_call = '''                  onTransition={transitionOrder}\n                  onReject={rejectOrder}\n                />'''
+          new_call = '''                  onTransition={transitionOrder}\n                  onReject={rejectOrder}\n                  onRefresh={() => merchant?.id && void loadOperations(merchant.id)}\n                />'''
+          text = text.replace(old_call, new_call, 1)
+          old_call_detailed = '''                          onTransition={transitionOrder}\n                          onReject={rejectOrder}\n                          detailed\n                        />'''
+          new_call_detailed = '''                          onTransition={transitionOrder}\n                          onReject={rejectOrder}\n                          onRefresh={() => merchant?.id && void loadOperations(merchant.id)}\n                          detailed\n                        />'''
+          text = text.replace(old_call_detailed, new_call_detailed, 1)
+
+          signature_old = 'function OrderRow({ order, busy, onTransition, onReject, detailed = false }: any) {'
+          signature_new = 'function OrderRow({ order, busy, onTransition, onReject, onRefresh, detailed = false }: any) {'
+          if signature_old not in text:
+              raise SystemExit('OrderRow signature not found')
+          text = text.replace(signature_old, signature_new, 1)
+
+          print_button_end = '''        Imprimir pedido\n      </Button>\n'''
+          pickup_render = '''        Imprimir pedido\n      </Button>\n      {order.fulfillment_type === "pickup" && order.status === "ready_for_pickup" ? (\n        <PickupCompletion orderId={order.id} onDone={onRefresh} />\n      ) : null}\n'''
+          if pickup_render not in text:
+              if print_button_end not in text:
+                  raise SystemExit('print button anchor not found')
+              text = text.replace(print_button_end, pickup_render, 1)
+
+          field_anchor = '\nfunction Field({\n'
+          pickup_component = '''\nfunction PickupCompletion({ orderId, onDone }: { orderId: string; onDone?: () => void }) {\n  const [pin, setPin] = useState("");\n  const [busy, setBusy] = useState(false);\n\n  const completePickup = async () => {\n    if (pin.length !== 4 || busy) return;\n    setBusy(true);\n    const { data, error } = await rpc("complete_pickup_with_pin", {\n      _order_id: orderId,\n      _pin: pin,\n    });\n    setBusy(false);\n    if (error) {\n      toast.error(error.message || "Não foi possível confirmar a retirada.");\n      return;\n    }\n    if (data !== true) {\n      setPin("");\n      toast.error("PIN incorreto ou temporariamente bloqueado. Confirme o código com o cliente.");\n      return;\n    }\n    setPin("");\n    toast.success("Retirada confirmada e pedido concluído.");\n    onDone?.();\n  };\n\n  return (\n    <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">\n      <p className="text-xs font-black uppercase tracking-wider text-primary">Retirada pelo cliente</p>\n      <p className="mt-1 text-xs leading-relaxed text-zinc-500">\n        Peça ao cliente o PIN de 4 dígitos exibido no pedido. A conclusão financeira só ocorre após a confirmação correta.\n      </p>\n      <div className="mt-3 flex gap-2">\n        <input\n          value={pin}\n          onChange={(event) => setPin(event.target.value.replace(/\\D/g, "").slice(0, 4))}\n          inputMode="numeric"\n          autoComplete="one-time-code"\n          placeholder="0000"\n          className="min-w-0 flex-1 rounded-xl border border-zinc-800 bg-black px-4 py-3 text-center text-xl font-black tracking-[0.35em] outline-none focus:border-primary"\n        />\n        <Button type="button" disabled={pin.length !== 4 || busy} onClick={() => void completePickup()}>\n          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar"}\n        </Button>\n      </div>\n    </div>\n  );\n}\n'''
+          if pickup_component not in text:
+              if field_anchor not in text:
+                  raise SystemExit('Field anchor not found')
+              text = text.replace(field_anchor, pickup_component + field_anchor, 1)
+          merchant.write_text(text, encoding='utf-8')
+
+          pedidos = Path('src/routes/pedidos.tsx')
+          text = pedidos.read_text(encoding='utf-8')
+          component_anchor = 'function PedidosPage() {'
+          helpers = '''const statusLabels: Record<string, string> = {\n  created: "Criado",\n  pending_payment: "Aguardando pagamento",\n  paid: "Pagamento confirmado",\n  confirmed: "Confirmado",\n  accepted: "Aceito",\n  preparing: "Em preparo",\n  ready: "Pronto",\n  ready_for_pickup: "Pronto para retirada",\n  searching_driver: "Buscando entregador",\n  driver_assigned: "Entregador encontrado",\n  driver_arriving_store: "Entregador indo à loja",\n  picked_up: "Pedido coletado",\n  out_for_delivery: "Saiu para entrega",\n  on_the_way: "A caminho",\n  delivered: "Concluído",\n  cancelled: "Cancelado",\n  refunded: "Reembolsado",\n};\n\nfunction orderStatusLabel(status: string, fulfillmentType: string | null | undefined) {\n  if (status === "delivered" && fulfillmentType === "pickup") return "Retirado";\n  return statusLabels[status] ?? status.replaceAll("_", " ");\n}\n\n'''
+          if helpers not in text:
+              if component_anchor not in text:
+                  raise SystemExit('Pedidos component anchor missing')
+              text = text.replace(component_anchor, helpers + component_anchor, 1)
+          text = text.replace('{order.status}\n                  </span>', '{orderStatusLabel(order.status, order.fulfillment_type)}\n                  </span>', 1)
+          text = text.replace(
+              '                  Pedido #{order.order_number} •{" "}\n                  {new Date(order.created_at).toLocaleDateString("pt-BR")}',
+              '                  Pedido #{order.order_number} • {order.fulfillment_type === "pickup" ? "Retirada" : "Entrega"} •{" "}\n                  {new Date(order.created_at).toLocaleDateString("pt-BR")}',
+              1,
+          )
+          pedidos.write_text(text, encoding='utf-8')
+          PY
+          bunx prettier src/routes/merchant.tsx src/routes/pedidos.tsx 'src/routes/pedido/$orderId/index.tsx' --write
+      - name: Full verification
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit integration and remove workflow
+        run: |
+          rm .github/workflows/integrate-pickup-completion-ui.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(pickup): complete secure customer merchant flow"
+          git push
