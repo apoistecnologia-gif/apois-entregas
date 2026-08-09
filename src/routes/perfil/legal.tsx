@@ -129,7 +129,8 @@ function LegalPage() {
               ) : acceptance ? (
                 <div className="mt-2 space-y-1 text-xs text-zinc-500">
                   <p>
-                    Termos: <span className="font-bold text-zinc-300">{acceptance.terms_version}</span>
+                    Termos:{" "}
+                    <span className="font-bold text-zinc-300">{acceptance.terms_version}</span>
                   </p>
                   <p>
                     Privacidade:{" "}
