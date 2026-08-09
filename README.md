@@ -44,6 +44,7 @@ Variáveis públicas do frontend:
 VITE_SUPABASE_URL=
 VITE_SUPABASE_PUBLISHABLE_KEY=
 VITE_GOOGLE_MAPS_BROWSER_KEY=
+VITE_GOOGLE_MAPS_MAP_ID=
 ```
 
 Secrets usados apenas no Supabase/servidor:

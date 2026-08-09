@@ -99,9 +99,11 @@ function Login() {
         toast.success("Login realizado com sucesso!");
         const searchParams = new URLSearchParams(window.location.search);
         const redirectPath = searchParams.get("redirect");
+        const safeRedirectPath =
+          redirectPath?.startsWith("/") && !redirectPath.startsWith("//") ? redirectPath : null;
 
-        if (redirectPath) {
-          navigate({ to: redirectPath });
+        if (safeRedirectPath) {
+          navigate({ to: safeRedirectPath });
         } else {
           navigate({ to: "/inicio" });
         }

@@ -744,6 +744,19 @@ function ApplicationCard({ kind, item, profile, busy, onReview, onDocument, onOp
   const isMerchant = kind === "merchant";
   const status = isMerchant ? item.approval_status : item.status;
   const docs = isMerchant ? (item.merchant_documents ?? []) : (item.courier_documents ?? []);
+  const requiredDocumentTypes = isMerchant
+    ? ["documento_empresa", "responsavel", "comprovante_endereco"]
+    : item.vehicle_type === "bicicleta"
+      ? ["foto_perfil"]
+      : ["cnh", "documento_veiculo", "foto_perfil"];
+  const missingDocuments = requiredDocumentTypes.filter(
+    (type) => !docs.some((doc: any) => doc.document_type === type && doc.status === "approved"),
+  );
+  const identityReady =
+    isMerchant ||
+    item.vehicle_type === "bicicleta" ||
+    (Boolean(item.vehicle_plate?.trim()) && Boolean(item.cnh_number?.trim()));
+  const approvalReady = missingDocuments.length === 0 && identityReady;
   const title = isMerchant ? item.name : profile?.full_name || `Entregador ${item.id.slice(0, 8)}`;
   return (
     <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
@@ -768,7 +781,12 @@ function ApplicationCard({ kind, item, profile, busy, onReview, onDocument, onOp
           <Button
             type="button"
             size="sm"
-            disabled={busy}
+            disabled={busy || !approvalReady}
+            title={
+              approvalReady
+                ? "Aprovar parceiro"
+                : "Aprove primeiro todos os documentos e dados obrigatórios."
+            }
             onClick={() => void onReview(item.id, "approved")}
           >
             Aprovar
@@ -797,6 +815,15 @@ function ApplicationCard({ kind, item, profile, busy, onReview, onDocument, onOp
           ) : null}
         </div>
       </div>
+      {!approvalReady ? (
+        <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-200">
+          {missingDocuments.length > 0
+            ? `Aprovação bloqueada: faltam documentos aprovados (${missingDocuments
+                .map((type) => type.replaceAll("_", " "))
+                .join(", ")}).`
+            : "Aprovação bloqueada: complete placa e CNH do veículo antes de aprovar."}
+        </div>
+      ) : null}
       <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
         {docs.map((doc: any) => (
           <div key={doc.id} className="rounded-xl border border-zinc-900 bg-black p-3">
