@@ -1,3 +1,4 @@
+# One-shot integration: consume and self-remove after verification.
 name: Integrate admin delivery coverage
 
 on:
@@ -25,26 +26,23 @@ jobs:
           path = Path('src/routes/admin.tsx')
           text = path.read_text(encoding='utf-8')
 
-          if '  MapPinned,\n' not in text:
-              text = text.replace('  MapPin,\n', '  MapPin,\n  MapPinned,\n', 1)
-
-          shell_import = 'import { AdminCoveragePanel } from "@/components/AdminCoveragePanel";\n'
-          anchor = 'import { WorkspaceShell } from "@/components/WorkspaceShell";\n'
-          if shell_import not in text:
-              if anchor not in text:
+          panel_import = 'import { AdminCoveragePanel } from "@/components/AdminCoveragePanel";\n'
+          import_anchor = 'import { EmptyState, MetricCard, WorkspaceShell } from "@/components/WorkspaceShell";\n'
+          if panel_import not in text:
+              if import_anchor not in text:
                   raise SystemExit('WorkspaceShell import anchor missing')
-              text = text.replace(anchor, anchor + shell_import, 1)
+              text = text.replace(import_anchor, import_anchor + panel_import, 1)
 
-          tab_anchor = '    { id: "ops", label: "Operação", icon: MapPin },\n'
+          tab_anchor = '    { id: "users", label: "Usuários", icon: Users },\n'
           tab_new = tab_anchor + '    { id: "coverage", label: "Cobertura", icon: MapPinned },\n'
           if 'id: "coverage"' not in text:
               if tab_anchor not in text:
-                  raise SystemExit('ops tab anchor missing')
+                  raise SystemExit('users tab anchor missing')
               text = text.replace(tab_anchor, tab_new, 1)
 
-          render_anchor = '''      {activeTab === "finance" && (\n'''
+          render_anchor = '      {activeTab === "finance" && (\n'
           coverage_render = '''      {activeTab === "coverage" && (\n        <AdminCoveragePanel cities={cities} onRefresh={() => loadAll(true)} />\n      )}\n\n'''
-          if coverage_render not in text:
+          if 'activeTab === "coverage"' not in text:
               if render_anchor not in text:
                   raise SystemExit('finance render anchor missing')
               text = text.replace(render_anchor, coverage_render + render_anchor, 1)
