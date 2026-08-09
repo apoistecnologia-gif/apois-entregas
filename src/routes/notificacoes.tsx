@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Bell,
   CheckCheck,
+  ChevronRight,
   CircleAlert,
   Loader2,
   MessageSquare,
@@ -32,11 +33,13 @@ type NotificationRow = Record<string, unknown> & {
   title?: string;
   body?: string;
   message?: string;
+  notification_type?: string;
   type?: string;
   category?: string;
   status?: string;
   is_read?: boolean;
   read_at?: string | null;
+  data?: Record<string, unknown>;
 };
 
 const rpc = (name: string, args?: Record<string, unknown>) =>
@@ -49,13 +52,21 @@ function isUnread(notification: NotificationRow) {
   return false;
 }
 
+function notificationType(notification: NotificationRow) {
+  return String(
+    notification.notification_type || notification.type || notification.category || "",
+  ).toLowerCase();
+}
+
+function notificationData(notification: NotificationRow) {
+  const data = notification.data ?? notification["payload"];
+  return data && typeof data === "object" ? (data as Record<string, unknown>) : null;
+}
+
 function displayTitle(notification: NotificationRow) {
   const title = typeof notification.title === "string" ? notification.title.trim() : "";
   if (title) return title;
-  const type = String(notification.type || notification.category || "Atualização").replaceAll(
-    "_",
-    " ",
-  );
+  const type = (notificationType(notification) || "Atualização").replaceAll("_", " ");
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
@@ -63,24 +74,28 @@ function displayBody(notification: NotificationRow) {
   if (typeof notification.body === "string" && notification.body.trim()) return notification.body;
   if (typeof notification.message === "string" && notification.message.trim())
     return notification.message;
-  const data = notification["data"] ?? notification["payload"];
-  if (data && typeof data === "object") {
-    const record = data as Record<string, unknown>;
-    const candidate = record["message"] ?? record["body"] ?? record["description"];
+  const data = notificationData(notification);
+  if (data) {
+    const candidate = data["message"] ?? data["body"] ?? data["description"];
     if (typeof candidate === "string" && candidate.trim()) return candidate;
   }
   return "Há uma nova atualização disponível na sua conta.";
 }
 
 function NotificationIcon({ notification }: { notification: NotificationRow }) {
-  const type = String(notification.type || notification.category || "").toLowerCase();
-  if (type.includes("order") || type.includes("delivery"))
+  const type = notificationType(notification);
+  if (type.includes("order") || type.includes("delivery") || type.includes("payment"))
     return <PackageCheck className="h-5 w-5" />;
   if (type.includes("support")) return <MessageSquare className="h-5 w-5" />;
   if (type.includes("promo") || type.includes("coupon")) return <Tag className="h-5 w-5" />;
   if (type.includes("critical") || type.includes("alert"))
     return <CircleAlert className="h-5 w-5" />;
   return <Bell className="h-5 w-5" />;
+}
+
+function hasRelatedContext(notification: NotificationRow) {
+  const data = notificationData(notification);
+  return typeof data?.["orderId"] === "string" && data["orderId"].length > 0;
 }
 
 function NotificationCenterPage() {
@@ -143,16 +158,42 @@ function NotificationCenterPage() {
     [notifications],
   );
 
-  const markOne = async (notification: NotificationRow) => {
-    if (!isUnread(notification) || busyId) return;
-    setBusyId(notification.id);
+  const markRead = async (notification: NotificationRow) => {
+    if (!isUnread(notification)) return true;
     const { error } = await rpc("read_my_notification", { _notification_id: notification.id });
-    setBusyId(null);
     if (error) {
       toast.error("Não foi possível marcar a notificação como lida.");
+      return false;
+    }
+    setNotifications((current) =>
+      current.map((item) =>
+        item.id === notification.id ? { ...item, read_at: item.read_at || new Date().toISOString() } : item,
+      ),
+    );
+    return true;
+  };
+
+  const openNotification = async (notification: NotificationRow) => {
+    if (busyId) return;
+    setBusyId(notification.id);
+    await markRead(notification);
+
+    const data = notificationData(notification);
+    const orderId = typeof data?.["orderId"] === "string" ? data["orderId"] : null;
+    const type = notificationType(notification);
+
+    if (orderId && type === "new_order") {
+      setBusyId(null);
+      await navigate({ to: "/merchant" });
       return;
     }
-    await loadNotifications(true);
+    if (orderId) {
+      setBusyId(null);
+      await navigate({ to: "/pedido/$orderId", params: { orderId } });
+      return;
+    }
+
+    setBusyId(null);
   };
 
   const markAll = async () => {
@@ -239,15 +280,21 @@ function NotificationCenterPage() {
           <div className="space-y-3">
             {notifications.map((notification) => {
               const unread = isUnread(notification);
+              const related = hasRelatedContext(notification);
               return (
                 <button
                   key={notification.id}
                   type="button"
                   disabled={busyId === notification.id}
-                  onClick={() => void markOne(notification)}
+                  onClick={() => void openNotification(notification)}
                   className={`flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-colors ${
                     unread ? "border-primary/20 bg-primary/5" : "border-zinc-900 bg-zinc-950"
                   } disabled:opacity-60`}
+                  aria-label={
+                    related
+                      ? `${displayTitle(notification)}. Abrir detalhes relacionados.`
+                      : `${displayTitle(notification)}. Marcar como lida.`
+                  }
                 >
                   <div
                     className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${unread ? "bg-primary text-black" : "bg-zinc-900 text-zinc-500"}`}
@@ -265,9 +312,10 @@ function NotificationCenterPage() {
                       >
                         {displayTitle(notification)}
                       </p>
-                      {unread ? (
-                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                      ) : null}
+                      <div className="flex shrink-0 items-center gap-2">
+                        {unread ? <span className="h-2 w-2 rounded-full bg-primary" /> : null}
+                        {related ? <ChevronRight className="h-4 w-4 text-zinc-700" /> : null}
+                      </div>
                     </div>
                     <p className="mt-1 text-xs leading-relaxed text-zinc-500">
                       {displayBody(notification)}
