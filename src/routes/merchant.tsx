@@ -19,6 +19,7 @@ import { EmptyState, MetricCard, WorkspaceShell } from "@/components/WorkspaceSh
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { clearPayoutAttemptKey, getPayoutAttemptKey } from "@/lib/payout-attempt";
 
 export const Route = createFileRoute("/merchant")({
   ssr: false,
@@ -467,14 +468,16 @@ function MerchantWorkspace() {
     const amount = Number(payoutDraft.amount);
     if (!Number.isFinite(amount) || amount <= 0)
       return toast.error("Informe um valor de saque válido.");
+    const attemptKey = getPayoutAttemptKey("merchant", wallet.id, amount);
     setBusyAction("payout");
     const { error } = await rpc("request_payout", {
       _wallet_id: wallet.id,
       _amount: amount,
-      _idempotency_key: `merchant:${wallet.id}:${crypto.randomUUID()}`,
+      _idempotency_key: attemptKey,
     });
     setBusyAction(null);
     if (error) return toast.error(error.message || "Não foi possível solicitar o saque.");
+    clearPayoutAttemptKey("merchant", wallet.id, attemptKey);
     setPayoutDraft((current) => ({ ...current, amount: "" }));
     toast.success("Saque solicitado.");
     if (merchant?.id) await loadOperations(merchant.id);

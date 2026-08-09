@@ -10,8 +10,7 @@ type StoredPayoutAttempt = {
 const storageKey = (scope: PayoutScope, walletId: string) =>
   `${PAYOUT_ATTEMPT_PREFIX}:${scope}:${walletId}`;
 
-const fingerprintFor = (walletId: string, amount: number) =>
-  `${walletId}:${amount.toFixed(2)}`;
+const fingerprintFor = (walletId: string, amount: number) => `${walletId}:${amount.toFixed(2)}`;
 
 export const getPayoutAttemptKey = (scope: PayoutScope, walletId: string, amount: number) => {
   const fingerprint = fingerprintFor(walletId, amount);

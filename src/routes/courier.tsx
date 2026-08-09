@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { clearPayoutAttemptKey, getPayoutAttemptKey } from "@/lib/payout-attempt";
 
 export const Route = createFileRoute("/courier")({
   ssr: false,
@@ -408,14 +409,16 @@ function CourierApp() {
     if (!wallet || !payoutAccount) return toast.error("Cadastre sua chave PIX primeiro.");
     const amount = Number(payoutDraft.amount);
     if (!Number.isFinite(amount) || amount <= 0) return toast.error("Informe um valor válido.");
+    const attemptKey = getPayoutAttemptKey("courier", wallet.id, amount);
     setBusy("payout");
     const { error } = await rpc("request_payout", {
       _wallet_id: wallet.id,
       _amount: amount,
-      _idempotency_key: `courier:${wallet.id}:${crypto.randomUUID()}`,
+      _idempotency_key: attemptKey,
     });
     setBusy(null);
     if (error) return toast.error(error.message || "Não foi possível solicitar o saque.");
+    clearPayoutAttemptKey("courier", wallet.id, attemptKey);
     setPayoutDraft((current) => ({ ...current, amount: "" }));
     toast.success("Saque solicitado.");
     if (courier?.id) await loadCourierOperations(courier.id);
