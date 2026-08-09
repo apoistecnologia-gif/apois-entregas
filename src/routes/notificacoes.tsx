@@ -60,10 +60,10 @@ function displayBody(notification: NotificationRow) {
   if (typeof notification.body === "string" && notification.body.trim()) return notification.body;
   if (typeof notification.message === "string" && notification.message.trim())
     return notification.message;
-  const data = notification.data ?? notification.payload;
+  const data = notification["data"] ?? notification["payload"];
   if (data && typeof data === "object") {
     const record = data as Record<string, unknown>;
-    const candidate = record.message ?? record.body ?? record.description;
+    const candidate = record["message"] ?? record["body"] ?? record["description"];
     if (typeof candidate === "string" && candidate.trim()) return candidate;
   }
   return "Há uma nova atualização disponível na sua conta.";
