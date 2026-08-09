@@ -34,18 +34,5 @@ jobs:
       - name: Unit tests
         run: bun run test
 
-      - name: Capture lint report
-        if: always()
-        run: bunx eslint . --format json --output-file lint-report.json || true
-
-      - name: Upload lint report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lint-report
-          path: lint-report.json
-          if-no-files-found: ignore
-          retention-days: 1
-
       - name: Lint
         run: bun run lint
