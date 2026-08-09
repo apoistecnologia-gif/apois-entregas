@@ -1,0 +1,64 @@
+name: One-shot merchant detail route guard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/merchant-detail-guard-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Protect merchant detail route
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/routes/estabelecimento.$merchantId.tsx")
+          text = path.read_text(encoding="utf-8")
+          old_import = 'import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";'
+          new_import = 'import { createFileRoute, redirect, useNavigate, useParams } from "@tanstack/react-router";'
+          if old_import in text:
+              text = text.replace(old_import, new_import, 1)
+
+          old_route = '''export const Route = createFileRoute("/estabelecimento/$merchantId")({
+  component: EstabelecimentoPage,
+});'''
+          new_route = '''export const Route = createFileRoute("/estabelecimento/$merchantId")({
+  ssr: false,
+  beforeLoad: async ({ location }) => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      throw redirect({
+        to: "/login",
+        search: { redirect: location.href },
+      });
+    }
+    return { session };
+  },
+  component: EstabelecimentoPage,
+  head: () => ({ meta: [{ title: "Estabelecimento | APOIS ENTREGA" }] }),
+});'''
+          if old_route not in text:
+              raise SystemExit("merchant detail route block not found")
+          text = text.replace(old_route, new_route, 1)
+          path.write_text(text, encoding="utf-8")
+          PY
+      - name: Commit changes
+        run: |
+          if git diff --quiet -- 'src/routes/estabelecimento.$merchantId.tsx'; then
+            echo "No changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 'src/routes/estabelecimento.$merchantId.tsx'
+          git commit -m "fix(customer): protect merchant detail route"
+          git push
