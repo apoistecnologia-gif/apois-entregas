@@ -26,6 +26,10 @@ type CheckoutAttempt = {
 };
 
 export const Route = createFileRoute("/checkout")({
+  // Supabase Auth persists the customer session in browser storage. Running this guard
+  // during SSR makes a hard reload/deep-link look unauthenticated because the server
+  // cannot read that browser session. Keep the checkout guard client-side.
+  ssr: false,
   beforeLoad: async ({ location }) => {
     const {
       data: { session },
@@ -146,7 +150,7 @@ function getCheckoutAttempt(fingerprint: string): CheckoutAttempt {
 
 function CheckoutPage() {
   const navigate = useNavigate();
-  const { items, merchant, totalPrice, clearCart } = useCart();
+  const { items, merchant, totalPrice, clearCart, isHydrated } = useCart();
   const [address, setAddress] = useState<LocalAddressSnapshot | null>(null);
   const [observation, setObservation] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -158,8 +162,11 @@ function CheckoutPage() {
     typeof window !== "undefined" ? sessionStorage.getItem("apois_payment_method") || "pix" : "pix";
 
   useEffect(() => {
+    if (!isHydrated) return;
+
     if (items.length === 0 && !pixData) {
       navigate({ to: "/sacola" });
+      return;
     }
 
     let disposed = false;
@@ -183,7 +190,7 @@ function CheckoutPage() {
     return () => {
       disposed = true;
     };
-  }, [items.length, pixData, navigate]);
+  }, [isHydrated, items.length, pixData, navigate]);
 
   const subtotal = totalPrice;
   const deliveryFee = merchant?.deliveryFee || 0;
@@ -306,6 +313,17 @@ function CheckoutPage() {
     }
   };
 
+  if (!isHydrated) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-black text-white">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          <p className="text-sm font-semibold text-zinc-400">Recuperando seu checkout...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (pixData) {
     return (
       <PixPaymentScreen
@@ -319,7 +337,16 @@ function CheckoutPage() {
     );
   }
 
-  if (!merchant || items.length === 0) return null;
+  if (!merchant || items.length === 0) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-black text-white">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          <p className="text-sm font-semibold text-zinc-400">Voltando para sua sacola...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full flex-col bg-black text-white">
