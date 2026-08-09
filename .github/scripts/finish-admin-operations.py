@@ -91,8 +91,8 @@ admin_path.write_text(admin, encoding="utf-8")
 env_path = Path(".env.example")
 env = env_path.read_text(encoding="utf-8")
 if "VITE_GOOGLE_MAPS_MAP_ID=" not in env:
-    anchor = "VITE_GOOGLE_MAPS_BROWSER_KEY=\n"
+    anchor = "VITE_GOOGLE_MAPS_BROWSER_KEY=YOUR_BROWSER_RESTRICTED_GOOGLE_MAPS_KEY\n"
     if anchor not in env:
         raise SystemExit("Google Maps browser key env anchor missing")
-    env = env.replace(anchor, anchor + "VITE_GOOGLE_MAPS_MAP_ID=\n", 1)
+    env = env.replace(anchor, anchor + "VITE_GOOGLE_MAPS_MAP_ID=YOUR_GOOGLE_MAPS_MAP_ID\n", 1)
 env_path.write_text(env, encoding="utf-8")
