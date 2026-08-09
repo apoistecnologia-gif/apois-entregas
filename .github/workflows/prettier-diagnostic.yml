@@ -17,5 +17,5 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Show exact formatting diff without committing source
         run: |
-          bunx prettier src/routes/favoritos.tsx --write
-          git diff --no-color -- src/routes/favoritos.tsx
+          bunx prettier src/routes/favoritos.tsx 'src/routes/pedido/$orderId/avaliar.tsx' --write
+          git diff --no-color -- src/routes/favoritos.tsx 'src/routes/pedido/$orderId/avaliar.tsx'
