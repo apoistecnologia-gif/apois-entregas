@@ -59,9 +59,7 @@ function OrderConfirmedPage() {
 
       const { data, error } = await supabase
         .from("orders" as any)
-        .select(
-          "id,order_number,status,payment_status,total,delivery_address,merchants(name)",
-        )
+        .select("id,order_number,status,payment_status,total,delivery_address,merchants(name)")
         .eq("id", orderId)
         .eq("customer_user_id", user.id)
         .maybeSingle();
