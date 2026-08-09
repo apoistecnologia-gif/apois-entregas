@@ -244,7 +244,10 @@ function AdminWorkspace() {
       _assigned_admin_id: user?.id ?? null,
     });
     setBusy(null);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Chamado atualizado.");
     await loadAll(true);
   };
@@ -270,7 +273,10 @@ function AdminWorkspace() {
       _set_in_progress: !internal,
     });
     setBusy(null);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success(internal ? "Nota interna registrada." : "Resposta enviada ao chamado.");
     await loadAll(true);
   };
