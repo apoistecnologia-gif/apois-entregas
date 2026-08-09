@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/courier")({
+  ssr: false,
   beforeLoad: async ({ location }) => {
     const {
       data: { session },

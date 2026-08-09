@@ -32,6 +32,7 @@ const dateTime = (value: string | null | undefined) =>
   value ? new Date(value).toLocaleString("pt-BR") : "—";
 
 export const Route = createFileRoute("/admin")({
+  ssr: false,
   beforeLoad: async ({ location }) => {
     const {
       data: { session },
