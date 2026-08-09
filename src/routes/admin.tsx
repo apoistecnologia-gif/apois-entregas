@@ -1,5 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import {
+  Activity,
   Bike,
   Building2,
   CircleDollarSign,
@@ -12,6 +13,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingBag,
+  Star,
   Users,
   WalletCards,
 } from "lucide-react";
@@ -19,6 +21,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState, MetricCard, WorkspaceShell } from "@/components/WorkspaceShell";
 import { AdminCoveragePanel } from "@/components/AdminCoveragePanel";
 import { AdminSupportPanel } from "@/components/AdminSupportPanel";
+import { AdminRealtimeOperationsPanel } from "@/components/AdminRealtimeOperationsPanel";
+import { AdminReviewsPanel } from "@/components/AdminReviewsPanel";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -478,7 +482,9 @@ function AdminWorkspace() {
     { id: "merchants", label: "Estabelecimentos", icon: Building2, badge: pendingMerchants.length },
     { id: "couriers", label: "Entregadores", icon: Bike, badge: pendingCouriers.length },
     { id: "orders", label: "Pedidos", icon: ShoppingBag, badge: activeOrders.length },
+    { id: "realtime", label: "Tempo real", icon: Activity, badge: activeOrders.length },
     { id: "users", label: "Usuários", icon: Users },
+    { id: "reviews", label: "Avaliações", icon: Star },
     { id: "coverage", label: "Cobertura", icon: MapPinned },
     {
       id: "finance",
@@ -615,6 +621,8 @@ function AdminWorkspace() {
         </div>
       )}
 
+      {activeTab === "realtime" && <AdminRealtimeOperationsPanel />}
+
       {activeTab === "users" && (
         <div className="grid gap-3 xl:grid-cols-2">
           {profiles.map((profile) => (
@@ -658,6 +666,8 @@ function AdminWorkspace() {
           ))}
         </div>
       )}
+
+      {activeTab === "reviews" && <AdminReviewsPanel />}
 
       {activeTab === "coverage" && (
         <AdminCoveragePanel cities={cities} onRefresh={() => loadAll(true)} />

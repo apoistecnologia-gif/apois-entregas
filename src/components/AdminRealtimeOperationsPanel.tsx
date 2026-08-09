@@ -1,4 +1,4 @@
-import { APIProvider, AdvancedMarker, Map } from "@vis.gl/react-google-maps";
+import { APIProvider, AdvancedMarker, Map as GoogleMap } from "@vis.gl/react-google-maps";
 import {
   Bike,
   CircleAlert,
@@ -172,12 +172,13 @@ export function AdminRealtimeOperationsPanel() {
 
   useEffect(() => {
     const refresh = () => void load(true);
-    const channels = [
-      ["admin_realtime_jobs", "delivery_jobs"],
-      ["admin_realtime_availability", "courier_availability"],
-      ["admin_realtime_locations", "courier_locations"],
-      ["admin_realtime_orders", "orders"],
-    ].map(([name, table]) =>
+    const subscriptions = [
+      { name: "admin_realtime_jobs", table: "delivery_jobs" },
+      { name: "admin_realtime_availability", table: "courier_availability" },
+      { name: "admin_realtime_locations", table: "courier_locations" },
+      { name: "admin_realtime_orders", table: "orders" },
+    ];
+    const channels = subscriptions.map(({ name, table }) =>
       supabase
         .channel(name)
         .on("postgres_changes", { event: "*", schema: "public", table }, refresh)
@@ -225,9 +226,17 @@ export function AdminRealtimeOperationsPanel() {
 
   if (errorMessage) {
     return (
-      <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-6 text-red-300" role="alert">
+      <div
+        className="rounded-3xl border border-red-500/20 bg-red-500/10 p-6 text-red-300"
+        role="alert"
+      >
         <p className="font-bold">{errorMessage}</p>
-        <Button type="button" variant="outline" onClick={() => void load()} className="mt-4 border-red-500/20">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void load()}
+          className="mt-4 border-red-500/20"
+        >
           Tentar novamente
         </Button>
       </div>
@@ -238,11 +247,21 @@ export function AdminRealtimeOperationsPanel() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">Operação ao vivo</p>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
+            Operação ao vivo
+          </p>
           <h2 className="mt-1 text-xl font-black">Pedidos e entregadores em tempo real</h2>
-          <p className="mt-1 text-xs text-zinc-500">Atualização por Supabase Realtime, limitada a administradores autorizados.</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Atualização por Supabase Realtime, limitada a administradores autorizados.
+          </p>
         </div>
-        <Button type="button" variant="outline" disabled={refreshing} onClick={() => void load(true)} className="border-zinc-800 bg-zinc-950">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={refreshing}
+          onClick={() => void load(true)}
+          className="border-zinc-800 bg-zinc-950"
+        >
           <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
           Atualizar
         </Button>
@@ -250,8 +269,14 @@ export function AdminRealtimeOperationsPanel() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard label="Pedidos ativos" value={jobs.length} />
-        <MetricCard label="Aguardando coleta" value={jobs.filter((job) => pickupStatuses.includes(job.status)).length} />
-        <MetricCard label="Em rota" value={jobs.filter((job) => routeStatuses.includes(job.status)).length} />
+        <MetricCard
+          label="Aguardando coleta"
+          value={jobs.filter((job) => pickupStatuses.includes(job.status)).length}
+        />
+        <MetricCard
+          label="Em rota"
+          value={jobs.filter((job) => routeStatuses.includes(job.status)).length}
+        />
         <MetricCard label="Entregadores online" value={onlineIds.size} />
         <MetricCard label="Possíveis atrasos" value={delayedJobs.length} />
       </div>
@@ -267,7 +292,10 @@ export function AdminRealtimeOperationsPanel() {
           </div>
           {jobs.length === 0 ? (
             <div className="p-5">
-              <EmptyState title="Nenhuma entrega ativa" description="As entregas aparecerão aqui assim que entrarem no ciclo operacional." />
+              <EmptyState
+                title="Nenhuma entrega ativa"
+                description="As entregas aparecerão aqui assim que entrarem no ciclo operacional."
+              />
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -290,22 +318,46 @@ export function AdminRealtimeOperationsPanel() {
                     const delayed = delayedJobs.some((row) => row.id === job.id);
                     return (
                       <tr key={job.id} className={delayed ? "bg-red-500/[0.04]" : undefined}>
-                        <td className="p-4 font-black">#{job.orders?.order_number ?? job.order_id.slice(0, 8)}</td>
+                        <td className="p-4 font-black">
+                          #{job.orders?.order_number ?? job.order_id.slice(0, 8)}
+                        </td>
                         <td>{job.merchants?.name ?? "—"}</td>
                         <td>
-                          <p className="font-bold">{profile?.full_name ?? (job.courier_id ? `#${job.courier_id.slice(0, 8)}` : "Buscando")}</p>
-                          {courier ? <p className="text-[10px] text-zinc-600">{courier.vehicle_type ?? "veículo"} {courier.vehicle_model ?? ""}</p> : null}
+                          <p className="font-bold">
+                            {profile?.full_name ??
+                              (job.courier_id ? `#${job.courier_id.slice(0, 8)}` : "Buscando")}
+                          </p>
+                          {courier ? (
+                            <p className="text-[10px] text-zinc-600">
+                              {courier.vehicle_type ?? "veículo"} {courier.vehicle_model ?? ""}
+                            </p>
+                          ) : null}
                         </td>
                         <td>
-                          <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-black uppercase ${delayed ? "bg-red-500/10 text-red-300" : "bg-primary/10 text-primary"}`}>
+                          <span
+                            className={`inline-flex rounded-full px-2 py-1 text-[10px] font-black uppercase ${delayed ? "bg-red-500/10 text-red-300" : "bg-primary/10 text-primary"}`}
+                          >
                             {statusLabel(job.status)}
                           </span>
                         </td>
-                        <td className="max-w-[240px] truncate text-xs text-zinc-400" title={addressText(job.delivery_address)}>{addressText(job.delivery_address)}</td>
-                        <td>{job.estimated_distance_meters ? `${(job.estimated_distance_meters / 1000).toFixed(1).replace(".", ",")} km` : "—"}</td>
+                        <td
+                          className="max-w-[240px] truncate text-xs text-zinc-400"
+                          title={addressText(job.delivery_address)}
+                        >
+                          {addressText(job.delivery_address)}
+                        </td>
+                        <td>
+                          {job.estimated_distance_meters
+                            ? `${(job.estimated_distance_meters / 1000).toFixed(1).replace(".", ",")} km`
+                            : "—"}
+                        </td>
                         <td>
                           <p className="text-xs text-zinc-400">{dateTime(job.updated_at)}</p>
-                          {delayed ? <p className="mt-1 flex items-center gap-1 text-[10px] font-bold text-red-300"><Clock3 className="h-3 w-3" /> sem atualização há +45 min</p> : null}
+                          {delayed ? (
+                            <p className="mt-1 flex items-center gap-1 text-[10px] font-bold text-red-300">
+                              <Clock3 className="h-3 w-3" /> sem atualização há +45 min
+                            </p>
+                          ) : null}
                         </td>
                       </tr>
                     );
@@ -320,41 +372,66 @@ export function AdminRealtimeOperationsPanel() {
           <div className="flex items-center justify-between border-b border-zinc-900 p-4">
             <div>
               <h3 className="font-black">Mapa dos entregadores</h3>
-              <p className="text-xs text-zinc-500">Somente entregadores online com localização válida.</p>
+              <p className="text-xs text-zinc-500">
+                Somente entregadores online com localização válida.
+              </p>
             </div>
             <MapPinned className="h-5 w-5 text-primary" />
           </div>
           {!browserKey ? (
             <div className="m-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">
-              Configure `VITE_GOOGLE_MAPS_BROWSER_KEY` no ambiente de publicação para exibir o mapa operacional.
+              Configure `VITE_GOOGLE_MAPS_BROWSER_KEY` no ambiente de publicação para exibir o mapa
+              operacional.
             </div>
           ) : (
             <div className="h-[430px] bg-zinc-900">
               <APIProvider apiKey={browserKey}>
-                <Map defaultCenter={mapCenter} defaultZoom={12} mapId={mapId} gestureHandling="greedy" disableDefaultUI={false}>
+                <GoogleMap
+                  defaultCenter={mapCenter}
+                  defaultZoom={12}
+                  mapId={mapId}
+                  gestureHandling="greedy"
+                  disableDefaultUI={false}
+                >
                   {onlineLocations.map((location) => {
                     const courier = courierById.get(location.courier_id);
                     const profile = courier ? profileById.get(courier.user_id) : null;
                     return (
-                      <AdvancedMarker key={location.courier_id} position={{ lat: Number(location.latitude), lng: Number(location.longitude) }} title={profile?.full_name ?? "Entregador online"}>
-                        <div className="grid h-9 w-9 place-items-center rounded-full border-2 border-black bg-primary text-black shadow-lg" aria-label={profile?.full_name ?? "Entregador online"}>
+                      <AdvancedMarker
+                        key={location.courier_id}
+                        position={{
+                          lat: Number(location.latitude),
+                          lng: Number(location.longitude),
+                        }}
+                        title={profile?.full_name ?? "Entregador online"}
+                      >
+                        <div
+                          className="grid h-9 w-9 place-items-center rounded-full border-2 border-black bg-primary text-black shadow-lg"
+                          aria-label={profile?.full_name ?? "Entregador online"}
+                        >
                           <Bike className="h-5 w-5" />
                         </div>
                       </AdvancedMarker>
                     );
                   })}
-                </Map>
+                </GoogleMap>
               </APIProvider>
             </div>
           )}
           <div className="grid grid-cols-2 gap-3 p-4">
             <div className="rounded-2xl bg-black p-3">
-              <p className="flex items-center gap-1 text-[10px] font-black uppercase text-zinc-500"><Bike className="h-3 w-3" /> Online com posição</p>
+              <p className="flex items-center gap-1 text-[10px] font-black uppercase text-zinc-500">
+                <Bike className="h-3 w-3" /> Online com posição
+              </p>
               <p className="mt-1 text-xl font-black text-primary">{onlineLocations.length}</p>
             </div>
             <div className="rounded-2xl bg-black p-3">
-              <p className="flex items-center gap-1 text-[10px] font-black uppercase text-zinc-500"><CircleAlert className="h-3 w-3" /> Sem posição recente</p>
-              <p className="mt-1 text-xl font-black">{Math.max(0, onlineIds.size - onlineLocations.length)}</p>
+              <p className="flex items-center gap-1 text-[10px] font-black uppercase text-zinc-500">
+                <CircleAlert className="h-3 w-3" /> Sem posição recente
+              </p>
+              <p className="mt-1 text-xl font-black">
+                {Math.max(0, onlineIds.size - onlineLocations.length)}
+              </p>
             </div>
           </div>
         </section>
@@ -366,9 +443,18 @@ export function AdminRealtimeOperationsPanel() {
           <h3 className="font-black">Resumo financeiro das entregas ativas</h3>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <MetricCard label="Valor dos pedidos" value={money(jobs.reduce((sum, job) => sum + Number(job.orders?.total ?? 0), 0))} />
-          <MetricCard label="Ganhos estimados entregadores" value={money(jobs.reduce((sum, job) => sum + Number(job.estimated_earnings ?? 0), 0))} />
-          <MetricCard label="Distância operacional" value={`${(jobs.reduce((sum, job) => sum + Number(job.estimated_distance_meters ?? 0), 0) / 1000).toFixed(1).replace(".", ",")} km`} />
+          <MetricCard
+            label="Valor dos pedidos"
+            value={money(jobs.reduce((sum, job) => sum + Number(job.orders?.total ?? 0), 0))}
+          />
+          <MetricCard
+            label="Ganhos estimados entregadores"
+            value={money(jobs.reduce((sum, job) => sum + Number(job.estimated_earnings ?? 0), 0))}
+          />
+          <MetricCard
+            label="Distância operacional"
+            value={`${(jobs.reduce((sum, job) => sum + Number(job.estimated_distance_meters ?? 0), 0) / 1000).toFixed(1).replace(".", ",")} km`}
+          />
         </div>
       </section>
     </div>

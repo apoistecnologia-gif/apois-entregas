@@ -29,9 +29,7 @@ const dateTime = (value: string | null | undefined) =>
 function average(values: Array<number | null>) {
   const valid = values.filter((value): value is number => Number.isFinite(value));
   if (valid.length === 0) return "—";
-  return (valid.reduce((sum, value) => sum + value, 0) / valid.length)
-    .toFixed(2)
-    .replace(".", ",");
+  return (valid.reduce((sum, value) => sum + value, 0) / valid.length).toFixed(2).replace(".", ",");
 }
 
 function Rating({ value }: { value: number | null }) {
@@ -64,7 +62,9 @@ export function AdminReviewsPanel() {
         from("couriers").select("id,user_id"),
         from("profiles").select("id,full_name"),
       ]);
-      const firstError = [reviewsRes, couriersRes, profilesRes].find((result) => result.error)?.error;
+      const firstError = [reviewsRes, couriersRes, profilesRes].find(
+        (result) => result.error,
+      )?.error;
       if (firstError) throw firstError;
       setReviews((reviewsRes.data ?? []) as Review[]);
       setCouriers((couriersRes.data ?? []) as Courier[]);
@@ -90,7 +90,7 @@ export function AdminReviewsPanel() {
     const normalized = query.trim().toLowerCase();
     return reviews.filter((review) => {
       const courier = review.courier_id ? courierById.get(review.courier_id) : null;
-      const courierName = courier ? profileById.get(courier.user_id)?.full_name ?? "" : "";
+      const courierName = courier ? (profileById.get(courier.user_id)?.full_name ?? "") : "";
       const customerName = customerById.get(review.customer_user_id)?.full_name ?? "";
       const searchable = [
         review.merchants?.name,
@@ -129,9 +129,17 @@ export function AdminReviewsPanel() {
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">Qualidade</p>
           <h2 className="mt-1 text-xl font-black">Avaliações da plataforma</h2>
-          <p className="mt-1 text-xs text-zinc-500">Visão administrativa de notas e comentários vinculados a pedidos concluídos.</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Visão administrativa de notas e comentários vinculados a pedidos concluídos.
+          </p>
         </div>
-        <Button type="button" variant="outline" disabled={refreshing} onClick={() => void load(true)} className="border-zinc-800 bg-zinc-950">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={refreshing}
+          onClick={() => void load(true)}
+          className="border-zinc-800 bg-zinc-950"
+        >
           <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
           Atualizar
         </Button>
@@ -139,9 +147,18 @@ export function AdminReviewsPanel() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Avaliações" value={reviews.length} />
-        <MetricCard label="Média estabelecimentos" value={average(reviews.map((review) => review.merchant_rating))} />
-        <MetricCard label="Média entregadores" value={average(reviews.map((review) => review.courier_rating))} />
-        <MetricCard label="Com comentários" value={reviews.filter((review) => Boolean(review.comment?.trim())).length} />
+        <MetricCard
+          label="Média estabelecimentos"
+          value={average(reviews.map((review) => review.merchant_rating))}
+        />
+        <MetricCard
+          label="Média entregadores"
+          value={average(reviews.map((review) => review.courier_rating))}
+        />
+        <MetricCard
+          label="Com comentários"
+          value={reviews.filter((review) => Boolean(review.comment?.trim())).length}
+        />
       </div>
 
       <section className="rounded-3xl border border-zinc-900 bg-zinc-950 p-4">
@@ -176,38 +193,64 @@ export function AdminReviewsPanel() {
       </section>
 
       {filtered.length === 0 ? (
-        <EmptyState title="Nenhuma avaliação encontrada" description="Ajuste os filtros ou aguarde novos pedidos avaliados." />
+        <EmptyState
+          title="Nenhuma avaliação encontrada"
+          description="Ajuste os filtros ou aguarde novos pedidos avaliados."
+        />
       ) : (
         <div className="space-y-3">
           {filtered.map((review) => {
             const courier = review.courier_id ? courierById.get(review.courier_id) : null;
-            const courierName = courier ? profileById.get(courier.user_id)?.full_name ?? null : null;
+            const courierName = courier
+              ? (profileById.get(courier.user_id)?.full_name ?? null)
+              : null;
             const customerName = customerById.get(review.customer_user_id)?.full_name ?? null;
             const critical = [review.merchant_rating, review.courier_rating].some(
               (value) => typeof value === "number" && value <= 2,
             );
             return (
-              <article key={review.id} className={`rounded-2xl border p-4 ${critical ? "border-red-500/20 bg-red-500/[0.04]" : "border-zinc-900 bg-zinc-950"}`}>
+              <article
+                key={review.id}
+                className={`rounded-2xl border p-4 ${critical ? "border-red-500/20 bg-red-500/[0.04]" : "border-zinc-900 bg-zinc-950"}`}
+              >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-black">Pedido #{review.orders?.order_number ?? review.order_id.slice(0, 8)}</p>
-                    <p className="mt-1 text-xs text-zinc-500">{review.merchants?.name ?? "Estabelecimento"} · {dateTime(review.created_at)}</p>
+                    <p className="font-black">
+                      Pedido #{review.orders?.order_number ?? review.order_id.slice(0, 8)}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {review.merchants?.name ?? "Estabelecimento"} · {dateTime(review.created_at)}
+                    </p>
                   </div>
-                  {critical ? <span className="rounded-full bg-red-500/10 px-2.5 py-1 text-[10px] font-black uppercase text-red-300">Atenção</span> : null}
+                  {critical ? (
+                    <span className="rounded-full bg-red-500/10 px-2.5 py-1 text-[10px] font-black uppercase text-red-300">
+                      Atenção
+                    </span>
+                  ) : null}
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="rounded-xl bg-black p-3">
-                    <p className="text-[10px] font-black uppercase text-zinc-600">Estabelecimento</p>
-                    <p className="mt-1"><Rating value={review.merchant_rating} /></p>
+                    <p className="text-[10px] font-black uppercase text-zinc-600">
+                      Estabelecimento
+                    </p>
+                    <p className="mt-1">
+                      <Rating value={review.merchant_rating} />
+                    </p>
                   </div>
                   <div className="rounded-xl bg-black p-3">
                     <p className="text-[10px] font-black uppercase text-zinc-600">Entregador</p>
-                    <p className="mt-1"><Rating value={review.courier_rating} /></p>
-                    <p className="mt-1 truncate text-[10px] text-zinc-600">{courierName ?? "Não atribuído"}</p>
+                    <p className="mt-1">
+                      <Rating value={review.courier_rating} />
+                    </p>
+                    <p className="mt-1 truncate text-[10px] text-zinc-600">
+                      {courierName ?? "Não atribuído"}
+                    </p>
                   </div>
                   <div className="rounded-xl bg-black p-3 sm:col-span-2">
                     <p className="text-[10px] font-black uppercase text-zinc-600">Cliente</p>
-                    <p className="mt-1 text-sm font-bold">{customerName ?? `#${review.customer_user_id.slice(0, 8)}`}</p>
+                    <p className="mt-1 text-sm font-bold">
+                      {customerName ?? `#${review.customer_user_id.slice(0, 8)}`}
+                    </p>
                   </div>
                 </div>
                 {review.comment?.trim() ? (
