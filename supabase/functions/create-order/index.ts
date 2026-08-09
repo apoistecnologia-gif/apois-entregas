@@ -3,6 +3,12 @@ import { createClient } from "npm:@supabase/supabase-js@2.112.1";
 type JsonRecord = Record<string, unknown>;
 type OrderItemInput = { productId: string; quantity: number; options: Array<{ optionId: string }> };
 
+type CanonicalItem = {
+  productId: string;
+  quantity: number;
+  options: Array<{ optionId: string }>;
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -26,14 +32,17 @@ function badRequest(message: string, code = "INVALID_REQUEST") {
 function parseItems(value: unknown): OrderItemInput[] | null {
   if (!Array.isArray(value) || value.length === 0 || value.length > 100) return null;
   const items: OrderItemInput[] = [];
+
   for (const rawItem of value) {
     if (!isRecord(rawItem)) return null;
     const productId = rawItem.productId;
     const quantity = rawItem.quantity;
     const rawOptions = rawItem.options ?? [];
+
     if (typeof productId !== "string" || !UUID_RE.test(productId)) return null;
     if (!Number.isInteger(quantity) || Number(quantity) <= 0 || Number(quantity) > 99) return null;
     if (!Array.isArray(rawOptions) || rawOptions.length > 50) return null;
+
     const options: Array<{ optionId: string }> = [];
     for (const rawOption of rawOptions) {
       if (!isRecord(rawOption)) return null;
@@ -41,8 +50,10 @@ function parseItems(value: unknown): OrderItemInput[] | null {
       if (typeof optionId !== "string" || !UUID_RE.test(optionId)) return null;
       options.push({ optionId });
     }
+
     items.push({ productId, quantity: Number(quantity), options });
   }
+
   return items;
 }
 
@@ -57,47 +68,73 @@ function stable(value: unknown): string {
   return JSON.stringify(value);
 }
 
-async function deriveRequestKey(seed: string, payload: unknown): Promise<string> {
+async function deriveUuid(seed: string, payload: unknown): Promise<string> {
   const digest = new Uint8Array(
     await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${seed}:${stable(payload)}`)),
   );
   const bytes = digest.slice(0, 16);
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function canonicalItems(items: OrderItemInput[]): CanonicalItem[] {
+  const grouped = new Map<string, CanonicalItem>();
+
+  for (const item of items) {
+    const options = [...item.options]
+      .map((option) => ({ optionId: option.optionId }))
+      .sort((a, b) => a.optionId.localeCompare(b.optionId));
+    const key = `${item.productId}:${options.map((option) => option.optionId).join(",")}`;
+    const existing = grouped.get(key);
+
+    if (existing) {
+      existing.quantity += item.quantity;
+    } else {
+      grouped.set(key, { productId: item.productId, quantity: item.quantity, options });
+    }
+  }
+
+  return [...grouped.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([, item]) => item);
 }
 
 function mapOrderError(message: string) {
   const normalized = message.toLowerCase();
-  if (normalized.includes("merchant is closed"))
+  if (normalized.includes("merchant is closed")) {
     return {
       status: 409,
       code: "MERCHANT_CLOSED",
       error: "O estabelecimento está fechado no momento.",
     };
-  if (normalized.includes("merchant is inactive") || normalized.includes("merchant not found"))
+  }
+  if (normalized.includes("merchant is inactive") || normalized.includes("merchant not found")) {
     return {
       status: 409,
       code: "MERCHANT_UNAVAILABLE",
       error: "O estabelecimento não está disponível.",
     };
-  if (normalized.includes("group") || normalized.includes("selection"))
+  }
+  if (normalized.includes("group") || normalized.includes("selection")) {
     return {
       status: 409,
       code: "CUSTOMIZATION_INVALID",
       error: "Revise as opções de personalização do pedido.",
     };
+  }
   if (
     normalized.includes("unavailable") ||
     normalized.includes("product") ||
     normalized.includes("option")
-  )
+  ) {
     return {
       status: 409,
       code: "ITEM_UNAVAILABLE",
       error: "Um item ou adicional não está mais disponível. Revise a sacola.",
     };
+  }
   return {
     status: 409,
     code: "ORDER_CREATION_FAILED",
@@ -106,20 +143,23 @@ function mapOrderError(message: string) {
 }
 
 Deno.serve(async (request: Request) => {
-  if (request.method === "OPTIONS")
+  if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
-  if (request.method !== "POST")
+  }
+  if (request.method !== "POST") {
     return new Response(
       JSON.stringify({ error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" }),
       { status: 405, headers: jsonHeaders },
     );
+  }
 
   const authorization = request.headers.get("Authorization");
-  if (!authorization?.startsWith("Bearer "))
+  if (!authorization?.startsWith("Bearer ")) {
     return new Response(
       JSON.stringify({ error: "Autenticação obrigatória.", code: "UNAUTHORIZED" }),
       { status: 401, headers: jsonHeaders },
     );
+  }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
@@ -140,11 +180,12 @@ Deno.serve(async (request: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: userData, error: userError } = await authClient.auth.getUser(token);
-  if (userError || !userData.user)
+  if (userError || !userData.user) {
     return new Response(
       JSON.stringify({ error: "Sessão inválida ou expirada.", code: "UNAUTHORIZED" }),
       { status: 401, headers: jsonHeaders },
     );
+  }
 
   let payload: unknown;
   try {
@@ -161,58 +202,61 @@ Deno.serve(async (request: Request) => {
   const observation = payload.observation;
   const items = parseItems(payload.items);
 
-  if (typeof merchantId !== "string" || !UUID_RE.test(merchantId))
+  if (typeof merchantId !== "string" || !UUID_RE.test(merchantId)) {
     return badRequest("Estabelecimento inválido.");
-  if (typeof requestKey !== "string" || !UUID_RE.test(requestKey))
+  }
+  if (typeof requestKey !== "string" || !UUID_RE.test(requestKey)) {
     return badRequest("Identificador da tentativa inválido.");
-  if (typeof paymentMethod !== "string" || !PAYMENT_METHODS.has(paymentMethod))
+  }
+  if (typeof paymentMethod !== "string" || !PAYMENT_METHODS.has(paymentMethod)) {
     return badRequest("Forma de pagamento inválida.");
+  }
   if (!isRecord(deliveryAddress)) return badRequest("Endereço de entrega inválido.");
-  if (observation !== undefined && observation !== null && typeof observation !== "string")
+  if (observation !== undefined && observation !== null && typeof observation !== "string") {
     return badRequest("Observação inválida.");
-  if (typeof observation === "string" && observation.length > 1000)
+  }
+  if (typeof observation === "string" && observation.length > 1000) {
     return badRequest("A observação é muito longa.");
+  }
   if (!items) return badRequest("A sacola contém itens inválidos.");
 
-  // A chave idempotente passa a depender também do conteúdo real da tentativa.
-  // Assim, voltar à sacola e alterar itens/endereço não reaproveita um pedido antigo.
-  const normalizedItems = [...items]
-    .map((item) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      options: [...item.options]
-        .map((option) => ({ optionId: option.optionId }))
-        .sort((a, b) => a.optionId.localeCompare(b.optionId)),
-    }))
-    .sort((a, b) =>
-      `${a.productId}:${a.options.map((o) => o.optionId).join(",")}`.localeCompare(
-        `${b.productId}:${b.options.map((o) => o.optionId).join(",")}`,
-      ),
-    );
-
-  const effectiveRequestKey = await deriveRequestKey(requestKey, {
+  const normalizedObservation =
+    typeof observation === "string" && observation.trim() ? observation.trim() : null;
+  const canonicalPayload = {
     merchantId,
     paymentMethod,
+    fulfillmentType: "delivery",
     deliveryAddress,
-    observation: typeof observation === "string" ? observation : null,
-    items: normalizedItems,
-  });
+    observation: normalizedObservation,
+    items: canonicalItems(items),
+  };
+
+  // requestKey keeps one browser operation idempotent. checkoutIntentKey is deliberately
+  // independent from that browser seed so reloads, retries and an expired local TTL cannot
+  // duplicate the same active unpaid purchase.
+  const effectiveRequestKey = await deriveUuid(`attempt:${requestKey}`, canonicalPayload);
+  const checkoutIntentKey = await deriveUuid(`checkout:${userData.user.id}`, canonicalPayload);
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data, error } = await adminClient.rpc("create_order_atomic", {
+  const { data, error } = await adminClient.rpc("create_order_for_checkout_intent", {
     p_customer_user_id: userData.user.id,
     p_merchant_id: merchantId,
     p_items: items,
     p_payment_method: paymentMethod,
     p_delivery_address: deliveryAddress,
     p_request_key: effectiveRequestKey,
-    p_observation: typeof observation === "string" ? observation : null,
+    p_checkout_intent_key: checkoutIntentKey,
+    p_observation: normalizedObservation,
   });
 
   if (error) {
-    console.error("create-order RPC failed", { code: error.code, requestKey: effectiveRequestKey });
+    console.error("create-order RPC failed", {
+      code: error.code,
+      requestKey: effectiveRequestKey,
+      checkoutIntentKey,
+    });
     const mapped = mapOrderError(error.message);
     return new Response(JSON.stringify({ error: mapped.error, code: mapped.code }), {
       status: mapped.status,
@@ -224,6 +268,7 @@ Deno.serve(async (request: Request) => {
   if (!created?.order_id || created.order_number === undefined) {
     console.error("create-order RPC returned an invalid response", {
       requestKey: effectiveRequestKey,
+      checkoutIntentKey,
     });
     return new Response(
       JSON.stringify({
@@ -246,6 +291,7 @@ Deno.serve(async (request: Request) => {
     console.error("create-order could not load authoritative snapshot", {
       code: snapshotError?.code,
       requestKey: effectiveRequestKey,
+      checkoutIntentKey,
     });
     return new Response(
       JSON.stringify({
