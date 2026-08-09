@@ -1,0 +1,163 @@
+name: One-shot checkout UI PIX homologation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/ui-pix-e2e-homol.yml
+
+jobs:
+  homologate-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      E2E_EMAIL: auto-homol-8f4c3e9a@example.com
+      E2E_PASSWORD: ApoisHomol!8f4c3e9a-2026
+      E2E_BASE_URL: http://127.0.0.1:4173
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install application dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright for this homologation only
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@latest
+          npx playwright install --with-deps chromium
+
+      - name: Create one-shot browser test
+        shell: bash
+        run: |
+          mkdir -p e2e-temp
+          cat > e2e-temp/pix-ui-homol.spec.js <<'EOF'
+          const { test, expect } = require('@playwright/test');
+
+          test('PIX sandbox confirma automaticamente, limpa a sacola e aparece em Pedidos', async ({ page }) => {
+            await page.setViewportSize({ width: 390, height: 844 });
+            const errors = [];
+            page.on('pageerror', (error) => errors.push(`pageerror:${error.message}`));
+            page.on('console', (message) => {
+              if (message.type() === 'error') errors.push(`console:${message.text()}`);
+            });
+
+            await page.goto(`${process.env.E2E_BASE_URL}/login`, { waitUntil: 'domcontentloaded' });
+            await page.getByPlaceholder('Digite seu e-mail').fill(process.env.E2E_EMAIL);
+            await page.getByPlaceholder('Sua senha').fill(process.env.E2E_PASSWORD);
+            await page.getByRole('button', { name: 'Entrar' }).click();
+            await page.waitForURL(/\/inicio(?:\?|$)/, { timeout: 20000 });
+
+            await page.evaluate(() => {
+              localStorage.setItem('apois_cart', JSON.stringify([
+                {
+                  id: '57aed1c2-dd52-48e1-8f84-a21c5570304f',
+                  lineId: '57aed1c2-dd52-48e1-8f84-a21c5570304f',
+                  name: 'Creme de Morango',
+                  description: 'Homologação automática de checkout',
+                  price: 16.9,
+                  basePrice: 16.9,
+                  image: '',
+                  quantity: 1,
+                  merchantId: '6b9c0397-a830-4899-9ee4-2b9b996b118c',
+                  selectedOptions: [],
+                },
+              ]));
+              localStorage.setItem('apois_merchant', JSON.stringify({
+                id: '6b9c0397-a830-4899-9ee4-2b9b996b118c',
+                name: 'Açaí no Grau',
+                logo: '',
+                deliveryFee: 5,
+                deliveryTime: '32–40 min',
+                closeTime: '23:00',
+                category: 'Açaí',
+              }));
+              sessionStorage.setItem('apois_payment_method', 'pix');
+              sessionStorage.removeItem('apois_checkout_attempt_v1');
+              sessionStorage.removeItem('apois_active_pix_v1');
+            });
+
+            await page.goto(`${process.env.E2E_BASE_URL}/checkout`, { waitUntil: 'domcontentloaded' });
+            await expect(page.getByText('Rua de Homologação, 1')).toBeVisible({ timeout: 20000 });
+            await expect(page.getByRole('button', { name: 'Finalizar Pedido' })).toBeEnabled();
+            await page.getByRole('button', { name: 'Finalizar Pedido' }).click();
+
+            await expect(page.getByText('Pagamento PIX')).toBeVisible({ timeout: 25000 });
+            await page.waitForURL(/\/pedido\/confirmado\?orderId=/, { timeout: 50000 });
+            await expect(page.getByRole('heading', { name: /Pedido confirmado/i })).toBeVisible({ timeout: 15000 });
+
+            const confirmedUrl = new URL(page.url());
+            const orderId = confirmedUrl.searchParams.get('orderId');
+            expect(orderId).toMatch(/^[0-9a-f-]{36}$/i);
+
+            const cartState = await page.evaluate(() => ({
+              cart: JSON.parse(localStorage.getItem('apois_cart') || '[]'),
+              merchant: localStorage.getItem('apois_merchant'),
+              activePix: sessionStorage.getItem('apois_active_pix_v1'),
+              attempt: sessionStorage.getItem('apois_checkout_attempt_v1'),
+            }));
+            expect(cartState.cart).toEqual([]);
+            expect(cartState.merchant).toBeNull();
+            expect(cartState.activePix).toBeNull();
+            expect(cartState.attempt).toBeNull();
+
+            const orderNumberText = await page.locator('span.font-mono').innerText();
+            const orderNumber = orderNumberText.replace('#', '').trim();
+            expect(orderNumber).toMatch(/^\d+$/);
+
+            await page.goto(`${process.env.E2E_BASE_URL}/pedidos`, { waitUntil: 'domcontentloaded' });
+            await expect(page.getByText(`Pedido #${orderNumber}`, { exact: false })).toBeVisible({ timeout: 20000 });
+            await expect(page.getByText('Açaí no Grau').first()).toBeVisible();
+
+            const fatalErrors = errors.filter((entry) =>
+              !entry.includes('Failed to load resource') &&
+              !entry.includes('favicon') &&
+              !entry.includes('Google Maps')
+            );
+            expect(fatalErrors, fatalErrors.join('\n')).toEqual([]);
+
+            console.log(`UI_PIX_HOMOLOGATION_OK orderId=${orderId} orderNumber=${orderNumber}`);
+          });
+          EOF
+
+          cat > e2e-temp/playwright.config.js <<'EOF'
+          const { defineConfig } = require('@playwright/test');
+          module.exports = defineConfig({
+            testDir: './',
+            timeout: 90000,
+            expect: { timeout: 15000 },
+            workers: 1,
+            retries: 0,
+            use: {
+              headless: true,
+              trace: 'retain-on-failure',
+              screenshot: 'only-on-failure',
+            },
+            reporter: [['line']],
+          });
+          EOF
+
+      - name: Start APOIS app
+        shell: bash
+        run: |
+          bun run dev -- --host 127.0.0.1 --port 4173 > /tmp/apois-vite.log 2>&1 &
+          echo $! > /tmp/apois-vite.pid
+          for i in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:4173/login >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/apois-vite.log
+          exit 1
+
+      - name: Run browser homologation
+        run: npx playwright test --config=e2e-temp/playwright.config.js
+
+      - name: Show app log on failure
+        if: failure()
+        run: cat /tmp/apois-vite.log || true
