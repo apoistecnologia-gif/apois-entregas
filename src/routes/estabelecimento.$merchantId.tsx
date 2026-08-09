@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -44,7 +44,21 @@ type OptionGroup = Database["public"]["Tables"]["product_option_groups"]["Row"];
 type Option = Database["public"]["Tables"]["product_options"]["Row"];
 
 export const Route = createFileRoute("/estabelecimento/$merchantId")({
+  ssr: false,
+  beforeLoad: async ({ location }) => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      throw redirect({
+        to: "/login",
+        search: { redirect: location.href },
+      });
+    }
+    return { session };
+  },
   component: EstabelecimentoPage,
+  head: () => ({ meta: [{ title: "Estabelecimento | APOIS ENTREGA" }] }),
 });
 
 function EstabelecimentoPage() {
