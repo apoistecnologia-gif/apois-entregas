@@ -15,8 +15,10 @@ const reply = (status: number, body: JsonRecord) =>
   new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 
 Deno.serve(async (request: Request) => {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
-  if (request.method !== "POST") return reply(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
+  if (request.method === "OPTIONS")
+    return new Response(null, { status: 204, headers: corsHeaders });
+  if (request.method !== "POST")
+    return reply(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
 
   const authorization = request.headers.get("Authorization");
   if (!authorization?.startsWith("Bearer ")) {
@@ -26,7 +28,10 @@ Deno.serve(async (request: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   if (!supabaseUrl || !anonKey) {
-    return reply(500, { error: "Serviço temporariamente indisponível.", code: "SERVER_CONFIGURATION" });
+    return reply(500, {
+      error: "Serviço temporariamente indisponível.",
+      code: "SERVER_CONFIGURATION",
+    });
   }
 
   const token = authorization.slice("Bearer ".length);
@@ -44,7 +49,8 @@ Deno.serve(async (request: Request) => {
   } catch {
     return reply(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
   }
-  if (!isRecord(payload)) return reply(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
+  if (!isRecord(payload))
+    return reply(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
 
   const client = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authorization } },
@@ -54,7 +60,8 @@ Deno.serve(async (request: Request) => {
   if (payload.action === "list") {
     const { data, error } = await client
       .from("customer_favorites")
-      .select(`
+      .select(
+        `
         merchant_id,
         created_at,
         merchants (
@@ -74,13 +81,17 @@ Deno.serve(async (request: Request) => {
           neighborhood,
           is_open
         )
-      `)
+      `,
+      )
       .eq("customer_user_id", authData.user.id)
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("customer-favorites list failed", { code: error.code });
-      return reply(500, { error: "Não foi possível carregar seus favoritos.", code: "LIST_FAILED" });
+      return reply(500, {
+        error: "Não foi possível carregar seus favoritos.",
+        code: "LIST_FAILED",
+      });
     }
     return reply(200, { favorites: data ?? [] });
   }
@@ -97,7 +108,8 @@ Deno.serve(async (request: Request) => {
       .eq("customer_user_id", authData.user.id)
       .eq("merchant_id", merchantId)
       .maybeSingle();
-    if (error) return reply(500, { error: "Não foi possível consultar o favorito.", code: "STATUS_FAILED" });
+    if (error)
+      return reply(500, { error: "Não foi possível consultar o favorito.", code: "STATUS_FAILED" });
     return reply(200, { favorite: Boolean(data) });
   }
 
@@ -108,7 +120,8 @@ Deno.serve(async (request: Request) => {
       .eq("customer_user_id", authData.user.id)
       .eq("merchant_id", merchantId)
       .maybeSingle();
-    if (existingError) return reply(500, { error: "Não foi possível atualizar o favorito.", code: "TOGGLE_FAILED" });
+    if (existingError)
+      return reply(500, { error: "Não foi possível atualizar o favorito.", code: "TOGGLE_FAILED" });
 
     if (existing) {
       const { error } = await client
@@ -116,7 +129,11 @@ Deno.serve(async (request: Request) => {
         .delete()
         .eq("customer_user_id", authData.user.id)
         .eq("merchant_id", merchantId);
-      if (error) return reply(500, { error: "Não foi possível remover dos favoritos.", code: "DELETE_FAILED" });
+      if (error)
+        return reply(500, {
+          error: "Não foi possível remover dos favoritos.",
+          code: "DELETE_FAILED",
+        });
       return reply(200, { favorite: false });
     }
 
@@ -127,7 +144,9 @@ Deno.serve(async (request: Request) => {
     if (error) {
       const inactive = error.code === "42501";
       return reply(inactive ? 409 : 500, {
-        error: inactive ? "Este estabelecimento não está disponível para favoritar." : "Não foi possível adicionar aos favoritos.",
+        error: inactive
+          ? "Este estabelecimento não está disponível para favoritar."
+          : "Não foi possível adicionar aos favoritos.",
         code: inactive ? "MERCHANT_UNAVAILABLE" : "INSERT_FAILED",
       });
     }

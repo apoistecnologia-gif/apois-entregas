@@ -14,8 +14,10 @@ const reply = (status: number, body: JsonRecord) =>
   new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 
 Deno.serve(async (request: Request) => {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
-  if (request.method !== "POST") return reply(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
+  if (request.method === "OPTIONS")
+    return new Response(null, { status: 204, headers: corsHeaders });
+  if (request.method !== "POST")
+    return reply(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
 
   const authorization = request.headers.get("Authorization");
   if (!authorization?.startsWith("Bearer ")) {
@@ -25,7 +27,10 @@ Deno.serve(async (request: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   if (!supabaseUrl || !anonKey) {
-    return reply(500, { error: "Serviço temporariamente indisponível.", code: "SERVER_CONFIGURATION" });
+    return reply(500, {
+      error: "Serviço temporariamente indisponível.",
+      code: "SERVER_CONFIGURATION",
+    });
   }
 
   const token = authorization.slice("Bearer ".length);
@@ -43,7 +48,8 @@ Deno.serve(async (request: Request) => {
   } catch {
     return reply(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
   }
-  if (!isRecord(payload)) return reply(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
+  if (!isRecord(payload))
+    return reply(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
 
   const client = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authorization } },
@@ -56,7 +62,11 @@ Deno.serve(async (request: Request) => {
       .select("order_updates,promotions,product_news,account_alerts")
       .eq("user_id", authData.user.id)
       .maybeSingle();
-    if (preferenceError) return reply(500, { error: "Não foi possível carregar suas preferências.", code: "PREFERENCES_FAILED" });
+    if (preferenceError)
+      return reply(500, {
+        error: "Não foi possível carregar suas preferências.",
+        code: "PREFERENCES_FAILED",
+      });
 
     const { data: notifications, error: notificationsError } = await client
       .from("notifications")
@@ -64,7 +74,11 @@ Deno.serve(async (request: Request) => {
       .eq("user_id", authData.user.id)
       .order("created_at", { ascending: false })
       .limit(50);
-    if (notificationsError) return reply(500, { error: "Não foi possível carregar suas notificações.", code: "NOTIFICATIONS_FAILED" });
+    if (notificationsError)
+      return reply(500, {
+        error: "Não foi possível carregar suas notificações.",
+        code: "NOTIFICATIONS_FAILED",
+      });
 
     return reply(200, {
       preferences: preference ?? {
@@ -79,7 +93,8 @@ Deno.serve(async (request: Request) => {
 
   if (payload.action === "save") {
     const settings = payload.settings;
-    if (!isRecord(settings)) return reply(400, { error: "Preferências inválidas.", code: "INVALID_SETTINGS" });
+    if (!isRecord(settings))
+      return reply(400, { error: "Preferências inválidas.", code: "INVALID_SETTINGS" });
     const keys = ["order_updates", "promotions", "product_news", "account_alerts"] as const;
     for (const key of keys) {
       if (typeof settings[key] !== "boolean") {
@@ -97,15 +112,26 @@ Deno.serve(async (request: Request) => {
       },
       { onConflict: "user_id" },
     );
-    if (error) return reply(500, { error: "Não foi possível salvar suas preferências.", code: "SAVE_FAILED" });
+    if (error)
+      return reply(500, {
+        error: "Não foi possível salvar suas preferências.",
+        code: "SAVE_FAILED",
+      });
     return reply(200, { saved: true });
   }
 
   if (payload.action === "read") {
     const notificationId = payload.notificationId;
-    if (typeof notificationId !== "string") return reply(400, { error: "Notificação inválida.", code: "INVALID_NOTIFICATION" });
-    const { error } = await client.rpc("mark_notification_read", { _notification_id: notificationId });
-    if (error) return reply(500, { error: "Não foi possível marcar a notificação como lida.", code: "READ_FAILED" });
+    if (typeof notificationId !== "string")
+      return reply(400, { error: "Notificação inválida.", code: "INVALID_NOTIFICATION" });
+    const { error } = await client.rpc("mark_notification_read", {
+      _notification_id: notificationId,
+    });
+    if (error)
+      return reply(500, {
+        error: "Não foi possível marcar a notificação como lida.",
+        code: "READ_FAILED",
+      });
     return reply(200, { read: true });
   }
 

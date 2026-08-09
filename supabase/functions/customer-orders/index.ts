@@ -41,8 +41,10 @@ function response(status: number, body: JsonRecord) {
 }
 
 Deno.serve(async (request: Request) => {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
-  if (request.method !== "POST") return response(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
+  if (request.method === "OPTIONS")
+    return new Response(null, { status: 204, headers: corsHeaders });
+  if (request.method !== "POST")
+    return response(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
 
   const authorization = request.headers.get("Authorization");
   if (!authorization?.startsWith("Bearer ")) {
@@ -54,7 +56,10 @@ Deno.serve(async (request: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     console.error("customer-orders: Supabase environment is incomplete");
-    return response(500, { error: "Serviço temporariamente indisponível.", code: "SERVER_CONFIGURATION" });
+    return response(500, {
+      error: "Serviço temporariamente indisponível.",
+      code: "SERVER_CONFIGURATION",
+    });
   }
 
   const token = authorization.slice("Bearer ".length);
@@ -72,7 +77,8 @@ Deno.serve(async (request: Request) => {
   } catch {
     return response(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
   }
-  if (!isRecord(payload)) return response(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
+  if (!isRecord(payload))
+    return response(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -91,15 +97,29 @@ Deno.serve(async (request: Request) => {
     if (typeof orderId !== "string" || !UUID_RE.test(orderId)) {
       return response(400, { error: "Pedido inválido.", code: "INVALID_ORDER_ID" });
     }
-    if (typeof merchantRating !== "number" || !Number.isInteger(merchantRating) || merchantRating < 1 || merchantRating > 5) {
-      return response(400, { error: "Avaliação do estabelecimento inválida.", code: "INVALID_MERCHANT_RATING" });
+    if (
+      typeof merchantRating !== "number" ||
+      !Number.isInteger(merchantRating) ||
+      merchantRating < 1 ||
+      merchantRating > 5
+    ) {
+      return response(400, {
+        error: "Avaliação do estabelecimento inválida.",
+        code: "INVALID_MERCHANT_RATING",
+      });
     }
     if (
       courierRating !== null &&
       courierRating !== undefined &&
-      (typeof courierRating !== "number" || !Number.isInteger(courierRating) || courierRating < 1 || courierRating > 5)
+      (typeof courierRating !== "number" ||
+        !Number.isInteger(courierRating) ||
+        courierRating < 1 ||
+        courierRating > 5)
     ) {
-      return response(400, { error: "Avaliação da entrega inválida.", code: "INVALID_COURIER_RATING" });
+      return response(400, {
+        error: "Avaliação da entrega inválida.",
+        code: "INVALID_COURIER_RATING",
+      });
     }
     if (comment !== null && comment !== undefined && typeof comment !== "string") {
       return response(400, { error: "Comentário inválido.", code: "INVALID_COMMENT" });
@@ -125,7 +145,11 @@ Deno.serve(async (request: Request) => {
           : notDelivered
             ? "O pedido só pode ser avaliado depois da entrega."
             : "Não foi possível enviar sua avaliação.",
-        code: alreadyReviewed ? "ALREADY_REVIEWED" : notDelivered ? "NOT_DELIVERED" : "REVIEW_FAILED",
+        code: alreadyReviewed
+          ? "ALREADY_REVIEWED"
+          : notDelivered
+            ? "NOT_DELIVERED"
+            : "REVIEW_FAILED",
       });
     }
 
@@ -140,7 +164,10 @@ Deno.serve(async (request: Request) => {
       return response(400, { error: "Pedido inválido.", code: "INVALID_ORDER_ID" });
     }
     if (typeof reason !== "string" || reason.trim().length < 3 || reason.trim().length > 500) {
-      return response(400, { error: "Informe um motivo válido para o cancelamento.", code: "INVALID_REASON" });
+      return response(400, {
+        error: "Informe um motivo válido para o cancelamento.",
+        code: "INVALID_REASON",
+      });
     }
 
     const { data: cancellation, error } = await userClient.rpc("customer_cancel_order", {
@@ -163,13 +190,15 @@ Deno.serve(async (request: Request) => {
   }
 
   if (payload.action === "list") {
-    const limit = typeof payload.limit === "number" && Number.isInteger(payload.limit)
-      ? Math.min(Math.max(payload.limit, 1), 100)
-      : 50;
+    const limit =
+      typeof payload.limit === "number" && Number.isInteger(payload.limit)
+        ? Math.min(Math.max(payload.limit, 1), 100)
+        : 50;
 
     const { data, error } = await adminClient
       .from("orders")
-      .select(`
+      .select(
+        `
         id,
         order_number,
         status,
@@ -203,14 +232,18 @@ Deno.serve(async (request: Request) => {
           line_total,
           selected_options
         )
-      `)
+      `,
+      )
       .eq("customer_user_id", authData.user.id)
       .order("created_at", { ascending: false })
       .limit(limit);
 
     if (error) {
       console.error("customer-orders list failed", { code: error.code, userId: authData.user.id });
-      return response(500, { error: "Não foi possível carregar seus pedidos.", code: "LIST_FAILED" });
+      return response(500, {
+        error: "Não foi possível carregar seus pedidos.",
+        code: "LIST_FAILED",
+      });
     }
 
     return response(200, { orders: data ?? [] });
@@ -224,7 +257,8 @@ Deno.serve(async (request: Request) => {
 
     const { data: order, error: orderError } = await adminClient
       .from("orders")
-      .select(`
+      .select(
+        `
         id,
         order_number,
         status,
@@ -277,14 +311,16 @@ Deno.serve(async (request: Request) => {
           changed_by_user_id,
           created_at
         )
-      `)
+      `,
+      )
       .eq("id", orderId)
       .eq("customer_user_id", authData.user.id)
       .single();
 
     if (orderError || !order) {
       const notFound = orderError?.code === "PGRST116";
-      if (!notFound) console.error("customer-orders detail failed", { code: orderError?.code, orderId });
+      if (!notFound)
+        console.error("customer-orders detail failed", { code: orderError?.code, orderId });
       return response(notFound ? 404 : 500, {
         error: notFound ? "Pedido não encontrado." : "Não foi possível carregar o pedido.",
         code: notFound ? "NOT_FOUND" : "DETAIL_FAILED",
@@ -293,7 +329,8 @@ Deno.serve(async (request: Request) => {
 
     const { data: deliveryJob, error: deliveryError } = await adminClient
       .from("delivery_jobs")
-      .select(`
+      .select(
+        `
         id,
         status,
         courier_id,
@@ -321,16 +358,21 @@ Deno.serve(async (request: Request) => {
           rating,
           review_count
         )
-      `)
+      `,
+      )
       .eq("order_id", orderId)
       .maybeSingle();
 
     if (deliveryError) {
-      console.error("customer-orders delivery detail failed", { code: deliveryError.code, orderId });
+      console.error("customer-orders delivery detail failed", {
+        code: deliveryError.code,
+        orderId,
+      });
     }
 
     const courierRelation = deliveryJob?.couriers;
-    const courier = (Array.isArray(courierRelation) ? courierRelation[0] : courierRelation) as CourierRelation | null | undefined;
+    const courier = (Array.isArray(courierRelation) ? courierRelation[0] : courierRelation) as
+      CourierRelation | null | undefined;
     let courierProfile: CourierProfile | null = null;
     if (courier?.user_id) {
       const { data: profile, error: profileError } = await adminClient
@@ -339,7 +381,10 @@ Deno.serve(async (request: Request) => {
         .eq("id", courier.user_id)
         .maybeSingle();
       if (profileError) {
-        console.error("customer-orders courier profile failed", { code: profileError.code, orderId });
+        console.error("customer-orders courier profile failed", {
+          code: profileError.code,
+          orderId,
+        });
       }
       courierProfile = (profile ?? null) as CourierProfile | null;
     }
@@ -374,7 +419,8 @@ Deno.serve(async (request: Request) => {
         .select("pin_code")
         .eq("order_id", orderId)
         .maybeSingle();
-      if (secretError) console.error("customer-orders PIN load failed", { code: secretError.code, orderId });
+      if (secretError)
+        console.error("customer-orders PIN load failed", { code: secretError.code, orderId });
       pin = secret?.pin_code ?? null;
     }
 

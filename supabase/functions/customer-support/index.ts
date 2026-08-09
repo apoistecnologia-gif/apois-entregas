@@ -14,8 +14,10 @@ const reply = (status: number, body: JsonRecord) =>
   new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 
 Deno.serve(async (request: Request) => {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
-  if (request.method !== "POST") return reply(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
+  if (request.method === "OPTIONS")
+    return new Response(null, { status: 204, headers: corsHeaders });
+  if (request.method !== "POST")
+    return reply(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
 
   const authorization = request.headers.get("Authorization");
   if (!authorization?.startsWith("Bearer ")) {
@@ -25,13 +27,19 @@ Deno.serve(async (request: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   if (!supabaseUrl || !anonKey) {
-    return reply(500, { error: "Serviço temporariamente indisponível.", code: "SERVER_CONFIGURATION" });
+    return reply(500, {
+      error: "Serviço temporariamente indisponível.",
+      code: "SERVER_CONFIGURATION",
+    });
   }
 
   const token = authorization.slice("Bearer ".length);
-  const authClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const authClient = createClient(supabaseUrl, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
   const { data: authData, error: authError } = await authClient.auth.getUser(token);
-  if (authError || !authData.user) return reply(401, { error: "Sessão inválida ou expirada.", code: "UNAUTHORIZED" });
+  if (authError || !authData.user)
+    return reply(401, { error: "Sessão inválida ou expirada.", code: "UNAUTHORIZED" });
 
   let payload: unknown;
   try {
@@ -39,7 +47,8 @@ Deno.serve(async (request: Request) => {
   } catch {
     return reply(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
   }
-  if (!isRecord(payload)) return reply(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
+  if (!isRecord(payload))
+    return reply(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
 
   const client = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authorization } },
@@ -49,10 +58,12 @@ Deno.serve(async (request: Request) => {
   if (payload.action === "list") {
     const { data, error } = await client
       .from("support_tickets")
-      .select(`
+      .select(
+        `
         id,category,subject,description,priority,status,order_id,delivery_job_id,created_at,updated_at,resolved_at,closed_at,
         support_messages(id,sender_user_id,message,attachment_paths,is_internal,created_at)
-      `)
+      `,
+      )
       .eq("requester_user_id", authData.user.id)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -73,14 +84,24 @@ Deno.serve(async (request: Request) => {
     const description = payload.description;
     const orderId = payload.orderId;
 
-    if (typeof category !== "string" || !["orders", "payments", "account", "addresses", "other"].includes(category)) {
+    if (
+      typeof category !== "string" ||
+      !["orders", "payments", "account", "addresses", "other"].includes(category)
+    ) {
       return reply(400, { error: "Categoria inválida.", code: "INVALID_CATEGORY" });
     }
     if (typeof subject !== "string" || subject.trim().length < 3 || subject.trim().length > 150) {
       return reply(400, { error: "Informe um assunto válido.", code: "INVALID_SUBJECT" });
     }
-    if (typeof description !== "string" || description.trim().length < 10 || description.trim().length > 3000) {
-      return reply(400, { error: "Descreva o problema com pelo menos 10 caracteres.", code: "INVALID_DESCRIPTION" });
+    if (
+      typeof description !== "string" ||
+      description.trim().length < 10 ||
+      description.trim().length > 3000
+    ) {
+      return reply(400, {
+        error: "Descreva o problema com pelo menos 10 caracteres.",
+        code: "INVALID_DESCRIPTION",
+      });
     }
     if (orderId !== null && orderId !== undefined && typeof orderId !== "string") {
       return reply(400, { error: "Pedido inválido.", code: "INVALID_ORDER" });
@@ -103,7 +124,12 @@ Deno.serve(async (request: Request) => {
   if (payload.action === "message") {
     const ticketId = payload.ticketId;
     const message = payload.message;
-    if (typeof ticketId !== "string" || typeof message !== "string" || message.trim().length < 1 || message.trim().length > 3000) {
+    if (
+      typeof ticketId !== "string" ||
+      typeof message !== "string" ||
+      message.trim().length < 1 ||
+      message.trim().length > 3000
+    ) {
       return reply(400, { error: "Mensagem inválida.", code: "INVALID_MESSAGE" });
     }
     const { error } = await client.rpc("add_support_message", {
