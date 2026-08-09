@@ -1,0 +1,58 @@
+name: Fix Checkout Lint Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fix-lint-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Fix prefer-const lint error
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/routes/checkout.tsx')
+          text = path.read_text()
+          old = '    let reconcileTimer: number | undefined;\n'
+          new = '    const reconcileTimer = window.setInterval(() => void reconcileWithProvider(), 4000);\n'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one reconcileTimer declaration, got {text.count(old)}')
+          assignment = '    reconcileTimer = window.setInterval(() => void reconcileWithProvider(), 4000);\n'
+          if text.count(assignment) != 1:
+              raise SystemExit(f'expected one reconcileTimer assignment, got {text.count(assignment)}')
+          text = text.replace(old, '', 1).replace(assignment, new, 1)
+          path.write_text(text)
+          PY
+
+      - name: Verify lint
+        run: |
+          bun install --frozen-lockfile
+          bun run lint
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+
+      - name: Remove one-shot workflow
+        run: rm .github/workflows/fix-lint-once.yml
+
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(checkout): resolve release lint error"
+          git push origin HEAD:main
