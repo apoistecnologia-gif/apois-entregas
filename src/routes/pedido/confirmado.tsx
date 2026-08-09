@@ -9,6 +9,7 @@ const orderSearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/pedido/confirmado")({
+  ssr: false,
   validateSearch: orderSearchSchema,
   beforeLoad: async ({ location }) => {
     const {
