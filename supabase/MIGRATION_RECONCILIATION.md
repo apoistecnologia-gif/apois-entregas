@@ -90,6 +90,14 @@ Esses registros não devem ser “corrigidos” retroativamente no banco. A dive
 - `20260809173533` — `courier_online_sessions_and_metrics`
 - `20260809174412` — `audit_admin_operational_configuration`
 - `20260809175133` — `audit_admin_support_replies`
+- `20260809190114` — `enforce_active_accounts_for_courier_finance`
+- `20260809190300` — `customer_self_deactivation`
+- `20260809191243` — `merchant_split_and_special_hours`
+- `20260809192545` — `pickup_coupon_checkout_v2`
+- `20260809193044` — `fix_coupon_redemption_conflict`
+- `20260809193645` — `secure_pickup_completion_with_pin`
+- `20260809194128` — `fix_pin_random_bytes_schema`
+- `20260809194317` — `merchant_coupon_redemption_visibility`
 
 ## Verificação das migrations novas convergentes
 
@@ -127,6 +135,62 @@ Esses registros não devem ser “corrigidos” retroativamente no banco. A dive
 - nome remoto: `audit_admin_support_replies`;
 - bytes do SQL no ledger: `2472`;
 - SHA-256 remoto: `02a823429ff40098a2872c8b6c4515e0530748d719a92b474566b67c8ba3fe06`.
+
+### `20260809190114_enforce_active_accounts_for_courier_finance.sql`
+
+- versão remota: `20260809190114`;
+- nome remoto: `enforce_active_accounts_for_courier_finance`;
+- bytes do SQL no ledger: `17051`;
+- SHA-256 remoto: `951faae3bb3bada88dd6531ee9f89442a0402a7c1674d5b0c891fe4542cb89d3`.
+
+### `20260809190300_customer_self_deactivation.sql`
+
+- versão remota: `20260809190300`;
+- nome remoto: `customer_self_deactivation`;
+- bytes do SQL no ledger: `1258`;
+- SHA-256 remoto: `9b9a924681fad78d2cda79b6bdc637c80115d73bdf349f909d0b8872e5a1e9fd`.
+
+### `20260809191243_merchant_split_and_special_hours.sql`
+
+- versão remota: `20260809191243`;
+- nome remoto: `merchant_split_and_special_hours`;
+- bytes do SQL no ledger: `2901`;
+- SHA-256 remoto: `2dbfa500e4d9a50a4e03c635b4bdc26cc6cd39e5bd844fdf1c1a62ba99fd638a`.
+
+### `20260809192545_pickup_coupon_checkout_v2.sql`
+
+- versão remota: `20260809192545`;
+- nome remoto: `pickup_coupon_checkout_v2`;
+- bytes do SQL no ledger: `17628`;
+- SHA-256 remoto: `140f625bc12b26b4ef19ffc096d59108547a73583ecb2c92de3b92ece261637d`.
+
+### `20260809193044_fix_coupon_redemption_conflict.sql`
+
+- versão remota: `20260809193044`;
+- nome remoto: `fix_coupon_redemption_conflict`;
+- bytes do SQL no ledger: `803`;
+- SHA-256 remoto: `69c2a97def931f267781f84e232eda60b1af28b7582ff2d13ac09749c29de221`.
+
+### `20260809193645_secure_pickup_completion_with_pin.sql`
+
+- versão remota: `20260809193645`;
+- nome remoto: `secure_pickup_completion_with_pin`;
+- bytes do SQL no ledger: `5561`;
+- SHA-256 remoto: `5bd0a9537ca25de589d29f41bcfa55fcec138f041124d9b0c38b91bbf637f037`.
+
+### `20260809194128_fix_pin_random_bytes_schema.sql`
+
+- versão remota: `20260809194128`;
+- nome remoto: `fix_pin_random_bytes_schema`;
+- bytes do SQL no ledger: `673`;
+- SHA-256 remoto: `caf1ccf881120077851e59b6e76b47d72ceb45890e15ba77b956c82ba4bad96f`.
+
+### `20260809194317_merchant_coupon_redemption_visibility.sql`
+
+- versão remota: `20260809194317`;
+- nome remoto: `merchant_coupon_redemption_visibility`;
+- bytes do SQL no ledger: `362`;
+- SHA-256 remoto: `fc1eccf8a7313ab59f4fbf8b3a91fec3498abcd8ebbdae6ba8cb4e18d97bb4ad`.
 
 O commit histórico `b9a06ac99970f622838be081df908bc323b202bd` preserva a primeira captura completa de hashes do ledger remoto. As migrations posteriores a `20260809153337` passam a usar o mesmo `version id` no Supabase e no Git.
 
