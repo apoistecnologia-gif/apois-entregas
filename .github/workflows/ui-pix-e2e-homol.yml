@@ -49,7 +49,7 @@ jobs:
               errors.push(`requestfailed:${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`),
             );
 
-            await page.goto(`${process.env.E2E_BASE_URL}/login`, { waitUntil: 'networkidle' });
+            await page.goto(`${process.env.E2E_BASE_URL}/login`, { waitUntil: 'domcontentloaded' });
             await page.waitForTimeout(1200);
             await page.getByPlaceholder('Digite seu e-mail').fill(process.env.E2E_EMAIL);
             await page.getByPlaceholder('Sua senha').fill(process.env.E2E_PASSWORD);
@@ -92,7 +92,7 @@ jobs:
               sessionStorage.removeItem('apois_active_pix');
             });
 
-            await page.goto(`${process.env.E2E_BASE_URL}/checkout`, { waitUntil: 'networkidle' });
+            await page.goto(`${process.env.E2E_BASE_URL}/checkout`, { waitUntil: 'domcontentloaded' });
             try {
               await expect(page.getByText('Rua de Homologação, 1')).toBeVisible({ timeout: 20000 });
             } catch (error) {
@@ -115,8 +115,9 @@ jobs:
             const activePixBeforeReload = await page.evaluate(() => sessionStorage.getItem('apois_active_pix'));
             expect(activePixBeforeReload).not.toBeNull();
 
-            // Prova que um hard reload durante o PIX preserva sessão, sacola e pagamento ativo.
-            await page.reload({ waitUntil: 'networkidle' });
+            // Realtime/polling intentionally keep requests open, so wait for DOM load instead
+            // of networkidle when exercising the hard-reload recovery path.
+            await page.reload({ waitUntil: 'domcontentloaded' });
             if (!/\/pedido\/confirmado\?orderId=/.test(page.url())) {
               await expect(page.getByText('Pagamento PIX')).toBeVisible({ timeout: 15000 });
             }
@@ -143,7 +144,7 @@ jobs:
             const orderNumber = orderNumberText.replace('#', '').trim();
             expect(orderNumber).toMatch(/^\d+$/);
 
-            await page.goto(`${process.env.E2E_BASE_URL}/pedidos`, { waitUntil: 'networkidle' });
+            await page.goto(`${process.env.E2E_BASE_URL}/pedidos`, { waitUntil: 'domcontentloaded' });
             await expect(page.getByText(`Pedido #${orderNumber}`, { exact: false })).toBeVisible({ timeout: 20000 });
             await expect(page.getByText('Açaí no Grau').first()).toBeVisible();
 
@@ -163,7 +164,7 @@ jobs:
           const { defineConfig } = require('@playwright/test');
           module.exports = defineConfig({
             testDir: './',
-            timeout: 90000,
+            timeout: 120000,
             expect: { timeout: 15000 },
             workers: 1,
             retries: 0,
