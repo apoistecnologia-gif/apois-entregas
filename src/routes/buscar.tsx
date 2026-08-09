@@ -14,7 +14,6 @@ import {
   Clock,
   X,
   ShoppingBag,
-  Heart,
   Store,
 } from "lucide-react";
 import { AppBottomNav } from "@/components/AppBottomNav";
@@ -390,11 +389,10 @@ function Buscar() {
                     </div>
 
                     <div className="flex flex-col justify-center gap-1.5 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
                         <h3 className="truncate text-base font-extrabold text-white">
                           {merchant.name}
                         </h3>
-                        <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
                       </div>
 
                       <div className="flex flex-col gap-1">

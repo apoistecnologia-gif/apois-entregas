@@ -17,7 +17,6 @@ import {
   Store,
   Star,
   Clock,
-  Heart,
 } from "lucide-react";
 import { AppBottomNav } from "@/components/AppBottomNav";
 import { Input } from "@/components/ui/input";
@@ -286,9 +285,13 @@ function Inicio() {
               <MapPin className="h-5 w-5 shrink-0 text-primary" />
               <span className="truncate">Perto de você</span>
             </h2>
-            <span className="flex shrink-0 items-center gap-0.5 text-[13px] font-semibold text-primary">
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/buscar", search: {} })}
+              className="flex shrink-0 items-center gap-0.5 text-[13px] font-semibold text-primary"
+            >
               Ver mais <ChevronRight className="h-4 w-4" />
-            </span>
+            </button>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -329,11 +332,10 @@ function Inicio() {
                     </div>
 
                     <div className="flex flex-col justify-center gap-1.5 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
                         <h3 className="truncate text-base font-extrabold text-white">
                           {merchant.name}
                         </h3>
-                        <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
                       </div>
 
                       <div className="flex flex-col gap-1">
@@ -415,7 +417,11 @@ function Inicio() {
         </section>
 
         {/* Banner APOIS+ */}
-        <button className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-zinc-950 to-black px-3 py-4 text-left shadow-[0_10px_30px_-18px_rgba(255,215,0,0.7)] transition-transform active:scale-[0.99]">
+        <button
+          type="button"
+          onClick={() => navigate({ to: "/apois-plus" })}
+          className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-zinc-950 to-black px-3 py-4 text-left shadow-[0_10px_30px_-18px_rgba(255,215,0,0.7)] transition-transform active:scale-[0.99]"
+        >
           <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-primary/10 ring-1 ring-primary/30">
             <Crown className="h-7 w-7 text-primary" />
           </span>
@@ -424,7 +430,7 @@ function Inicio() {
               Seja <span className="text-primary">APOIS+</span>
             </span>
             <span className="block truncate text-[13px] text-zinc-400">
-              Frete grátis e benefícios exclusivos
+              Conheça os benefícios que estão chegando
             </span>
           </span>
           <ChevronRight className="h-5 w-5 shrink-0 text-primary" />
