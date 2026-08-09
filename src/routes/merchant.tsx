@@ -22,7 +22,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/merchant")({
   beforeLoad: async ({ location }) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) throw redirect({ to: "/login", search: { redirect: location.href } });
     return { session };
   },
@@ -30,9 +32,14 @@ export const Route = createFileRoute("/merchant")({
   head: () => ({ meta: [{ title: "Painel do Estabelecimento | APOIS ENTREGA" }] }),
 });
 
-const money = (value: unknown) => `R$ ${Number(value ?? 0).toFixed(2).replace(".", ",")}`;
-const dateTime = (value: string | null | undefined) => value ? new Date(value).toLocaleString("pt-BR") : "—";
-const rpc = (name: string, args?: Record<string, unknown>) => (supabase.rpc as any)(name, args ?? {});
+const money = (value: unknown) =>
+  `R$ ${Number(value ?? 0)
+    .toFixed(2)
+    .replace(".", ",")}`;
+const dateTime = (value: string | null | undefined) =>
+  value ? new Date(value).toLocaleString("pt-BR") : "—";
+const rpc = (name: string, args?: Record<string, unknown>) =>
+  (supabase.rpc as any)(name, args ?? {});
 const from = (table: string) => (supabase.from as any)(table);
 const week = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -56,19 +63,52 @@ function MerchantWorkspace() {
   const [payouts, setPayouts] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [busyAction, setBusyAction] = useState<string | null>(null);
-  const [productDraft, setProductDraft] = useState({ name: "", price: "", categoryId: "", description: "" });
-  const [payoutDraft, setPayoutDraft] = useState({ pixKey: "", holderName: "", document: "", amount: "" });
-  const [settingsDraft, setSettingsDraft] = useState({ deliveryFee: "", minimumOrder: "", minMinutes: "", maxMinutes: "", temporarilyClosed: false });
+  const [productDraft, setProductDraft] = useState({
+    name: "",
+    price: "",
+    categoryId: "",
+    description: "",
+  });
+  const [payoutDraft, setPayoutDraft] = useState({
+    pixKey: "",
+    holderName: "",
+    document: "",
+    amount: "",
+  });
+  const [settingsDraft, setSettingsDraft] = useState({
+    deliveryFee: "",
+    minimumOrder: "",
+    minMinutes: "",
+    maxMinutes: "",
+    temporarilyClosed: false,
+  });
 
   const loadOperations = useCallback(async (merchantId: string) => {
-    const [ordersRes, categoriesRes, productsRes, hoursRes, walletRes, reviewsRes] = await Promise.all([
-      from("orders").select("*, order_items(*)").eq("merchant_id", merchantId).order("created_at", { ascending: false }).limit(100),
-      from("menu_categories").select("*").eq("merchant_id", merchantId).order("sort_order").order("name"),
-      from("products").select("*").eq("merchant_id", merchantId).order("sort_order").order("name"),
-      from("merchant_hours").select("*").eq("merchant_id", merchantId).order("weekday"),
-      from("wallets").select("*").eq("merchant_id", merchantId).maybeSingle(),
-      from("reviews").select("*").eq("merchant_id", merchantId).order("created_at", { ascending: false }).limit(50),
-    ]);
+    const [ordersRes, categoriesRes, productsRes, hoursRes, walletRes, reviewsRes] =
+      await Promise.all([
+        from("orders")
+          .select("*, order_items(*)")
+          .eq("merchant_id", merchantId)
+          .order("created_at", { ascending: false })
+          .limit(100),
+        from("menu_categories")
+          .select("*")
+          .eq("merchant_id", merchantId)
+          .order("sort_order")
+          .order("name"),
+        from("products")
+          .select("*")
+          .eq("merchant_id", merchantId)
+          .order("sort_order")
+          .order("name"),
+        from("merchant_hours").select("*").eq("merchant_id", merchantId).order("weekday"),
+        from("wallets").select("*").eq("merchant_id", merchantId).maybeSingle(),
+        from("reviews")
+          .select("*")
+          .eq("merchant_id", merchantId)
+          .order("created_at", { ascending: false })
+          .limit(50),
+      ]);
 
     if (ordersRes.error) toast.error("Não foi possível carregar os pedidos do estabelecimento.");
     setOrders(ordersRes.data ?? []);
@@ -81,9 +121,17 @@ function MerchantWorkspace() {
     setWallet(merchantWallet);
     if (merchantWallet) {
       const [txRes, accountRes, payoutsRes] = await Promise.all([
-        from("wallet_transactions").select("*").eq("wallet_id", merchantWallet.id).order("created_at", { ascending: false }).limit(100),
+        from("wallet_transactions")
+          .select("*")
+          .eq("wallet_id", merchantWallet.id)
+          .order("created_at", { ascending: false })
+          .limit(100),
         from("payout_accounts").select("*").eq("wallet_id", merchantWallet.id).maybeSingle(),
-        from("payouts").select("*").eq("wallet_id", merchantWallet.id).order("requested_at", { ascending: false }).limit(50),
+        from("payouts")
+          .select("*")
+          .eq("wallet_id", merchantWallet.id)
+          .order("requested_at", { ascending: false })
+          .limit(50),
       ]);
       setTransactions(txRes.data ?? []);
       setPayoutAccount(accountRes.data ?? null);
@@ -103,68 +151,90 @@ function MerchantWorkspace() {
     }
   }, []);
 
-  const loadAll = useCallback(async (quiet = false) => {
-    quiet ? setRefreshing(true) : setLoading(true);
-    try {
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-      if (authError || !authUser) throw new Error("Sessão expirada.");
-      setUser(authUser);
+  const loadAll = useCallback(
+    async (quiet = false) => {
+      quiet ? setRefreshing(true) : setLoading(true);
+      try {
+        const {
+          data: { user: authUser },
+          error: authError,
+        } = await supabase.auth.getUser();
+        if (authError || !authUser) throw new Error("Sessão expirada.");
+        setUser(authUser);
 
-      const categoriesRes = await from("merchant_categories").select("*").eq("is_active", true).order("sort_order").order("name");
-      setMerchantCategories(categoriesRes.data ?? []);
+        const categoriesRes = await from("merchant_categories")
+          .select("*")
+          .eq("is_active", true)
+          .order("sort_order")
+          .order("name");
+        setMerchantCategories(categoriesRes.data ?? []);
 
-      const memberRes = await from("merchant_members")
-        .select("*")
-        .eq("user_id", authUser.id)
-        .eq("status", "active")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        const memberRes = await from("merchant_members")
+          .select("*")
+          .eq("user_id", authUser.id)
+          .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      if (memberRes.error) throw memberRes.error;
-      const member = memberRes.data ?? null;
-      setMembership(member);
-      if (!member) {
-        setMerchant(null);
-        setDocuments([]);
-        return;
+        if (memberRes.error) throw memberRes.error;
+        const member = memberRes.data ?? null;
+        setMembership(member);
+        if (!member) {
+          setMerchant(null);
+          setDocuments([]);
+          return;
+        }
+
+        const [merchantRes, docsRes] = await Promise.all([
+          from("merchants").select("*").eq("id", member.merchant_id).maybeSingle(),
+          from("merchant_documents")
+            .select("*")
+            .eq("merchant_id", member.merchant_id)
+            .order("created_at"),
+        ]);
+        if (merchantRes.error || !merchantRes.data)
+          throw merchantRes.error ?? new Error("Estabelecimento não encontrado.");
+        setMerchant(merchantRes.data);
+        setDocuments(docsRes.data ?? []);
+        setSettingsDraft({
+          deliveryFee: String(merchantRes.data.delivery_fee ?? 0),
+          minimumOrder: String(merchantRes.data.minimum_order ?? 0),
+          minMinutes: String(merchantRes.data.delivery_min_minutes ?? ""),
+          maxMinutes: String(merchantRes.data.delivery_max_minutes ?? ""),
+          temporarilyClosed: Boolean(merchantRes.data.temporarily_closed),
+        });
+
+        if (merchantRes.data.approval_status === "approved" && merchantRes.data.is_active) {
+          await loadOperations(merchantRes.data.id);
+        }
+      } catch (error: any) {
+        toast.error(error?.message || "Não foi possível carregar o painel.");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
+    },
+    [loadOperations],
+  );
 
-      const [merchantRes, docsRes] = await Promise.all([
-        from("merchants").select("*").eq("id", member.merchant_id).maybeSingle(),
-        from("merchant_documents").select("*").eq("merchant_id", member.merchant_id).order("created_at"),
-      ]);
-      if (merchantRes.error || !merchantRes.data) throw merchantRes.error ?? new Error("Estabelecimento não encontrado.");
-      setMerchant(merchantRes.data);
-      setDocuments(docsRes.data ?? []);
-      setSettingsDraft({
-        deliveryFee: String(merchantRes.data.delivery_fee ?? 0),
-        minimumOrder: String(merchantRes.data.minimum_order ?? 0),
-        minMinutes: String(merchantRes.data.delivery_min_minutes ?? ""),
-        maxMinutes: String(merchantRes.data.delivery_max_minutes ?? ""),
-        temporarilyClosed: Boolean(merchantRes.data.temporarily_closed),
-      });
-
-      if (merchantRes.data.approval_status === "approved" && merchantRes.data.is_active) {
-        await loadOperations(merchantRes.data.id);
-      }
-    } catch (error: any) {
-      toast.error(error?.message || "Não foi possível carregar o painel.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [loadOperations]);
-
-  useEffect(() => { void loadAll(); }, [loadAll]);
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
 
   useEffect(() => {
     if (!merchant?.id || merchant.approval_status !== "approved") return;
     const channel = supabase
       .channel(`merchant_orders_${merchant.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `merchant_id=eq.${merchant.id}` }, () => void loadOperations(merchant.id))
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders", filter: `merchant_id=eq.${merchant.id}` },
+        () => void loadOperations(merchant.id),
+      )
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, [merchant?.id, merchant?.approval_status, loadOperations]);
 
   const logout = async () => {
@@ -202,13 +272,22 @@ function MerchantWorkspace() {
     try {
       const extension = file.name.split(".").pop()?.toLowerCase() || "bin";
       const path = `${merchant.id}/${documentType}-${Date.now()}.${extension}`;
-      const upload = await supabase.storage.from("merchant-documents").upload(path, file, { upsert: false });
+      const upload = await supabase.storage
+        .from("merchant-documents")
+        .upload(path, file, { upsert: false });
       if (upload.error) throw upload.error;
 
       const existing = documents.find((doc) => doc.document_type === documentType);
       const write = existing
-        ? await from("merchant_documents").update({ storage_path: path, status: "pending" }).eq("id", existing.id)
-        : await from("merchant_documents").insert({ merchant_id: merchant.id, document_type: documentType, storage_path: path, status: "pending" });
+        ? await from("merchant_documents")
+            .update({ storage_path: path, status: "pending" })
+            .eq("id", existing.id)
+        : await from("merchant_documents").insert({
+            merchant_id: merchant.id,
+            document_type: documentType,
+            storage_path: path,
+            status: "pending",
+          });
       if (write.error) throw write.error;
       toast.success("Documento enviado.");
       await loadAll(true);
@@ -231,7 +310,10 @@ function MerchantWorkspace() {
 
   const transitionOrder = async (orderId: string, status: string) => {
     setBusyAction(`order:${orderId}`);
-    const { error } = await rpc("merchant_transition_order", { _order_id: orderId, _new_status: status });
+    const { error } = await rpc("merchant_transition_order", {
+      _order_id: orderId,
+      _new_status: status,
+    });
     setBusyAction(null);
     if (error) return toast.error(error.message || "Não foi possível atualizar o pedido.");
     toast.success("Pedido atualizado.");
@@ -242,10 +324,18 @@ function MerchantWorkspace() {
     const reason = window.prompt("Informe o motivo do cancelamento:")?.trim();
     if (!reason) return;
     setBusyAction(`order:${orderId}`);
-    const { data, error } = await rpc("merchant_reject_order", { _order_id: orderId, _reason: reason });
+    const { data, error } = await rpc("merchant_reject_order", {
+      _order_id: orderId,
+      _reason: reason,
+    });
     if (!error && data?.refund_id) {
-      const { error: refundError } = await supabase.functions.invoke("process-refund", { body: { refundId: data.refund_id } });
-      if (refundError) toast.warning("Pedido cancelado. O estorno ficou pendente para nova tentativa administrativa.");
+      const { error: refundError } = await supabase.functions.invoke("process-refund", {
+        body: { refundId: data.refund_id },
+      });
+      if (refundError)
+        toast.warning(
+          "Pedido cancelado. O estorno ficou pendente para nova tentativa administrativa.",
+        );
       else toast.success("Pedido cancelado e estorno processado.");
     } else if (!error) {
       toast.success("Pedido cancelado.");
@@ -259,8 +349,19 @@ function MerchantWorkspace() {
     if (!merchant?.id) return;
     const name = window.prompt("Nome da categoria:")?.trim();
     if (!name) return;
-    const slug = `${name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${crypto.randomUUID().slice(0, 6)}`;
-    const { error } = await from("menu_categories").insert({ merchant_id: merchant.id, name, slug, sort_order: menuCategories.length, is_active: true });
+    const slug = `${name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")}-${crypto.randomUUID().slice(0, 6)}`;
+    const { error } = await from("menu_categories").insert({
+      merchant_id: merchant.id,
+      name,
+      slug,
+      sort_order: menuCategories.length,
+      is_active: true,
+    });
     if (error) return toast.error(error.message);
     toast.success("Categoria criada.");
     await loadOperations(merchant.id);
@@ -288,7 +389,9 @@ function MerchantWorkspace() {
 
   const toggleProduct = async (product: any) => {
     if (!merchant?.id) return;
-    const { error } = await from("products").update({ is_available: !product.is_available }).eq("id", product.id);
+    const { error } = await from("products")
+      .update({ is_available: !product.is_available })
+      .eq("id", product.id);
     if (error) return toast.error(error.message);
     await loadOperations(merchant.id);
   };
@@ -312,7 +415,9 @@ function MerchantWorkspace() {
       is_closed: current?.is_closed ?? false,
       ...patch,
     };
-    const { error } = await from("merchant_hours").upsert(row, { onConflict: "merchant_id,weekday" });
+    const { error } = await from("merchant_hours").upsert(row, {
+      onConflict: "merchant_id,weekday",
+    });
     if (error) return toast.error(error.message);
     await loadOperations(merchant.id);
   };
@@ -320,13 +425,15 @@ function MerchantWorkspace() {
   const saveSettings = async () => {
     if (!merchant?.id) return;
     setBusyAction("settings");
-    const { error } = await from("merchants").update({
-      delivery_fee: Number(settingsDraft.deliveryFee || 0),
-      minimum_order: Number(settingsDraft.minimumOrder || 0),
-      delivery_min_minutes: settingsDraft.minMinutes ? Number(settingsDraft.minMinutes) : null,
-      delivery_max_minutes: settingsDraft.maxMinutes ? Number(settingsDraft.maxMinutes) : null,
-      temporarily_closed: settingsDraft.temporarilyClosed,
-    }).eq("id", merchant.id);
+    const { error } = await from("merchants")
+      .update({
+        delivery_fee: Number(settingsDraft.deliveryFee || 0),
+        minimum_order: Number(settingsDraft.minimumOrder || 0),
+        delivery_min_minutes: settingsDraft.minMinutes ? Number(settingsDraft.minMinutes) : null,
+        delivery_max_minutes: settingsDraft.maxMinutes ? Number(settingsDraft.maxMinutes) : null,
+        temporarily_closed: settingsDraft.temporarilyClosed,
+      })
+      .eq("id", merchant.id);
     setBusyAction(null);
     if (error) return toast.error(error.message);
     toast.success("Configurações salvas.");
@@ -354,11 +461,17 @@ function MerchantWorkspace() {
   };
 
   const requestPayout = async () => {
-    if (!wallet || !payoutAccount) return toast.error("Cadastre a chave PIX antes de solicitar saque.");
+    if (!wallet || !payoutAccount)
+      return toast.error("Cadastre a chave PIX antes de solicitar saque.");
     const amount = Number(payoutDraft.amount);
-    if (!Number.isFinite(amount) || amount <= 0) return toast.error("Informe um valor de saque válido.");
+    if (!Number.isFinite(amount) || amount <= 0)
+      return toast.error("Informe um valor de saque válido.");
     setBusyAction("payout");
-    const { error } = await rpc("request_payout", { _wallet_id: wallet.id, _amount: amount, _idempotency_key: `merchant:${wallet.id}:${crypto.randomUUID()}` });
+    const { error } = await rpc("request_payout", {
+      _wallet_id: wallet.id,
+      _amount: amount,
+      _idempotency_key: `merchant:${wallet.id}:${crypto.randomUUID()}`,
+    });
     setBusyAction(null);
     if (error) return toast.error(error.message || "Não foi possível solicitar o saque.");
     setPayoutDraft((current) => ({ ...current, amount: "" }));
@@ -366,13 +479,48 @@ function MerchantWorkspace() {
     if (merchant?.id) await loadOperations(merchant.id);
   };
 
-  const pendingOrders = useMemo(() => orders.filter((order) => ["confirmed", "accepted", "preparing", "ready", "searching_driver", "driver_assigned", "driver_arriving_store", "picked_up", "on_the_way"].includes(order.status)), [orders]);
-  const paidRevenue = useMemo(() => orders.filter((order) => order.payment_status === "paid").reduce((sum, order) => sum + Number(order.total || 0), 0), [orders]);
+  const pendingOrders = useMemo(
+    () =>
+      orders.filter((order) =>
+        [
+          "confirmed",
+          "accepted",
+          "preparing",
+          "ready",
+          "searching_driver",
+          "driver_assigned",
+          "driver_arriving_store",
+          "picked_up",
+          "on_the_way",
+        ].includes(order.status),
+      ),
+    [orders],
+  );
+  const paidRevenue = useMemo(
+    () =>
+      orders
+        .filter((order) => order.payment_status === "paid")
+        .reduce((sum, order) => sum + Number(order.total || 0), 0),
+    [orders],
+  );
 
-  if (loading) return <div className="grid min-h-dvh place-items-center bg-black"><Loader2 className="h-9 w-9 animate-spin text-primary" /></div>;
+  if (loading)
+    return (
+      <div className="grid min-h-dvh place-items-center bg-black">
+        <Loader2 className="h-9 w-9 animate-spin text-primary" />
+      </div>
+    );
 
   if (!membership || !merchant) {
-    return <MerchantApplication user={user} categories={merchantCategories} busy={busyAction === "application"} onSubmit={createApplication} onBack={() => navigate({ to: "/perfil" })} />;
+    return (
+      <MerchantApplication
+        user={user}
+        categories={merchantCategories}
+        busy={busyAction === "application"}
+        onSubmit={createApplication}
+        onBack={() => navigate({ to: "/perfil" })}
+      />
+    );
   }
 
   if (merchant.approval_status !== "approved" || !merchant.is_active) {
@@ -400,13 +548,29 @@ function MerchantWorkspace() {
   ];
 
   return (
-    <WorkspaceShell brand={merchant.name} subtitle="Painel do Estabelecimento" tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} onLogout={logout} userLabel={user?.email}>
+    <WorkspaceShell
+      brand={merchant.name}
+      subtitle="Painel do Estabelecimento"
+      tabs={tabs}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      onLogout={logout}
+      userLabel={user?.email}
+    >
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-zinc-500">Operação em tempo real</p>
-          <p className="font-bold">{merchant.temporarily_closed ? "Pausado temporariamente" : "Estabelecimento ativo"}</p>
+          <p className="font-bold">
+            {merchant.temporarily_closed ? "Pausado temporariamente" : "Estabelecimento ativo"}
+          </p>
         </div>
-        <Button type="button" variant="outline" onClick={() => void loadAll(true)} disabled={refreshing} className="border-zinc-800 bg-zinc-950">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void loadAll(true)}
+          disabled={refreshing}
+          className="border-zinc-800 bg-zinc-950"
+        >
           <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Atualizar
         </Button>
       </div>
@@ -416,14 +580,28 @@ function MerchantWorkspace() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard label="Pedidos em andamento" value={pendingOrders.length} />
             <MetricCard label="Pedidos registrados" value={orders.length} />
-            <MetricCard label="Vendas pagas" value={money(paidRevenue)} hint="Total bruto dos pedidos carregados" />
+            <MetricCard
+              label="Vendas pagas"
+              value={money(paidRevenue)}
+              hint="Total bruto dos pedidos carregados"
+            />
             <MetricCard label="Saldo disponível" value={money(wallet?.available_balance)} />
           </div>
           <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
             <h2 className="font-black">Pedidos que precisam de atenção</h2>
             <div className="mt-4 space-y-3">
-              {pendingOrders.slice(0, 6).map((order) => <OrderRow key={order.id} order={order} busy={busyAction === `order:${order.id}`} onTransition={transitionOrder} onReject={rejectOrder} />)}
-              {pendingOrders.length === 0 ? <p className="text-sm text-zinc-500">Nenhum pedido em andamento.</p> : null}
+              {pendingOrders.slice(0, 6).map((order) => (
+                <OrderRow
+                  key={order.id}
+                  order={order}
+                  busy={busyAction === `order:${order.id}`}
+                  onTransition={transitionOrder}
+                  onReject={rejectOrder}
+                />
+              ))}
+              {pendingOrders.length === 0 ? (
+                <p className="text-sm text-zinc-500">Nenhum pedido em andamento.</p>
+              ) : null}
             </div>
           </section>
         </div>
@@ -431,8 +609,22 @@ function MerchantWorkspace() {
 
       {activeTab === "orders" && (
         <div className="space-y-3">
-          {orders.map((order) => <OrderRow key={order.id} order={order} busy={busyAction === `order:${order.id}`} onTransition={transitionOrder} onReject={rejectOrder} detailed />)}
-          {orders.length === 0 ? <EmptyState title="Nenhum pedido" description="Os novos pedidos aparecerão aqui automaticamente." /> : null}
+          {orders.map((order) => (
+            <OrderRow
+              key={order.id}
+              order={order}
+              busy={busyAction === `order:${order.id}`}
+              onTransition={transitionOrder}
+              onReject={rejectOrder}
+              detailed
+            />
+          ))}
+          {orders.length === 0 ? (
+            <EmptyState
+              title="Nenhum pedido"
+              description="Os novos pedidos aparecerão aqui automaticamente."
+            />
+          ) : null}
         </div>
       )}
 
@@ -442,26 +634,66 @@ function MerchantWorkspace() {
             <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="font-black">Categorias</h2>
-                <Button type="button" size="sm" onClick={addCategory}><Plus className="mr-1 h-4 w-4" /> Nova</Button>
+                <Button type="button" size="sm" onClick={addCategory}>
+                  <Plus className="mr-1 h-4 w-4" /> Nova
+                </Button>
               </div>
               <div className="mt-4 space-y-2">
                 {menuCategories.map((category) => (
-                  <div key={category.id} className="flex items-center justify-between rounded-xl bg-zinc-900 px-3 py-2 text-sm">
-                    <span>{category.name}</span><span className={category.is_active ? "text-emerald-400" : "text-zinc-600"}>{category.is_active ? "Ativa" : "Inativa"}</span>
+                  <div
+                    key={category.id}
+                    className="flex items-center justify-between rounded-xl bg-zinc-900 px-3 py-2 text-sm"
+                  >
+                    <span>{category.name}</span>
+                    <span className={category.is_active ? "text-emerald-400" : "text-zinc-600"}>
+                      {category.is_active ? "Ativa" : "Inativa"}
+                    </span>
                   </div>
                 ))}
               </div>
             </section>
-            <form onSubmit={createProduct} className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+            <form
+              onSubmit={createProduct}
+              className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5"
+            >
               <h2 className="font-black">Novo produto</h2>
-              <Field value={productDraft.name} onChange={(value) => setProductDraft((d) => ({ ...d, name: value }))} placeholder="Nome" required />
-              <Field value={productDraft.price} onChange={(value) => setProductDraft((d) => ({ ...d, price: value }))} placeholder="Preço" type="number" required />
-              <select value={productDraft.categoryId} onChange={(e) => setProductDraft((d) => ({ ...d, categoryId: e.target.value }))} className="w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm">
+              <Field
+                value={productDraft.name}
+                onChange={(value) => setProductDraft((d) => ({ ...d, name: value }))}
+                placeholder="Nome"
+                required
+              />
+              <Field
+                value={productDraft.price}
+                onChange={(value) => setProductDraft((d) => ({ ...d, price: value }))}
+                placeholder="Preço"
+                type="number"
+                required
+              />
+              <select
+                value={productDraft.categoryId}
+                onChange={(e) => setProductDraft((d) => ({ ...d, categoryId: e.target.value }))}
+                className="w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
+              >
                 <option value="">Sem categoria</option>
-                {menuCategories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
+                {menuCategories.map((category) => (
+                  <option value={category.id} key={category.id}>
+                    {category.name}
+                  </option>
+                ))}
               </select>
-              <textarea value={productDraft.description} onChange={(e) => setProductDraft((d) => ({ ...d, description: e.target.value }))} placeholder="Descrição" className="min-h-20 w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm" />
-              <Button disabled={busyAction === "product:create"} className="w-full">{busyAction === "product:create" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Adicionar produto</Button>
+              <textarea
+                value={productDraft.description}
+                onChange={(e) => setProductDraft((d) => ({ ...d, description: e.target.value }))}
+                placeholder="Descrição"
+                className="min-h-20 w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
+              />
+              <Button disabled={busyAction === "product:create"} className="w-full">
+                {busyAction === "product:create" ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Adicionar produto
+              </Button>
             </form>
           </div>
           <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
@@ -469,14 +701,40 @@ function MerchantWorkspace() {
             <div className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
               {products.map((product) => (
                 <div key={product.id} className="rounded-2xl border border-zinc-800 bg-black p-4">
-                  <div className="flex items-start justify-between gap-3"><div><p className="font-bold">{product.name}</p><p className="mt-1 text-xs text-zinc-500">{product.description || "Sem descrição"}</p></div><p className="font-black text-primary">{money(product.price)}</p></div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold">{product.name}</p>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        {product.description || "Sem descrição"}
+                      </p>
+                    </div>
+                    <p className="font-black text-primary">{money(product.price)}</p>
+                  </div>
                   <div className="mt-4 flex gap-2">
-                    <Button type="button" variant="outline" size="sm" onClick={() => void toggleProduct(product)} className="flex-1 border-zinc-800 bg-zinc-950">{product.is_available ? "Pausar" : "Ativar"}</Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => void deleteProduct(product)} className="text-red-400"><Trash2 className="h-4 w-4" /></Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void toggleProduct(product)}
+                      className="flex-1 border-zinc-800 bg-zinc-950"
+                    >
+                      {product.is_available ? "Pausar" : "Ativar"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => void deleteProduct(product)}
+                      className="text-red-400"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
-              {products.length === 0 ? <p className="text-sm text-zinc-500">Cadastre o primeiro produto.</p> : null}
+              {products.length === 0 ? (
+                <p className="text-sm text-zinc-500">Cadastre o primeiro produto.</p>
+              ) : null}
             </div>
           </section>
         </div>
@@ -485,17 +743,50 @@ function MerchantWorkspace() {
       {activeTab === "hours" && (
         <section className="max-w-3xl rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
           <h2 className="font-black">Horários de funcionamento</h2>
-          <p className="mt-1 text-sm text-zinc-500">Alterações são refletidas na disponibilidade do estabelecimento.</p>
+          <p className="mt-1 text-sm text-zinc-500">
+            Alterações são refletidas na disponibilidade do estabelecimento.
+          </p>
           <div className="mt-5 space-y-3">
             {week.map((label, weekday) => {
               const row = hours.find((item) => Number(item.weekday) === weekday);
               const closed = row?.is_closed ?? true;
               return (
-                <div key={label} className="grid items-center gap-3 rounded-xl border border-zinc-900 bg-black p-3 sm:grid-cols-[120px_1fr_1fr_auto]">
+                <div
+                  key={label}
+                  className="grid items-center gap-3 rounded-xl border border-zinc-900 bg-black p-3 sm:grid-cols-[120px_1fr_1fr_auto]"
+                >
                   <span className="text-sm font-bold">{label}</span>
-                  <input type="time" value={(row?.opens_at ?? "08:00").slice(0, 5)} disabled={closed} onChange={(e) => void saveHours(weekday, { opens_at: `${e.target.value}:00`, is_closed: false })} className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm disabled:opacity-30" />
-                  <input type="time" value={(row?.closes_at ?? "22:00").slice(0, 5)} disabled={closed} onChange={(e) => void saveHours(weekday, { closes_at: `${e.target.value}:00`, is_closed: false })} className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm disabled:opacity-30" />
-                  <button type="button" onClick={() => void saveHours(weekday, { is_closed: !closed })} className={`rounded-lg px-3 py-2 text-xs font-black ${closed ? "bg-zinc-900 text-zinc-500" : "bg-emerald-500/15 text-emerald-400"}`}>{closed ? "Fechado" : "Aberto"}</button>
+                  <input
+                    type="time"
+                    value={(row?.opens_at ?? "08:00").slice(0, 5)}
+                    disabled={closed}
+                    onChange={(e) =>
+                      void saveHours(weekday, {
+                        opens_at: `${e.target.value}:00`,
+                        is_closed: false,
+                      })
+                    }
+                    className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm disabled:opacity-30"
+                  />
+                  <input
+                    type="time"
+                    value={(row?.closes_at ?? "22:00").slice(0, 5)}
+                    disabled={closed}
+                    onChange={(e) =>
+                      void saveHours(weekday, {
+                        closes_at: `${e.target.value}:00`,
+                        is_closed: false,
+                      })
+                    }
+                    className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm disabled:opacity-30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void saveHours(weekday, { is_closed: !closed })}
+                    className={`rounded-lg px-3 py-2 text-xs font-black ${closed ? "bg-zinc-900 text-zinc-500" : "bg-emerald-500/15 text-emerald-400"}`}
+                  >
+                    {closed ? "Fechado" : "Aberto"}
+                  </button>
                 </div>
               );
             })}
@@ -510,30 +801,98 @@ function MerchantWorkspace() {
             <MetricCard label="Disponível" value={money(wallet?.available_balance)} />
             <MetricCard label="Reservado" value={money(wallet?.reserved_balance)} />
           </div>
-          {!wallet ? <EmptyState title="Carteira ainda sem movimentação" description="A carteira é criada automaticamente quando o primeiro pedido entregue é liquidado." /> : (
+          {!wallet ? (
+            <EmptyState
+              title="Carteira ainda sem movimentação"
+              description="A carteira é criada automaticamente quando o primeiro pedido entregue é liquidado."
+            />
+          ) : (
             <div className="grid gap-6 xl:grid-cols-2">
               <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
                 <h2 className="font-black">Conta para repasse</h2>
-                <Field value={payoutDraft.pixKey} onChange={(value) => setPayoutDraft((d) => ({ ...d, pixKey: value }))} placeholder="Chave PIX" />
-                <Field value={payoutDraft.holderName} onChange={(value) => setPayoutDraft((d) => ({ ...d, holderName: value }))} placeholder="Nome do titular" />
-                <Field value={payoutDraft.document} onChange={(value) => setPayoutDraft((d) => ({ ...d, document: value }))} placeholder="CPF/CNPJ do titular" />
-                <Button type="button" onClick={savePayoutAccount} disabled={busyAction === "payout-account"} className="w-full">Salvar chave PIX</Button>
+                <Field
+                  value={payoutDraft.pixKey}
+                  onChange={(value) => setPayoutDraft((d) => ({ ...d, pixKey: value }))}
+                  placeholder="Chave PIX"
+                />
+                <Field
+                  value={payoutDraft.holderName}
+                  onChange={(value) => setPayoutDraft((d) => ({ ...d, holderName: value }))}
+                  placeholder="Nome do titular"
+                />
+                <Field
+                  value={payoutDraft.document}
+                  onChange={(value) => setPayoutDraft((d) => ({ ...d, document: value }))}
+                  placeholder="CPF/CNPJ do titular"
+                />
+                <Button
+                  type="button"
+                  onClick={savePayoutAccount}
+                  disabled={busyAction === "payout-account"}
+                  className="w-full"
+                >
+                  Salvar chave PIX
+                </Button>
                 <div className="border-t border-zinc-900 pt-4">
-                  <Field value={payoutDraft.amount} onChange={(value) => setPayoutDraft((d) => ({ ...d, amount: value }))} placeholder="Valor do saque" type="number" />
-                  <Button type="button" onClick={requestPayout} disabled={busyAction === "payout" || !payoutAccount} className="mt-3 w-full">Solicitar saque</Button>
+                  <Field
+                    value={payoutDraft.amount}
+                    onChange={(value) => setPayoutDraft((d) => ({ ...d, amount: value }))}
+                    placeholder="Valor do saque"
+                    type="number"
+                  />
+                  <Button
+                    type="button"
+                    onClick={requestPayout}
+                    disabled={busyAction === "payout" || !payoutAccount}
+                    className="mt-3 w-full"
+                  >
+                    Solicitar saque
+                  </Button>
                 </div>
               </section>
               <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
                 <h2 className="font-black">Últimos saques</h2>
                 <div className="mt-4 space-y-2">
-                  {payouts.map((payout) => <div key={payout.id} className="flex items-center justify-between rounded-xl bg-black p-3 text-sm"><div><p className="font-bold">{money(payout.amount)}</p><p className="text-xs text-zinc-500">{dateTime(payout.requested_at)}</p></div><span className="text-xs font-black uppercase text-primary">{payout.status}</span></div>)}
-                  {payouts.length === 0 ? <p className="text-sm text-zinc-500">Nenhum saque solicitado.</p> : null}
+                  {payouts.map((payout) => (
+                    <div
+                      key={payout.id}
+                      className="flex items-center justify-between rounded-xl bg-black p-3 text-sm"
+                    >
+                      <div>
+                        <p className="font-bold">{money(payout.amount)}</p>
+                        <p className="text-xs text-zinc-500">{dateTime(payout.requested_at)}</p>
+                      </div>
+                      <span className="text-xs font-black uppercase text-primary">
+                        {payout.status}
+                      </span>
+                    </div>
+                  ))}
+                  {payouts.length === 0 ? (
+                    <p className="text-sm text-zinc-500">Nenhum saque solicitado.</p>
+                  ) : null}
                 </div>
               </section>
               <section className="xl:col-span-2 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
                 <h2 className="font-black">Extrato</h2>
                 <div className="mt-4 divide-y divide-zinc-900">
-                  {transactions.map((tx) => <div key={tx.id} className="flex items-center justify-between py-3 text-sm"><div><p className="font-semibold">{tx.description || tx.transaction_type}</p><p className="text-xs text-zinc-500">{dateTime(tx.created_at)}</p></div><span className={Number(tx.balance_delta) >= 0 ? "font-black text-emerald-400" : "font-black text-red-400"}>{Number(tx.balance_delta) >= 0 ? "+" : ""}{money(tx.balance_delta)}</span></div>)}
+                  {transactions.map((tx) => (
+                    <div key={tx.id} className="flex items-center justify-between py-3 text-sm">
+                      <div>
+                        <p className="font-semibold">{tx.description || tx.transaction_type}</p>
+                        <p className="text-xs text-zinc-500">{dateTime(tx.created_at)}</p>
+                      </div>
+                      <span
+                        className={
+                          Number(tx.balance_delta) >= 0
+                            ? "font-black text-emerald-400"
+                            : "font-black text-red-400"
+                        }
+                      >
+                        {Number(tx.balance_delta) >= 0 ? "+" : ""}
+                        {money(tx.balance_delta)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </section>
             </div>
@@ -545,22 +904,80 @@ function MerchantWorkspace() {
         <div className="grid max-w-4xl gap-6 lg:grid-cols-2">
           <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
             <h2 className="font-black">Entrega e pedido mínimo</h2>
-            <label className="block text-xs text-zinc-500">Taxa de entrega<Field value={settingsDraft.deliveryFee} onChange={(value) => setSettingsDraft((d) => ({ ...d, deliveryFee: value }))} type="number" placeholder="0,00" /></label>
-            <label className="block text-xs text-zinc-500">Pedido mínimo<Field value={settingsDraft.minimumOrder} onChange={(value) => setSettingsDraft((d) => ({ ...d, minimumOrder: value }))} type="number" placeholder="0,00" /></label>
+            <label className="block text-xs text-zinc-500">
+              Taxa de entrega
+              <Field
+                value={settingsDraft.deliveryFee}
+                onChange={(value) => setSettingsDraft((d) => ({ ...d, deliveryFee: value }))}
+                type="number"
+                placeholder="0,00"
+              />
+            </label>
+            <label className="block text-xs text-zinc-500">
+              Pedido mínimo
+              <Field
+                value={settingsDraft.minimumOrder}
+                onChange={(value) => setSettingsDraft((d) => ({ ...d, minimumOrder: value }))}
+                type="number"
+                placeholder="0,00"
+              />
+            </label>
             <div className="grid grid-cols-2 gap-3">
-              <label className="text-xs text-zinc-500">Prazo mínimo<Field value={settingsDraft.minMinutes} onChange={(value) => setSettingsDraft((d) => ({ ...d, minMinutes: value }))} type="number" placeholder="30" /></label>
-              <label className="text-xs text-zinc-500">Prazo máximo<Field value={settingsDraft.maxMinutes} onChange={(value) => setSettingsDraft((d) => ({ ...d, maxMinutes: value }))} type="number" placeholder="60" /></label>
+              <label className="text-xs text-zinc-500">
+                Prazo mínimo
+                <Field
+                  value={settingsDraft.minMinutes}
+                  onChange={(value) => setSettingsDraft((d) => ({ ...d, minMinutes: value }))}
+                  type="number"
+                  placeholder="30"
+                />
+              </label>
+              <label className="text-xs text-zinc-500">
+                Prazo máximo
+                <Field
+                  value={settingsDraft.maxMinutes}
+                  onChange={(value) => setSettingsDraft((d) => ({ ...d, maxMinutes: value }))}
+                  type="number"
+                  placeholder="60"
+                />
+              </label>
             </div>
-            <button type="button" onClick={() => setSettingsDraft((d) => ({ ...d, temporarilyClosed: !d.temporarilyClosed }))} className={`w-full rounded-xl border p-3 text-left text-sm font-bold ${settingsDraft.temporarilyClosed ? "border-red-500/30 bg-red-500/10 text-red-300" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"}`}>
-              {settingsDraft.temporarilyClosed ? "Estabelecimento pausado" : "Recebendo pedidos normalmente"}
+            <button
+              type="button"
+              onClick={() =>
+                setSettingsDraft((d) => ({ ...d, temporarilyClosed: !d.temporarilyClosed }))
+              }
+              className={`w-full rounded-xl border p-3 text-left text-sm font-bold ${settingsDraft.temporarilyClosed ? "border-red-500/30 bg-red-500/10 text-red-300" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"}`}
+            >
+              {settingsDraft.temporarilyClosed
+                ? "Estabelecimento pausado"
+                : "Recebendo pedidos normalmente"}
             </button>
-            <Button type="button" onClick={saveSettings} disabled={busyAction === "settings"} className="w-full">Salvar configurações</Button>
+            <Button
+              type="button"
+              onClick={saveSettings}
+              disabled={busyAction === "settings"}
+              className="w-full"
+            >
+              Salvar configurações
+            </Button>
           </section>
           <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
             <h2 className="font-black">Avaliações</h2>
-            <p className="mt-1 text-sm text-zinc-500">Nota atual: <strong className="text-primary">{Number(merchant.rating ?? 0).toFixed(1)}</strong> ({merchant.review_count ?? 0} avaliações)</p>
+            <p className="mt-1 text-sm text-zinc-500">
+              Nota atual:{" "}
+              <strong className="text-primary">{Number(merchant.rating ?? 0).toFixed(1)}</strong> (
+              {merchant.review_count ?? 0} avaliações)
+            </p>
             <div className="mt-4 space-y-3">
-              {reviews.slice(0, 8).map((review) => <div key={review.id} className="rounded-xl bg-black p-3"><p className="text-sm font-bold text-primary">{review.merchant_rating ?? "—"}/5</p><p className="mt-1 text-sm text-zinc-400">{review.comment || "Sem comentário"}</p></div>)}
+              {reviews.slice(0, 8).map((review) => (
+                <div key={review.id} className="rounded-xl bg-black p-3">
+                  <p className="text-sm font-bold text-primary">
+                    {review.merchant_rating ?? "—"}/5
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-400">{review.comment || "Sem comentário"}</p>
+                </div>
+              ))}
             </div>
           </section>
         </div>
@@ -573,23 +990,57 @@ function MerchantApplication({ user, categories, busy, onSubmit, onBack }: any) 
   return (
     <div className="min-h-dvh bg-black px-4 py-10 text-white">
       <div className="mx-auto max-w-3xl">
-        <button type="button" onClick={onBack} className="text-sm font-bold text-zinc-500 hover:text-white">← Voltar para minha conta</button>
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-sm font-bold text-zinc-500 hover:text-white"
+        >
+          ← Voltar para minha conta
+        </button>
         <div className="mt-6 rounded-3xl border border-zinc-900 bg-zinc-950 p-6 md:p-8">
-          <p className="text-sm font-black uppercase tracking-[0.2em] text-primary">APOIS ENTREGA</p>
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-primary">
+            APOIS ENTREGA
+          </p>
           <h1 className="mt-2 text-3xl font-black">Cadastrar estabelecimento</h1>
-          <p className="mt-2 text-sm text-zinc-500">Envie os dados do negócio. A liberação do painel operacional ocorre após análise administrativa.</p>
+          <p className="mt-2 text-sm text-zinc-500">
+            Envie os dados do negócio. A liberação do painel operacional ocorre após análise
+            administrativa.
+          </p>
           <form onSubmit={onSubmit} className="mt-8 grid gap-4 md:grid-cols-2">
             <input name="name" required placeholder="Nome do estabelecimento" className="Input" />
             <input name="legalName" placeholder="Razão social" className="Input" />
             <input name="document" required placeholder="CNPJ/CPF" className="Input" />
-            <select name="categoryId" required className="Input"><option value="">Categoria</option>{categories.map((category: any) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
+            <select name="categoryId" required className="Input">
+              <option value="">Categoria</option>
+              {categories.map((category: any) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
             <input name="phone" required placeholder="Telefone" className="Input" />
-            <input name="email" type="email" defaultValue={user?.email ?? ""} required placeholder="E-mail" className="Input" />
+            <input
+              name="email"
+              type="email"
+              defaultValue={user?.email ?? ""}
+              required
+              placeholder="E-mail"
+              className="Input"
+            />
             <input name="address" required placeholder="Endereço" className="Input md:col-span-2" />
             <input name="neighborhood" required placeholder="Bairro" className="Input" />
             <input name="city" required placeholder="Cidade" className="Input" />
             <input name="state" required maxLength={2} placeholder="UF" className="Input" />
-            <div className="md:col-span-2"><Button disabled={busy} className="h-12 w-full font-black uppercase">{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Store className="mr-2 h-4 w-4" />}Enviar cadastro</Button></div>
+            <div className="md:col-span-2">
+              <Button disabled={busy} className="h-12 w-full font-black uppercase">
+                {busy ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Store className="mr-2 h-4 w-4" />
+                )}
+                Enviar cadastro
+              </Button>
+            </div>
           </form>
         </div>
       </div>
@@ -597,7 +1048,16 @@ function MerchantApplication({ user, categories, busy, onSubmit, onBack }: any) 
   );
 }
 
-function MerchantReviewState({ merchant, documents, busyAction, onUpload, onResubmit, onRefresh, refreshing, onLogout }: any) {
+function MerchantReviewState({
+  merchant,
+  documents,
+  busyAction,
+  onUpload,
+  onResubmit,
+  onRefresh,
+  refreshing,
+  onLogout,
+}: any) {
   const requiredDocs = [
     { type: "documento_empresa", label: "Documento da empresa (CNPJ/MEI)" },
     { type: "responsavel", label: "Documento do responsável" },
@@ -606,18 +1066,79 @@ function MerchantReviewState({ merchant, documents, busyAction, onUpload, onResu
   return (
     <div className="min-h-dvh bg-black p-4 text-white md:p-8">
       <div className="mx-auto max-w-4xl">
-        <div className="flex items-center justify-between gap-4"><div><p className="font-black text-primary">APOIS ENTREGA</p><h1 className="text-2xl font-black">{merchant.name}</h1></div><button type="button" onClick={onLogout} className="text-sm font-bold text-zinc-500">Sair</button></div>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="font-black text-primary">APOIS ENTREGA</p>
+            <h1 className="text-2xl font-black">{merchant.name}</h1>
+          </div>
+          <button type="button" onClick={onLogout} className="text-sm font-bold text-zinc-500">
+            Sair
+          </button>
+        </div>
         <div className="mt-8 rounded-3xl border border-zinc-900 bg-zinc-950 p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-bold uppercase text-zinc-500">Situação do cadastro</p><p className="mt-1 text-xl font-black uppercase text-primary">{merchant.approval_status.replaceAll("_", " ")}</p></div><Button variant="outline" onClick={onRefresh} disabled={refreshing} className="border-zinc-800 bg-black"><RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />Atualizar</Button></div>
-          {merchant.rejection_reason ? <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300"><strong>Motivo:</strong> {merchant.rejection_reason}</div> : null}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase text-zinc-500">Situação do cadastro</p>
+              <p className="mt-1 text-xl font-black uppercase text-primary">
+                {merchant.approval_status.replaceAll("_", " ")}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={onRefresh}
+              disabled={refreshing}
+              className="border-zinc-800 bg-black"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+              Atualizar
+            </Button>
+          </div>
+          {merchant.rejection_reason ? (
+            <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+              <strong>Motivo:</strong> {merchant.rejection_reason}
+            </div>
+          ) : null}
           <div className="mt-6 grid gap-3 md:grid-cols-3">
             {requiredDocs.map((item) => {
               const doc = documents.find((document: any) => document.document_type === item.type);
-              return <label key={item.type} className="rounded-2xl border border-zinc-800 bg-black p-4"><p className="text-sm font-bold">{item.label}</p><p className={`mt-1 text-xs font-black uppercase ${doc?.status === "approved" ? "text-emerald-400" : doc?.status === "rejected" ? "text-red-400" : "text-primary"}`}>{doc?.status ?? "Não enviado"}</p>{doc?.rejection_reason ? <p className="mt-2 text-xs text-red-300">{doc.rejection_reason}</p> : null}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="mt-4 block w-full text-xs text-zinc-500 file:mr-2 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-bold file:text-black" disabled={busyAction === `doc:${item.type}`} onChange={(e) => { const file = e.target.files?.[0]; if (file) void onUpload(item.type, file); }} /></label>;
+              return (
+                <label key={item.type} className="rounded-2xl border border-zinc-800 bg-black p-4">
+                  <p className="text-sm font-bold">{item.label}</p>
+                  <p
+                    className={`mt-1 text-xs font-black uppercase ${doc?.status === "approved" ? "text-emerald-400" : doc?.status === "rejected" ? "text-red-400" : "text-primary"}`}
+                  >
+                    {doc?.status ?? "Não enviado"}
+                  </p>
+                  {doc?.rejection_reason ? (
+                    <p className="mt-2 text-xs text-red-300">{doc.rejection_reason}</p>
+                  ) : null}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    className="mt-4 block w-full text-xs text-zinc-500 file:mr-2 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:font-bold file:text-black"
+                    disabled={busyAction === `doc:${item.type}`}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void onUpload(item.type, file);
+                    }}
+                  />
+                </label>
+              );
             })}
           </div>
-          {merchant.approval_status === "rejected" ? <Button onClick={onResubmit} disabled={busyAction === "resubmit"} className="mt-6 w-full">Reenviar para análise</Button> : null}
-          <p className="mt-6 text-sm text-zinc-500">O painel de pedidos, cardápio e financeiro será liberado automaticamente após a aprovação.</p>
+          {merchant.approval_status === "rejected" ? (
+            <Button
+              onClick={onResubmit}
+              disabled={busyAction === "resubmit"}
+              className="mt-6 w-full"
+            >
+              Reenviar para análise
+            </Button>
+          ) : null}
+          <p className="mt-6 text-sm text-zinc-500">
+            O painel de pedidos, cardápio e financeiro será liberado automaticamente após a
+            aprovação.
+          </p>
         </div>
       </div>
     </div>
@@ -625,21 +1146,107 @@ function MerchantReviewState({ merchant, documents, busyAction, onUpload, onResu
 }
 
 function OrderRow({ order, busy, onTransition, onReject, detailed = false }: any) {
-  const nextActions: Array<{ status: string; label: string }> = order.status === "confirmed"
-    ? [{ status: "accepted", label: "Aceitar" }, { status: "preparing", label: "Aceitar e preparar" }]
-    : order.status === "accepted" ? [{ status: "preparing", label: "Iniciar preparo" }]
-    : order.status === "preparing" ? [{ status: "ready", label: "Marcar como pronto" }]
-    : [];
+  const nextActions: Array<{ status: string; label: string }> =
+    order.status === "confirmed"
+      ? [
+          { status: "accepted", label: "Aceitar" },
+          { status: "preparing", label: "Aceitar e preparar" },
+        ]
+      : order.status === "accepted"
+        ? [{ status: "preparing", label: "Iniciar preparo" }]
+        : order.status === "preparing"
+          ? [{ status: "ready", label: "Marcar como pronto" }]
+          : [];
   const canReject = ["confirmed", "accepted", "preparing"].includes(order.status);
   return (
     <div className="rounded-2xl border border-zinc-900 bg-black p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-lg font-black">Pedido #{order.order_number}</p><p className="text-xs text-zinc-500">{dateTime(order.created_at)} · {order.order_items?.length ?? 0} item(ns)</p></div><div className="text-right"><p className="font-black text-primary">{money(order.total)}</p><p className="text-[10px] font-black uppercase text-zinc-500">{order.status} · {order.payment_status}</p></div></div>
-      {detailed ? <div className="mt-3 space-y-1 border-t border-zinc-900 pt-3">{order.order_items?.map((item: any) => <p key={item.id} className="text-sm text-zinc-400">{item.quantity}x {item.product_name} — {money(item.line_total)}</p>)}{order.observation ? <p className="mt-2 rounded-lg bg-zinc-950 p-2 text-xs text-zinc-400">Obs.: {order.observation}</p> : null}</div> : null}
-      {nextActions.length > 0 || canReject ? <div className="mt-4 flex flex-wrap gap-2">{nextActions.map((action) => <Button type="button" size="sm" key={action.status} disabled={busy || order.payment_status !== "paid"} onClick={() => void onTransition(order.id, action.status)}>{busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <PackageCheck className="mr-1 h-3 w-3" />}{action.label}</Button>)}{canReject ? <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void onReject(order.id)} className="border-red-500/20 text-red-400">Cancelar</Button> : null}</div> : null}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-lg font-black">Pedido #{order.order_number}</p>
+          <p className="text-xs text-zinc-500">
+            {dateTime(order.created_at)} · {order.order_items?.length ?? 0} item(ns)
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="font-black text-primary">{money(order.total)}</p>
+          <p className="text-[10px] font-black uppercase text-zinc-500">
+            {order.status} · {order.payment_status}
+          </p>
+        </div>
+      </div>
+      {detailed ? (
+        <div className="mt-3 space-y-1 border-t border-zinc-900 pt-3">
+          {order.order_items?.map((item: any) => (
+            <p key={item.id} className="text-sm text-zinc-400">
+              {item.quantity}x {item.product_name} — {money(item.line_total)}
+            </p>
+          ))}
+          {order.observation ? (
+            <p className="mt-2 rounded-lg bg-zinc-950 p-2 text-xs text-zinc-400">
+              Obs.: {order.observation}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {nextActions.length > 0 || canReject ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {nextActions.map((action) => (
+            <Button
+              type="button"
+              size="sm"
+              key={action.status}
+              disabled={busy || order.payment_status !== "paid"}
+              onClick={() => void onTransition(order.id, action.status)}
+            >
+              {busy ? (
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              ) : (
+                <PackageCheck className="mr-1 h-3 w-3" />
+              )}
+              {action.label}
+            </Button>
+          ))}
+          {canReject ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => void onReject(order.id)}
+              className="border-red-500/20 text-red-400"
+            >
+              Cancelar
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function Field({ value, onChange, placeholder, type = "text", required = false }: { value: string; onChange: (value: string) => void; placeholder: string; type?: string; required?: boolean }) {
-  return <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type={type} required={required} step={type === "number" ? "0.01" : undefined} min={type === "number" ? "0" : undefined} className="mt-1 w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none focus:border-primary" />;
+function Field({
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  required = false,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  type?: string;
+  required?: boolean;
+}) {
+  return (
+    <input
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder={placeholder}
+      type={type}
+      required={required}
+      step={type === "number" ? "0.01" : undefined}
+      min={type === "number" ? "0" : undefined}
+      className="mt-1 w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm text-white outline-none focus:border-primary"
+    />
+  );
 }

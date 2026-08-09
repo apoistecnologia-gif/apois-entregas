@@ -6,7 +6,9 @@ import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/perfil/notificacoes")({
   beforeLoad: async ({ location }) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       throw redirect({
         to: "/login",
@@ -30,44 +32,47 @@ function NotificacoesPage() {
   });
 
   const toggle = (key: keyof typeof settings) => {
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const notificationOptions = [
-    { 
-      id: "orders", 
-      label: "Atualizações de pedidos", 
+    {
+      id: "orders",
+      label: "Atualizações de pedidos",
       description: "Saiba quando seu pedido for confirmado, sair para entrega ou chegar.",
       icon: ShoppingBag,
-      color: "text-primary"
+      color: "text-primary",
     },
-    { 
-      id: "promos", 
-      label: "Promoções", 
+    {
+      id: "promos",
+      label: "Promoções",
       description: "Receba cupons exclusivos, descontos e ofertas especiais da semana.",
       icon: Tag,
-      color: "text-emerald-400"
+      color: "text-emerald-400",
     },
-    { 
-      id: "news", 
-      label: "Novidades da APOIS", 
+    {
+      id: "news",
+      label: "Novidades da APOIS",
       description: "Novos estabelecimentos e funcionalidades em primeira mão.",
       icon: MessageSquare,
-      color: "text-blue-400"
+      color: "text-blue-400",
     },
-    { 
-      id: "app", 
-      label: "Notificações do aplicativo", 
+    {
+      id: "app",
+      label: "Notificações do aplicativo",
       description: "Alertas importantes sobre sua conta e segurança.",
       icon: Info,
-      color: "text-zinc-400"
+      color: "text-zinc-400",
     },
   ];
 
   return (
     <div className="flex h-screen w-full flex-col bg-black text-white overflow-hidden relative">
       <header className="shrink-0 z-50 flex items-center justify-between p-4 bg-black/80 backdrop-blur-lg border-b border-zinc-900">
-        <button onClick={() => navigate({ to: "/perfil" })} className="p-2 rounded-full bg-zinc-900 shadow-lg">
+        <button
+          onClick={() => navigate({ to: "/perfil" })}
+          className="p-2 rounded-full bg-zinc-900 shadow-lg"
+        >
           <ArrowLeft className="w-5 h-5 text-zinc-300" />
         </button>
         <h1 className="text-xl font-bold text-primary text-center flex-1">Notificações</h1>
@@ -87,21 +92,25 @@ function NotificacoesPage() {
 
         <div className="space-y-4">
           {notificationOptions.map((option) => (
-            <div 
+            <div
               key={option.id}
               className="flex items-start justify-between p-4 rounded-2xl bg-zinc-900/40 border border-zinc-900/50 transition-all"
             >
               <div className="flex gap-4">
-                <div className={`p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 shrink-0 ${option.color}`}>
+                <div
+                  className={`p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 shrink-0 ${option.color}`}
+                >
                   <option.icon className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
                   <p className="font-bold text-sm text-zinc-200">{option.label}</p>
-                  <p className="text-[11px] text-zinc-500 leading-relaxed pr-4">{option.description}</p>
+                  <p className="text-[11px] text-zinc-500 leading-relaxed pr-4">
+                    {option.description}
+                  </p>
                 </div>
               </div>
-              <Switch 
-                checked={settings[option.id as keyof typeof settings]} 
+              <Switch
+                checked={settings[option.id as keyof typeof settings]}
                 onCheckedChange={() => toggle(option.id as keyof typeof settings)}
                 className="data-[state=checked]:bg-primary"
               />

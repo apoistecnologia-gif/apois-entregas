@@ -16,7 +16,7 @@ export const fetchMerchantHours = async (merchantId: string) => {
 
 export const fetchMerchantsHoursBatch = async (merchantIds: string[]) => {
   if (merchantIds.length === 0) return [];
-  
+
   const { data, error } = await supabase
     .from("merchant_hours")
     .select("*")
@@ -39,7 +39,10 @@ export interface MerchantStatus {
 /**
  * Lógica de status de funcionamento com suporte a horários que atravessam a meia-noite.
  */
-export const calculateMerchantStatus = (hours: MerchantHours[], customNow?: Date): MerchantStatus => {
+export const calculateMerchantStatus = (
+  hours: MerchantHours[],
+  customNow?: Date,
+): MerchantStatus => {
   if (!hours || hours.length === 0) {
     return { status: "unknown", message: "Horário não informado" };
   }
@@ -47,7 +50,7 @@ export const calculateMerchantStatus = (hours: MerchantHours[], customNow?: Date
   const now = customNow || new Date();
   const currentWeekday = now.getDay(); // 0 (Dom) - 6 (Sab)
   const yesterdayWeekday = (currentWeekday + 6) % 7;
-  
+
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   // Helper para converter "HH:mm:ss" ou "HH:mm" para minutos totais do dia
@@ -58,11 +61,16 @@ export const calculateMerchantStatus = (hours: MerchantHours[], customNow?: Date
   };
 
   // 1. Verificar expediente do DIA ANTERIOR (atravessa meia-noite)
-  const yesterdayHours = hours.find(h => h.weekday === yesterdayWeekday);
-  if (yesterdayHours && !yesterdayHours.is_closed && yesterdayHours.opens_at && yesterdayHours.closes_at) {
+  const yesterdayHours = hours.find((h) => h.weekday === yesterdayWeekday);
+  if (
+    yesterdayHours &&
+    !yesterdayHours.is_closed &&
+    yesterdayHours.opens_at &&
+    yesterdayHours.closes_at
+  ) {
     const openMins = timeToMinutes(yesterdayHours.opens_at)!;
     const closeMins = timeToMinutes(yesterdayHours.closes_at)!;
-    
+
     if (closeMins < openMins) {
       // Atravessa meia-noite. Ex: 20:00 - 02:00
       // Se agora é 01:00 (sábado), ainda está no expediente de ontem (sexta)
@@ -71,15 +79,15 @@ export const calculateMerchantStatus = (hours: MerchantHours[], customNow?: Date
           status: "open",
           message: `Aberto até ${yesterdayHours.closes_at.substring(0, 5)}`,
           closesAt: yesterdayHours.closes_at.substring(0, 5),
-          hoursToday: yesterdayHours
+          hoursToday: yesterdayHours,
         };
       }
     }
   }
 
   // 2. Verificar expediente do DIA ATUAL
-  const todayHours = hours.find(h => h.weekday === currentWeekday);
-  
+  const todayHours = hours.find((h) => h.weekday === currentWeekday);
+
   if (!todayHours) {
     return { status: "unknown", message: "Horário não informado" };
   }
@@ -96,19 +104,19 @@ export const calculateMerchantStatus = (hours: MerchantHours[], customNow?: Date
   }
 
   const isOvernight = closeMins < openMins;
-  
-  const isOpen = isOvernight 
-    ? (nowMinutes >= openMins)
-    : (nowMinutes >= openMins && nowMinutes < closeMins);
+
+  const isOpen = isOvernight
+    ? nowMinutes >= openMins
+    : nowMinutes >= openMins && nowMinutes < closeMins;
 
   if (!isOpen) {
     return { status: "closed", message: "Fechado", hoursToday: todayHours };
   }
 
-  return { 
-    status: "open", 
+  return {
+    status: "open",
     message: `Aberto até ${todayHours.closes_at.substring(0, 5)}`,
     closesAt: todayHours.closes_at.substring(0, 5),
-    hoursToday: todayHours 
+    hoursToday: todayHours,
   };
 };

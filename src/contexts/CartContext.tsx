@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from "react";
 
 export type CartSelectedOption = {
   groupId: string;
@@ -35,12 +35,12 @@ interface CartContextType {
   items: CartItem[];
   merchant: CartMerchant | null;
   addItem: (
-    item: Omit<CartItem, 'quantity' | 'lineId' | 'price' | 'basePrice' | 'selectedOptions'> & { 
+    item: Omit<CartItem, "quantity" | "lineId" | "price" | "basePrice" | "selectedOptions"> & {
       price: number;
       basePrice?: number;
       selectedOptions?: CartSelectedOption[];
-    }, 
-    merchantData: CartMerchant
+    },
+    merchantData: CartMerchant,
   ) => void;
   updateQuantity: (lineId: string, delta: number) => void;
   removeItem: (lineId: string) => void;
@@ -57,8 +57,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Carregar do localStorage na inicialização
   useEffect(() => {
-    const savedCart = localStorage.getItem('apois_cart');
-    const savedMerchant = localStorage.getItem('apois_merchant');
+    const savedCart = localStorage.getItem("apois_cart");
+    const savedMerchant = localStorage.getItem("apois_merchant");
     if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
@@ -67,47 +67,47 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...item,
           lineId: item.lineId || item.id,
           basePrice: item.basePrice !== undefined ? item.basePrice : item.price,
-          selectedOptions: item.selectedOptions || []
+          selectedOptions: item.selectedOptions || [],
         }));
         setItems(normalizedCart);
       } catch (e) {
-        console.error('Erro ao carregar itens da sacola:', e);
+        console.error("Erro ao carregar itens da sacola:", e);
       }
     }
     if (savedMerchant) {
       try {
         setMerchant(JSON.parse(savedMerchant));
       } catch (e) {
-        console.error('Erro ao carregar estabelecimento da sacola:', e);
+        console.error("Erro ao carregar estabelecimento da sacola:", e);
       }
     }
   }, []);
 
   // Persistir no localStorage sempre que mudar
   useEffect(() => {
-    localStorage.setItem('apois_cart', JSON.stringify(items));
+    localStorage.setItem("apois_cart", JSON.stringify(items));
     if (merchant) {
-      localStorage.setItem('apois_merchant', JSON.stringify(merchant));
+      localStorage.setItem("apois_merchant", JSON.stringify(merchant));
     } else {
-      localStorage.removeItem('apois_merchant');
+      localStorage.removeItem("apois_merchant");
     }
   }, [items, merchant]);
 
   const addItem = (
-    newItem: Omit<CartItem, 'quantity' | 'lineId' | 'price' | 'basePrice' | 'selectedOptions'> & { 
+    newItem: Omit<CartItem, "quantity" | "lineId" | "price" | "basePrice" | "selectedOptions"> & {
       price: number;
       basePrice?: number;
       selectedOptions?: CartSelectedOption[];
-    }, 
-    merchantData: CartMerchant
+    },
+    merchantData: CartMerchant,
   ) => {
     if (!merchant || merchant.id !== merchantData.id) {
       setMerchant(merchantData);
     }
-    
+
     const basePrice = newItem.basePrice !== undefined ? newItem.basePrice : newItem.price;
     const selectedOptions = newItem.selectedOptions || [];
-    
+
     // Calcula o preço unitário final
     const priceDelta = selectedOptions.reduce((acc, opt) => acc + opt.priceDelta, 0);
     const finalUnitPrice = basePrice + priceDelta;
@@ -115,51 +115,55 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Gera o lineId determinístico
     let lineId = newItem.id;
     if (selectedOptions.length > 0) {
-      const sortedOptionIds = [...selectedOptions].map(o => o.optionId).sort().join(',');
+      const sortedOptionIds = [...selectedOptions]
+        .map((o) => o.optionId)
+        .sort()
+        .join(",");
       lineId = `${newItem.id}::${sortedOptionIds}`;
     }
 
-    setItems(prev => {
-      const existingItem = prev.find(item => item.lineId === lineId);
+    setItems((prev) => {
+      const existingItem = prev.find((item) => item.lineId === lineId);
       if (existingItem) {
-        return prev.map(item => 
-          item.lineId === lineId 
-            ? { ...item, quantity: item.quantity + 1 } 
-            : item
+        return prev.map((item) =>
+          item.lineId === lineId ? { ...item, quantity: item.quantity + 1 } : item,
         );
       }
-      return [...prev, { 
-        ...newItem, 
-        lineId,
-        basePrice,
-        price: finalUnitPrice,
-        selectedOptions,
-        quantity: 1 
-      } as CartItem];
+      return [
+        ...prev,
+        {
+          ...newItem,
+          lineId,
+          basePrice,
+          price: finalUnitPrice,
+          selectedOptions,
+          quantity: 1,
+        } as CartItem,
+      ];
     });
   };
 
   const updateQuantity = (lineId: string, delta: number) => {
-    setItems(prev => {
-      const newItems = prev.flatMap(item => {
+    setItems((prev) => {
+      const newItems = prev.flatMap((item) => {
         if (item.lineId === lineId) {
           const newQty = item.quantity + delta;
           return newQty > 0 ? [{ ...item, quantity: newQty }] : [];
         }
         return [item];
       });
-      
+
       if (newItems.length === 0) {
         setMerchant(null);
       }
-      
+
       return newItems;
     });
   };
 
   const removeItem = (lineId: string) => {
-    setItems(prev => {
-      const newItems = prev.filter(item => item.lineId !== lineId);
+    setItems((prev) => {
+      const newItems = prev.filter((item) => item.lineId !== lineId);
       if (newItems.length === 0) {
         setMerchant(null);
       }
@@ -173,19 +177,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
-  const totalPrice = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const totalPrice = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ 
-      items, 
-      merchant,
-      addItem, 
-      updateQuantity, 
-      removeItem, 
-      clearCart,
-      totalItems,
-      totalPrice
-    }}>
+    <CartContext.Provider
+      value={{
+        items,
+        merchant,
+        addItem,
+        updateQuantity,
+        removeItem,
+        clearCart,
+        totalItems,
+        totalPrice,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );
@@ -194,7 +200,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useCart = () => {
   const context = useContext(CartContext);
   if (context === undefined) {
-    throw new Error('useCart must be used within a CartProvider');
+    throw new Error("useCart must be used within a CartProvider");
   }
   return context;
 };

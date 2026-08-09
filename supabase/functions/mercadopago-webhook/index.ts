@@ -47,7 +47,11 @@ function constantTimeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-async function validSignature(request: Request, dataId: string, secrets: string[]): Promise<boolean> {
+async function validSignature(
+  request: Request,
+  dataId: string,
+  secrets: string[],
+): Promise<boolean> {
   const signature = request.headers.get("x-signature")?.trim();
   if (!signature) return false;
 
@@ -91,12 +95,20 @@ Deno.serve(async (request: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const accessToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
   const webhookSecretTest = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET_TEST")?.trim() || null;
-  const webhookSecretProduction = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET_PRODUCTION")?.trim() || null;
+  const webhookSecretProduction =
+    Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET_PRODUCTION")?.trim() || null;
   const webhookSecretLegacy = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET")?.trim() || null;
   const webhookSecrets = Array.from(
-    new Set([webhookSecretTest, webhookSecretProduction, webhookSecretLegacy].filter((value): value is string => Boolean(value))),
+    new Set(
+      [webhookSecretTest, webhookSecretProduction, webhookSecretLegacy].filter(
+        (value): value is string => Boolean(value),
+      ),
+    ),
   );
-  const apiBase = (Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com").replace(/\/$/, "");
+  const apiBase = (Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com").replace(
+    /\/$/,
+    "",
+  );
 
   if (!supabaseUrl || !serviceRoleKey || !accessToken || webhookSecrets.length === 0) {
     console.error("mercadopago-webhook environment incomplete");
@@ -177,10 +189,10 @@ Deno.serve(async (request: Request) => {
   const providerStatus = text(providerOrder.status) ?? "unknown";
   const providerStatusDetail = text(providerOrder.status_detail) ?? "unknown";
   const eventType = signatureValid
-    ? text(payload.action) ?? text(payload.type) ?? "order.updated"
+    ? (text(payload.action) ?? text(payload.type) ?? "order.updated")
     : "order.reconciled";
   const providerNotificationId = signatureValid
-    ? text(payload.id) ?? `${eventType}:${dataId}:${providerStatus}:${providerStatusDetail}`
+    ? (text(payload.id) ?? `${eventType}:${dataId}:${providerStatus}:${providerStatusDetail}`)
     : `provider-reconcile:${dataId}:${providerStatus}:${providerStatusDetail}`;
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
@@ -257,11 +269,15 @@ Deno.serve(async (request: Request) => {
   }
 
   const transactions = isRecord(providerOrder.transactions) ? providerOrder.transactions : null;
-  const providerPayments = transactions && Array.isArray(transactions.payments) ? transactions.payments : [];
-  const providerPayment = providerPayments.length > 0 && isRecord(providerPayments[0]) ? providerPayments[0] : null;
+  const providerPayments =
+    transactions && Array.isArray(transactions.payments) ? transactions.payments : [];
+  const providerPayment =
+    providerPayments.length > 0 && isRecord(providerPayments[0]) ? providerPayments[0] : null;
   const providerTransactionId = providerPayment ? text(providerPayment.id) : null;
-  const providerRefunds = transactions && Array.isArray(transactions.refunds) ? transactions.refunds : [];
-  const providerRefund = providerRefunds.length > 0 && isRecord(providerRefunds[0]) ? providerRefunds[0] : null;
+  const providerRefunds =
+    transactions && Array.isArray(transactions.refunds) ? transactions.refunds : [];
+  const providerRefund =
+    providerRefunds.length > 0 && isRecord(providerRefunds[0]) ? providerRefunds[0] : null;
   const providerRefundId = providerRefund ? text(providerRefund.id) : null;
   const providerRefundAmount =
     providerRefund && Number.isFinite(Number(providerRefund.amount))

@@ -24,16 +24,23 @@ async function parseSafe(response: Response) {
     error: text(payload.error),
     status: text(payload.status),
     status_detail: text(payload.status_detail),
-    code: typeof payload.code === "string" || typeof payload.code === "number" ? payload.code : null,
+    code:
+      typeof payload.code === "string" || typeof payload.code === "number" ? payload.code : null,
   };
 }
 
 Deno.serve(async () => {
   const rawToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
-  const apiBase = (Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com").replace(/\/$/, "");
+  const apiBase = (Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com").replace(
+    /\/$/,
+    "",
+  );
 
   if (!rawToken) {
-    return new Response(JSON.stringify({ ok: false, reason: "secret_missing" }), { status: 500, headers: jsonHeaders });
+    return new Response(JSON.stringify({ ok: false, reason: "secret_missing" }), {
+      status: 500,
+      headers: jsonHeaders,
+    });
   }
 
   const token = rawToken.trim();
@@ -45,8 +52,12 @@ Deno.serve(async () => {
 
   const authHeaders = { Authorization: `Bearer ${token}`, Accept: "application/json" };
 
-  const paymentMethodsResponse = await fetch(`${apiBase}/v1/payment_methods`, { headers: authHeaders });
-  const paymentMethodsError = paymentMethodsResponse.ok ? null : await parseSafe(paymentMethodsResponse);
+  const paymentMethodsResponse = await fetch(`${apiBase}/v1/payment_methods`, {
+    headers: authHeaders,
+  });
+  const paymentMethodsError = paymentMethodsResponse.ok
+    ? null
+    : await parseSafe(paymentMethodsResponse);
 
   const begin = "2026-08-01T00:00:00.000Z";
   const end = "2026-08-09T23:59:59.999Z";
@@ -54,18 +65,21 @@ Deno.serve(async () => {
   const ordersResponse = await fetch(ordersUrl, { headers: authHeaders });
   const ordersError = ordersResponse.ok ? null : await parseSafe(ordersResponse);
 
-  return new Response(JSON.stringify({
-    ok: true,
-    metadata,
-    paymentMethods: {
-      status: paymentMethodsResponse.status,
-      authorized: paymentMethodsResponse.status !== 401,
-      error: paymentMethodsError,
-    },
-    orders: {
-      status: ordersResponse.status,
-      authorized: ordersResponse.status !== 401,
-      error: ordersError,
-    },
-  }), { status: 200, headers: jsonHeaders });
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      metadata,
+      paymentMethods: {
+        status: paymentMethodsResponse.status,
+        authorized: paymentMethodsResponse.status !== 401,
+        error: paymentMethodsError,
+      },
+      orders: {
+        status: ordersResponse.status,
+        authorized: ordersResponse.status !== 401,
+        error: ordersError,
+      },
+    }),
+    { status: 200, headers: jsonHeaders },
+  );
 });

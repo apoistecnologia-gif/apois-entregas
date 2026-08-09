@@ -1,4 +1,4 @@
- import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 
 export const fetchMerchantCategories = async () => {
   const { data, error } = await supabase
@@ -6,25 +6,20 @@ export const fetchMerchantCategories = async () => {
     .select("*")
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
-  
+
   if (error) throw error;
   return data;
 };
 
 export const fetchMerchants = async (city?: string, state?: string) => {
-  let query = supabase
-    .from("merchants")
-    .select("*")
-    .eq("is_active", true);
-  
+  let query = supabase.from("merchants").select("*").eq("is_active", true);
+
   if (city && state) {
-    query = query
-      .ilike("city", city)
-      .ilike("state", state);
+    query = query.ilike("city", city).ilike("state", state);
   }
-  
+
   const { data, error } = await query;
-  
+
   if (error) throw error;
   return data;
 };
@@ -36,7 +31,7 @@ export const fetchMerchantById = async (id: string) => {
     .eq("id", id)
     .eq("is_active", true)
     .single();
-    
+
   if (error) throw error;
   return data;
 };
@@ -48,7 +43,7 @@ export const fetchMenuCategoriesByMerchant = async (merchantId: string) => {
     .eq("merchant_id", merchantId)
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
-    
+
   if (error) throw error;
   return data;
 };
@@ -60,7 +55,7 @@ export const fetchProductsByMerchant = async (merchantId: string) => {
     .eq("merchant_id", merchantId)
     .eq("is_available", true)
     .order("sort_order", { ascending: true });
-    
+
   if (error) throw error;
   return data;
 };
@@ -71,11 +66,10 @@ export const fetchMerchantCategoryById = async (id: string) => {
     .select("*")
     .eq("id", id)
     .single();
-    
+
   if (error) throw error;
   return data;
 };
-
 
 export const fetchProductOptionGroups = async (productId: string) => {
   const { data, error } = await supabase

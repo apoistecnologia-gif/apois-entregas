@@ -6,7 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/favoritos")({
   beforeLoad: async ({ location }) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       throw redirect({
         to: "/login",
@@ -27,17 +29,33 @@ function FavoritosPage() {
   return (
     <div className="flex h-screen w-full flex-col bg-black text-white overflow-hidden relative">
       <header className="sticky top-0 z-50 flex items-center justify-between p-4 bg-black/80 backdrop-blur-lg border-b border-zinc-900">
-        <button onClick={() => navigate({ to: "/inicio" })} className="p-2 rounded-full bg-zinc-900"><ArrowLeft /></button>
+        <button
+          onClick={() => navigate({ to: "/inicio" })}
+          className="p-2 rounded-full bg-zinc-900"
+        >
+          <ArrowLeft />
+        </button>
         <h1 className="text-xl font-bold">Favoritos</h1>
-        <button onClick={() => navigate({ to: "/sacola" })} className="relative p-2 rounded-full bg-zinc-900">
+        <button
+          onClick={() => navigate({ to: "/sacola" })}
+          className="relative p-2 rounded-full bg-zinc-900"
+        >
           <ShoppingBag />
-          {totalItems > 0 && <span className="absolute -top-1 -right-1 bg-primary text-black text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">{totalItems}</span>}
+          {totalItems > 0 && (
+            <span className="absolute -top-1 -right-1 bg-primary text-black text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+              {totalItems}
+            </span>
+          )}
         </button>
       </header>
       <main className="flex-1 overflow-y-auto flex flex-col items-center justify-center p-6 pb-20 text-center scrollbar-none">
-        <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mb-4"><Heart className="w-8 h-8 text-zinc-600" /></div>
+        <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mb-4">
+          <Heart className="w-8 h-8 text-zinc-600" />
+        </div>
         <h2 className="text-lg font-bold">Nenhum favorito</h2>
-        <p className="text-zinc-500 text-sm mt-2">Explore e favorite seus restaurantes preferidos.</p>
+        <p className="text-zinc-500 text-sm mt-2">
+          Explore e favorite seus restaurantes preferidos.
+        </p>
       </main>
       <AppBottomNav activeTab="favoritos" />
     </div>

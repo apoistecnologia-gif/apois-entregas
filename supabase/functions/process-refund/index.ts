@@ -20,8 +20,10 @@ function response(status: number, body: JsonRecord) {
 }
 
 Deno.serve(async (request: Request) => {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
-  if (request.method !== "POST") return response(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
+  if (request.method === "OPTIONS")
+    return new Response(null, { status: 204, headers: corsHeaders });
+  if (request.method !== "POST")
+    return response(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
 
   const authorization = request.headers.get("Authorization");
   if (!authorization?.startsWith("Bearer ")) {
@@ -32,17 +34,28 @@ Deno.serve(async (request: Request) => {
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const accessToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
-  const apiBase = (Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com").replace(/\/$/, "");
+  const apiBase = (Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com").replace(
+    /\/$/,
+    "",
+  );
 
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-    return response(500, { error: "Serviço temporariamente indisponível.", code: "SERVER_CONFIGURATION" });
+    return response(500, {
+      error: "Serviço temporariamente indisponível.",
+      code: "SERVER_CONFIGURATION",
+    });
   }
   if (!accessToken) {
-    return response(503, { error: "Estornos ainda não estão habilitados.", code: "PAYMENT_PROVIDER_NOT_CONFIGURED" });
+    return response(503, {
+      error: "Estornos ainda não estão habilitados.",
+      code: "PAYMENT_PROVIDER_NOT_CONFIGURED",
+    });
   }
 
   const token = authorization.slice("Bearer ".length);
-  const authClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const authClient = createClient(supabaseUrl, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
   const { data: authData, error: authError } = await authClient.auth.getUser(token);
   if (authError || !authData.user) {
     return response(401, { error: "Sessão inválida ou expirada.", code: "UNAUTHORIZED" });
@@ -54,21 +67,32 @@ Deno.serve(async (request: Request) => {
   } catch {
     return response(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
   }
-  if (!isRecord(payload) || typeof payload.refundId !== "string" || !UUID_RE.test(payload.refundId)) {
+  if (
+    !isRecord(payload) ||
+    typeof payload.refundId !== "string" ||
+    !UUID_RE.test(payload.refundId)
+  ) {
     return response(400, { error: "Estorno inválido.", code: "INVALID_REFUND_ID" });
   }
 
   const refundId = payload.refundId;
-  const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 
   const { data: refund, error: refundError } = await admin
     .from("refunds")
-    .select("id,payment_id,order_id,amount,reason,status,provider_refund_id,requested_by,processed_at")
+    .select(
+      "id,payment_id,order_id,amount,reason,status,provider_refund_id,requested_by,processed_at",
+    )
     .eq("id", refundId)
     .maybeSingle();
   if (refundError) {
     console.error("process-refund refund lookup failed", { code: refundError.code, refundId });
-    return response(500, { error: "Não foi possível consultar o estorno.", code: "REFUND_LOOKUP_FAILED" });
+    return response(500, {
+      error: "Não foi possível consultar o estorno.",
+      code: "REFUND_LOOKUP_FAILED",
+    });
   }
   if (!refund) return response(404, { error: "Estorno não encontrado.", code: "REFUND_NOT_FOUND" });
 
@@ -85,8 +109,12 @@ Deno.serve(async (request: Request) => {
     .eq("user_id", authData.user.id)
     .eq("role", "admin")
     .maybeSingle();
-  const authorized = order.customer_user_id === authData.user.id || refund.requested_by === authData.user.id || Boolean(adminRole);
-  if (!authorized) return response(403, { error: "Você não pode processar este estorno.", code: "FORBIDDEN" });
+  const authorized =
+    order.customer_user_id === authData.user.id ||
+    refund.requested_by === authData.user.id ||
+    Boolean(adminRole);
+  if (!authorized)
+    return response(403, { error: "Você não pode processar este estorno.", code: "FORBIDDEN" });
 
   if (refund.status === "completed") {
     return response(200, {
@@ -100,12 +128,22 @@ Deno.serve(async (request: Request) => {
     .select("id,provider,provider_charge_id,status,amount")
     .eq("id", refund.payment_id)
     .maybeSingle();
-  if (!payment) return response(409, { error: "Pagamento do estorno não foi encontrado.", code: "PAYMENT_NOT_FOUND" });
+  if (!payment)
+    return response(409, {
+      error: "Pagamento do estorno não foi encontrado.",
+      code: "PAYMENT_NOT_FOUND",
+    });
   if (payment.provider !== "mercadopago" || !payment.provider_charge_id) {
-    return response(409, { error: "Este pagamento não pode ser estornado pelo gateway atual.", code: "PROVIDER_MISMATCH" });
+    return response(409, {
+      error: "Este pagamento não pode ser estornado pelo gateway atual.",
+      code: "PROVIDER_MISMATCH",
+    });
   }
   if (Math.round(Number(payment.amount) * 100) !== Math.round(Number(refund.amount) * 100)) {
-    return response(409, { error: "O estorno total possui valor divergente do pagamento.", code: "REFUND_AMOUNT_CONFLICT" });
+    return response(409, {
+      error: "O estorno total possui valor divergente do pagamento.",
+      code: "REFUND_AMOUNT_CONFLICT",
+    });
   }
 
   let providerTransactionId: string | null = null;
@@ -125,23 +163,37 @@ Deno.serve(async (request: Request) => {
   const readProviderOrder = async (): Promise<{ response: Response; body: unknown }> => {
     const providerResponse = await fetch(providerOrderUrl, { headers: authHeaders });
     let body: unknown = null;
-    try { body = await providerResponse.json(); } catch { /* ignore */ }
+    try {
+      body = await providerResponse.json();
+    } catch {
+      /* ignore */
+    }
     return { response: providerResponse, body };
   };
 
   let { response: currentProviderResponse, body: providerPayload } = await readProviderOrder();
   if (!currentProviderResponse.ok || !isRecord(providerPayload)) {
-    return response(502, { error: "Não foi possível consultar o pagamento no Mercado Pago.", code: "PROVIDER_LOOKUP_FAILED" });
+    return response(502, {
+      error: "Não foi possível consultar o pagamento no Mercado Pago.",
+      code: "PROVIDER_LOOKUP_FAILED",
+    });
   }
 
   if (!providerTransactionId) {
-    const transactions = isRecord(providerPayload.transactions) ? providerPayload.transactions : null;
-    const providerPayments = transactions && Array.isArray(transactions.payments) ? transactions.payments : [];
-    const firstPayment = providerPayments.length > 0 && isRecord(providerPayments[0]) ? providerPayments[0] : null;
+    const transactions = isRecord(providerPayload.transactions)
+      ? providerPayload.transactions
+      : null;
+    const providerPayments =
+      transactions && Array.isArray(transactions.payments) ? transactions.payments : [];
+    const firstPayment =
+      providerPayments.length > 0 && isRecord(providerPayments[0]) ? providerPayments[0] : null;
     providerTransactionId = firstPayment ? text(firstPayment.id) : null;
   }
   if (!providerTransactionId) {
-    return response(409, { error: "A transação original do pagamento não foi encontrada.", code: "PROVIDER_TRANSACTION_NOT_FOUND" });
+    return response(409, {
+      error: "A transação original do pagamento não foi encontrada.",
+      code: "PROVIDER_TRANSACTION_NOT_FOUND",
+    });
   }
 
   const currentStatus = text(providerPayload.status);
@@ -168,20 +220,31 @@ Deno.serve(async (request: Request) => {
     });
 
     let refundPayload: unknown = null;
-    try { refundPayload = await providerResponse.json(); } catch { /* ignore */ }
+    try {
+      refundPayload = await providerResponse.json();
+    } catch {
+      /* ignore */
+    }
 
     if (providerResponse.ok && isRecord(refundPayload)) {
       providerPayload = refundPayload;
     } else {
       const verified = await readProviderOrder();
       const verifiedRecord = isRecord(verified.body) ? verified.body : null;
-      const verifiedRefunded = verifiedRecord && (
-        text(verifiedRecord.status) === "refunded" || text(verifiedRecord.status_detail) === "refunded"
-      );
+      const verifiedRefunded =
+        verifiedRecord &&
+        (text(verifiedRecord.status) === "refunded" ||
+          text(verifiedRecord.status_detail) === "refunded");
       if (!verified.response.ok || !verifiedRefunded) {
         await admin.from("refunds").update({ status: "failed" }).eq("id", refund.id);
-        console.error("process-refund provider error", { status: providerResponse.status, refundId });
-        return response(502, { error: "O Mercado Pago não conseguiu processar o estorno agora.", code: "REFUND_PROVIDER_ERROR" });
+        console.error("process-refund provider error", {
+          status: providerResponse.status,
+          refundId,
+        });
+        return response(502, {
+          error: "O Mercado Pago não conseguiu processar o estorno agora.",
+          code: "REFUND_PROVIDER_ERROR",
+        });
       }
       providerPayload = verifiedRecord;
     }
@@ -189,23 +252,34 @@ Deno.serve(async (request: Request) => {
 
   if (!isRecord(providerPayload)) {
     await admin.from("refunds").update({ status: "failed" }).eq("id", refund.id);
-    return response(502, { error: "Resposta inválida do Mercado Pago.", code: "INVALID_PROVIDER_RESPONSE" });
+    return response(502, {
+      error: "Resposta inválida do Mercado Pago.",
+      code: "INVALID_PROVIDER_RESPONSE",
+    });
   }
 
   const transactions = isRecord(providerPayload.transactions) ? providerPayload.transactions : null;
-  const providerRefunds = transactions && Array.isArray(transactions.refunds) ? transactions.refunds : [];
-  const providerRefund = providerRefunds.length > 0 && isRecord(providerRefunds[0]) ? providerRefunds[0] : null;
+  const providerRefunds =
+    transactions && Array.isArray(transactions.refunds) ? transactions.refunds : [];
+  const providerRefund =
+    providerRefunds.length > 0 && isRecord(providerRefunds[0]) ? providerRefunds[0] : null;
   const providerRefundId = providerRefund ? text(providerRefund.id) : null;
   const providerRefundStatus = providerRefund ? text(providerRefund.status) : null;
   const providerStatus = text(providerPayload.status);
   const providerStatusDetail = text(providerPayload.status_detail);
-  const completed = providerStatus === "refunded" || providerStatusDetail === "refunded" || providerRefundStatus === "processed";
+  const completed =
+    providerStatus === "refunded" ||
+    providerStatusDetail === "refunded" ||
+    providerRefundStatus === "processed";
 
   if (!completed) {
-    await admin.from("refunds").update({
-      status: "processing",
-      provider_refund_id: providerRefundId,
-    }).eq("id", refund.id);
+    await admin
+      .from("refunds")
+      .update({
+        status: "processing",
+        provider_refund_id: providerRefundId,
+      })
+      .eq("id", refund.id);
     return response(202, {
       refund: { id: refund.id, status: "processing", providerRefundId },
       reused: false,
@@ -213,11 +287,14 @@ Deno.serve(async (request: Request) => {
   }
 
   const now = new Date().toISOString();
-  await admin.from("refunds").update({
-    status: "completed",
-    provider_refund_id: providerRefundId,
-    processed_at: now,
-  }).eq("id", refund.id);
+  await admin
+    .from("refunds")
+    .update({
+      status: "completed",
+      provider_refund_id: providerRefundId,
+      processed_at: now,
+    })
+    .eq("id", refund.id);
   await admin.from("payments").update({ status: "refunded" }).eq("id", payment.id);
 
   const { data: transitionedOrder } = await admin
@@ -238,14 +315,17 @@ Deno.serve(async (request: Request) => {
   }
 
   if (providerRefundId) {
-    await admin.from("payment_transactions").upsert({
-      payment_id: payment.id,
-      provider_transaction_id: providerRefundId,
-      transaction_type: "refund",
-      amount: Number(refund.amount),
-      status: "completed",
-      processed_at: now,
-    }, { onConflict: "payment_id,provider_transaction_id,transaction_type" });
+    await admin.from("payment_transactions").upsert(
+      {
+        payment_id: payment.id,
+        provider_transaction_id: providerRefundId,
+        transaction_type: "refund",
+        amount: Number(refund.amount),
+        status: "completed",
+        processed_at: now,
+      },
+      { onConflict: "payment_id,provider_transaction_id,transaction_type" },
+    );
   }
 
   return response(200, {

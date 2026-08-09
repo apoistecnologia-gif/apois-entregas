@@ -220,9 +220,11 @@ function CheckoutPage() {
         error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError || !user) throw new Error("Sua sessão expirou. Entre novamente para finalizar o pedido.");
+      if (userError || !user)
+        throw new Error("Sua sessão expirou. Entre novamente para finalizar o pedido.");
       if (!address) throw new Error("Selecione um endereço de entrega antes de continuar.");
-      if (!merchant?.id) throw new Error("Não foi possível identificar o estabelecimento deste pedido.");
+      if (!merchant?.id)
+        throw new Error("Não foi possível identificar o estabelecimento deste pedido.");
       if (items.length === 0) throw new Error("Sua sacola está vazia.");
       if (paymentMethod !== "pix") throw new Error("No momento, apenas PIX está disponível.");
 
@@ -239,31 +241,39 @@ function CheckoutPage() {
       });
       const attempt = getCheckoutAttempt(fingerprint);
 
-      const { data: orderResponse, error: orderError } = await supabase.functions.invoke("create-order", {
-        body: {
-          merchantId: merchant.id,
-          requestKey: attempt.key,
-          paymentMethod: "pix",
-          deliveryAddress: address,
-          observation,
-          items: items.map((item) => ({
-            productId: item.id,
-            quantity: item.quantity,
-            options: item.selectedOptions.map((option) => ({ optionId: option.optionId })),
-          })),
+      const { data: orderResponse, error: orderError } = await supabase.functions.invoke(
+        "create-order",
+        {
+          body: {
+            merchantId: merchant.id,
+            requestKey: attempt.key,
+            paymentMethod: "pix",
+            deliveryAddress: address,
+            observation,
+            items: items.map((item) => ({
+              productId: item.id,
+              quantity: item.quantity,
+              options: item.selectedOptions.map((option) => ({ optionId: option.optionId })),
+            })),
+          },
         },
-      });
+      );
 
       if (orderError) {
-        throw new Error(await getFunctionErrorMessage(orderError, "Não foi possível criar o pedido."));
+        throw new Error(
+          await getFunctionErrorMessage(orderError, "Não foi possível criar o pedido."),
+        );
       }
 
       const orderId = orderResponse?.orderId;
       if (!orderId) throw new Error("O backend não retornou o identificador do pedido.");
 
-      const { data: pixResponse, error: pixError } = await supabase.functions.invoke("create-pix-charge", {
-        body: { orderId },
-      });
+      const { data: pixResponse, error: pixError } = await supabase.functions.invoke(
+        "create-pix-charge",
+        {
+          body: { orderId },
+        },
+      );
       if (pixError) {
         throw new Error(await getFunctionErrorMessage(pixError, "Não foi possível gerar o PIX."));
       }
@@ -314,7 +324,11 @@ function CheckoutPage() {
   return (
     <div className="flex h-screen w-full flex-col bg-black text-white">
       <header className="sticky top-0 z-50 flex items-center gap-4 bg-black/80 p-4 backdrop-blur-lg">
-        <button type="button" onClick={() => navigate({ to: "/sacola" })} className="rounded-full bg-zinc-900 p-2">
+        <button
+          type="button"
+          onClick={() => navigate({ to: "/sacola" })}
+          className="rounded-full bg-zinc-900 p-2"
+        >
           <ArrowLeft />
         </button>
         <h1 className="text-xl font-bold">Checkout</h1>
@@ -326,7 +340,9 @@ function CheckoutPage() {
           <div className="flex items-center gap-3">
             <MapPin className="text-primary" />
             <div className="flex-1">
-              <p className="font-bold">{address ? `${address.street}, ${address.number}` : "Carregando..."}</p>
+              <p className="font-bold">
+                {address ? `${address.street}, ${address.number}` : "Carregando..."}
+              </p>
               <p className="text-xs text-zinc-500">{address?.neighborhood}</p>
             </div>
           </div>
@@ -335,9 +351,14 @@ function CheckoutPage() {
         <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
           <p className="mb-2 text-xs font-bold uppercase text-zinc-500">Itens</p>
           {items.map((item) => (
-            <div key={item.lineId} className="space-y-1 border-b border-zinc-900 py-2 last:border-0">
+            <div
+              key={item.lineId}
+              className="space-y-1 border-b border-zinc-900 py-2 last:border-0"
+            >
               <div className="flex justify-between text-sm">
-                <span className="font-bold">{item.quantity}x {item.name}</span>
+                <span className="font-bold">
+                  {item.quantity}x {item.name}
+                </span>
                 <span>R$ {(item.price * item.quantity).toFixed(2).replace(".", ",")}</span>
               </div>
               {item.selectedOptions.length > 0 && (
@@ -352,7 +373,9 @@ function CheckoutPage() {
         <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
           <p className="mb-2 text-xs font-bold uppercase text-zinc-500">Forma de Pagamento</p>
           <div className="space-y-3">
-            <div className={`flex items-center gap-3 rounded-xl border p-3 ${paymentMethod === "pix" ? "border-primary bg-primary/5" : "border-zinc-900 opacity-50"}`}>
+            <div
+              className={`flex items-center gap-3 rounded-xl border p-3 ${paymentMethod === "pix" ? "border-primary bg-primary/5" : "border-zinc-900 opacity-50"}`}
+            >
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
                 <QrCode className="h-4 w-4 text-primary" />
               </div>
@@ -384,17 +407,27 @@ function CheckoutPage() {
         </section>
 
         <section className="space-y-2 text-sm text-zinc-400">
-          <div className="flex justify-between"><span>Subtotal</span><span>R$ {subtotal.toFixed(2).replace(".", ",")}</span></div>
-          <div className="flex justify-between"><span>Taxa de entrega</span><span>R$ {deliveryFee.toFixed(2).replace(".", ",")}</span></div>
+          <div className="flex justify-between">
+            <span>Subtotal</span>
+            <span>R$ {subtotal.toFixed(2).replace(".", ",")}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Taxa de entrega</span>
+            <span>R$ {deliveryFee.toFixed(2).replace(".", ",")}</span>
+          </div>
           <div className="mt-2 flex justify-between border-t border-zinc-900 pt-2 text-lg font-black text-primary">
-            <span>Total</span><span>R$ {total.toFixed(2).replace(".", ",")}</span>
+            <span>Total</span>
+            <span>R$ {total.toFixed(2).replace(".", ",")}</span>
           </div>
         </section>
       </main>
 
       <footer className="border-t border-zinc-900 bg-black p-4">
         {checkoutError && (
-          <div role="alert" className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm font-semibold text-red-300">
+          <div
+            role="alert"
+            className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm font-semibold text-red-300"
+          >
             {checkoutError}
           </div>
         )}
@@ -405,8 +438,13 @@ function CheckoutPage() {
           className="w-full rounded-2xl bg-primary py-7 text-lg font-black uppercase text-black shadow-[0_8px_30px_-10px_hsl(var(--primary)/0.5)]"
         >
           {isProcessing ? (
-            <div className="flex items-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /><span>Processando...</span></div>
-          ) : "Finalizar Pedido"}
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Processando...</span>
+            </div>
+          ) : (
+            "Finalizar Pedido"
+          )}
         </Button>
       </footer>
     </div>
@@ -513,7 +551,9 @@ function PixPaymentScreen({
     };
   }, [pixData.orderId, navigate, onPaymentConfirmed]);
 
-  const expiredLocally = Boolean(pixData.expiresAt && new Date(pixData.expiresAt).getTime() <= Date.now());
+  const expiredLocally = Boolean(
+    pixData.expiresAt && new Date(pixData.expiresAt).getTime() <= Date.now(),
+  );
   const unavailable = ["failed", "refunded"].includes(paymentStatus) || expiredLocally;
 
   return (
@@ -534,14 +574,22 @@ function PixPaymentScreen({
         <div className="w-full space-y-4">
           <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
             <p className="mb-2 text-xs font-bold uppercase text-zinc-500">Valor total</p>
-            <p className="text-3xl font-black text-primary">R$ {total.toFixed(2).replace(".", ",")}</p>
+            <p className="text-3xl font-black text-primary">
+              R$ {total.toFixed(2).replace(".", ",")}
+            </p>
           </div>
 
           <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
             <p className="mb-2 text-xs font-bold uppercase text-zinc-500">Código Copia e Cola</p>
             <div className="flex items-center gap-3 rounded-xl bg-zinc-900 p-3">
-              <p className="flex-1 truncate font-mono text-[10px] text-zinc-400">{pixData.qrCodeText}</p>
-              <button type="button" onClick={onCopy} className="rounded-lg bg-primary p-2 text-black transition-transform active:scale-95">
+              <p className="flex-1 truncate font-mono text-[10px] text-zinc-400">
+                {pixData.qrCodeText}
+              </p>
+              <button
+                type="button"
+                onClick={onCopy}
+                className="rounded-lg bg-primary p-2 text-black transition-transform active:scale-95"
+              >
                 {copied ? <Check size={18} /> : <Copy size={18} />}
               </button>
             </div>
@@ -553,27 +601,43 @@ function PixPaymentScreen({
         {paymentStatus === "paid" ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 p-4">
             <Loader2 className="mb-2 h-6 w-6 animate-spin text-primary" />
-            <p className="text-sm font-bold uppercase text-primary">Pagamento Confirmado! Redirecionando...</p>
+            <p className="text-sm font-bold uppercase text-primary">
+              Pagamento Confirmado! Redirecionando...
+            </p>
           </div>
         ) : unavailable ? (
           <div className="space-y-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-center">
             <p className="text-sm font-bold text-red-300">
-              {paymentStatus === "refunded" ? "Este pagamento foi estornado." : "Este PIX não está mais disponível."}
+              {paymentStatus === "refunded"
+                ? "Este pagamento foi estornado."
+                : "Este PIX não está mais disponível."}
             </p>
             {paymentStatus !== "refunded" && (
-              <Button type="button" onClick={onPaymentUnavailable} className="h-12 w-full rounded-xl bg-primary font-black uppercase text-black">
+              <Button
+                type="button"
+                onClick={onPaymentUnavailable}
+                className="h-12 w-full rounded-xl bg-primary font-black uppercase text-black"
+              >
                 Gerar novo PIX
               </Button>
             )}
           </div>
         ) : (
           <>
-            <Button type="button" onClick={onCopy} className="h-14 w-full rounded-2xl bg-primary font-black uppercase text-black">
+            <Button
+              type="button"
+              onClick={onCopy}
+              className="h-14 w-full rounded-2xl bg-primary font-black uppercase text-black"
+            >
               Copiar código PIX
             </Button>
             <div className="flex flex-col items-center justify-center p-4 text-center text-xs italic text-zinc-500">
               <Loader2 className="mb-2 h-4 w-4 animate-spin opacity-50" />
-              <p>{paymentStatus === "processing" ? "Pagamento em processamento..." : "Aguardando confirmação do pagamento pelo banco..."}</p>
+              <p>
+                {paymentStatus === "processing"
+                  ? "Pagamento em processamento..."
+                  : "Aguardando confirmação do pagamento pelo banco..."}
+              </p>
             </div>
           </>
         )}

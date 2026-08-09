@@ -19,14 +19,14 @@ export function AppBottomNav({ activeTab }: AppBottomNavProps) {
     <nav className="absolute bottom-0 left-0 right-0 z-50 border-t border-zinc-900/50 bg-black/80 backdrop-blur-xl">
       <div className="flex items-center justify-around px-2 py-2">
         {navItems.slice(0, 2).map((item) => (
-          <NavButton 
-            key={item.id} 
-            item={item} 
-            active={activeTab === item.id} 
+          <NavButton
+            key={item.id}
+            item={item}
+            active={activeTab === item.id}
             onClick={() => navigate({ to: item.to as any })}
           />
         ))}
-        
+
         <div className="flex justify-center -mt-8">
           <button
             onClick={() => navigate({ to: "/buscar" })}
@@ -38,10 +38,10 @@ export function AppBottomNav({ activeTab }: AppBottomNavProps) {
         </div>
 
         {navItems.slice(2).map((item) => (
-          <NavButton 
-            key={item.id} 
-            item={item} 
-            active={activeTab === item.id} 
+          <NavButton
+            key={item.id}
+            item={item}
+            active={activeTab === item.id}
             onClick={() => navigate({ to: item.to as any })}
           />
         ))}
@@ -50,25 +50,31 @@ export function AppBottomNav({ activeTab }: AppBottomNavProps) {
   );
 }
 
-function NavButton({ 
-  item, 
-  active, 
-  onClick 
-}: { 
-  item: { name: string; icon: any }; 
-  active: boolean; 
-  onClick: () => void 
+function NavButton({
+  item,
+  active,
+  onClick,
+}: {
+  item: { name: string; icon: any };
+  active: boolean;
+  onClick: () => void;
 }) {
   return (
-    <button 
+    <button
       onClick={onClick}
       className="flex flex-col items-center justify-center gap-0.5 min-w-[64px] transition-all active:scale-95"
     >
-      <item.icon className={`h-5 w-5 transition-colors ${active ? "text-primary" : "text-zinc-500"}`} />
-      <span className={`text-[10px] transition-colors ${active ? "font-bold text-primary" : "text-zinc-500"}`}>
+      <item.icon
+        className={`h-5 w-5 transition-colors ${active ? "text-primary" : "text-zinc-500"}`}
+      />
+      <span
+        className={`text-[10px] transition-colors ${active ? "font-bold text-primary" : "text-zinc-500"}`}
+      >
         {item.name}
       </span>
-      <div className={`h-1 w-1 rounded-full transition-all mt-0.5 ${active ? "bg-primary scale-100" : "bg-transparent scale-0"}`} />
+      <div
+        className={`h-1 w-1 rounded-full transition-all mt-0.5 ${active ? "bg-primary scale-100" : "bg-transparent scale-0"}`}
+      />
     </button>
   );
 }

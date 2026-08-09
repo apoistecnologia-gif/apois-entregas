@@ -1,10 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from './types';
-import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config';
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./types";
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./config";
 
 const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    storage: typeof window !== "undefined" ? window.localStorage : undefined,
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
@@ -14,7 +14,7 @@ const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
 // The generated Database type can temporarily lag behind migrations already applied
 // in production. Keep auth/functions/storage strongly typed while allowing route-level
 // queries to address those runtime tables until the next generated types refresh.
-type RuntimeAwareClient = Omit<typeof client, 'from' | 'rpc'> & {
+type RuntimeAwareClient = Omit<typeof client, "from" | "rpc"> & {
   from: (...args: any[]) => any;
   rpc: (...args: any[]) => any;
 };

@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/apois-plus")({
   beforeLoad: async ({ location }) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       throw redirect({
         to: "/login",
@@ -22,32 +24,35 @@ function ApoisPlusPage() {
   const navigate = useNavigate();
 
   const benefits = [
-    { 
-      title: "Frete Grátis", 
+    {
+      title: "Frete Grátis",
       desc: "Em milhares de estabelecimentos selecionados.",
-      icon: ShoppingBag 
+      icon: ShoppingBag,
     },
-    { 
-      title: "Ofertas Exclusivas", 
+    {
+      title: "Ofertas Exclusivas",
       desc: "Preços especiais que só membros Plus podem ver.",
-      icon: Tag 
+      icon: Tag,
     },
-    { 
-      title: "Suporte Prioritário", 
+    {
+      title: "Suporte Prioritário",
       desc: "Atendimento rápido quando você mais precisar.",
-      icon: Zap 
+      icon: Zap,
     },
-    { 
-      title: "Brindes Mensais", 
+    {
+      title: "Brindes Mensais",
       desc: "Cupons e surpresas especiais todo mês.",
-      icon: Gift 
+      icon: Gift,
     },
   ];
 
   return (
     <div className="flex h-screen w-full flex-col bg-black text-white overflow-hidden relative">
       <header className="shrink-0 z-50 flex items-center justify-between p-4 bg-black/80 backdrop-blur-lg border-b border-zinc-900">
-        <button onClick={() => navigate({ to: "/perfil" })} className="p-2 rounded-full bg-zinc-900 shadow-lg">
+        <button
+          onClick={() => navigate({ to: "/perfil" })}
+          className="p-2 rounded-full bg-zinc-900 shadow-lg"
+        >
           <ArrowLeft className="w-5 h-5 text-zinc-300" />
         </button>
         <h1 className="text-xl font-bold text-primary text-center flex-1">APOIS+</h1>
@@ -64,7 +69,9 @@ function ApoisPlusPage() {
             </div>
           </div>
           <div className="space-y-2">
-            <h2 className="text-3xl font-black tracking-tighter italic">APOIS<span className="text-primary">+</span></h2>
+            <h2 className="text-3xl font-black tracking-tighter italic">
+              APOIS<span className="text-primary">+</span>
+            </h2>
             <p className="text-zinc-400 text-sm max-w-[250px]">
               A experiência definitiva em delivery está chegando.
             </p>
@@ -73,10 +80,15 @@ function ApoisPlusPage() {
 
         {/* Benefits */}
         <section className="space-y-4">
-          <h3 className="text-xs font-bold text-primary uppercase tracking-widest ml-1">Benefícios Premium</h3>
+          <h3 className="text-xs font-bold text-primary uppercase tracking-widest ml-1">
+            Benefícios Premium
+          </h3>
           <div className="grid gap-3">
             {benefits.map((benefit, i) => (
-              <div key={i} className="flex items-center gap-4 p-4 rounded-3xl bg-zinc-900/40 border border-zinc-900/50">
+              <div
+                key={i}
+                className="flex items-center gap-4 p-4 rounded-3xl bg-zinc-900/40 border border-zinc-900/50"
+              >
                 <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-primary">
                   <benefit.icon className="w-6 h-6" />
                 </div>
@@ -95,9 +107,13 @@ function ApoisPlusPage() {
             Em Breve
           </div>
           <p className="text-zinc-300 text-sm font-medium leading-relaxed">
-            Estamos finalizando o plano comercial para garantir a você as melhores vantagens do mercado.
+            Estamos finalizando o plano comercial para garantir a você as melhores vantagens do
+            mercado.
           </p>
-          <button disabled className="w-full bg-zinc-900 border border-zinc-800 text-zinc-600 font-bold py-4 rounded-2xl cursor-not-allowed">
+          <button
+            disabled
+            className="w-full bg-zinc-900 border border-zinc-800 text-zinc-600 font-bold py-4 rounded-2xl cursor-not-allowed"
+          >
             Quero entrar na fila
           </button>
         </section>

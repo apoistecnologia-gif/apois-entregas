@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/perfil/legal")({
   beforeLoad: async ({ location }) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       throw redirect({
         to: "/login",
@@ -24,7 +26,10 @@ function LegalPage() {
   return (
     <div className="flex h-screen w-full flex-col bg-black text-white overflow-hidden relative">
       <header className="shrink-0 z-50 flex items-center justify-between p-4 bg-black/80 backdrop-blur-lg border-b border-zinc-900">
-        <button onClick={() => navigate({ to: "/perfil" })} className="p-2 rounded-full bg-zinc-900 shadow-lg">
+        <button
+          onClick={() => navigate({ to: "/perfil" })}
+          className="p-2 rounded-full bg-zinc-900 shadow-lg"
+        >
           <ArrowLeft className="w-5 h-5 text-zinc-300" />
         </button>
         <h1 className="text-xl font-bold text-primary text-center flex-1">Legal</h1>
@@ -61,17 +66,16 @@ function LegalPage() {
         </div>
 
         <section className="bg-zinc-900/20 rounded-3xl p-6 border border-zinc-900/50 space-y-4">
-          <h2 className="text-xs font-bold text-primary uppercase tracking-widest">Informações Adicionais</h2>
+          <h2 className="text-xs font-bold text-primary uppercase tracking-widest">
+            Informações Adicionais
+          </h2>
           <div className="space-y-4 text-[11px] text-zinc-500 leading-relaxed">
             <p>
-              O APOIS ENTREGA é uma plataforma de tecnologia que conecta usuários a estabelecimentos parceiros e entregadores independentes.
+              O APOIS ENTREGA é uma plataforma de tecnologia que conecta usuários a estabelecimentos
+              parceiros e entregadores independentes.
             </p>
-            <p>
-              Versão do Aplicativo: 1.0.0 (Build 2026.08.07)
-            </p>
-            <p className="pt-2 italic">
-              © 2026 APOIS ENTREGA. Todos os direitos reservados.
-            </p>
+            <p>Versão do Aplicativo: 1.0.0 (Build 2026.08.07)</p>
+            <p className="pt-2 italic">© 2026 APOIS ENTREGA. Todos os direitos reservados.</p>
           </div>
         </section>
       </main>

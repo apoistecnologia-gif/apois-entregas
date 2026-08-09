@@ -6,7 +6,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/perfil/dados-pessoais")({
   beforeLoad: async ({ location }) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       throw redirect({
         to: "/login",
@@ -33,7 +35,9 @@ function DadosPessoaisPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (user) {
           const { data, error } = await supabase
             .from("profiles")
@@ -62,7 +66,9 @@ function DadosPessoaisPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não encontrado");
 
       const { error } = await supabase
@@ -86,7 +92,10 @@ function DadosPessoaisPage() {
   return (
     <div className="flex h-screen w-full flex-col bg-black text-white overflow-hidden relative">
       <header className="shrink-0 z-50 flex items-center justify-between p-4 bg-black/80 backdrop-blur-lg border-b border-zinc-900">
-        <button onClick={() => navigate({ to: "/perfil" })} className="p-2 rounded-full bg-zinc-900 shadow-lg">
+        <button
+          onClick={() => navigate({ to: "/perfil" })}
+          className="p-2 rounded-full bg-zinc-900 shadow-lg"
+        >
           <ArrowLeft className="w-5 h-5 text-zinc-300" />
         </button>
         <h1 className="text-xl font-bold text-primary text-center flex-1">Dados Pessoais</h1>
@@ -102,7 +111,9 @@ function DadosPessoaisPage() {
           <form onSubmit={handleSave} className="space-y-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-primary uppercase tracking-widest ml-1">Nome Completo</label>
+                <label className="text-xs font-bold text-primary uppercase tracking-widest ml-1">
+                  Nome Completo
+                </label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
                   <input
@@ -116,7 +127,9 @@ function DadosPessoaisPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-primary uppercase tracking-widest ml-1">Telefone</label>
+                <label className="text-xs font-bold text-primary uppercase tracking-widest ml-1">
+                  Telefone
+                </label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
                   <input
@@ -130,7 +143,9 @@ function DadosPessoaisPage() {
               </div>
 
               <div className="space-y-2 opacity-60">
-                <label className="text-xs font-bold text-primary uppercase tracking-widest ml-1">E-mail (Apenas leitura)</label>
+                <label className="text-xs font-bold text-primary uppercase tracking-widest ml-1">
+                  E-mail (Apenas leitura)
+                </label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
                   <input

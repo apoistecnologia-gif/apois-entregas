@@ -1,26 +1,27 @@
 import { createFileRoute, redirect, useNavigate, Outlet, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  ChevronLeft, 
+import {
+  ChevronLeft,
   ChevronRight,
   Star,
-
-  MapPin, 
-  Plus, 
-  Trash2, 
-  Edit2, 
-  Home, 
-  Briefcase, 
+  MapPin,
+  Plus,
+  Trash2,
+  Edit2,
+  Home,
+  Briefcase,
   Map as MapIcon,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/enderecos")({
   beforeLoad: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       throw redirect({ to: "/login" });
     }
@@ -28,9 +29,7 @@ export const Route = createFileRoute("/enderecos")({
   },
   component: EnderecosLayout,
   head: () => ({
-    meta: [
-      { title: "Meus Endereços | APOIS ENTREGA" }
-    ]
+    meta: [{ title: "Meus Endereços | APOIS ENTREGA" }],
   }),
 });
 
@@ -58,31 +57,31 @@ function EnderecosLayout() {
 
   // TanStack Router hook para invalidar e recarregar dados quando a rota ganha foco
   const router = useRouter();
-  
+
   useEffect(() => {
     // Busca inicial
     fetchAddresses();
-    
+
     // Inscreve para atualizar sempre que houver navegação concluída para esta rota
-    const unsub = router.subscribe('onResolved', (state) => {
-      if (state.toLocation.pathname === '/enderecos') {
+    const unsub = router.subscribe("onResolved", (state) => {
+      if (state.toLocation.pathname === "/enderecos") {
         fetchAddresses();
       }
     });
-    
+
     // Também atualiza quando a janela ganha foco (ex: volta do navegador)
-    window.addEventListener('focus', fetchAddresses);
-    
+    window.addEventListener("focus", fetchAddresses);
+
     return () => {
       unsub();
-      window.removeEventListener('focus', fetchAddresses);
+      window.removeEventListener("focus", fetchAddresses);
     };
   }, [router]);
 
-
-
   const handleSetDefault = async (id: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     setIsLoading(true);
@@ -117,10 +116,7 @@ function EnderecosLayout() {
 
     if (!confirm("Tem certeza que deseja excluir este endereço?")) return;
 
-    const { error } = await (supabase as any)
-      .from("customer_addresses")
-      .delete()
-      .eq("id", id);
+    const { error } = await (supabase as any).from("customer_addresses").delete().eq("id", id);
 
     if (error) {
       toast.error("Erro ao excluir endereço");
@@ -132,9 +128,12 @@ function EnderecosLayout() {
 
   const getLabelIcon = (label: string) => {
     switch (label?.toLowerCase()) {
-      case "casa": return Home;
-      case "trabalho": return Briefcase;
-      default: return MapIcon;
+      case "casa":
+        return Home;
+      case "trabalho":
+        return Briefcase;
+      default:
+        return MapIcon;
     }
   };
 
@@ -152,9 +151,7 @@ function EnderecosLayout() {
       </header>
 
       <main className="flex-1 px-5 pt-3 pb-28">
-        <p className="text-zinc-400 text-[15px] mb-5">
-          Selecione um endereço para suas entregas
-        </p>
+        <p className="text-zinc-400 text-[15px] mb-5">Selecione um endereço para suas entregas</p>
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
@@ -190,9 +187,7 @@ function EnderecosLayout() {
                       addr.is_default ? "border-primary" : "border-zinc-600"
                     }`}
                   >
-                    {addr.is_default && (
-                      <span className="w-3 h-3 rounded-full bg-primary block" />
-                    )}
+                    {addr.is_default && <span className="w-3 h-3 rounded-full bg-primary block" />}
                   </span>
 
                   <div className="flex items-start gap-3">
@@ -216,9 +211,7 @@ function EnderecosLayout() {
                         {addr.street}, {addr.number}
                         {addr.complement && ` - ${addr.complement}`}
                       </p>
-                      <p className="text-zinc-400 text-sm mt-0.5 truncate">
-                        {addr.neighborhood}
-                      </p>
+                      <p className="text-zinc-400 text-sm mt-0.5 truncate">{addr.neighborhood}</p>
                       <p className="text-zinc-500 text-[13px] mt-0.5 truncate">
                         {addr.city} - {addr.state}
                         {addr.zip_code ? ` • CEP ${addr.zip_code}` : ""}
@@ -273,4 +266,3 @@ function EnderecosLayout() {
     </div>
   );
 }
-

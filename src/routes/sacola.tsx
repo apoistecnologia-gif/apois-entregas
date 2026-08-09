@@ -1,27 +1,28 @@
 import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { 
-  ArrowLeft, 
-  Trash2, 
-  Minus, 
-  Plus, 
-  MapPin, 
-  ChevronRight, 
-  CreditCard, 
+import {
+  ArrowLeft,
+  Trash2,
+  Minus,
+  Plus,
+  MapPin,
+  ChevronRight,
+  CreditCard,
   CircleDollarSign,
-   ShieldCheck,
-   ChevronDown,
-   Store
- } from "lucide-react";
+  ShieldCheck,
+  ChevronDown,
+  Store,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
-
 
 // Dados do estabelecimento são obtidos do CartContext
 
 export const Route = createFileRoute("/sacola")({
   beforeLoad: async ({ location }) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       throw redirect({
         to: "/login",
@@ -40,31 +41,30 @@ function SacolaPage() {
   const { items, merchant, updateQuantity, removeItem, totalPrice } = useCart();
 
   const [defaultAddress, setDefaultAddress] = useState<any>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cartao' | 'dinheiro'>('pix');
-
-
+  const [paymentMethod, setPaymentMethod] = useState<"pix" | "cartao" | "dinheiro">("pix");
 
   useEffect(() => {
-    const savedMethod = sessionStorage.getItem('apois_payment_method');
-    if (savedMethod === 'pix' || savedMethod === 'cartao' || savedMethod === 'dinheiro') {
+    const savedMethod = sessionStorage.getItem("apois_payment_method");
+    if (savedMethod === "pix" || savedMethod === "cartao" || savedMethod === "dinheiro") {
       setPaymentMethod(savedMethod);
     } else {
-      sessionStorage.setItem('apois_payment_method', 'pix');
-      setPaymentMethod('pix');
+      sessionStorage.setItem("apois_payment_method", "pix");
+      setPaymentMethod("pix");
     }
     fetchDefaultAddress();
   }, []);
 
-
   const fetchDefaultAddress = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     const { data } = await (supabase as any)
-      .from('customer_addresses')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_default', true)
+      .from("customer_addresses")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("is_default", true)
       .single();
 
     if (data) setDefaultAddress(data);
@@ -73,7 +73,6 @@ function SacolaPage() {
   const subtotal = totalPrice;
   const deliveryFee = merchant?.deliveryFee || 0;
   const total = subtotal + deliveryFee;
-
 
   const handleFinishOrder = () => {
     if (items.length === 0) return;
@@ -88,7 +87,7 @@ function SacolaPage() {
     <div className="flex min-h-screen w-full flex-col overflow-x-hidden bg-black text-white selection:bg-primary selection:text-black">
       {/* Header */}
       <header className="sticky top-0 z-50 flex items-center gap-4 bg-black/80 p-4 backdrop-blur-lg">
-        <button 
+        <button
           onClick={() => window.history.back()}
           className="grid h-10 w-10 place-items-center rounded-full bg-zinc-900 ring-1 ring-white/10"
         >
@@ -101,34 +100,34 @@ function SacolaPage() {
         {/* Merchant Info */}
         {items.length > 0 && merchant && (
           <section className="flex items-center gap-4 rounded-2xl border border-zinc-900 bg-zinc-950 p-4 shadow-lg shadow-black/50">
-             {merchant.logo ? (
-               <img 
-                 src={merchant.logo} 
-                 alt={merchant.name}
-                 className="h-16 w-16 rounded-xl object-cover ring-1 ring-primary/20"
-               />
-             ) : (
-               <div className="h-16 w-16 rounded-xl bg-zinc-900 grid place-items-center ring-1 ring-white/10">
-                 <Store className="h-8 w-8 text-zinc-700" />
-               </div>
-             )}
+            {merchant.logo ? (
+              <img
+                src={merchant.logo}
+                alt={merchant.name}
+                className="h-16 w-16 rounded-xl object-cover ring-1 ring-primary/20"
+              />
+            ) : (
+              <div className="h-16 w-16 rounded-xl bg-zinc-900 grid place-items-center ring-1 ring-white/10">
+                <Store className="h-8 w-8 text-zinc-700" />
+              </div>
+            )}
             <div className="flex-1">
               <h2 className="text-lg font-bold text-white">{merchant.name}</h2>
-               <p className="text-sm text-zinc-500">{merchant.category || ""}</p>
-               <div className="mt-1 flex items-center gap-3">
-                 {merchant.closeTime && (
-                   <span className="flex items-center gap-1 text-[12px] font-medium text-green-500">
-                     <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                     Aberto até {merchant.closeTime}
-                   </span>
-                 )}
-                 {merchant.deliveryTime && (
-                   <span className="flex items-center gap-1 text-[12px] text-zinc-500">
-                     <span className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
-                     {merchant.deliveryTime}
-                   </span>
-                 )}
-               </div>
+              <p className="text-sm text-zinc-500">{merchant.category || ""}</p>
+              <div className="mt-1 flex items-center gap-3">
+                {merchant.closeTime && (
+                  <span className="flex items-center gap-1 text-[12px] font-medium text-green-500">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                    Aberto até {merchant.closeTime}
+                  </span>
+                )}
+                {merchant.deliveryTime && (
+                  <span className="flex items-center gap-1 text-[12px] text-zinc-500">
+                    <span className="h-1.5 w-1.5 rounded-full bg-zinc-700" />
+                    {merchant.deliveryTime}
+                  </span>
+                )}
+              </div>
             </div>
           </section>
         )}
@@ -136,32 +135,34 @@ function SacolaPage() {
         {/* Products List */}
         <section className="space-y-4 rounded-2xl border border-zinc-900 bg-zinc-950/50 p-1">
           {items.map((item) => (
-            <div 
+            <div
               key={item.lineId}
               className="group relative flex gap-4 p-3 border-b border-zinc-900/50 last:border-0"
             >
               <div className="relative h-20 w-20 shrink-0">
-                 {item.image ? (
-                   <img 
-                     src={item.image} 
-                     alt={item.name}
-                     className="h-full w-full rounded-xl object-cover ring-1 ring-white/5 bg-zinc-900"
-                     onError={(e) => {
-                       (e.target as HTMLImageElement).onerror = null;
-                       (e.target as HTMLImageElement).src = ""; // Clear src to trigger fallback div
-                       (e.target as HTMLImageElement).classList.add('hidden');
-                       (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                     }}
-                   />
-                 ) : null}
-                 <div className={`h-full w-full rounded-xl bg-zinc-900 grid place-items-center ring-1 ring-white/10 ${item.image ? 'hidden' : ''}`}>
-                   <Store className="h-6 w-6 text-zinc-800" />
-                 </div>
+                {item.image ? (
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="h-full w-full rounded-xl object-cover ring-1 ring-white/5 bg-zinc-900"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).onerror = null;
+                      (e.target as HTMLImageElement).src = ""; // Clear src to trigger fallback div
+                      (e.target as HTMLImageElement).classList.add("hidden");
+                      (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
+                    }}
+                  />
+                ) : null}
+                <div
+                  className={`h-full w-full rounded-xl bg-zinc-900 grid place-items-center ring-1 ring-white/10 ${item.image ? "hidden" : ""}`}
+                >
+                  <Store className="h-6 w-6 text-zinc-800" />
+                </div>
                 <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[12px] font-black text-black ring-2 ring-black">
                   {item.quantity}
                 </span>
               </div>
-              
+
               <div className="flex flex-1 flex-col justify-between py-0.5">
                 <div>
                   <h3 className="text-[15px] font-bold text-white">{item.name}</h3>
@@ -171,7 +172,10 @@ function SacolaPage() {
                   {item.selectedOptions && item.selectedOptions.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {item.selectedOptions.map((opt, idx) => (
-                        <span key={idx} className="text-[10px] text-zinc-400 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+                        <span
+                          key={idx}
+                          className="text-[10px] text-zinc-400 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800"
+                        >
                           + {opt.optionName}
                         </span>
                       ))}
@@ -179,26 +183,28 @@ function SacolaPage() {
                   )}
                 </div>
                 <p className="text-[15px] font-black text-primary">
-                  R$ {item.price.toFixed(2).replace('.', ',')}
+                  R$ {item.price.toFixed(2).replace(".", ",")}
                 </p>
               </div>
 
               <div className="flex flex-col items-center justify-between py-1">
-                <button 
+                <button
                   onClick={() => removeItem(item.lineId)}
                   className="p-1 text-zinc-600 transition-colors hover:text-red-500"
                 >
                   <Trash2 className="h-5 w-5" />
                 </button>
                 <div className="flex items-center gap-2 rounded-lg bg-zinc-900 p-1 ring-1 ring-white/10">
-                  <button 
+                  <button
                     onClick={() => updateQuantity(item.lineId, -1)}
                     className="grid h-6 w-6 place-items-center rounded-md bg-zinc-800 text-zinc-400 active:bg-zinc-700"
                   >
                     <Minus className="h-4 w-4" />
                   </button>
-                  <span className="min-w-[20px] text-center text-[14px] font-bold">{item.quantity}</span>
-                  <button 
+                  <span className="min-w-[20px] text-center text-[14px] font-bold">
+                    {item.quantity}
+                  </span>
+                  <button
                     onClick={() => updateQuantity(item.lineId, 1)}
                     className="grid h-6 w-6 place-items-center rounded-md bg-zinc-800 text-white active:bg-zinc-700"
                   >
@@ -216,9 +222,11 @@ function SacolaPage() {
               </div>
               <div className="space-y-1">
                 <h3 className="text-xl font-bold text-white">Sua sacola está vazia</h3>
-                <p className="text-zinc-500 text-sm max-w-[200px]">Adicione produtos para começar seu pedido</p>
+                <p className="text-zinc-500 text-sm max-w-[200px]">
+                  Adicione produtos para começar seu pedido
+                </p>
               </div>
-              <button 
+              <button
                 onClick={() => navigate({ to: "/inicio" })}
                 className="bg-primary text-black px-8 py-3 rounded-xl font-bold uppercase tracking-tight shadow-lg shadow-primary/20 active:scale-95 transition-transform"
               >
@@ -234,24 +242,28 @@ function SacolaPage() {
             <section className="space-y-3 px-1 text-sm">
               <div className="flex justify-between text-zinc-400">
                 <span>Subtotal</span>
-                <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
+                <span>R$ {subtotal.toFixed(2).replace(".", ",")}</span>
               </div>
               <div className="flex justify-between text-zinc-400">
                 <div className="flex items-center gap-1">
                   <span>Taxa de entrega</span>
-                  <button className="text-zinc-600"><span className="text-[10px] border border-zinc-700 rounded-full px-1">i</span></button>
+                  <button className="text-zinc-600">
+                    <span className="text-[10px] border border-zinc-700 rounded-full px-1">i</span>
+                  </button>
                 </div>
-                <span>R$ {deliveryFee.toFixed(2).replace('.', ',')}</span>
+                <span>R$ {deliveryFee.toFixed(2).replace(".", ",")}</span>
               </div>
               <div className="flex justify-between border-t border-zinc-900 pt-3 text-lg font-black">
                 <span>Total</span>
-                <span className="text-primary text-xl">R$ {total.toFixed(2).replace('.', ',')}</span>
+                <span className="text-primary text-xl">
+                  R$ {total.toFixed(2).replace(".", ",")}
+                </span>
               </div>
             </section>
 
             {/* Address Selector */}
             <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4 shadow-lg">
-              <button 
+              <button
                 onClick={() => navigate({ to: "/enderecos" })}
                 className="group flex w-full items-center gap-4 text-left"
               >
@@ -262,8 +274,12 @@ function SacolaPage() {
                   <p className="text-[12px] font-medium text-zinc-500">Endereço de entrega</p>
                   {defaultAddress ? (
                     <>
-                      <p className="font-bold text-white line-clamp-1">{defaultAddress.label}: {defaultAddress.street}, {defaultAddress.number}</p>
-                      {merchant?.deliveryTime && <p className="text-[12px] text-zinc-500">{merchant.deliveryTime}</p>}
+                      <p className="font-bold text-white line-clamp-1">
+                        {defaultAddress.label}: {defaultAddress.street}, {defaultAddress.number}
+                      </p>
+                      {merchant?.deliveryTime && (
+                        <p className="text-[12px] text-zinc-500">{merchant.deliveryTime}</p>
+                      )}
                     </>
                   ) : (
                     <p className="font-bold text-primary">Selecione um endereço</p>
@@ -276,41 +292,49 @@ function SacolaPage() {
             {/* Payment Methods */}
             <section className="space-y-3 pb-4">
               <div className="flex items-center justify-between px-1">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">Pagamento</h3>
-                <button className="text-xs font-bold text-primary uppercase underline underline-offset-4">Trocar</button>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+                  Pagamento
+                </h3>
+                <button className="text-xs font-bold text-primary uppercase underline underline-offset-4">
+                  Trocar
+                </button>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <button 
+                <button
                   onClick={() => {
-                    setPaymentMethod('pix');
-                    sessionStorage.setItem('apois_payment_method', 'pix');
+                    setPaymentMethod("pix");
+                    sessionStorage.setItem("apois_payment_method", "pix");
                   }}
-                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === 'pix' ? 'border-primary bg-primary/5 text-primary shadow-[0_0_15px_rgba(255,215,0,0.15)] ring-1 ring-primary/30' : 'border-zinc-900 bg-zinc-950 text-zinc-500'}`}
+                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === "pix" ? "border-primary bg-primary/5 text-primary shadow-[0_0_15px_rgba(255,215,0,0.15)] ring-1 ring-primary/30" : "border-zinc-900 bg-zinc-950 text-zinc-500"}`}
                 >
                   <div className="relative">
                     <CircleDollarSign className="h-6 w-6" />
-                    {paymentMethod === 'pix' && <div className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-primary flex items-center justify-center ring-2 ring-black"><div className="h-1.5 w-1.5 rounded-full bg-black" /></div>}
+                    {paymentMethod === "pix" && (
+                      <div className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-primary flex items-center justify-center ring-2 ring-black">
+                        <div className="h-1.5 w-1.5 rounded-full bg-black" />
+                      </div>
+                    )}
                   </div>
                   <span className="text-[12px] font-bold">Pix</span>
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => {
-                    setPaymentMethod('cartao');
-                    sessionStorage.setItem('apois_payment_method', 'cartao');
+                    setPaymentMethod("cartao");
+                    sessionStorage.setItem("apois_payment_method", "cartao");
                   }}
-                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === 'cartao' ? 'border-primary bg-primary/5 text-primary' : 'border-zinc-900 bg-zinc-950 text-zinc-500'}`}
+                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === "cartao" ? "border-primary bg-primary/5 text-primary" : "border-zinc-900 bg-zinc-950 text-zinc-500"}`}
                 >
                   <CreditCard className="h-6 w-6" />
                   <span className="text-[12px] font-bold">Cartão</span>
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => {
-                    setPaymentMethod('dinheiro');
-                    sessionStorage.setItem('apois_payment_method', 'dinheiro');
+                    setPaymentMethod("dinheiro");
+                    sessionStorage.setItem("apois_payment_method", "dinheiro");
                   }}
-                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === 'dinheiro' ? 'border-primary bg-primary/5 text-primary' : 'border-zinc-900 bg-zinc-950 text-zinc-500'}`}
+                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === "dinheiro" ? "border-primary bg-primary/5 text-primary" : "border-zinc-900 bg-zinc-950 text-zinc-500"}`}
                 >
                   <CircleDollarSign className="h-6 w-6" />
                   <span className="text-[12px] font-bold">Dinheiro</span>
@@ -329,7 +353,7 @@ function SacolaPage() {
       {/* Footer CTA */}
       <footer className="sticky bottom-0 z-[60] bg-black/90 p-4 pb-8 backdrop-blur-xl border-t border-zinc-900 w-full flex justify-center">
         <div className="w-full max-w-[500px]">
-          <button 
+          <button
             onClick={handleFinishOrder}
             className="flex w-full items-center justify-between rounded-xl bg-primary px-6 py-4 text-black shadow-[0_8px_30px_rgba(255,215,0,0.3)] transition-transform active:scale-95"
           >
@@ -337,7 +361,7 @@ function SacolaPage() {
               {items.length === 0 ? "Escolher produtos" : "Fazer pedido"}
             </span>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-black">R$ {total.toFixed(2).replace('.', ',')}</span>
+              <span className="text-lg font-black">R$ {total.toFixed(2).replace(".", ",")}</span>
               <ChevronRight className="h-5 w-5" />
             </div>
           </button>

@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { X, Plus, Minus, Check } from "lucide-react";
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetHeader, 
-  SheetTitle,
-  SheetFooter
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Database } from "@/integrations/supabase/types";
 import { CartSelectedOption } from "@/contexts/CartContext";
@@ -82,7 +76,7 @@ export const ProductCustomizationSheet: React.FC<ProductCustomizationSheetProps>
     if (min === 0 && max && max > 1) return `Escolha até ${max}`;
     if (min > 0 && max && max > 1 && min === max) return `Escolha ${min}`;
     if (min > 0 && max && max > 1) return `Escolha de ${min} a ${max}`;
-    
+
     return "Opcional";
   };
 
@@ -112,31 +106,35 @@ export const ProductCustomizationSheet: React.FC<ProductCustomizationSheetProps>
   const handleConfirm = () => {
     if (!isAllValid) return;
 
-    const formattedOptions: CartSelectedOption[] = Object.entries(selections).flatMap(([groupId, optionIds]) => {
-      const group = groups.find((g) => g.id === groupId);
-      if (!group) return [];
-      
-      return optionIds.flatMap((optId) => {
-        const opt = options.find((o) => o.id === optId);
-        if (!opt) return [];
-        
-        return [{
-          groupId: group.id,
-          groupName: group.name,
-          optionId: opt.id,
-          optionName: opt.name,
-          priceDelta: Number(opt.price_delta || 0),
-        }];
-      });
-    });
+    const formattedOptions: CartSelectedOption[] = Object.entries(selections).flatMap(
+      ([groupId, optionIds]) => {
+        const group = groups.find((g) => g.id === groupId);
+        if (!group) return [];
+
+        return optionIds.flatMap((optId) => {
+          const opt = options.find((o) => o.id === optId);
+          if (!opt) return [];
+
+          return [
+            {
+              groupId: group.id,
+              groupName: group.name,
+              optionId: opt.id,
+              optionName: opt.name,
+              priceDelta: Number(opt.price_delta || 0),
+            },
+          ];
+        });
+      },
+    );
 
     onConfirm(formattedOptions);
   };
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent 
-        side="bottom" 
+      <SheetContent
+        side="bottom"
         className="h-[90vh] bg-zinc-950 border-zinc-800 p-0 rounded-t-[32px] overflow-hidden flex flex-col focus:outline-none"
       >
         <SheetHeader className="p-4 border-b border-zinc-900 shrink-0">
@@ -151,10 +149,14 @@ export const ProductCustomizationSheet: React.FC<ProductCustomizationSheetProps>
         <div className="flex-1 overflow-y-auto no-scrollbar">
           {product.image_url && (
             <div className="w-full h-48 bg-zinc-900">
-              <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+              <img
+                src={product.image_url}
+                alt={product.name}
+                className="w-full h-full object-cover"
+              />
             </div>
           )}
-          
+
           <div className="p-4 space-y-2">
             <p className="text-zinc-400 text-sm leading-relaxed">{product.description}</p>
             <p className="text-primary font-black text-lg">
@@ -184,20 +186,25 @@ export const ProductCustomizationSheet: React.FC<ProductCustomizationSheetProps>
                     .filter((opt) => opt.option_group_id === group.id)
                     .map((option) => {
                       const isSelected = (selections[group.id] || []).includes(option.id);
-                      const isDisabled = 
-                        !isSelected && 
-                        group.max_selections !== null && 
+                      const isDisabled =
+                        !isSelected &&
+                        group.max_selections !== null &&
                         group.max_selections > 1 &&
                         (selections[group.id] || []).length >= group.max_selections;
 
                       return (
-                        <div 
+                        <div
                           key={option.id}
-                          onClick={() => !isDisabled && handleToggleOption(group.id, option.id, group.max_selections)}
-                          className={`flex items-center justify-between py-4 border-b border-zinc-900 last:border-0 transition-opacity ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer active:opacity-70'}`}
+                          onClick={() =>
+                            !isDisabled &&
+                            handleToggleOption(group.id, option.id, group.max_selections)
+                          }
+                          className={`flex items-center justify-between py-4 border-b border-zinc-900 last:border-0 transition-opacity ${isDisabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer active:opacity-70"}`}
                         >
                           <div className="flex-1 min-w-0 pr-4">
-                            <p className={`text-[14px] font-bold ${isSelected ? 'text-primary' : 'text-zinc-200'}`}>
+                            <p
+                              className={`text-[14px] font-bold ${isSelected ? "text-primary" : "text-zinc-200"}`}
+                            >
                               {option.name}
                             </p>
                             {Number(option.price_delta) > 0 && (
@@ -206,8 +213,10 @@ export const ProductCustomizationSheet: React.FC<ProductCustomizationSheetProps>
                               </p>
                             )}
                           </div>
-                          
-                          <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary text-black' : 'border-zinc-800'}`}>
+
+                          <div
+                            className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? "bg-primary border-primary text-black" : "border-zinc-800"}`}
+                          >
                             {isSelected && <Check className="h-4 w-4 stroke-[3]" />}
                           </div>
                         </div>
@@ -229,7 +238,7 @@ export const ProductCustomizationSheet: React.FC<ProductCustomizationSheetProps>
           <Button
             onClick={handleConfirm}
             disabled={!isAllValid}
-            className={`h-14 px-8 rounded-2xl font-black uppercase tracking-tight transition-all active:scale-95 ${isAllValid ? 'bg-primary text-black shadow-[0_8px_20px_rgba(255,215,0,0.3)]' : 'bg-zinc-800 text-zinc-500'}`}
+            className={`h-14 px-8 rounded-2xl font-black uppercase tracking-tight transition-all active:scale-95 ${isAllValid ? "bg-primary text-black shadow-[0_8px_20px_rgba(255,215,0,0.3)]" : "bg-zinc-800 text-zinc-500"}`}
           >
             Confirmar
           </Button>

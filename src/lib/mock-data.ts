@@ -24,10 +24,13 @@ export const MOCK_MERCHANTS: Merchant[] = [
     deliveryFee: 5.99,
     isOpen: true,
     closeTime: "23:30",
-    description: "Hambúrgueres artesanais grelhados no braseiro, com ingredientes frescos e muito sabor. Do clássico ao smash, aqui é tudo feito com paixão pela brasa!",
-    coverImage: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?q=80&w=1000&auto=format&fit=crop",
-    logoImage: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?q=80&w=200&auto=format&fit=crop",
+    description:
+      "Hambúrgueres artesanais grelhados no braseiro, com ingredientes frescos e muito sabor. Do clássico ao smash, aqui é tudo feito com paixão pela brasa!",
+    coverImage:
+      "https://images.unsplash.com/photo-1571091718767-18b5b1457add?q=80&w=1000&auto=format&fit=crop",
+    logoImage:
+      "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?q=80&w=200&auto=format&fit=crop",
     category: "Restaurantes",
     tags: ["burger", "hambúrguer", "lanche", "artesanal", "brasa"],
-  }
+  },
 ];

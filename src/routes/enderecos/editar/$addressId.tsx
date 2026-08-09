@@ -1,11 +1,7 @@
 import { createFileRoute, redirect, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  ChevronLeft, 
-  Loader2,
-  Save,
-} from "lucide-react";
+import { ChevronLeft, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -13,7 +9,9 @@ import { GoogleMapsAddressSelector } from "@/components/GoogleMapsAddressSelecto
 
 export const Route = createFileRoute("/enderecos/editar/$addressId")({
   beforeLoad: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       throw redirect({ to: "/login" });
     }
@@ -21,9 +19,7 @@ export const Route = createFileRoute("/enderecos/editar/$addressId")({
   },
   component: EditarEndereco,
   head: () => ({
-    meta: [
-      { title: "Editar Endereço | APOIS ENTREGA" }
-    ]
+    meta: [{ title: "Editar Endereço | APOIS ENTREGA" }],
   }),
 });
 
@@ -80,7 +76,7 @@ function EditarEndereco() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,7 +93,6 @@ function EditarEndereco() {
 
       toast.success("Endereço atualizado!");
       await navigate({ to: "/enderecos" });
-
     } catch (error: any) {
       toast.error(`Erro ao salvar: ${error.message}`);
     } finally {
@@ -118,7 +113,7 @@ function EditarEndereco() {
   return (
     <div className="absolute inset-0 z-[160] bg-black overflow-y-auto overflow-x-hidden flex flex-col w-full shadow-2xl">
       <header className="flex items-center p-4 sticky top-0 z-50 bg-black/80 backdrop-blur-lg border-b border-white/10">
-        <button 
+        <button
           onClick={() => navigate({ to: "/enderecos" })}
           className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors"
         >
@@ -129,10 +124,14 @@ function EditarEndereco() {
 
       <main className="flex-1 overflow-y-auto">
         <div className="px-6 py-4 border-b border-white/5 bg-zinc-950/50">
-          <GoogleMapsAddressSelector 
-            initialCenter={formData.latitude && formData.longitude ? { lat: formData.latitude, lng: formData.longitude } : undefined}
+          <GoogleMapsAddressSelector
+            initialCenter={
+              formData.latitude && formData.longitude
+                ? { lat: formData.latitude, lng: formData.longitude }
+                : undefined
+            }
             onAddressSelected={(addr) => {
-              setFormData(prev => ({
+              setFormData((prev) => ({
                 ...prev,
                 street: addr.street || prev.street,
                 neighborhood: addr.neighborhood || prev.neighborhood,
@@ -151,14 +150,14 @@ function EditarEndereco() {
           <div className="space-y-3">
             <label className="text-sm font-medium text-zinc-400">Apelido do endereço</label>
             <div className="flex gap-2">
-              {labelOptions.map(opt => (
+              {labelOptions.map((opt) => (
                 <button
                   key={opt}
                   type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, label: opt }))}
+                  onClick={() => setFormData((prev) => ({ ...prev, label: opt }))}
                   className={`flex-1 py-3 rounded-2xl font-bold transition-all border ${
-                    formData.label === opt 
-                      ? "bg-primary text-black border-primary" 
+                    formData.label === opt
+                      ? "bg-primary text-black border-primary"
                       : "bg-zinc-900 text-zinc-400 border-zinc-800"
                   }`}
                 >
@@ -171,7 +170,7 @@ function EditarEndereco() {
           <div className="grid grid-cols-3 gap-4">
             <div className="col-span-1 space-y-2">
               <label className="text-xs font-medium text-zinc-500 ml-1">CEP*</label>
-              <Input 
+              <Input
                 name="postal_code"
                 value={formData.postal_code}
                 onChange={handleChange}
@@ -181,7 +180,7 @@ function EditarEndereco() {
             </div>
             <div className="col-span-2 space-y-2">
               <label className="text-xs font-medium text-zinc-500 ml-1">Rua*</label>
-              <Input 
+              <Input
                 name="street"
                 value={formData.street}
                 onChange={handleChange}
@@ -194,7 +193,7 @@ function EditarEndereco() {
           <div className="grid grid-cols-3 gap-4">
             <div className="col-span-1 space-y-2">
               <label className="text-xs font-medium text-zinc-500 ml-1">Número*</label>
-              <Input 
+              <Input
                 name="number"
                 value={formData.number}
                 onChange={handleChange}
@@ -204,7 +203,7 @@ function EditarEndereco() {
             </div>
             <div className="col-span-2 space-y-2">
               <label className="text-xs font-medium text-zinc-500 ml-1">Complemento</label>
-              <Input 
+              <Input
                 name="complement"
                 value={formData.complement}
                 onChange={handleChange}
@@ -215,7 +214,7 @@ function EditarEndereco() {
 
           <div className="space-y-2">
             <label className="text-xs font-medium text-zinc-500 ml-1">Bairro*</label>
-            <Input 
+            <Input
               name="neighborhood"
               value={formData.neighborhood}
               onChange={handleChange}
@@ -227,7 +226,7 @@ function EditarEndereco() {
           <div className="grid grid-cols-4 gap-4">
             <div className="col-span-3 space-y-2">
               <label className="text-xs font-medium text-zinc-500 ml-1">Cidade*</label>
-              <Input 
+              <Input
                 name="city"
                 value={formData.city}
                 onChange={handleChange}
@@ -237,7 +236,7 @@ function EditarEndereco() {
             </div>
             <div className="col-span-1 space-y-2">
               <label className="text-xs font-medium text-zinc-500 ml-1">UF*</label>
-              <Input 
+              <Input
                 name="state"
                 maxLength={2}
                 value={formData.state}
@@ -250,7 +249,7 @@ function EditarEndereco() {
 
           <div className="space-y-2">
             <label className="text-xs font-medium text-zinc-500 ml-1">Ponto de referência</label>
-            <Input 
+            <Input
               name="reference"
               value={formData.reference}
               onChange={handleChange}
@@ -259,7 +258,7 @@ function EditarEndereco() {
           </div>
 
           <div className="sticky bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black to-transparent pt-10">
-            <Button 
+            <Button
               type="submit"
               disabled={isSaving}
               className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl shadow-xl flex items-center justify-center gap-2"

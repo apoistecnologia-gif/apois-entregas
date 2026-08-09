@@ -17,7 +17,7 @@ export const geocodeAddress = createServerFn({ method: "GET" })
 
     const response = await fetch(url.toString(), {
       headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "X-Connection-Api-Key": GOOGLE_MAPS_API_KEY,
       },
     });
@@ -39,7 +39,9 @@ export const autocompleteAddress = createServerFn({ method: "GET" })
       throw new Error("Missing Google Maps Platform credentials");
     }
 
-    const url = new URL("https://connector-gateway.lovable.dev/google_maps/maps/api/place/autocomplete/json");
+    const url = new URL(
+      "https://connector-gateway.lovable.dev/google_maps/maps/api/place/autocomplete/json",
+    );
     url.searchParams.append("input", data.input);
     url.searchParams.append("components", "country:br");
     url.searchParams.append("language", "pt-BR");
@@ -47,7 +49,7 @@ export const autocompleteAddress = createServerFn({ method: "GET" })
 
     const response = await fetch(url.toString(), {
       headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "X-Connection-Api-Key": GOOGLE_MAPS_API_KEY,
       },
     });
@@ -69,14 +71,16 @@ export const getPlaceDetails = createServerFn({ method: "GET" })
       throw new Error("Missing Google Maps Platform credentials");
     }
 
-    const url = new URL("https://connector-gateway.lovable.dev/google_maps/maps/api/place/details/json");
+    const url = new URL(
+      "https://connector-gateway.lovable.dev/google_maps/maps/api/place/details/json",
+    );
     url.searchParams.append("place_id", data.placeId);
     url.searchParams.append("fields", "address_components,geometry");
     url.searchParams.append("key", GOOGLE_MAPS_API_KEY);
 
     const response = await fetch(url.toString(), {
       headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "X-Connection-Api-Key": GOOGLE_MAPS_API_KEY,
       },
     });

@@ -1,5 +1,14 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, HelpCircle, ShoppingBag, CreditCard, User, MapPin, MessageSquare, ChevronRight } from "lucide-react";
+import {
+  ArrowLeft,
+  HelpCircle,
+  ShoppingBag,
+  CreditCard,
+  User,
+  MapPin,
+  MessageSquare,
+  ChevronRight,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Accordion,
@@ -10,7 +19,9 @@ import {
 
 export const Route = createFileRoute("/perfil/ajuda")({
   beforeLoad: async ({ location }) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       throw redirect({
         to: "/login",
@@ -37,7 +48,10 @@ function AjudaPage() {
   return (
     <div className="flex h-screen w-full flex-col bg-black text-white overflow-hidden relative">
       <header className="shrink-0 z-50 flex items-center justify-between p-4 bg-black/80 backdrop-blur-lg border-b border-zinc-900">
-        <button onClick={() => navigate({ to: "/perfil" })} className="p-2 rounded-full bg-zinc-900 shadow-lg">
+        <button
+          onClick={() => navigate({ to: "/perfil" })}
+          className="p-2 rounded-full bg-zinc-900 shadow-lg"
+        >
           <ArrowLeft className="w-5 h-5 text-zinc-300" />
         </button>
         <h1 className="text-xl font-bold text-primary text-center flex-1">Ajuda e Suporte</h1>
@@ -48,7 +62,10 @@ function AjudaPage() {
         {/* Search / Categories */}
         <section className="grid grid-cols-2 gap-3">
           {categories.map((cat, i) => (
-            <button key={i} className="flex flex-col items-center gap-3 p-4 rounded-3xl bg-zinc-900/40 border border-zinc-900/50 active:scale-95 transition-all">
+            <button
+              key={i}
+              className="flex flex-col items-center gap-3 p-4 rounded-3xl bg-zinc-900/40 border border-zinc-900/50 active:scale-95 transition-all"
+            >
               <div className={`p-3 rounded-2xl bg-zinc-900 border border-zinc-800 ${cat.color}`}>
                 <cat.icon className="w-6 h-6" />
               </div>
@@ -59,17 +76,26 @@ function AjudaPage() {
 
         {/* FAQs */}
         <section className="space-y-4">
-          <h2 className="text-xs font-bold text-primary uppercase tracking-widest ml-1">Perguntas Frequentes</h2>
+          <h2 className="text-xs font-bold text-primary uppercase tracking-widest ml-1">
+            Perguntas Frequentes
+          </h2>
           <Accordion type="single" collapsible className="space-y-3">
-            <AccordionItem value="item-1" className="border-zinc-900 bg-zinc-900/20 rounded-2xl px-4 overflow-hidden">
+            <AccordionItem
+              value="item-1"
+              className="border-zinc-900 bg-zinc-900/20 rounded-2xl px-4 overflow-hidden"
+            >
               <AccordionTrigger className="text-sm font-medium hover:no-underline py-4 text-zinc-200">
                 Como acompanho meu pedido?
               </AccordionTrigger>
               <AccordionContent className="text-xs text-zinc-500 leading-relaxed pb-4">
-                Você pode acompanhar o status em tempo real na aba "Pedidos". Avisaremos via notificação cada mudança de status.
+                Você pode acompanhar o status em tempo real na aba "Pedidos". Avisaremos via
+                notificação cada mudança de status.
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="item-2" className="border-zinc-900 bg-zinc-900/20 rounded-2xl px-4 overflow-hidden">
+            <AccordionItem
+              value="item-2"
+              className="border-zinc-900 bg-zinc-900/20 rounded-2xl px-4 overflow-hidden"
+            >
               <AccordionTrigger className="text-sm font-medium hover:no-underline py-4 text-zinc-200">
                 Quais formas de pagamento aceitam?
               </AccordionTrigger>
@@ -77,12 +103,16 @@ function AjudaPage() {
                 Aceitamos Pix, Cartões de Crédito/Débito (Visa, Master, Elo) e Dinheiro na entrega.
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="item-3" className="border-zinc-900 bg-zinc-900/20 rounded-2xl px-4 overflow-hidden">
+            <AccordionItem
+              value="item-3"
+              className="border-zinc-900 bg-zinc-900/20 rounded-2xl px-4 overflow-hidden"
+            >
               <AccordionTrigger className="text-sm font-medium hover:no-underline py-4 text-zinc-200">
                 Como altero meu endereço?
               </AccordionTrigger>
               <AccordionContent className="text-xs text-zinc-500 leading-relaxed pb-4">
-                Vá em Perfil &gt; Meus Endereços. Lá você pode adicionar novos, editar ou excluir endereços existentes.
+                Vá em Perfil &gt; Meus Endereços. Lá você pode adicionar novos, editar ou excluir
+                endereços existentes.
               </AccordionContent>
             </AccordionItem>
           </Accordion>

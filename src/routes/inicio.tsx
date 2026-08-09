@@ -28,10 +28,11 @@ import catMercados from "@/assets/cat-mercados.png";
 import catFarmacias from "@/assets/cat-farmacias.png";
 import catLojas from "@/assets/cat-lojas.png";
 
-
 export const Route = createFileRoute("/inicio")({
   beforeLoad: async ({ location }) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       throw redirect({
         to: "/login",
@@ -46,9 +47,15 @@ export const Route = createFileRoute("/inicio")({
   head: () => ({
     meta: [
       { title: "Início | APOIS ENTREGA" },
-      { name: "description", content: "Peça comida, mercado, farmácia e lojas com entrega rápida no APOIS ENTREGA." },
+      {
+        name: "description",
+        content: "Peça comida, mercado, farmácia e lojas com entrega rápida no APOIS ENTREGA.",
+      },
       { property: "og:title", content: "Início | APOIS ENTREGA" },
-      { property: "og:description", content: "Peça comida, mercado, farmácia e lojas com entrega rápida no APOIS ENTREGA." },
+      {
+        property: "og:description",
+        content: "Peça comida, mercado, farmácia e lojas com entrega rápida no APOIS ENTREGA.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -66,14 +73,19 @@ function Inicio() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-
   const fetchData = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
-        const { data: profileData } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
         if (profileData) setProfile(profileData);
         const { data: addrData, error: addrError } = await supabase
           .from("customer_addresses" as any)
@@ -85,16 +97,14 @@ function Inicio() {
         if (addrError) throw addrError;
         setDefaultAddress(addrData);
 
-        const [cats] = await Promise.all([
-          fetchMerchantCategories()
-        ]);
+        const [cats] = await Promise.all([fetchMerchantCategories()]);
         setCategories(cats);
 
         if (addrData) {
           const mers = await fetchMerchants((addrData as any).city, (addrData as any).state);
           setMerchants(mers);
           if (mers.length > 0) {
-            const hours = await fetchMerchantsHoursBatch(mers.map(m => m.id));
+            const hours = await fetchMerchantsHoursBatch(mers.map((m) => m.id));
             setMerchantsHours(hours);
           } else {
             setMerchantsHours([]);
@@ -121,21 +131,26 @@ function Inicio() {
 
   const firstName = profile?.full_name?.split(" ")[0]?.toUpperCase();
 
-
-
-
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-black text-white relative">
       {/* Header */}
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-zinc-900/80 px-4 pb-3 pt-6">
-        <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-10 w-auto object-contain object-left" />
+        <img
+          src={logoAsset.url}
+          alt="APOIS ENTREGA"
+          className="h-10 w-auto object-contain object-left"
+        />
         <button
           onClick={() => navigate({ to: "/sacola" })}
           className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full border border-zinc-800 bg-zinc-950 text-white"
           aria-label="Sacola"
         >
           <ShoppingBag className="h-5 w-5" />
-          {totalItems > 0 && <span className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-primary text-[10px] font-bold text-black flex items-center justify-center ring-2 ring-zinc-950">{totalItems}</span>}
+          {totalItems > 0 && (
+            <span className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-primary text-[10px] font-bold text-black flex items-center justify-center ring-2 ring-zinc-950">
+              {totalItems}
+            </span>
+          )}
         </button>
       </header>
 
@@ -184,7 +199,8 @@ function Inicio() {
           </span>
           <div className="min-w-0">
             <h1 className="truncate text-[22px] font-extrabold leading-tight tracking-tight">
-              Olá, <span className="text-primary">{isLoading ? "..." : firstName || "BEM-VINDO"}!</span>
+              Olá,{" "}
+              <span className="text-primary">{isLoading ? "..." : firstName || "BEM-VINDO"}!</span>
             </h1>
             <p className="truncate text-[13px] text-zinc-400">O que vamos comer hoje?</p>
           </div>
@@ -192,33 +208,33 @@ function Inicio() {
 
         {/* Categorias */}
         <div className="grid grid-cols-4 gap-2.5">
-           {isLoading ? (
-             Array.from({ length: 4 }).map((_, i) => (
-               <div key={i} className="flex flex-col items-center gap-2 animate-pulse">
-                 <div className="aspect-[3/3.4] w-full rounded-[1.25rem] bg-zinc-900" />
-                 <div className="h-2 w-12 rounded bg-zinc-900" />
-               </div>
-             ))
-           ) : error ? (
-             <div className="col-span-4 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/30 px-4 py-6 text-center">
-               <span className="grid h-10 w-10 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800">
-                 <Store className="h-5 w-5 text-zinc-700" />
-               </span>
-               <p className="text-[12px] text-zinc-500">Erro ao carregar categorias</p>
-             </div>
-           ) : categories.length > 0 ? (
-             categories.map((cat) => (
-               <button 
-                 key={cat.id} 
-                 onClick={() => navigate({ 
-                   to: "/buscar", 
-                   search: { categoria: cat.id } 
-                 })}
-                 className="group flex min-w-0 flex-col items-center gap-2"
-               >
-                <span
-                  className="relative grid aspect-[3/3.4] w-full place-items-center overflow-hidden rounded-[1.25rem] bg-zinc-900 ring-1 ring-white/10 transition-transform group-active:scale-95"
-                >
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex flex-col items-center gap-2 animate-pulse">
+                <div className="aspect-[3/3.4] w-full rounded-[1.25rem] bg-zinc-900" />
+                <div className="h-2 w-12 rounded bg-zinc-900" />
+              </div>
+            ))
+          ) : error ? (
+            <div className="col-span-4 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/30 px-4 py-6 text-center">
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800">
+                <Store className="h-5 w-5 text-zinc-700" />
+              </span>
+              <p className="text-[12px] text-zinc-500">Erro ao carregar categorias</p>
+            </div>
+          ) : categories.length > 0 ? (
+            categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() =>
+                  navigate({
+                    to: "/buscar",
+                    search: { categoria: cat.id },
+                  })
+                }
+                className="group flex min-w-0 flex-col items-center gap-2"
+              >
+                <span className="relative grid aspect-[3/3.4] w-full place-items-center overflow-hidden rounded-[1.25rem] bg-zinc-900 ring-1 ring-white/10 transition-transform group-active:scale-95">
                   {cat.image_url ? (
                     <img
                       src={cat.image_url}
@@ -227,13 +243,29 @@ function Inicio() {
                       className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
                     />
                   ) : cat.slug === "restaurantes" ? (
-                    <img src={catRestaurantes} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
+                    <img
+                      src={catRestaurantes}
+                      alt={cat.name}
+                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
+                    />
                   ) : cat.slug === "mercados" ? (
-                    <img src={catMercados} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
+                    <img
+                      src={catMercados}
+                      alt={cat.name}
+                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
+                    />
                   ) : cat.slug === "farmacias" ? (
-                    <img src={catFarmacias} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
+                    <img
+                      src={catFarmacias}
+                      alt={cat.name}
+                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
+                    />
                   ) : cat.slug === "lojas" ? (
-                    <img src={catLojas} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
+                    <img
+                      src={catLojas}
+                      alt={cat.name}
+                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
+                    />
                   ) : (
                     <Store className="h-8 w-8 text-zinc-700" />
                   )}
@@ -245,7 +277,6 @@ function Inicio() {
             ))
           ) : null}
         </div>
-
 
         {/* Perto de você */}
         <section className="space-y-3 pt-1">
@@ -267,15 +298,20 @@ function Inicio() {
             ) : defaultAddress ? (
               merchants.length > 0 ? (
                 merchants.map((merchant) => (
-                  <button 
+                  <button
                     key={merchant.id}
-                    onClick={() => navigate({ to: "/estabelecimento/$merchantId", params: { merchantId: merchant.id } })}
+                    onClick={() =>
+                      navigate({
+                        to: "/estabelecimento/$merchantId",
+                        params: { merchantId: merchant.id },
+                      })
+                    }
                     className="group grid grid-cols-[84px_1fr] items-center gap-4 rounded-3xl border border-zinc-900 bg-zinc-950/50 p-3 text-left transition-all hover:bg-zinc-900/50 active:scale-[0.98] active:bg-zinc-900"
                   >
                     <div className="relative aspect-square w-full overflow-hidden rounded-2xl ring-1 ring-white/10 bg-zinc-900">
                       {merchant.logo_url ? (
-                        <img 
-                          src={merchant.logo_url} 
+                        <img
+                          src={merchant.logo_url}
                           alt={merchant.name}
                           className="h-full w-full object-cover transition-transform group-hover:scale-110"
                         />
@@ -290,35 +326,48 @@ function Inicio() {
                         <span>{merchant.rating}</span>
                       </div>
                     </div>
-                    
+
                     <div className="flex flex-col justify-center gap-1.5 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <h3 className="truncate text-base font-extrabold text-white">{merchant.name}</h3>
+                        <h3 className="truncate text-base font-extrabold text-white">
+                          {merchant.name}
+                        </h3>
                         <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
                       </div>
-                      
-                       <div className="flex flex-col gap-1">
+
+                      <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
                           <span className="flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5 text-primary" /> 
-                            {merchant.delivery_min_minutes && merchant.delivery_max_minutes 
+                            <Clock className="h-3.5 w-3.5 text-primary" />
+                            {merchant.delivery_min_minutes && merchant.delivery_max_minutes
                               ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
                               : "Prazo não informado"}
                           </span>
                           <span className="h-1 w-1 rounded-full bg-zinc-700" />
                           <span className="flex items-center gap-1">
-                            <Bike className="h-3.5 w-3.5 text-primary" /> 
-                            {merchant.delivery_fee > 0 ? `R$ ${merchant.delivery_fee.toFixed(2).replace('.', ',')}` : "Grátis"}
+                            <Bike className="h-3.5 w-3.5 text-primary" />
+                            {merchant.delivery_fee > 0
+                              ? `R$ ${merchant.delivery_fee.toFixed(2).replace(".", ",")}`
+                              : "Grátis"}
                           </span>
                         </div>
                         <div className="flex items-center gap-1 text-[10px] font-bold">
                           {(() => {
-                            const mHours = merchantsHours.filter(h => h.merchant_id === merchant.id);
+                            const mHours = merchantsHours.filter(
+                              (h) => h.merchant_id === merchant.id,
+                            );
                             const status = calculateMerchantStatus(mHours);
-                            const colorClass = status.status === "open" ? "text-green-500" : status.status === "closed" ? "text-red-500" : "text-zinc-500";
+                            const colorClass =
+                              status.status === "open"
+                                ? "text-green-500"
+                                : status.status === "closed"
+                                  ? "text-red-500"
+                                  : "text-zinc-500";
                             return (
                               <>
-                                <span className={`h-1.5 w-1.5 rounded-full ${status.status === "open" ? "bg-green-500" : status.status === "closed" ? "bg-red-500" : "bg-zinc-500"}`} />
+                                <span
+                                  className={`h-1.5 w-1.5 rounded-full ${status.status === "open" ? "bg-green-500" : status.status === "closed" ? "bg-red-500" : "bg-zinc-500"}`}
+                                />
                                 <span className={colorClass}>{status.message}</span>
                               </>
                             );
@@ -326,7 +375,6 @@ function Inicio() {
                         </div>
                       </div>
 
-                      
                       {merchant.description && (
                         <p className="truncate text-[11px] text-zinc-500 italic">
                           {merchant.description}
@@ -351,7 +399,8 @@ function Inicio() {
                   <MapPin className="h-6 w-6 text-primary" />
                 </span>
                 <p className="max-w-[220px] text-[13px] font-medium leading-relaxed text-zinc-300">
-                  Informe um endereço de entrega para ver os estabelecimentos disponíveis na sua região.
+                  Informe um endereço de entrega para ver os estabelecimentos disponíveis na sua
+                  região.
                 </p>
                 <button
                   onClick={() => navigate({ to: "/enderecos" })}

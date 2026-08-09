@@ -3,11 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 export const getOrderDetails = async (orderId: string) => {
   const { data, error } = await supabase
     .from("orders" as any)
-    .select(`
+    .select(
+      `
       *,
       merchants (*),
       order_items (*)
-    `)
+    `,
+    )
     .eq("id", orderId)
     .single();
 
