@@ -17,11 +17,7 @@ function OrderDetailsPage() {
   const [cancelling, setCancelling] = useState(false);
 
   const fetchOrder = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("orders")
-      .select("*, merchants (*), order_items (*)")
-      .eq("id", orderId)
-      .single();
+    const { data, error } = await supabase.from("orders").select("*, merchants (*), order_items (*)").eq("id", orderId).single();
     if (error) {
       toast.error("Não foi possível carregar os detalhes deste pedido.");
       setOrder(null);
@@ -52,14 +48,11 @@ function OrderDetailsPage() {
     try {
       const { data, error } = await supabase.rpc("customer_cancel_order", { _order_id: order.id, _reason: reason });
       if (error) throw error;
-      const refundId = data?.refund_id ?? null;
+      const refundId = (data as any)?.refund_id ?? null;
       if (refundId) {
         const { error: refundError } = await supabase.functions.invoke("process-refund", { body: { refundId } });
-        if (refundError) {
-          toast.warning("Pedido cancelado. O estorno foi registrado e continuará pendente para nova tentativa.");
-        } else {
-          toast.success("Pedido cancelado e estorno processado.");
-        }
+        if (refundError) toast.warning("Pedido cancelado. O estorno foi registrado e continuará pendente para nova tentativa.");
+        else toast.success("Pedido cancelado e estorno processado.");
       } else {
         toast.success("Pedido cancelado.");
       }
@@ -74,12 +67,7 @@ function OrderDetailsPage() {
   if (loading) return <div className="flex h-screen w-full items-center justify-center bg-black"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   if (!order) {
-    return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-black p-6 text-center text-white">
-        <h2 className="mb-4 text-xl font-bold">Pedido não encontrado</h2>
-        <button type="button" onClick={() => navigate({ to: "/pedidos" })} className="rounded-xl bg-primary px-6 py-3 font-bold uppercase text-black shadow-lg shadow-primary/20 transition-transform active:scale-95">Voltar para Meus Pedidos</button>
-      </div>
-    );
+    return <div className="flex h-screen w-full flex-col items-center justify-center bg-black p-6 text-center text-white"><h2 className="mb-4 text-xl font-bold">Pedido não encontrado</h2><button type="button" onClick={() => navigate({ to: "/pedidos" })} className="rounded-xl bg-primary px-6 py-3 font-bold uppercase text-black shadow-lg shadow-primary/20 transition-transform active:scale-95">Voltar para Meus Pedidos</button></div>;
   }
 
   const getStatusStep = (status: string) => {
@@ -104,7 +92,6 @@ function OrderDetailsPage() {
   const isCancelled = order.status === "cancelled";
   const isRefunded = order.status === "refunded" || order.payment_status === "refunded";
   const canCancel = ["created", "pending_payment", "paid", "confirmed"].includes(order.status);
-
   const stepStatus = (index: number) => {
     if (currentStepIdx < 0) return "pending";
     if (order.status === "delivered" && index <= currentStepIdx) return "completed";
@@ -144,35 +131,20 @@ function OrderDetailsPage() {
             <div className="space-y-6">
               {steps.map((step, index) => {
                 const Icon = step.icon;
-                return (
-                  <div key={step.label} className="relative flex gap-4">
-                    {index !== steps.length - 1 ? <div className={`absolute left-4 top-8 h-10 w-[2px] ${step.status === "completed" ? "bg-primary" : "bg-zinc-800"}`} /> : null}
-                    <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ring-2 ring-black ${step.status === "completed" ? "bg-primary text-black" : step.status === "current" ? "bg-zinc-800 text-primary ring-primary/20" : "bg-zinc-900 text-zinc-700"}`}><Icon className="h-4 w-4" /></div>
-                    <div className="flex-1 pt-1"><p className={`text-sm font-bold ${step.status === "pending" ? "text-zinc-700" : "text-white"}`}>{step.label}</p>{step.status === "current" ? <p className="animate-pulse text-[10px] font-bold text-primary">EM ANDAMENTO</p> : null}</div>
-                  </div>
-                );
+                return <div key={step.label} className="relative flex gap-4">{index !== steps.length - 1 ? <div className={`absolute left-4 top-8 h-10 w-[2px] ${step.status === "completed" ? "bg-primary" : "bg-zinc-800"}`} /> : null}<div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ring-2 ring-black ${step.status === "completed" ? "bg-primary text-black" : step.status === "current" ? "bg-zinc-800 text-primary ring-primary/20" : "bg-zinc-900 text-zinc-700"}`}><Icon className="h-4 w-4" /></div><div className="flex-1 pt-1"><p className={`text-sm font-bold ${step.status === "pending" ? "text-zinc-700" : "text-white"}`}>{step.label}</p>{step.status === "current" ? <p className="animate-pulse text-[10px] font-bold text-primary">EM ANDAMENTO</p> : null}</div></div>;
               })}
             </div>
           </section>
         )}
 
-        {canCancel ? (
-          <button type="button" disabled={cancelling} onClick={cancelOrder} className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 py-4 font-bold text-red-400 disabled:opacity-50">
-            {cancelling ? <Loader2 className="h-5 w-5 animate-spin" /> : <XCircle className="h-5 w-5" />}{cancelling ? "Cancelando..." : "Cancelar pedido"}
-          </button>
-        ) : null}
+        {canCancel ? <button type="button" disabled={cancelling} onClick={cancelOrder} className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 py-4 font-bold text-red-400 disabled:opacity-50">{cancelling ? <Loader2 className="h-5 w-5 animate-spin" /> : <XCircle className="h-5 w-5" />}{cancelling ? "Cancelando..." : "Cancelar pedido"}</button> : null}
 
         {order.status === "delivered" ? <button type="button" onClick={() => navigate({ to: `/pedido/${orderId}/avaliar` })} className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/10 py-4 font-bold text-primary shadow-lg shadow-primary/5 transition-transform active:scale-95"><Star className="h-5 w-5 fill-primary" />Avaliar pedido</button> : null}
 
         <section className="space-y-4 rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
           <h3 className="text-sm font-black uppercase tracking-wider text-zinc-500">Resumo do pedido</h3>
           <div className="space-y-3">
-            {order.order_items?.map((item: any) => (
-              <div key={item.id} className="space-y-1">
-                <div className="flex justify-between text-sm"><span className="text-zinc-300">{item.quantity}x {item.product_name}</span><span className="font-bold">R$ {Number(item.line_total).toFixed(2).replace(".", ",")}</span></div>
-                {item.selected_options ? <p className="text-[10px] text-zinc-500">{Array.isArray(item.selected_options) ? item.selected_options.map((option: any) => option.optionName).join(" • ") : typeof item.selected_options === "object" ? Object.values(item.selected_options).map((option: any) => option.optionName).join(" • ") : ""}</p> : null}
-              </div>
-            ))}
+            {order.order_items?.map((item: any) => <div key={item.id} className="space-y-1"><div className="flex justify-between text-sm"><span className="text-zinc-300">{item.quantity}x {item.product_name}</span><span className="font-bold">R$ {Number(item.line_total).toFixed(2).replace(".", ",")}</span></div>{item.selected_options ? <p className="text-[10px] text-zinc-500">{Array.isArray(item.selected_options) ? item.selected_options.map((option: any) => option.optionName).join(" • ") : typeof item.selected_options === "object" ? Object.values(item.selected_options).map((option: any) => option.optionName).join(" • ") : ""}</p> : null}</div>)}
           </div>
           <div className="space-y-2 border-t border-zinc-900 pt-3">
             <div className="flex justify-between text-xs text-zinc-500"><span>Subtotal</span><span>R$ {Number(order.subtotal).toFixed(2).replace(".", ",")}</span></div>
