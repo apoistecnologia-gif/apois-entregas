@@ -1,0 +1,74 @@
+name: Integrate merchant coupons
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/integrate-merchant-coupons.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Wire coupon management tab
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          path = Path('src/routes/merchant.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          if '  TicketPercent,\n' not in text:
+              text = text.replace('  Trash2,\n', '  Trash2,\n  TicketPercent,\n', 1)
+
+          growth_import = '''} from "@/components/MerchantGrowthPanels";\n'''
+          coupon_import = 'import { MerchantCouponsPanel } from "@/components/MerchantCouponsPanel";\n'
+          if coupon_import not in text:
+              if growth_import not in text:
+                  raise SystemExit('growth import anchor missing')
+              text = text.replace(growth_import, growth_import + coupon_import, 1)
+
+          tab_anchor = '    { id: "promotions", label: "Promoções", icon: BadgePercent },\n'
+          tab_new = tab_anchor + '    { id: "coupons", label: "Cupons", icon: TicketPercent },\n'
+          if 'id: "coupons"' not in text:
+              if tab_anchor not in text:
+                  raise SystemExit('promotions tab anchor missing')
+              text = text.replace(tab_anchor, tab_new, 1)
+
+          render_anchor = '''      {activeTab === "customers" && <MerchantCustomersPanel orders={orders} />}\n'''
+          coupon_render = '''      {activeTab === "coupons" && <MerchantCouponsPanel merchantId={merchant.id} />}\n\n'''
+          if coupon_render not in text:
+              if render_anchor not in text:
+                  raise SystemExit('customers render anchor missing')
+              text = text.replace(render_anchor, coupon_render + render_anchor, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+          bunx prettier src/routes/merchant.tsx src/components/MerchantCouponsPanel.tsx --write
+      - name: Full verification
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit integration and remove workflow
+        run: |
+          rm .github/workflows/integrate-merchant-coupons.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(merchant): wire coupon management"
+          git push
