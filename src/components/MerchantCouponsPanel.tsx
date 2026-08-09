@@ -336,14 +336,20 @@ export function MerchantCouponsPanel({ merchantId }: { merchantId: string }) {
               <Loader2 className="h-4 w-4 animate-spin text-primary" /> Carregando cupons...
             </div>
           ) : coupons.length === 0 ? (
-            <EmptyState title="Nenhum cupom cadastrado" description="Crie seu primeiro código promocional ao lado." />
+            <EmptyState
+              title="Nenhum cupom cadastrado"
+              description="Crie seu primeiro código promocional ao lado."
+            />
           ) : (
             <div className="space-y-3">
               {coupons.map((coupon) => {
                 const uses = usageByCoupon.get(coupon.id) ?? 0;
                 const expired = coupon.ends_at ? new Date(coupon.ends_at) <= new Date() : false;
                 return (
-                  <article key={coupon.id} className="rounded-2xl border border-zinc-900 bg-black p-4">
+                  <article
+                    key={coupon.id}
+                    className="rounded-2xl border border-zinc-900 bg-black p-4"
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
@@ -377,7 +383,8 @@ export function MerchantCouponsPanel({ merchantId }: { merchantId: string }) {
                       </span>
                       <span>Por cliente: {coupon.usage_limit_per_user ?? "sem limite"}</span>
                       <span>
-                        Máximo: {coupon.max_discount === null ? "sem teto" : money(coupon.max_discount)}
+                        Máximo:{" "}
+                        {coupon.max_discount === null ? "sem teto" : money(coupon.max_discount)}
                       </span>
                       <span>Início: {dateTime(coupon.starts_at)}</span>
                       <span>Fim: {dateTime(coupon.ends_at)}</span>

@@ -14,6 +14,7 @@ import {
   Store,
   Star,
   Trash2,
+  TicketPercent,
   Users,
   UtensilsCrossed,
   WalletCards,
@@ -30,6 +31,7 @@ import {
   MerchantPromotionsPanel,
   MerchantReviewsPanel,
 } from "@/components/MerchantGrowthPanels";
+import { MerchantCouponsPanel } from "@/components/MerchantCouponsPanel";
 
 export const Route = createFileRoute("/merchant")({
   ssr: false,
@@ -645,6 +647,7 @@ function MerchantWorkspace() {
     { id: "menu", label: "Cardápio", icon: UtensilsCrossed },
     { id: "hours", label: "Horários", icon: Clock3 },
     { id: "promotions", label: "Promoções", icon: BadgePercent },
+    { id: "coupons", label: "Cupons", icon: TicketPercent },
     { id: "customers", label: "Clientes", icon: Users },
     { id: "reviews", label: "Avaliações", icon: Star },
     { id: "finance", label: "Financeiro", icon: WalletCards },
@@ -1225,6 +1228,8 @@ function MerchantWorkspace() {
           categories={menuCategories}
         />
       )}
+
+      {activeTab === "coupons" && <MerchantCouponsPanel merchantId={merchant.id} />}
 
       {activeTab === "customers" && <MerchantCustomersPanel orders={orders} />}
 
