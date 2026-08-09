@@ -26,7 +26,7 @@ type CategoryRef = { id: string; name: string };
 
 type MerchantOrder = {
   id: string;
-  customer_id?: string | null;
+  customer_user_id?: string | null;
   order_number?: number | string | null;
   total?: number | string | null;
   status?: string | null;
@@ -390,7 +390,7 @@ export function MerchantCustomersPanel({ orders }: { orders: MerchantOrder[] }) 
       { id: string; orders: number; validOrders: number; total: number; lastAt: string | null }
     >();
     for (const order of orders) {
-      const customerId = order.customer_id;
+      const customerId = order.customer_user_id;
       if (!customerId) continue;
       const current = grouped.get(customerId) ?? {
         id: customerId,
