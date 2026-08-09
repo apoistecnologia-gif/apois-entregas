@@ -25,7 +25,13 @@ import {
   fetchMerchantCategoryById,
   fetchProductCustomization,
 } from "@/lib/catalog";
-import { fetchMerchantHours, calculateMerchantStatus, MerchantHours } from "@/lib/merchant-hours";
+import {
+  fetchMerchantHours,
+  fetchMerchantSpecialHours,
+  calculateMerchantStatus,
+  MerchantHours,
+  MerchantSpecialHours,
+} from "@/lib/merchant-hours";
 import { useCart, CartSelectedOption } from "@/contexts/CartContext";
 import {
   Dialog,
@@ -72,6 +78,7 @@ function EstabelecimentoPage() {
   const [merchantCategory, setMerchantCategory] = useState<any>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [merchantHours, setMerchantHours] = useState<MerchantHours[]>([]);
+  const [merchantSpecialHours, setMerchantSpecialHours] = useState<MerchantSpecialHours[]>([]);
   const [isHoursDialogOpen, setIsHoursDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isCustomizing, setIsCustomizing] = useState(false);
@@ -90,17 +97,20 @@ function EstabelecimentoPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const [merchantData, menuCatsData, prodsData, hoursData] = await Promise.all([
-          fetchMerchantById(merchantId),
-          fetchMenuCategoriesByMerchant(merchantId),
-          fetchProductsByMerchant(merchantId),
-          fetchMerchantHours(merchantId),
-        ]);
+        const [merchantData, menuCatsData, prodsData, hoursData, specialHoursData] =
+          await Promise.all([
+            fetchMerchantById(merchantId),
+            fetchMenuCategoriesByMerchant(merchantId),
+            fetchProductsByMerchant(merchantId),
+            fetchMerchantHours(merchantId),
+            fetchMerchantSpecialHours(merchantId),
+          ]);
 
         setMerchant(merchantData);
         setMenuCategories(menuCatsData);
         setProducts(prodsData);
         setMerchantHours(hoursData);
+        setMerchantSpecialHours(specialHoursData);
 
         if (merchantData.category_id) {
           const cat = await fetchMerchantCategoryById(merchantData.category_id);
@@ -170,7 +180,7 @@ function EstabelecimentoPage() {
   };
 
   const handleAddToCart = async (product: Product) => {
-    const status = calculateMerchantStatus(merchantHours);
+    const status = calculateMerchantStatus(merchantHours, undefined, merchantSpecialHours);
 
     if (status.status === "closed") {
       toast.error("Este estabelecimento está fechado no momento.");
@@ -244,7 +254,8 @@ function EstabelecimentoPage() {
           merchant.delivery_min_minutes && merchant.delivery_max_minutes
             ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
             : "",
-        closeTime: calculateMerchantStatus(merchantHours).closesAt || "",
+        closeTime:
+          calculateMerchantStatus(merchantHours, undefined, merchantSpecialHours).closesAt || "",
         category: merchantCategory?.name || "",
       },
     );
@@ -371,7 +382,11 @@ function EstabelecimentoPage() {
               <button className="flex flex-col items-center justify-center gap-1 px-2 group">
                 <div className="flex items-center gap-1">
                   {(() => {
-                    const status = calculateMerchantStatus(merchantHours);
+                    const status = calculateMerchantStatus(
+                      merchantHours,
+                      undefined,
+                      merchantSpecialHours,
+                    );
                     const colorClass =
                       status.status === "open"
                         ? "text-green-500"

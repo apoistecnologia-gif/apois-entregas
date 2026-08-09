@@ -69,6 +69,7 @@ function MerchantWorkspace() {
   const [menuCategories, setMenuCategories] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [hours, setHours] = useState<any[]>([]);
+  const [specialHours, setSpecialHours] = useState<any[]>([]);
   const [wallet, setWallet] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [payoutAccount, setPayoutAccount] = useState<any>(null);
@@ -94,33 +95,52 @@ function MerchantWorkspace() {
     maxMinutes: "",
     temporarilyClosed: false,
   });
+  const [specialDraft, setSpecialDraft] = useState({
+    serviceDate: "",
+    note: "",
+    isClosed: true,
+    opensAt: "08:00",
+    closesAt: "22:00",
+    secondEnabled: false,
+    secondOpensAt: "",
+    secondClosesAt: "",
+  });
 
   const loadOperations = useCallback(async (merchantId: string) => {
-    const [ordersRes, categoriesRes, productsRes, hoursRes, walletRes, reviewsRes] =
-      await Promise.all([
-        from("orders")
-          .select("*, order_items(*)")
-          .eq("merchant_id", merchantId)
-          .order("created_at", { ascending: false })
-          .limit(100),
-        from("menu_categories")
-          .select("*")
-          .eq("merchant_id", merchantId)
-          .order("sort_order")
-          .order("name"),
-        from("products")
-          .select("*")
-          .eq("merchant_id", merchantId)
-          .order("sort_order")
-          .order("name"),
-        from("merchant_hours").select("*").eq("merchant_id", merchantId).order("weekday"),
-        from("wallets").select("*").eq("merchant_id", merchantId).maybeSingle(),
-        from("reviews")
-          .select("*")
-          .eq("merchant_id", merchantId)
-          .order("created_at", { ascending: false })
-          .limit(50),
-      ]);
+    const [
+      ordersRes,
+      categoriesRes,
+      productsRes,
+      hoursRes,
+      walletRes,
+      reviewsRes,
+      specialHoursRes,
+    ] = await Promise.all([
+      from("orders")
+        .select("*, order_items(*)")
+        .eq("merchant_id", merchantId)
+        .order("created_at", { ascending: false })
+        .limit(100),
+      from("menu_categories")
+        .select("*")
+        .eq("merchant_id", merchantId)
+        .order("sort_order")
+        .order("name"),
+      from("products").select("*").eq("merchant_id", merchantId).order("sort_order").order("name"),
+      from("merchant_hours").select("*").eq("merchant_id", merchantId).order("weekday"),
+      from("wallets").select("*").eq("merchant_id", merchantId).maybeSingle(),
+      from("reviews")
+        .select("*")
+        .eq("merchant_id", merchantId)
+        .order("created_at", { ascending: false })
+        .limit(50),
+      from("merchant_special_hours")
+        .select("*")
+        .eq("merchant_id", merchantId)
+        .gte("service_date", new Date().toISOString().slice(0, 10))
+        .order("service_date")
+        .limit(90),
+    ]);
 
     if (ordersRes.error) toast.error("Não foi possível carregar os pedidos do estabelecimento.");
     setOrders(ordersRes.data ?? []);
@@ -128,6 +148,7 @@ function MerchantWorkspace() {
     setProducts(productsRes.data ?? []);
     setHours(hoursRes.data ?? []);
     setReviews(reviewsRes.data ?? []);
+    setSpecialHours(specialHoursRes.data ?? []);
 
     const merchantWallet = walletRes.data ?? null;
     setWallet(merchantWallet);
@@ -424,6 +445,8 @@ function MerchantWorkspace() {
       weekday,
       opens_at: current?.opens_at ?? "08:00:00",
       closes_at: current?.closes_at ?? "22:00:00",
+      second_opens_at: current?.second_opens_at ?? null,
+      second_closes_at: current?.second_closes_at ?? null,
       is_closed: current?.is_closed ?? false,
       ...patch,
     };
@@ -431,6 +454,69 @@ function MerchantWorkspace() {
       onConflict: "merchant_id,weekday",
     });
     if (error) return toast.error(error.message);
+    await loadOperations(merchant.id);
+  };
+
+  const saveSpecialHours = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!merchant?.id || !specialDraft.serviceDate) {
+      toast.error("Informe a data especial.");
+      return;
+    }
+    if (!specialDraft.isClosed && (!specialDraft.opensAt || !specialDraft.closesAt)) {
+      toast.error("Informe abertura e fechamento da data especial.");
+      return;
+    }
+    if (
+      specialDraft.secondEnabled &&
+      (!specialDraft.secondOpensAt || !specialDraft.secondClosesAt)
+    ) {
+      toast.error("Complete o segundo horário ou desative o intervalo adicional.");
+      return;
+    }
+
+    setBusyAction("special-hours");
+    const closed = specialDraft.isClosed;
+    const { error } = await from("merchant_special_hours").upsert(
+      {
+        merchant_id: merchant.id,
+        service_date: specialDraft.serviceDate,
+        is_closed: closed,
+        opens_at: closed ? null : `${specialDraft.opensAt}:00`,
+        closes_at: closed ? null : `${specialDraft.closesAt}:00`,
+        second_opens_at:
+          closed || !specialDraft.secondEnabled ? null : `${specialDraft.secondOpensAt}:00`,
+        second_closes_at:
+          closed || !specialDraft.secondEnabled ? null : `${specialDraft.secondClosesAt}:00`,
+        note: specialDraft.note.trim() || null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "merchant_id,service_date" },
+    );
+    setBusyAction(null);
+    if (error) return toast.error(error.message || "Não foi possível salvar a data especial.");
+    toast.success("Data especial salva.");
+    setSpecialDraft({
+      serviceDate: "",
+      note: "",
+      isClosed: true,
+      opensAt: "08:00",
+      closesAt: "22:00",
+      secondEnabled: false,
+      secondOpensAt: "",
+      secondClosesAt: "",
+    });
+    await loadOperations(merchant.id);
+  };
+
+  const deleteSpecialHours = async (row: any) => {
+    if (!merchant?.id || !window.confirm(`Remover a exceção de ${row.service_date}?`)) return;
+    const { error } = await from("merchant_special_hours")
+      .delete()
+      .eq("id", row.id)
+      .eq("merchant_id", merchant.id);
+    if (error) return toast.error(error.message || "Não foi possível remover a data especial.");
+    toast.success("Data especial removida.");
     await loadOperations(merchant.id);
   };
 
@@ -832,57 +918,295 @@ function MerchantWorkspace() {
       )}
 
       {activeTab === "hours" && (
-        <section className="max-w-3xl rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-          <h2 className="font-black">Horários de funcionamento</h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            Alterações são refletidas na disponibilidade do estabelecimento.
-          </p>
-          <div className="mt-5 space-y-3">
-            {week.map((label, weekday) => {
-              const row = hours.find((item) => Number(item.weekday) === weekday);
-              const closed = row?.is_closed ?? true;
-              return (
-                <div
-                  key={label}
-                  className="grid items-center gap-3 rounded-xl border border-zinc-900 bg-black p-3 sm:grid-cols-[120px_1fr_1fr_auto]"
-                >
-                  <span className="text-sm font-bold">{label}</span>
-                  <input
-                    type="time"
-                    value={(row?.opens_at ?? "08:00").slice(0, 5)}
-                    disabled={closed}
-                    onChange={(e) =>
-                      void saveHours(weekday, {
-                        opens_at: `${e.target.value}:00`,
-                        is_closed: false,
-                      })
-                    }
-                    className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm disabled:opacity-30"
-                  />
-                  <input
-                    type="time"
-                    value={(row?.closes_at ?? "22:00").slice(0, 5)}
-                    disabled={closed}
-                    onChange={(e) =>
-                      void saveHours(weekday, {
-                        closes_at: `${e.target.value}:00`,
-                        is_closed: false,
-                      })
-                    }
-                    className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm disabled:opacity-30"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => void saveHours(weekday, { is_closed: !closed })}
-                    className={`rounded-lg px-3 py-2 text-xs font-black ${closed ? "bg-zinc-900 text-zinc-500" : "bg-emerald-500/15 text-emerald-400"}`}
+        <div className="space-y-6">
+          <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+            <h2 className="font-black">Horários de funcionamento</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Configure o expediente principal e, quando necessário, um segundo período no mesmo
+              dia.
+            </p>
+            <div className="mt-5 space-y-3">
+              {week.map((label, weekday) => {
+                const row = hours.find((item) => Number(item.weekday) === weekday);
+                const closed = row?.is_closed ?? true;
+                const hasSecond = Boolean(row?.second_opens_at && row?.second_closes_at);
+                return (
+                  <div key={label} className="rounded-xl border border-zinc-900 bg-black p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <span className="text-sm font-bold">{label}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void saveHours(
+                            weekday,
+                            closed
+                              ? {
+                                  is_closed: false,
+                                  opens_at: row?.opens_at ?? "08:00:00",
+                                  closes_at: row?.closes_at ?? "22:00:00",
+                                }
+                              : {
+                                  is_closed: true,
+                                  opens_at: null,
+                                  closes_at: null,
+                                  second_opens_at: null,
+                                  second_closes_at: null,
+                                },
+                          )
+                        }
+                        className={`rounded-lg px-3 py-2 text-xs font-black ${
+                          closed
+                            ? "bg-zinc-900 text-zinc-500"
+                            : "bg-emerald-500/15 text-emerald-400"
+                        }`}
+                      >
+                        {closed ? "Fechado" : "Aberto"}
+                      </button>
+                    </div>
+                    {!closed ? (
+                      <div className="mt-3 space-y-3">
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <label className="text-[10px] font-bold uppercase text-zinc-600">
+                            Abertura
+                            <input
+                              type="time"
+                              value={(row?.opens_at ?? "08:00").slice(0, 5)}
+                              onChange={(event) =>
+                                void saveHours(weekday, { opens_at: `${event.target.value}:00` })
+                              }
+                              className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm"
+                            />
+                          </label>
+                          <label className="text-[10px] font-bold uppercase text-zinc-600">
+                            Fechamento
+                            <input
+                              type="time"
+                              value={(row?.closes_at ?? "22:00").slice(0, 5)}
+                              onChange={(event) =>
+                                void saveHours(weekday, { closes_at: `${event.target.value}:00` })
+                              }
+                              className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm"
+                            />
+                          </label>
+                        </div>
+                        {hasSecond ? (
+                          <div className="grid gap-2 rounded-xl border border-primary/10 bg-primary/5 p-3 sm:grid-cols-[1fr_1fr_auto]">
+                            <label className="text-[10px] font-bold uppercase text-zinc-600">
+                              2ª abertura
+                              <input
+                                type="time"
+                                value={row.second_opens_at.slice(0, 5)}
+                                onChange={(event) =>
+                                  void saveHours(weekday, {
+                                    second_opens_at: `${event.target.value}:00`,
+                                  })
+                                }
+                                className="mt-1 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm"
+                              />
+                            </label>
+                            <label className="text-[10px] font-bold uppercase text-zinc-600">
+                              2º fechamento
+                              <input
+                                type="time"
+                                value={row.second_closes_at.slice(0, 5)}
+                                onChange={(event) =>
+                                  void saveHours(weekday, {
+                                    second_closes_at: `${event.target.value}:00`,
+                                  })
+                                }
+                                className="mt-1 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void saveHours(weekday, {
+                                  second_opens_at: null,
+                                  second_closes_at: null,
+                                })
+                              }
+                              className="self-end rounded-lg border border-red-500/20 px-3 py-2 text-xs font-bold text-red-400"
+                            >
+                              Remover
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void saveHours(weekday, {
+                                second_opens_at: "14:00:00",
+                                second_closes_at: "22:00:00",
+                              })
+                            }
+                            className="text-xs font-bold text-primary"
+                          >
+                            + Adicionar segundo período
+                          </button>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+            <form
+              onSubmit={saveSpecialHours}
+              className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5"
+            >
+              <div>
+                <h2 className="font-black">Feriados e datas especiais</h2>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Uma exceção por data substitui o horário semanal daquele dia.
+                </p>
+              </div>
+              <input
+                type="date"
+                required
+                min={new Date().toISOString().slice(0, 10)}
+                value={specialDraft.serviceDate}
+                onChange={(event) =>
+                  setSpecialDraft((current) => ({
+                    ...current,
+                    serviceDate: event.target.value,
+                  }))
+                }
+                className="w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
+              />
+              <Field
+                value={specialDraft.note}
+                onChange={(value) => setSpecialDraft((current) => ({ ...current, note: value }))}
+                placeholder="Motivo (ex.: feriado municipal)"
+              />
+              <label className="flex items-center gap-2 rounded-xl border border-zinc-900 bg-black p-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={specialDraft.isClosed}
+                  onChange={(event) =>
+                    setSpecialDraft((current) => ({
+                      ...current,
+                      isClosed: event.target.checked,
+                    }))
+                  }
+                />
+                Fechado o dia inteiro
+              </label>
+              {!specialDraft.isClosed ? (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="time"
+                      value={specialDraft.opensAt}
+                      onChange={(event) =>
+                        setSpecialDraft((current) => ({
+                          ...current,
+                          opensAt: event.target.value,
+                        }))
+                      }
+                      className="rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
+                    />
+                    <input
+                      type="time"
+                      value={specialDraft.closesAt}
+                      onChange={(event) =>
+                        setSpecialDraft((current) => ({
+                          ...current,
+                          closesAt: event.target.value,
+                        }))
+                      }
+                      className="rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-zinc-500">
+                    <input
+                      type="checkbox"
+                      checked={specialDraft.secondEnabled}
+                      onChange={(event) =>
+                        setSpecialDraft((current) => ({
+                          ...current,
+                          secondEnabled: event.target.checked,
+                        }))
+                      }
+                    />
+                    Adicionar segundo período
+                  </label>
+                  {specialDraft.secondEnabled ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="time"
+                        value={specialDraft.secondOpensAt}
+                        onChange={(event) =>
+                          setSpecialDraft((current) => ({
+                            ...current,
+                            secondOpensAt: event.target.value,
+                          }))
+                        }
+                        className="rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
+                      />
+                      <input
+                        type="time"
+                        value={specialDraft.secondClosesAt}
+                        onChange={(event) =>
+                          setSpecialDraft((current) => ({
+                            ...current,
+                            secondClosesAt: event.target.value,
+                          }))
+                        }
+                        className="rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
+                      />
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+              <Button disabled={busyAction === "special-hours"} className="w-full">
+                {busyAction === "special-hours" ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Salvar data especial
+              </Button>
+            </form>
+
+            <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+              <h2 className="font-black">Próximas exceções</h2>
+              <div className="mt-4 space-y-2">
+                {specialHours.map((row) => (
+                  <div
+                    key={row.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-black p-3"
                   >
-                    {closed ? "Fechado" : "Aberto"}
-                  </button>
-                </div>
-              );
-            })}
+                    <div>
+                      <p className="text-sm font-bold">
+                        {new Date(`${row.service_date}T12:00:00`).toLocaleDateString("pt-BR")}
+                      </p>
+                      <p className="text-xs text-zinc-500">
+                        {row.is_closed
+                          ? row.note || "Fechado"
+                          : `${row.opens_at?.slice(0, 5)}–${row.closes_at?.slice(0, 5)}${
+                              row.second_opens_at && row.second_closes_at
+                                ? ` · ${row.second_opens_at.slice(0, 5)}–${row.second_closes_at.slice(0, 5)}`
+                                : ""
+                            }`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void deleteSpecialHours(row)}
+                      className="rounded-lg border border-red-500/20 px-3 py-2 text-xs font-bold text-red-400"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ))}
+                {specialHours.length === 0 ? (
+                  <p className="text-sm text-zinc-500">Nenhuma data especial futura cadastrada.</p>
+                ) : null}
+              </div>
+            </section>
           </div>
-        </section>
+        </div>
       )}
 
       {activeTab === "promotions" && (

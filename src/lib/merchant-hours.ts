@@ -156,7 +156,8 @@ export const calculateMerchantStatus = (
   const todayWeekly = hours.find((row) => row.weekday === currentWeekday);
   const yesterdayWeekly = hours.find((row) => row.weekday === yesterdayWeekday);
   const todaySchedule = (todaySpecial ?? todayWeekly) as MerchantScheduleRow | undefined;
-  const yesterdaySchedule = (yesterdaySpecial ?? yesterdayWeekly) as MerchantScheduleRow | undefined;
+  const yesterdaySchedule = (yesterdaySpecial ?? yesterdayWeekly) as
+    MerchantScheduleRow | undefined;
 
   if (yesterdaySchedule && !yesterdaySchedule.is_closed) {
     const overnight = getIntervals(yesterdaySchedule).find(

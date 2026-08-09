@@ -2,7 +2,11 @@ import { createFileRoute, redirect, useNavigate, useSearch } from "@tanstack/rea
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchMerchantCategories, fetchMerchants } from "@/lib/catalog";
-import { fetchMerchantsHoursBatch, calculateMerchantStatus } from "@/lib/merchant-hours";
+import {
+  fetchMerchantsHoursBatch,
+  fetchMerchantsSpecialHoursBatch,
+  calculateMerchantStatus,
+} from "@/lib/merchant-hours";
 
 import { useCart } from "@/contexts/CartContext";
 import {
@@ -65,6 +69,7 @@ function Buscar() {
   const [categories, setCategories] = useState<any[]>([]);
   const [merchants, setMerchants] = useState<any[]>([]);
   const [merchantsHours, setMerchantsHours] = useState<any[]>([]);
+  const [merchantsSpecialHours, setMerchantsSpecialHours] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,10 +101,17 @@ function Buscar() {
           const mers = await fetchMerchants((addrData as any).city, (addrData as any).state);
           setMerchants(mers);
           if (mers.length > 0) {
-            const hours = await fetchMerchantsHoursBatch(mers.map((m) => m.id));
+            const merchantIds = mers.map((m) => m.id);
+            const [hours, specialHours] = await Promise.all([
+              fetchMerchantsHoursBatch(merchantIds),
+              fetchMerchantsSpecialHoursBatch(merchantIds),
+            ]);
             setMerchantsHours(hours);
+            setMerchantsSpecialHours(specialHours);
           } else {
             setMerchantsHours([]);
+            setMerchantsSpecialHours([]);
+            setMerchantsSpecialHours([]);
           }
         } else {
           setMerchants([]);
@@ -416,7 +428,14 @@ function Buscar() {
                             const mHours = merchantsHours.filter(
                               (h) => h.merchant_id === merchant.id,
                             );
-                            const status = calculateMerchantStatus(mHours);
+                            const mSpecialHours = merchantsSpecialHours.filter(
+                              (h) => h.merchant_id === merchant.id,
+                            );
+                            const status = calculateMerchantStatus(
+                              mHours,
+                              undefined,
+                              mSpecialHours,
+                            );
                             const colorClass =
                               status.status === "open"
                                 ? "text-green-500"
