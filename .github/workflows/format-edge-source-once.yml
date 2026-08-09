@@ -1,0 +1,52 @@
+name: Format Edge Source Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/format-edge-source-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Format versioned Edge Functions
+        run: |
+          bunx prettier --write \
+            supabase/functions/apois-refund-homol-8-7c2f/index.ts \
+            supabase/functions/customer-favorites/index.ts \
+            supabase/functions/customer-notifications/index.ts \
+            supabase/functions/customer-orders/index.ts \
+            supabase/functions/customer-support/index.ts \
+            supabase/functions/openpix-webhook/index.ts
+
+      - name: Verify formatting
+        run: bun run format:check
+
+      - name: Remove one-shot workflow
+        run: rm .github/workflows/format-edge-source-once.yml
+
+      - name: Commit formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style(edge): format versioned function sources"
+          git push origin HEAD:main
