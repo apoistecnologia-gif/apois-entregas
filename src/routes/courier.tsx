@@ -266,7 +266,6 @@ function CourierApp() {
       vehicle_model: String(data.get("vehicleModel") ?? ""),
       vehicle_plate: String(data.get("vehiclePlate") ?? ""),
       cnh_number: String(data.get("cnh") ?? ""),
-      pix_key: String(data.get("pixKey") ?? ""),
     };
     const { error } = await rpc("submit_courier_application", { _payload: payload });
     setBusy(null);
@@ -383,6 +382,32 @@ function CourierApp() {
     setPin("");
     toast.success("Entrega concluída!");
     await loadCourierOperations(courier.id);
+  };
+
+  const reportDeliveryProblem = async () => {
+    if (!activeJob) return;
+    const description = window.prompt("Descreva o problema desta entrega para o suporte:")?.trim();
+    if (!description) return;
+    if (description.length < 10) {
+      toast.error("Descreva o problema com pelo menos 10 caracteres.");
+      return;
+    }
+
+    setBusy("support");
+    const { error } = await rpc("create_support_ticket", {
+      _category: "delivery",
+      _subject: `Problema na entrega #${activeJob.orders?.order_number ?? activeJob.order_id}`,
+      _description: description,
+      _order_id: activeJob.order_id,
+      _delivery_job_id: activeJob.id,
+    });
+    setBusy(null);
+
+    if (error) {
+      toast.error(error.message || "Não foi possível abrir o chamado.");
+      return;
+    }
+    toast.success("Chamado aberto para o suporte.");
   };
 
   const savePayoutAccount = async () => {
@@ -553,11 +578,13 @@ function CourierApp() {
         {activeJob ? (
           <ActiveDelivery
             job={activeJob}
-            busy={busy === "delivery"}
+            busy={busy === "delivery" || busy === "support"}
+            supportBusy={busy === "support"}
             pin={pin}
             setPin={setPin}
             onTransition={transitionDelivery}
             onComplete={completeDelivery}
+            onReport={reportDeliveryProblem}
           />
         ) : null}
 
@@ -658,7 +685,6 @@ function CourierApplication({ user, busy, onSubmit, onBack }: any) {
         <Input name="vehicleModel" placeholder="Modelo do veículo" required />
         <Input name="vehiclePlate" placeholder="Placa do veículo" />
         <Input name="cnh" placeholder="Número da CNH" inputMode="numeric" />
-        <Input name="pixKey" placeholder="Chave PIX para recebimentos" />
         <p className="text-xs text-zinc-600">Conta: {user?.email}</p>
         <Button disabled={busy} className="h-14 w-full rounded-2xl font-black uppercase">
           {busy ? (
@@ -761,6 +787,11 @@ function OfferCard({ offer, busy, onAccept, onReject }: any) {
   const job = offer.delivery_jobs;
   const pickup = job?.pickup_address ?? {};
   const delivery = job?.delivery_address ?? {};
+  const distanceKm = Number(job?.estimated_distance_meters || 0) / 1000;
+  const durationMinutes = Math.max(
+    1,
+    Math.round(Number(job?.estimated_duration_seconds || 0) / 60),
+  );
   return (
     <div className="overflow-hidden rounded-3xl border border-primary/30 bg-zinc-950 shadow-[0_0_35px_rgba(255,193,7,0.08)]">
       <div className="flex items-center justify-between bg-primary/10 px-5 py-3">
@@ -799,6 +830,28 @@ function OfferCard({ offer, busy, onAccept, onReject }: any) {
             <p className="text-xs text-zinc-500">{delivery.neighborhood || ""}</p>
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-2xl bg-black p-3">
+            <div className="flex items-center gap-1.5 text-zinc-500">
+              <RouteIcon className="h-4 w-4 text-primary" />
+              <span className="text-[10px] font-black uppercase">Distância</span>
+            </div>
+            <p className="mt-1 text-sm font-black">
+              {distanceKm > 0 ? `${distanceKm.toFixed(1).replace(".", ",")} km` : "A calcular"}
+            </p>
+          </div>
+          <div className="rounded-2xl bg-black p-3">
+            <div className="flex items-center gap-1.5 text-zinc-500">
+              <Clock3 className="h-4 w-4 text-primary" />
+              <span className="text-[10px] font-black uppercase">Tempo</span>
+            </div>
+            <p className="mt-1 text-sm font-black">
+              {Number(job?.estimated_duration_seconds || 0) > 0
+                ? `${durationMinutes} min`
+                : "A calcular"}
+            </p>
+          </div>
+        </div>
         <div className="flex items-center justify-between rounded-2xl bg-black p-4">
           <span className="text-sm text-zinc-500">Seu ganho estimado</span>
           <span className="text-2xl font-black text-primary">{money(job?.estimated_earnings)}</span>
@@ -825,7 +878,16 @@ function OfferCard({ offer, busy, onAccept, onReject }: any) {
   );
 }
 
-function ActiveDelivery({ job, busy, pin, setPin, onTransition, onComplete }: any) {
+function ActiveDelivery({
+  job,
+  busy,
+  supportBusy,
+  pin,
+  setPin,
+  onTransition,
+  onComplete,
+  onReport,
+}: any) {
   const pickup = job.pickup_address ?? {};
   const delivery = job.delivery_address ?? {};
   const action =
@@ -878,6 +940,19 @@ function ActiveDelivery({ job, busy, pin, setPin, onTransition, onComplete }: an
           {action.label}
         </Button>
       ) : null}
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => void onReport()}
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 py-3 text-sm font-bold text-red-300 disabled:opacity-50"
+      >
+        {supportBusy ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <XCircle className="h-4 w-4" />
+        )}
+        {supportBusy ? "Abrindo chamado..." : "Reportar problema"}
+      </button>
       {job.status === "arrived_destination" ? (
         <div className="mt-4 rounded-2xl border border-zinc-800 bg-black p-4">
           <p className="text-sm font-bold">Confirme o PIN do cliente</p>
