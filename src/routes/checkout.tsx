@@ -58,6 +58,15 @@ type MerchantCheckoutConfig = {
   state: string | null;
 };
 
+type DeliveryQuote = {
+  eligible: boolean;
+  reason: string;
+  zone_id: string | null;
+  delivery_fee: number | string;
+  minimum_order: number | string;
+  distance_km: number | string | null;
+};
+
 export const Route = createFileRoute("/checkout")({
   // Supabase Auth persists the customer session in browser storage. Running this guard
   // during SSR makes a hard reload/deep-link look unauthenticated because the server
@@ -190,6 +199,8 @@ function CheckoutPage() {
   const { items, merchant, totalPrice, clearCart, isHydrated } = useCart();
   const [address, setAddress] = useState<LocalAddressSnapshot | null>(null);
   const [merchantConfig, setMerchantConfig] = useState<MerchantCheckoutConfig | null>(null);
+  const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
+  const [deliveryQuoteLoading, setDeliveryQuoteLoading] = useState(false);
   const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>("delivery");
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<CouponPreview | null>(null);
@@ -261,15 +272,67 @@ function CheckoutPage() {
     };
   }, [merchant?.id]);
 
+  useEffect(() => {
+    if (fulfillmentType !== "delivery") {
+      setDeliveryQuote(null);
+      setDeliveryQuoteLoading(false);
+      return;
+    }
+    if (!merchant?.id || !address) {
+      setDeliveryQuote(null);
+      setDeliveryQuoteLoading(false);
+      return;
+    }
+
+    let disposed = false;
+    setDeliveryQuoteLoading(true);
+    const loadQuote = async () => {
+      const { data, error } = await (supabase.rpc as any)("preview_delivery_quote", {
+        p_merchant_id: merchant.id,
+        p_delivery_address: address,
+      });
+      if (disposed) return;
+      setDeliveryQuoteLoading(false);
+      if (error) {
+        console.error("Erro ao validar área de entrega:", error);
+        setDeliveryQuote({
+          eligible: false,
+          reason: "validation_failed",
+          zone_id: null,
+          delivery_fee: 0,
+          minimum_order: merchantConfig?.minimum_order ?? 0,
+          distance_km: null,
+        });
+        return;
+      }
+      const quote = Array.isArray(data) ? data[0] : null;
+      setDeliveryQuote(quote ? (quote as DeliveryQuote) : null);
+    };
+    void loadQuote();
+    return () => {
+      disposed = true;
+    };
+  }, [address, fulfillmentType, merchant?.id, merchantConfig?.minimum_order]);
+
   const subtotal = totalPrice;
   const deliveryFee =
     fulfillmentType === "delivery"
-      ? Number(merchantConfig?.delivery_fee ?? merchant?.deliveryFee ?? 0)
+      ? Number(
+          deliveryQuote?.eligible
+            ? deliveryQuote.delivery_fee
+            : (merchantConfig?.delivery_fee ?? merchant?.deliveryFee ?? 0),
+        )
       : 0;
   const discount = Number(appliedCoupon?.discount_amount ?? 0);
   const total = Math.max(0, subtotal + deliveryFee - discount);
-  const minimumOrder = Number(merchantConfig?.minimum_order ?? 0);
+  const minimumOrder = Number(
+    fulfillmentType === "delivery" && deliveryQuote?.eligible
+      ? deliveryQuote.minimum_order
+      : (merchantConfig?.minimum_order ?? 0),
+  );
   const minimumOrderMissing = Math.max(0, minimumOrder - subtotal);
+  const deliveryEligible =
+    fulfillmentType === "pickup" || Boolean(address && deliveryQuote?.eligible === true);
 
   const applyCoupon = async () => {
     const normalizedCode = couponInput.trim().toUpperCase();
@@ -349,6 +412,10 @@ function CheckoutPage() {
         throw new Error("Sua sessão expirou. Entre novamente para finalizar o pedido.");
       if (fulfillmentType === "delivery" && !address)
         throw new Error("Selecione um endereço de entrega antes de continuar.");
+      if (fulfillmentType === "delivery" && deliveryQuoteLoading)
+        throw new Error("Aguarde a validação da área de entrega.");
+      if (fulfillmentType === "delivery" && deliveryQuote?.eligible !== true)
+        throw new Error("Este endereço está fora da área de entrega disponível.");
       if (!merchant?.id)
         throw new Error("Não foi possível identificar o estabelecimento deste pedido.");
       if (minimumOrderMissing > 0)
@@ -517,6 +584,7 @@ function CheckoutPage() {
               disabled={merchantConfig?.pickup_enabled === false}
               onClick={() => {
                 setFulfillmentType("pickup");
+                setDeliveryQuote(null);
                 sessionStorage.removeItem(CHECKOUT_ATTEMPT_STORAGE_KEY);
               }}
               className={`flex items-center gap-2 rounded-xl border p-3 text-left ${
@@ -694,6 +762,35 @@ function CheckoutPage() {
             <span>{fulfillmentType === "delivery" ? "Taxa de entrega" : "Retirada"}</span>
             <span>R$ {deliveryFee.toFixed(2).replace(".", ",")}</span>
           </div>
+          {fulfillmentType === "delivery" && address ? (
+            <div
+              role="status"
+              className={`rounded-xl p-3 text-xs ${
+                deliveryQuoteLoading
+                  ? "bg-zinc-900 text-zinc-400"
+                  : deliveryQuote?.eligible
+                    ? "bg-emerald-500/10 text-emerald-300"
+                    : "bg-red-500/10 text-red-300"
+              }`}
+            >
+              {deliveryQuoteLoading
+                ? "Validando área e taxa de entrega..."
+                : deliveryQuote?.eligible
+                  ? `${deliveryQuote.zone_id ? "Endereço dentro da zona de entrega" : "Endereço atendido"}${
+                      deliveryQuote.distance_km !== null
+                        ? ` · ${Number(deliveryQuote.distance_km).toFixed(1).replace(".", ",")} km`
+                        : ""
+                    }`
+                  : deliveryQuote?.reason === "outside_served_city"
+                    ? "Este estabelecimento não entrega na cidade deste endereço."
+                    : deliveryQuote?.reason === "outside_delivery_zone" ||
+                        deliveryQuote?.reason === "outside_default_radius"
+                      ? "Este endereço está fora da área de entrega disponível."
+                      : deliveryQuote?.reason === "coordinates_required"
+                        ? "Atualize este endereço pelo mapa para validar a área de entrega."
+                        : "Não foi possível validar a área de entrega agora."}
+            </div>
+          ) : null}
           {discount > 0 ? (
             <div className="flex justify-between text-emerald-400">
               <span>Desconto</span>
@@ -729,7 +826,7 @@ function CheckoutPage() {
           type="button"
           onClick={handleConfirm}
           disabled={
-            isProcessing || minimumOrderMissing > 0 || (fulfillmentType === "delivery" && !address)
+            isProcessing || minimumOrderMissing > 0 || deliveryQuoteLoading || !deliveryEligible
           }
           className="w-full rounded-2xl bg-primary py-7 text-lg font-black uppercase text-black shadow-[0_8px_30px_-10px_hsl(var(--primary)/0.5)]"
         >

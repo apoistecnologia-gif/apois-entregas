@@ -122,6 +122,13 @@ function mapOrderError(message: string) {
       error: "O estabelecimento ou sua conta não está disponível para este pedido.",
     };
   }
+  if (normalized.includes("delivery address unavailable")) {
+    return {
+      status: 409,
+      code: "DELIVERY_ADDRESS_UNAVAILABLE",
+      error: "Este endereço está fora da área de entrega disponível.",
+    };
+  }
   if (normalized.includes("delivery is unavailable")) {
     return {
       status: 409,
