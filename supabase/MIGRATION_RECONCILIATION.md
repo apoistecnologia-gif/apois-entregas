@@ -25,71 +25,67 @@ Os arquivos antigos com nomes UUID em `supabase/migrations/` pertencem à linhag
 
 ## Mapeamentos conhecidos com timestamp histórico diferente
 
-| Produção | Nome | Arquivo Git existente |
-|---|---|---|
-| `20260807213815` | `create_merchant_hours` | `20260807203000_create_merchant_hours.sql` |
-| `20260807235043` | `create_product_options` | `20260807231500_create_product_options.sql` |
-| `20260808034656` | `create_order_foundation` | `20260808025000_create_order_foundation.sql` |
-| `20260808052552` | `restrict_order_sequence_privileges` | `20260808040000_restrict_order_sequence_privileges.sql` |
-| `20260808071303` | `create_order_atomic` | `20260808060000_create_order_atomic.sql` |
-| `20260808231421` | `fix_orders_delivery_jobs_rls_recursion` | `20260808201500_fix_orders_delivery_jobs_rls_recursion.sql` |
-| `20260809003852` | `harden_role_boundaries_and_onboarding` | `20260809002500_harden_role_boundaries_and_onboarding.sql` |
-| `20260809004224` | `allow_pending_merchant_owner_access` | `20260809003000_allow_pending_merchant_owner_access.sql` |
-| `20260809004414` | `complete_operations_and_refund_guards` | `20260809004000_complete_operations_and_refund_guards.sql` |
+- Produção `20260807213815`, `create_merchant_hours` → Git `20260807203000_create_merchant_hours.sql`.
+- Produção `20260807235043`, `create_product_options` → Git `20260807231500_create_product_options.sql`.
+- Produção `20260808034656`, `create_order_foundation` → Git `20260808025000_create_order_foundation.sql`.
+- Produção `20260808052552`, `restrict_order_sequence_privileges` → Git `20260808040000_restrict_order_sequence_privileges.sql`.
+- Produção `20260808071303`, `create_order_atomic` → Git `20260808060000_create_order_atomic.sql`.
+- Produção `20260808231421`, `fix_orders_delivery_jobs_rls_recursion` → Git `20260808201500_fix_orders_delivery_jobs_rls_recursion.sql`.
+- Produção `20260809003852`, `harden_role_boundaries_and_onboarding` → Git `20260809002500_harden_role_boundaries_and_onboarding.sql`.
+- Produção `20260809004224`, `allow_pending_merchant_owner_access` → Git `20260809003000_allow_pending_merchant_owner_access.sql`.
+- Produção `20260809004414`, `complete_operations_and_refund_guards` → Git `20260809004000_complete_operations_and_refund_guards.sql`.
 
 Esses registros não devem ser “corrigidos” retroativamente no banco. A divergência é documental e está explicitamente mapeada aqui.
 
 ## Ledger de produção observado
 
-| Versão | Nome |
-|---|---|
-| `20260806205622` | `create_user_profile_and_roles` |
-| `20260806205714` | `secure_has_role_function` |
-| `20260806213342` | `create_customer_addresses` |
-| `20260807182915` | `create_catalog_foundation` |
-| `20260807183027` | `restrict_catalog_table_privileges` |
-| `20260807213815` | `create_merchant_hours` |
-| `20260807235043` | `create_product_options` |
-| `20260808034656` | `create_order_foundation` |
-| `20260808052552` | `restrict_order_sequence_privileges` |
-| `20260808071303` | `create_order_atomic` |
-| `20260808073048` | `partner_identity_foundation` |
-| `20260808073522` | `delivery_lifecycle` |
-| `20260808073547` | `delivery_lifecycle_hardening` |
-| `20260808074323` | `geo_pricing_promotions` |
-| `20260808074404` | `payments_wallets` |
-| `20260808074451` | `reviews_notifications_support` |
-| `20260808074539` | `review_trigger_hardening` |
-| `20260808075901` | `merchant_catalog_storage_realtime` |
-| `20260808080655` | `delivery_financial_settlement` |
-| `20260808080833` | `delivery_auto_dispatch` |
-| `20260808081310` | `backfill_cities_from_merchants` |
-| `20260808081755` | `account_blocking_and_members` |
-| `20260808082034` | `notification_events` |
-| `20260808082534` | `payment_state_guard` |
-| `20260808083021` | `idempotency_constraints` |
-| `20260808083306` | `role_visibility_selfservice` |
-| `20260808083432` | `operational_indexes` |
-| `20260808083555` | `customer_order_cancellation` |
-| `20260808110609` | `harden_internal_function_privileges` |
-| `20260808111657` | `bootstrap_confirmed_admin` |
-| `20260808112731` | `customer_favorites` |
-| `20260808113157` | `notification_preferences` |
-| `20260808113611` | `harden_customer_table_grants` |
-| `20260808114110` | `admin_configuration_actions` |
-| `20260808115640` | `performance_hardening` |
-| `20260808115909` | `enforce_supported_payment_methods` |
-| `20260808120038` | `enforce_notification_preferences` |
-| `20260808130607` | `merchant_manage_all_product_options` |
-| `20260808231421` | `fix_orders_delivery_jobs_rls_recursion` |
-| `20260808233849` | `enable_http_for_refund_homologation` |
-| `20260808233956` | `disable_http_after_refund_homologation` |
-| `20260809003852` | `harden_role_boundaries_and_onboarding` |
-| `20260809004224` | `allow_pending_merchant_owner_access` |
-| `20260809004414` | `complete_operations_and_refund_guards` |
-| `20260809025502` | `revoke_anonymous_security_definer_execution` |
-| `20260809025818` | `remove_duplicate_operational_indexes` |
-| `20260809153337` | `harden_checkout_intent_idempotency` |
+- `20260806205622` — `create_user_profile_and_roles`
+- `20260806205714` — `secure_has_role_function`
+- `20260806213342` — `create_customer_addresses`
+- `20260807182915` — `create_catalog_foundation`
+- `20260807183027` — `restrict_catalog_table_privileges`
+- `20260807213815` — `create_merchant_hours`
+- `20260807235043` — `create_product_options`
+- `20260808034656` — `create_order_foundation`
+- `20260808052552` — `restrict_order_sequence_privileges`
+- `20260808071303` — `create_order_atomic`
+- `20260808073048` — `partner_identity_foundation`
+- `20260808073522` — `delivery_lifecycle`
+- `20260808073547` — `delivery_lifecycle_hardening`
+- `20260808074323` — `geo_pricing_promotions`
+- `20260808074404` — `payments_wallets`
+- `20260808074451` — `reviews_notifications_support`
+- `20260808074539` — `review_trigger_hardening`
+- `20260808075901` — `merchant_catalog_storage_realtime`
+- `20260808080655` — `delivery_financial_settlement`
+- `20260808080833` — `delivery_auto_dispatch`
+- `20260808081310` — `backfill_cities_from_merchants`
+- `20260808081755` — `account_blocking_and_members`
+- `20260808082034` — `notification_events`
+- `20260808082534` — `payment_state_guard`
+- `20260808083021` — `idempotency_constraints`
+- `20260808083306` — `role_visibility_selfservice`
+- `20260808083432` — `operational_indexes`
+- `20260808083555` — `customer_order_cancellation`
+- `20260808110609` — `harden_internal_function_privileges`
+- `20260808111657` — `bootstrap_confirmed_admin`
+- `20260808112731` — `customer_favorites`
+- `20260808113157` — `notification_preferences`
+- `20260808113611` — `harden_customer_table_grants`
+- `20260808114110` — `admin_configuration_actions`
+- `20260808115640` — `performance_hardening`
+- `20260808115909` — `enforce_supported_payment_methods`
+- `20260808120038` — `enforce_notification_preferences`
+- `20260808130607` — `merchant_manage_all_product_options`
+- `20260808231421` — `fix_orders_delivery_jobs_rls_recursion`
+- `20260808233849` — `enable_http_for_refund_homologation`
+- `20260808233956` — `disable_http_after_refund_homologation`
+- `20260809003852` — `harden_role_boundaries_and_onboarding`
+- `20260809004224` — `allow_pending_merchant_owner_access`
+- `20260809004414` — `complete_operations_and_refund_guards`
+- `20260809025502` — `revoke_anonymous_security_definer_execution`
+- `20260809025818` — `remove_duplicate_operational_indexes`
+- `20260809153337` — `harden_checkout_intent_idempotency`
 
 ## Verificação da migration de idempotência
 
