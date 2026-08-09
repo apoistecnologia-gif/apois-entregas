@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -10,15 +10,13 @@ import {
   CreditCard,
   CircleDollarSign,
   ShieldCheck,
-  ChevronDown,
   Store,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/contexts/CartContext";
 
-// Dados do estabelecimento são obtidos do CartContext
-
 export const Route = createFileRoute("/sacola")({
+  ssr: false,
   beforeLoad: async ({ location }) => {
     const {
       data: { session },
@@ -26,32 +24,23 @@ export const Route = createFileRoute("/sacola")({
     if (!session) {
       throw redirect({
         to: "/login",
-        search: {
-          redirect: location.href,
-        },
+        search: { redirect: location.href },
       });
     }
     return { session };
   },
   component: SacolaPage,
+  head: () => ({ meta: [{ title: "Sacola | APOIS ENTREGA" }] }),
 });
 
 function SacolaPage() {
   const navigate = useNavigate();
   const { items, merchant, updateQuantity, removeItem, totalPrice } = useCart();
-
   const [defaultAddress, setDefaultAddress] = useState<any>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"pix" | "cartao" | "dinheiro">("pix");
 
   useEffect(() => {
-    const savedMethod = sessionStorage.getItem("apois_payment_method");
-    if (savedMethod === "pix" || savedMethod === "cartao" || savedMethod === "dinheiro") {
-      setPaymentMethod(savedMethod);
-    } else {
-      sessionStorage.setItem("apois_payment_method", "pix");
-      setPaymentMethod("pix");
-    }
-    fetchDefaultAddress();
+    sessionStorage.setItem("apois_payment_method", "pix");
+    void fetchDefaultAddress();
   }, []);
 
   const fetchDefaultAddress = async () => {
@@ -80,16 +69,18 @@ function SacolaPage() {
       alert("Selecione um endereço de entrega!");
       return;
     }
+    sessionStorage.setItem("apois_payment_method", "pix");
     navigate({ to: "/checkout" });
   };
 
   return (
     <div className="flex min-h-screen w-full flex-col overflow-x-hidden bg-black text-white selection:bg-primary selection:text-black">
-      {/* Header */}
       <header className="sticky top-0 z-50 flex items-center gap-4 bg-black/80 p-4 backdrop-blur-lg">
         <button
+          type="button"
           onClick={() => window.history.back()}
           className="grid h-10 w-10 place-items-center rounded-full bg-zinc-900 ring-1 ring-white/10"
+          aria-label="Voltar"
         >
           <ArrowLeft className="h-6 w-6" />
         </button>
@@ -97,7 +88,6 @@ function SacolaPage() {
       </header>
 
       <main className="flex-1 space-y-4 p-4 pb-32">
-        {/* Merchant Info */}
         {items.length > 0 && merchant && (
           <section className="flex items-center gap-4 rounded-2xl border border-zinc-900 bg-zinc-950 p-4 shadow-lg shadow-black/50">
             {merchant.logo ? (
@@ -107,7 +97,7 @@ function SacolaPage() {
                 className="h-16 w-16 rounded-xl object-cover ring-1 ring-primary/20"
               />
             ) : (
-              <div className="h-16 w-16 rounded-xl bg-zinc-900 grid place-items-center ring-1 ring-white/10">
+              <div className="grid h-16 w-16 place-items-center rounded-xl bg-zinc-900 ring-1 ring-white/10">
                 <Store className="h-8 w-8 text-zinc-700" />
               </div>
             )}
@@ -132,29 +122,29 @@ function SacolaPage() {
           </section>
         )}
 
-        {/* Products List */}
         <section className="space-y-4 rounded-2xl border border-zinc-900 bg-zinc-950/50 p-1">
           {items.map((item) => (
             <div
               key={item.lineId}
-              className="group relative flex gap-4 p-3 border-b border-zinc-900/50 last:border-0"
+              className="group relative flex gap-4 border-b border-zinc-900/50 p-3 last:border-0"
             >
               <div className="relative h-20 w-20 shrink-0">
                 {item.image ? (
                   <img
                     src={item.image}
                     alt={item.name}
-                    className="h-full w-full rounded-xl object-cover ring-1 ring-white/5 bg-zinc-900"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).onerror = null;
-                      (e.target as HTMLImageElement).src = ""; // Clear src to trigger fallback div
-                      (e.target as HTMLImageElement).classList.add("hidden");
-                      (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
+                    className="h-full w-full rounded-xl bg-zinc-900 object-cover ring-1 ring-white/5"
+                    onError={(event) => {
+                      const image = event.target as HTMLImageElement;
+                      image.onerror = null;
+                      image.src = "";
+                      image.classList.add("hidden");
+                      image.nextElementSibling?.classList.remove("hidden");
                     }}
                   />
                 ) : null}
                 <div
-                  className={`h-full w-full rounded-xl bg-zinc-900 grid place-items-center ring-1 ring-white/10 ${item.image ? "hidden" : ""}`}
+                  className={`grid h-full w-full place-items-center rounded-xl bg-zinc-900 ring-1 ring-white/10 ${item.image ? "hidden" : ""}`}
                 >
                   <Store className="h-6 w-6 text-zinc-800" />
                 </div>
@@ -163,7 +153,7 @@ function SacolaPage() {
                 </span>
               </div>
 
-              <div className="flex flex-1 flex-col justify-between py-0.5">
+              <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
                 <div>
                   <h3 className="text-[15px] font-bold text-white">{item.name}</h3>
                   <p className="line-clamp-2 text-[12px] leading-snug text-zinc-500">
@@ -171,12 +161,12 @@ function SacolaPage() {
                   </p>
                   {item.selectedOptions && item.selectedOptions.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {item.selectedOptions.map((opt, idx) => (
+                      {item.selectedOptions.map((option, index) => (
                         <span
-                          key={idx}
-                          className="text-[10px] text-zinc-400 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800"
+                          key={`${option.optionId}-${index}`}
+                          className="rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[10px] text-zinc-400"
                         >
-                          + {opt.optionName}
+                          + {option.optionName}
                         </span>
                       ))}
                     </div>
@@ -189,15 +179,19 @@ function SacolaPage() {
 
               <div className="flex flex-col items-center justify-between py-1">
                 <button
+                  type="button"
                   onClick={() => removeItem(item.lineId)}
                   className="p-1 text-zinc-600 transition-colors hover:text-red-500"
+                  aria-label={`Remover ${item.name}`}
                 >
                   <Trash2 className="h-5 w-5" />
                 </button>
                 <div className="flex items-center gap-2 rounded-lg bg-zinc-900 p-1 ring-1 ring-white/10">
                   <button
+                    type="button"
                     onClick={() => updateQuantity(item.lineId, -1)}
                     className="grid h-6 w-6 place-items-center rounded-md bg-zinc-800 text-zinc-400 active:bg-zinc-700"
+                    aria-label={`Diminuir quantidade de ${item.name}`}
                   >
                     <Minus className="h-4 w-4" />
                   </button>
@@ -205,8 +199,10 @@ function SacolaPage() {
                     {item.quantity}
                   </span>
                   <button
+                    type="button"
                     onClick={() => updateQuantity(item.lineId, 1)}
                     className="grid h-6 w-6 place-items-center rounded-md bg-zinc-800 text-white active:bg-zinc-700"
+                    aria-label={`Aumentar quantidade de ${item.name}`}
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -216,19 +212,20 @@ function SacolaPage() {
           ))}
 
           {items.length === 0 && (
-            <div className="py-20 flex flex-col items-center justify-center text-center space-y-6">
-              <div className="w-24 h-24 rounded-full bg-zinc-900 flex items-center justify-center ring-1 ring-white/10 shadow-2xl">
-                <Trash2 className="w-10 h-10 text-zinc-700" />
+            <div className="flex flex-col items-center justify-center space-y-6 py-20 text-center">
+              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-zinc-900 shadow-2xl ring-1 ring-white/10">
+                <Trash2 className="h-10 w-10 text-zinc-700" />
               </div>
               <div className="space-y-1">
                 <h3 className="text-xl font-bold text-white">Sua sacola está vazia</h3>
-                <p className="text-zinc-500 text-sm max-w-[200px]">
+                <p className="max-w-[200px] text-sm text-zinc-500">
                   Adicione produtos para começar seu pedido
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => navigate({ to: "/inicio" })}
-                className="bg-primary text-black px-8 py-3 rounded-xl font-bold uppercase tracking-tight shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+                className="rounded-xl bg-primary px-8 py-3 font-bold uppercase tracking-tight text-black shadow-lg shadow-primary/20 transition-transform active:scale-95"
               >
                 Explorar estabelecimentos
               </button>
@@ -236,7 +233,6 @@ function SacolaPage() {
           )}
         </section>
 
-        {/* Summary */}
         {items.length > 0 && (
           <>
             <section className="space-y-3 px-1 text-sm">
@@ -247,23 +243,23 @@ function SacolaPage() {
               <div className="flex justify-between text-zinc-400">
                 <div className="flex items-center gap-1">
                   <span>Taxa de entrega</span>
-                  <button className="text-zinc-600">
-                    <span className="text-[10px] border border-zinc-700 rounded-full px-1">i</span>
-                  </button>
+                  <span className="rounded-full border border-zinc-700 px-1 text-[10px] text-zinc-600">
+                    i
+                  </span>
                 </div>
                 <span>R$ {deliveryFee.toFixed(2).replace(".", ",")}</span>
               </div>
               <div className="flex justify-between border-t border-zinc-900 pt-3 text-lg font-black">
                 <span>Total</span>
-                <span className="text-primary text-xl">
+                <span className="text-xl text-primary">
                   R$ {total.toFixed(2).replace(".", ",")}
                 </span>
               </div>
             </section>
 
-            {/* Address Selector */}
             <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4 shadow-lg">
               <button
+                type="button"
                 onClick={() => navigate({ to: "/enderecos" })}
                 className="group flex w-full items-center gap-4 text-left"
               >
@@ -274,7 +270,7 @@ function SacolaPage() {
                   <p className="text-[12px] font-medium text-zinc-500">Endereço de entrega</p>
                   {defaultAddress ? (
                     <>
-                      <p className="font-bold text-white line-clamp-1">
+                      <p className="line-clamp-1 font-bold text-white">
                         {defaultAddress.label}: {defaultAddress.street}, {defaultAddress.number}
                       </p>
                       {merchant?.deliveryTime && (
@@ -289,71 +285,62 @@ function SacolaPage() {
               </button>
             </section>
 
-            {/* Payment Methods */}
             <section className="space-y-3 pb-4">
               <div className="flex items-center justify-between px-1">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
                   Pagamento
                 </h3>
-                <button className="text-xs font-bold text-primary uppercase underline underline-offset-4">
-                  Trocar
-                </button>
+                <span className="text-[10px] font-black uppercase tracking-wider text-primary">
+                  PIX habilitado
+                </span>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <button
-                  onClick={() => {
-                    setPaymentMethod("pix");
-                    sessionStorage.setItem("apois_payment_method", "pix");
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === "pix" ? "border-primary bg-primary/5 text-primary shadow-[0_0_15px_rgba(255,215,0,0.15)] ring-1 ring-primary/30" : "border-zinc-900 bg-zinc-950 text-zinc-500"}`}
-                >
+                <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-primary bg-primary/5 py-4 text-primary shadow-[0_0_15px_rgba(255,215,0,0.15)] ring-1 ring-primary/30">
                   <div className="relative">
                     <CircleDollarSign className="h-6 w-6" />
-                    {paymentMethod === "pix" && (
-                      <div className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-primary flex items-center justify-center ring-2 ring-black">
-                        <div className="h-1.5 w-1.5 rounded-full bg-black" />
-                      </div>
-                    )}
+                    <div className="absolute -bottom-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary ring-2 ring-black">
+                      <div className="h-1.5 w-1.5 rounded-full bg-black" />
+                    </div>
                   </div>
                   <span className="text-[12px] font-bold">Pix</span>
-                </button>
+                </div>
 
                 <button
-                  onClick={() => {
-                    setPaymentMethod("cartao");
-                    sessionStorage.setItem("apois_payment_method", "cartao");
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === "cartao" ? "border-primary bg-primary/5 text-primary" : "border-zinc-900 bg-zinc-950 text-zinc-500"}`}
+                  type="button"
+                  disabled
+                  className="flex cursor-not-allowed flex-col items-center justify-center gap-2 rounded-xl border border-zinc-900 bg-zinc-950 py-4 text-zinc-700 opacity-60"
+                  aria-label="Cartão indisponível"
                 >
                   <CreditCard className="h-6 w-6" />
                   <span className="text-[12px] font-bold">Cartão</span>
+                  <span className="text-[9px] font-black uppercase">Em breve</span>
                 </button>
 
                 <button
-                  onClick={() => {
-                    setPaymentMethod("dinheiro");
-                    sessionStorage.setItem("apois_payment_method", "dinheiro");
-                  }}
-                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border py-4 transition-all ${paymentMethod === "dinheiro" ? "border-primary bg-primary/5 text-primary" : "border-zinc-900 bg-zinc-950 text-zinc-500"}`}
+                  type="button"
+                  disabled
+                  className="flex cursor-not-allowed flex-col items-center justify-center gap-2 rounded-xl border border-zinc-900 bg-zinc-950 py-4 text-zinc-700 opacity-60"
+                  aria-label="Dinheiro indisponível"
                 >
                   <CircleDollarSign className="h-6 w-6" />
                   <span className="text-[12px] font-bold">Dinheiro</span>
+                  <span className="text-[9px] font-black uppercase">Em breve</span>
                 </button>
               </div>
             </section>
 
-            <div className="flex items-center justify-center gap-2 text-zinc-600 text-[11px] pb-4">
+            <div className="flex items-center justify-center gap-2 pb-4 text-[11px] text-zinc-600">
               <ShieldCheck className="h-3.5 w-3.5" />
-              <span>Ambiente seguro e criptografado</span>
+              <span>O pedido só avança após a confirmação do PIX</span>
             </div>
           </>
         )}
       </main>
 
-      {/* Footer CTA */}
-      <footer className="sticky bottom-0 z-[60] bg-black/90 p-4 pb-8 backdrop-blur-xl border-t border-zinc-900 w-full flex justify-center">
+      <footer className="sticky bottom-0 z-[60] flex w-full justify-center border-t border-zinc-900 bg-black/90 p-4 pb-8 backdrop-blur-xl">
         <div className="w-full max-w-[500px]">
           <button
+            type="button"
             onClick={handleFinishOrder}
             className="flex w-full items-center justify-between rounded-xl bg-primary px-6 py-4 text-black shadow-[0_8px_30px_rgba(255,215,0,0.3)] transition-transform active:scale-95"
           >
