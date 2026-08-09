@@ -103,7 +103,7 @@ export interface MerchantStatus {
   message: string;
   closesAt?: string;
   hoursToday?: MerchantScheduleRow;
-  specialDate?: string;
+  specialDate?: string | undefined;
 }
 
 const timeToMinutes = (timeStr: string | null | undefined) => {
