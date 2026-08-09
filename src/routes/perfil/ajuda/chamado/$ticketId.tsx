@@ -230,7 +230,11 @@ function SupportConversationPage() {
               className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary text-black disabled:opacity-50"
               aria-label="Enviar mensagem"
             >
-              {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+              {sending ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
             </button>
           </div>
         ) : (

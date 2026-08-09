@@ -276,6 +276,13 @@ function AjudaPage() {
                   <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-zinc-500">
                     {ticket.description}
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate({ to: `/perfil/ajuda/chamado/${ticket.id}` })}
+                    className="mt-3 text-xs font-black text-primary"
+                  >
+                    Ver conversa
+                  </button>
                 </div>
               ))}
             </div>
