@@ -1,0 +1,39 @@
+name: Export Edge Sources Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/export-edge-sources-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Upload hardened edge sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardened-edge-sources
+          path: |
+            supabase/functions/mercadopago-webhook/index.ts
+            supabase/functions/process-refund/index.ts
+            supabase/functions/sync-payment-status/index.ts
+          retention-days: 1
+
+      - name: Remove one-shot workflow
+        run: |
+          rm .github/workflows/export-edge-sources-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: remove one-shot edge source export"
+          git push origin HEAD:main
