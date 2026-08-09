@@ -473,7 +473,6 @@ function PixPaymentScreen({
     let disposed = false;
     let completed = false;
     let redirectTimer: number | undefined;
-    let reconcileTimer: number | undefined;
 
     const finishPayment = () => {
       if (disposed || completed) return;
@@ -535,7 +534,7 @@ function PixPaymentScreen({
       });
 
     void reconcileWithProvider();
-    reconcileTimer = window.setInterval(() => void reconcileWithProvider(), 4000);
+    const reconcileTimer = window.setInterval(() => void reconcileWithProvider(), 4000);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") void reconcileWithProvider();
