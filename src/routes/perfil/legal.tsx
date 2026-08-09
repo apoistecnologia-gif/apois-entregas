@@ -1,5 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ChevronRight, FileText, Shield } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronRight, FileText, Loader2, Shield } from "lucide-react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/perfil/legal")({
@@ -22,8 +23,43 @@ export const Route = createFileRoute("/perfil/legal")({
   head: () => ({ meta: [{ title: "Legal | APOIS ENTREGA" }] }),
 });
 
+type LegalAcceptance = {
+  terms_version: string;
+  privacy_version: string;
+  accepted_at: string;
+  source: string;
+};
+
 function LegalPage() {
   const navigate = useNavigate();
+  const [acceptance, setAcceptance] = useState<LegalAcceptance | null>(null);
+  const [loadingAcceptance, setLoadingAcceptance] = useState(true);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const loadAcceptance = async () => {
+      const { data, error } = await (supabase.from as any)("legal_acceptances")
+        .select("terms_version,privacy_version,accepted_at,source")
+        .order("accepted_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (disposed) return;
+      if (error) {
+        console.error("Erro ao carregar aceite legal:", error);
+        setAcceptance(null);
+      } else {
+        setAcceptance((data as LegalAcceptance | null) ?? null);
+      }
+      setLoadingAcceptance(false);
+    };
+
+    void loadAcceptance();
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
@@ -76,6 +112,45 @@ function LegalPage() {
             <ChevronRight className="h-5 w-5 text-zinc-700" />
           </button>
         </div>
+
+        <section className="rounded-3xl border border-zinc-900 bg-zinc-950 p-5">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-primary/10 p-2 text-primary">
+              {loadingAcceptance ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-5 w-5" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-black text-zinc-200">Registro de aceite</h2>
+              {loadingAcceptance ? (
+                <p className="mt-1 text-xs text-zinc-500">Consultando seu registro...</p>
+              ) : acceptance ? (
+                <div className="mt-2 space-y-1 text-xs text-zinc-500">
+                  <p>
+                    Termos: <span className="font-bold text-zinc-300">{acceptance.terms_version}</span>
+                  </p>
+                  <p>
+                    Privacidade:{" "}
+                    <span className="font-bold text-zinc-300">{acceptance.privacy_version}</span>
+                  </p>
+                  <p>
+                    Aceito em:{" "}
+                    <span className="font-bold text-zinc-300">
+                      {new Date(acceptance.accepted_at).toLocaleString("pt-BR")}
+                    </span>
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                  Não há um registro versionado de aceite disponível para esta conta. Os documentos
+                  legais continuam acessíveis acima.
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
 
         <section className="space-y-4 rounded-3xl border border-zinc-900/50 bg-zinc-900/20 p-6">
           <h2 className="text-xs font-bold uppercase tracking-widest text-primary">
