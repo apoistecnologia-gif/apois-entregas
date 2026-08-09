@@ -50,7 +50,10 @@ type Props = {
 };
 
 const from = (table: string) => (supabase.from as any)(table);
-const money = (value: number) => `R$ ${Number(value || 0).toFixed(2).replace(".", ",")}`;
+const money = (value: number) =>
+  `R$ ${Number(value || 0)
+    .toFixed(2)
+    .replace(".", ",")}`;
 
 export function MerchantProductEditor({ product, merchantId, categories, onChanged }: Props) {
   const [open, setOpen] = useState(false);
@@ -347,7 +350,11 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
               <section className="space-y-4">
                 <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-black">
                   {product.image_url ? (
-                    <img src={product.image_url} alt={product.name} className="h-48 w-full object-cover" />
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="h-48 w-full object-cover"
+                    />
                   ) : (
                     <div className="grid h-48 place-items-center bg-zinc-900">
                       <Store className="h-12 w-12 text-zinc-700" />
@@ -388,7 +395,9 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
                   <input
                     value={draft.name}
                     maxLength={120}
-                    onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, name: event.target.value }))
+                    }
                     className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-3 text-sm text-white outline-none focus:border-primary"
                   />
                 </label>
@@ -411,7 +420,9 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
                       min="0"
                       step="0.01"
                       value={draft.price}
-                      onChange={(event) => setDraft((current) => ({ ...current, price: event.target.value }))}
+                      onChange={(event) =>
+                        setDraft((current) => ({ ...current, price: event.target.value }))
+                      }
                       className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-3 text-sm text-white outline-none focus:border-primary"
                     />
                   </label>
@@ -433,7 +444,12 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
                     </select>
                   </label>
                 </div>
-                <Button type="button" onClick={saveProduct} disabled={busy === "product"} className="w-full">
+                <Button
+                  type="button"
+                  onClick={saveProduct}
+                  disabled={busy === "product"}
+                  className="w-full"
+                >
                   {busy === "product" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   Salvar produto
                 </Button>
@@ -457,7 +473,10 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
               ) : (
                 <div className="mt-4 space-y-4">
                   {groups.map((group) => (
-                    <div key={group.id} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+                    <div
+                      key={group.id}
+                      className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                    >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <div className="flex items-center gap-2">
@@ -528,11 +547,19 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
                             className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-black px-3 py-2.5"
                           >
                             <div>
-                              <p className={option.is_available ? "text-sm font-semibold" : "text-sm font-semibold text-zinc-600"}>
+                              <p
+                                className={
+                                  option.is_available
+                                    ? "text-sm font-semibold"
+                                    : "text-sm font-semibold text-zinc-600"
+                                }
+                              >
                                 {option.name}
                               </p>
                               <p className="text-xs text-zinc-500">
-                                {option.price_delta > 0 ? `+ ${money(option.price_delta)}` : "Sem acréscimo"}
+                                {option.price_delta > 0
+                                  ? `+ ${money(option.price_delta)}`
+                                  : "Sem acréscimo"}
                               </p>
                             </div>
                             <div className="flex gap-2">

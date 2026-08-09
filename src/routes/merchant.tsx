@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { clearPayoutAttemptKey, getPayoutAttemptKey } from "@/lib/payout-attempt";
+import { MerchantProductEditor } from "@/components/MerchantProductEditor";
 
 export const Route = createFileRoute("/merchant")({
   ssr: false,
@@ -724,12 +725,19 @@ function MerchantWorkspace() {
                     >
                       {product.is_available ? "Pausar" : "Ativar"}
                     </Button>
+                    <MerchantProductEditor
+                      product={product}
+                      merchantId={merchant.id}
+                      categories={menuCategories}
+                      onChanged={() => loadOperations(merchant.id)}
+                    />
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
                       onClick={() => void deleteProduct(product)}
                       className="text-red-400"
+                      aria-label={`Excluir ${product.name}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
