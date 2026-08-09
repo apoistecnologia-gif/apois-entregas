@@ -1,3 +1,4 @@
+# One-shot integration: consume and self-remove after verification.
 name: Integrate delivery coverage quote
 
 on:
