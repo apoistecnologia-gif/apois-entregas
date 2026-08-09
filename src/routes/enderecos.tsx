@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/enderecos")({
+  ssr: false,
   beforeLoad: async () => {
     const {
       data: { session },
