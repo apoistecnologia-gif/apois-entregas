@@ -109,9 +109,7 @@ function FavoritosPage() {
       console.error("Erro ao remover favorito:", functionError);
       toast.error("Não foi possível remover dos favoritos.");
     } else {
-      setFavorites((current) =>
-        current.filter((favorite) => favorite.merchant_id !== merchantId),
-      );
+      setFavorites((current) => current.filter((favorite) => favorite.merchant_id !== merchantId));
       toast.success("Removido dos favoritos.");
     }
     setRemovingId(null);
