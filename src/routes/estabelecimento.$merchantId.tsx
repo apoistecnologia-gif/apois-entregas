@@ -37,6 +37,7 @@ import {
 import { toast } from "sonner";
 import { ProductCustomizationSheet } from "@/components/ProductCustomizationSheet";
 import { Database } from "@/integrations/supabase/types";
+import { supabase } from "@/integrations/supabase/client";
 
 type Product = Database["public"]["Tables"]["products"]["Row"];
 type OptionGroup = Database["public"]["Tables"]["product_option_groups"]["Row"];
@@ -51,6 +52,7 @@ function EstabelecimentoPage() {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("all");
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const [merchant, setMerchant] = useState<any>(null);
   const [menuCategories, setMenuCategories] = useState<any[]>([]);
   const [merchantCategory, setMerchantCategory] = useState<any>(null);
@@ -100,6 +102,58 @@ function EstabelecimentoPage() {
 
     fetchData();
   }, [merchantId]);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const loadFavoriteStatus = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session || disposed) return;
+
+      const { data, error: favoriteError } = await supabase.functions.invoke("customer-favorites", {
+        body: { action: "status", merchantId },
+      });
+      if (!disposed && !favoriteError) {
+        setIsFavorite(data?.favorite === true);
+      }
+    };
+
+    void loadFavoriteStatus();
+    return () => {
+      disposed = true;
+    };
+  }, [merchantId]);
+
+  const handleToggleFavorite = async () => {
+    if (isFavoriteLoading) return;
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      navigate({
+        to: "/login",
+        search: { redirect: `/estabelecimento/${merchantId}` },
+      });
+      return;
+    }
+
+    setIsFavoriteLoading(true);
+    const { data, error: favoriteError } = await supabase.functions.invoke("customer-favorites", {
+      body: { action: "toggle", merchantId },
+    });
+
+    if (favoriteError || typeof data?.favorite !== "boolean") {
+      console.error("Erro ao atualizar favorito:", favoriteError);
+      toast.error("Não foi possível atualizar seus favoritos.");
+    } else {
+      setIsFavorite(data.favorite);
+      toast.success(data.favorite ? "Adicionado aos favoritos." : "Removido dos favoritos.");
+    }
+    setIsFavoriteLoading(false);
+  };
 
   const handleAddToCart = async (product: Product) => {
     const status = calculateMerchantStatus(merchantHours);
@@ -233,10 +287,17 @@ function EstabelecimentoPage() {
             <ArrowLeft className="h-6 w-6" />
           </button>
           <button
-            onClick={() => setIsFavorite(!isFavorite)}
-            className={`grid h-10 w-10 place-items-center rounded-full bg-black/40 backdrop-blur-md ring-1 ring-white/10 transition-colors ${isFavorite ? "text-primary" : "text-white"}`}
+            type="button"
+            onClick={() => void handleToggleFavorite()}
+            disabled={isFavoriteLoading}
+            aria-label={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+            className={`grid h-10 w-10 place-items-center rounded-full bg-black/40 backdrop-blur-md ring-1 ring-white/10 transition-colors disabled:opacity-60 ${isFavorite ? "text-primary" : "text-white"}`}
           >
-            <Heart className={`h-5 w-5 ${isFavorite ? "fill-primary" : ""}`} />
+            {isFavoriteLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Heart className={`h-5 w-5 ${isFavorite ? "fill-primary" : ""}`} />
+            )}
           </button>
         </div>
 
