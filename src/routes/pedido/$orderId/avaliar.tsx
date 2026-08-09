@@ -44,9 +44,7 @@ function RateOrderPage() {
         await Promise.all([
           (supabase as any)
             .from("orders")
-            .select(
-              "id,order_number,status,merchants(name,logo_url),delivery_jobs(courier_id)",
-            )
+            .select("id,order_number,status,merchants(name,logo_url),delivery_jobs(courier_id)")
             .eq("id", orderId)
             .eq("customer_user_id", user.id)
             .maybeSingle(),
@@ -240,9 +238,7 @@ function RateOrderPage() {
 
           {hasCourier ? (
             <div className="space-y-4 rounded-2xl border border-zinc-900 bg-zinc-950 p-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
-                Entrega
-              </h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">Entrega</h3>
               <StarRating
                 value={deliveryRating}
                 onChange={setDeliveryRating}
