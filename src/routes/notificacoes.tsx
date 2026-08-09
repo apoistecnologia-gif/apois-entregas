@@ -52,7 +52,10 @@ function isUnread(notification: NotificationRow) {
 function displayTitle(notification: NotificationRow) {
   const title = typeof notification.title === "string" ? notification.title.trim() : "";
   if (title) return title;
-  const type = String(notification.type || notification.category || "Atualização").replaceAll("_", " ");
+  const type = String(notification.type || notification.category || "Atualização").replaceAll(
+    "_",
+    " ",
+  );
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
@@ -71,10 +74,12 @@ function displayBody(notification: NotificationRow) {
 
 function NotificationIcon({ notification }: { notification: NotificationRow }) {
   const type = String(notification.type || notification.category || "").toLowerCase();
-  if (type.includes("order") || type.includes("delivery")) return <PackageCheck className="h-5 w-5" />;
+  if (type.includes("order") || type.includes("delivery"))
+    return <PackageCheck className="h-5 w-5" />;
   if (type.includes("support")) return <MessageSquare className="h-5 w-5" />;
   if (type.includes("promo") || type.includes("coupon")) return <Tag className="h-5 w-5" />;
-  if (type.includes("critical") || type.includes("alert")) return <CircleAlert className="h-5 w-5" />;
+  if (type.includes("critical") || type.includes("alert"))
+    return <CircleAlert className="h-5 w-5" />;
   return <Bell className="h-5 w-5" />;
 }
 
@@ -133,7 +138,8 @@ function NotificationCenterPage() {
   }, [loadNotifications]);
 
   const unreadCount = useMemo(
-    () => notifications.reduce((total, notification) => total + (isUnread(notification) ? 1 : 0), 0),
+    () =>
+      notifications.reduce((total, notification) => total + (isUnread(notification) ? 1 : 0), 0),
     [notifications],
   );
 
@@ -167,7 +173,9 @@ function NotificationCenterPage() {
       <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-zinc-900 bg-black/90 p-4 backdrop-blur">
         <button
           type="button"
-          onClick={() => (window.history.length > 1 ? window.history.back() : navigate({ to: "/perfil" }))}
+          onClick={() =>
+            window.history.length > 1 ? window.history.back() : navigate({ to: "/perfil" })
+          }
           className="rounded-full bg-zinc-900 p-2"
           aria-label="Voltar"
         >
@@ -176,7 +184,9 @@ function NotificationCenterPage() {
         <div className="min-w-0 flex-1">
           <h1 className="font-black">Notificações</h1>
           <p className="text-xs text-zinc-500">
-            {unreadCount === 0 ? "Nenhuma atualização pendente" : `${unreadCount} não lida${unreadCount === 1 ? "" : "s"}`}
+            {unreadCount === 0
+              ? "Nenhuma atualização pendente"
+              : `${unreadCount} não lida${unreadCount === 1 ? "" : "s"}`}
           </p>
         </div>
         <button
@@ -185,21 +195,35 @@ function NotificationCenterPage() {
           onClick={() => void markAll()}
           className="flex items-center gap-1.5 rounded-xl border border-zinc-800 px-3 py-2 text-xs font-bold text-zinc-300 disabled:opacity-30"
         >
-          {markingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCheck className="h-4 w-4" />}
+          {markingAll ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <CheckCheck className="h-4 w-4" />
+          )}
           Ler todas
         </button>
       </header>
 
       <main className="mx-auto w-full max-w-2xl flex-1 p-4 pb-24">
         {loading ? (
-          <div className="flex items-center justify-center gap-2 py-20 text-sm text-zinc-500" role="status">
+          <div
+            className="flex items-center justify-center gap-2 py-20 text-sm text-zinc-500"
+            role="status"
+          >
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
             Carregando notificações...
           </div>
         ) : errorMessage ? (
-          <div role="alert" className="rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-sm text-red-300">
+          <div
+            role="alert"
+            className="rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-sm text-red-300"
+          >
             <p>{errorMessage}</p>
-            <button type="button" onClick={() => void loadNotifications()} className="mt-3 font-bold underline">
+            <button
+              type="button"
+              onClick={() => void loadNotifications()}
+              className="mt-3 font-bold underline"
+            >
               Tentar novamente
             </button>
           </div>
@@ -222,9 +246,7 @@ function NotificationCenterPage() {
                   disabled={busyId === notification.id}
                   onClick={() => void markOne(notification)}
                   className={`flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-colors ${
-                    unread
-                      ? "border-primary/20 bg-primary/5"
-                      : "border-zinc-900 bg-zinc-950"
+                    unread ? "border-primary/20 bg-primary/5" : "border-zinc-900 bg-zinc-950"
                   } disabled:opacity-60`}
                 >
                   <div
@@ -238,12 +260,18 @@ function NotificationCenterPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
-                      <p className={`text-sm ${unread ? "font-black text-white" : "font-bold text-zinc-300"}`}>
+                      <p
+                        className={`text-sm ${unread ? "font-black text-white" : "font-bold text-zinc-300"}`}
+                      >
                         {displayTitle(notification)}
                       </p>
-                      {unread ? <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" /> : null}
+                      {unread ? (
+                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                      ) : null}
                     </div>
-                    <p className="mt-1 text-xs leading-relaxed text-zinc-500">{displayBody(notification)}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                      {displayBody(notification)}
+                    </p>
                     {notification.created_at ? (
                       <p className="mt-2 text-[10px] uppercase tracking-wide text-zinc-700">
                         {new Date(notification.created_at).toLocaleString("pt-BR")}

@@ -120,7 +120,8 @@ export function AdminCoveragePanel({
     const radius = Number(city.default_delivery_radius_km);
     if (!city.name.trim()) return toast.error("Informe o nome da cidade.");
     if (city.state.trim().length !== 2) return toast.error("Informe a UF com 2 caracteres.");
-    if (!Number.isFinite(radius) || radius <= 0) return toast.error("Informe um raio padrão válido.");
+    if (!Number.isFinite(radius) || radius <= 0)
+      return toast.error("Informe um raio padrão válido.");
     setBusy(`city:${city.id}`);
     const { error } = await rpc("admin_update_city", {
       _city_id: city.id,
@@ -142,7 +143,8 @@ export function AdminCoveragePanel({
     const radius = Number(newCity.radius);
     if (!newCity.name.trim()) return toast.error("Informe o nome da cidade.");
     if (newCity.state.trim().length !== 2) return toast.error("Informe a UF com 2 caracteres.");
-    if (!Number.isFinite(radius) || radius <= 0) return toast.error("Informe um raio padrão válido.");
+    if (!Number.isFinite(radius) || radius <= 0)
+      return toast.error("Informe um raio padrão válido.");
     setBusy("new-city");
     const { data, error } = await rpc("admin_create_city", {
       _name: newCity.name.trim(),
@@ -354,7 +356,8 @@ export function AdminCoveragePanel({
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-zinc-500">
-                        {city.timezone || "America/Sao_Paulo"} · raio padrão {city.default_delivery_radius_km} km
+                        {city.timezone || "America/Sao_Paulo"} · raio padrão{" "}
+                        {city.default_delivery_radius_km} km
                       </p>
                     </button>
                     <button
@@ -372,7 +375,10 @@ export function AdminCoveragePanel({
           })}
         </div>
 
-        <form onSubmit={createCity} className="mt-4 grid gap-2 rounded-2xl border border-dashed border-zinc-800 p-4 sm:grid-cols-2 lg:grid-cols-6">
+        <form
+          onSubmit={createCity}
+          className="mt-4 grid gap-2 rounded-2xl border border-dashed border-zinc-800 p-4 sm:grid-cols-2 lg:grid-cols-6"
+        >
           <Input
             value={newCity.name}
             onChange={(value) => setNewCity({ ...newCity, name: value })}
@@ -514,7 +520,11 @@ export function AdminCoveragePanel({
               {zoneDraft.id ? "Salvar alterações" : "Criar zona"}
             </Button>
             {zoneDraft.id ? (
-              <Button type="button" variant="outline" onClick={() => setZoneDraft(emptyZoneDraft())}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setZoneDraft(emptyZoneDraft())}
+              >
                 <X className="h-4 w-4" />
               </Button>
             ) : null}
@@ -525,7 +535,8 @@ export function AdminCoveragePanel({
           <div className="mb-4">
             <h2 className="font-black">Zonas de entrega</h2>
             <p className="text-xs text-zinc-500">
-              Quando uma cidade possui zonas ativas, o checkout exige que o endereço esteja dentro de uma delas.
+              Quando uma cidade possui zonas ativas, o checkout exige que o endereço esteja dentro
+              de uma delas.
             </p>
           </div>
           {loadingZones ? (
@@ -533,7 +544,10 @@ export function AdminCoveragePanel({
               <Loader2 className="h-4 w-4 animate-spin text-primary" /> Carregando zonas...
             </div>
           ) : zones.length === 0 ? (
-            <EmptyState title="Nenhuma zona cadastrada" description="Sem zonas ativas, o servidor usa o raio padrão da cidade quando houver coordenadas do estabelecimento; caso contrário, restringe pela cidade/UF." />
+            <EmptyState
+              title="Nenhuma zona cadastrada"
+              description="Sem zonas ativas, o servidor usa o raio padrão da cidade quando houver coordenadas do estabelecimento; caso contrário, restringe pela cidade/UF."
+            />
           ) : (
             <div className="space-y-3">
               {zones.map((zone) => (
@@ -542,20 +556,38 @@ export function AdminCoveragePanel({
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-black">{zone.name}</p>
-                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${zone.is_active ? "bg-emerald-500/10 text-emerald-300" : "bg-zinc-800 text-zinc-500"}`}>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${zone.is_active ? "bg-emerald-500/10 text-emerald-300" : "bg-zinc-800 text-zinc-500"}`}
+                        >
                           {zone.is_active ? "Ativa" : "Inativa"}
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-zinc-500">
-                        {zone.geojson ? "Polígono GeoJSON" : `Raio ${zone.radius_km} km`} · taxa {money(zone.delivery_fee)} · mínimo {money(zone.minimum_order)}
+                        {zone.geojson ? "Polígono GeoJSON" : `Raio ${zone.radius_km} km`} · taxa{" "}
+                        {money(zone.delivery_fee)} · mínimo {money(zone.minimum_order)}
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => editZone(zone)} className="rounded-lg bg-zinc-900 p-2 text-zinc-400" aria-label={`Editar zona ${zone.name}`}>
+                      <button
+                        type="button"
+                        onClick={() => editZone(zone)}
+                        className="rounded-lg bg-zinc-900 p-2 text-zinc-400"
+                        aria-label={`Editar zona ${zone.name}`}
+                      >
                         <Pencil className="h-4 w-4" />
                       </button>
-                      <button type="button" disabled={busy === `delete-zone:${zone.id}`} onClick={() => void deleteZone(zone)} className="rounded-lg bg-red-500/10 p-2 text-red-400 disabled:opacity-50" aria-label={`Excluir zona ${zone.name}`}>
-                        {busy === `delete-zone:${zone.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      <button
+                        type="button"
+                        disabled={busy === `delete-zone:${zone.id}`}
+                        onClick={() => void deleteZone(zone)}
+                        className="rounded-lg bg-red-500/10 p-2 text-red-400 disabled:opacity-50"
+                        aria-label={`Excluir zona ${zone.name}`}
+                      >
+                        {busy === `delete-zone:${zone.id}` ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                   </div>

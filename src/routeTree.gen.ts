@@ -21,6 +21,7 @@ import { Route as FavoritosRouteImport } from './routes/favoritos'
 import { Route as InicioRouteImport } from './routes/inicio'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MerchantRouteImport } from './routes/merchant'
+import { Route as NotificacoesRouteImport } from './routes/notificacoes'
 import { Route as PedidosRouteImport } from './routes/pedidos'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
@@ -104,6 +105,11 @@ const LoginRoute = LoginRouteImport.update({
 const MerchantRoute = MerchantRouteImport.update({
   id: '/merchant',
   path: '/merchant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificacoesRoute = NotificacoesRouteImport.update({
+  id: '/notificacoes',
+  path: '/notificacoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PedidosRoute = PedidosRouteImport.update({
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
   '/merchant': typeof MerchantRoute
+  '/notificacoes': typeof NotificacoesRoute
   '/pedidos': typeof PedidosRoute
   '/perfil': typeof PerfilRouteWithChildren
   '/privacidade': typeof PrivacidadeRoute
@@ -275,6 +282,7 @@ export interface FileRoutesByTo {
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
   '/merchant': typeof MerchantRoute
+  '/notificacoes': typeof NotificacoesRoute
   '/pedidos': typeof PedidosRoute
   '/privacidade': typeof PrivacidadeRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
@@ -311,6 +319,7 @@ export interface FileRoutesById {
   '/inicio': typeof InicioRoute
   '/login': typeof LoginRoute
   '/merchant': typeof MerchantRoute
+  '/notificacoes': typeof NotificacoesRoute
   '/pedidos': typeof PedidosRoute
   '/perfil': typeof PerfilRouteWithChildren
   '/privacidade': typeof PrivacidadeRoute
@@ -350,6 +359,7 @@ export interface FileRouteTypes {
     | '/inicio'
     | '/login'
     | '/merchant'
+    | '/notificacoes'
     | '/pedidos'
     | '/perfil'
     | '/privacidade'
@@ -387,6 +397,7 @@ export interface FileRouteTypes {
     | '/inicio'
     | '/login'
     | '/merchant'
+    | '/notificacoes'
     | '/pedidos'
     | '/privacidade'
     | '/redefinir-senha'
@@ -422,6 +433,7 @@ export interface FileRouteTypes {
     | '/inicio'
     | '/login'
     | '/merchant'
+    | '/notificacoes'
     | '/pedidos'
     | '/perfil'
     | '/privacidade'
@@ -460,6 +472,7 @@ export interface RootRouteChildren {
   InicioRoute: typeof InicioRoute
   LoginRoute: typeof LoginRoute
   MerchantRoute: typeof MerchantRoute
+  NotificacoesRoute: typeof NotificacoesRoute
   PedidosRoute: typeof PedidosRoute
   PerfilRoute: typeof PerfilRouteWithChildren
   PrivacidadeRoute: typeof PrivacidadeRoute
@@ -558,6 +571,13 @@ declare module '@tanstack/react-router' {
       path: '/merchant'
       fullPath: '/merchant'
       preLoaderRoute: typeof MerchantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notificacoes': {
+      id: '/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/notificacoes'
+      preLoaderRoute: typeof NotificacoesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pedidos': {
@@ -798,6 +818,7 @@ const rootRouteChildren: RootRouteChildren = {
   InicioRoute: InicioRoute,
   LoginRoute: LoginRoute,
   MerchantRoute: MerchantRoute,
+  NotificacoesRoute: NotificacoesRoute,
   PedidosRoute: PedidosRoute,
   PerfilRoute: PerfilRouteWithChildren,
   PrivacidadeRoute: PrivacidadeRoute,
