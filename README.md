@@ -102,7 +102,7 @@ bun run format:check
 bun run lint
 ```
 
-O workflow `.github/workflows/ci.yml` executa o mesmo conjunto de verificações de release a cada push em `main` e em pull requests.
+O workflow `.github/workflows/ci.yml` executa o mesmo conjunto de verificações de release a cada push em `main` e em pull requests. Um commit só deve ser promovido para produção depois que esse gate estiver verde.
 
 ## Build e preview
 
