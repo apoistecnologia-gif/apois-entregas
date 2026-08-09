@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState, MetricCard, WorkspaceShell } from "@/components/WorkspaceShell";
+import { AdminCoveragePanel } from "@/components/AdminCoveragePanel";
 import { AdminSupportPanel } from "@/components/AdminSupportPanel";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -478,6 +479,7 @@ function AdminWorkspace() {
     { id: "couriers", label: "Entregadores", icon: Bike, badge: pendingCouriers.length },
     { id: "orders", label: "Pedidos", icon: ShoppingBag, badge: activeOrders.length },
     { id: "users", label: "Usuários", icon: Users },
+    { id: "coverage", label: "Cobertura", icon: MapPinned },
     {
       id: "finance",
       label: "Financeiro",
@@ -655,6 +657,10 @@ function AdminWorkspace() {
             </div>
           ))}
         </div>
+      )}
+
+      {activeTab === "coverage" && (
+        <AdminCoveragePanel cities={cities} onRefresh={() => loadAll(true)} />
       )}
 
       {activeTab === "finance" && (
