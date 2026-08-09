@@ -86,19 +86,25 @@ Esses registros não devem ser “corrigidos” retroativamente no banco. A dive
 - `20260809025502` — `revoke_anonymous_security_definer_execution`
 - `20260809025818` — `remove_duplicate_operational_indexes`
 - `20260809153337` — `harden_checkout_intent_idempotency`
+- `20260809162700` — `enforce_refund_aware_merchant_cancellation`
 
-## Verificação da migration de idempotência
+## Verificação das migrations novas convergentes
 
-A migration `20260809153337_harden_checkout_intent_idempotency.sql` foi aplicada no Supabase oficial e versionada imediatamente no Git com o mesmo `version id`.
+### `20260809153337_harden_checkout_intent_idempotency.sql`
 
-Verificação feita diretamente sobre `supabase_migrations.schema_migrations`:
+- versão remota: `20260809153337`;
+- nome remoto: `harden_checkout_intent_idempotency`;
+- bytes do SQL no ledger: `5547`;
+- SHA-256 remoto: `2441d15e4cc37fe275d4fc6f1556fe5061f958319ff28924f6f2bacb632dd016`.
 
-- versão: `20260809153337`;
-- nome: `harden_checkout_intent_idempotency`;
-- bytes do SQL armazenado no ledger remoto: `5547`;
-- SHA-256 do SQL armazenado: `2441d15e4cc37fe275d4fc6f1556fe5061f958319ff28924f6f2bacb632dd016`.
+### `20260809162700_enforce_refund_aware_merchant_cancellation.sql`
 
-O commit histórico `b9a06ac99970f622838be081df908bc323b202bd` preserva a primeira captura completa de hashes do ledger remoto. Este documento corrige a linha da migration `20260809153337`, cujo hash ainda estava pendente naquela captura.
+- versão remota: `20260809162700`;
+- nome remoto: `enforce_refund_aware_merchant_cancellation`;
+- bytes do SQL no ledger: `2468`;
+- SHA-256 remoto: `5c19c1162b64a7c51b7c5622a2ea17aa2bbea098f3fde9eaf2bdd0bc4e880d3d`.
+
+O commit histórico `b9a06ac99970f622838be081df908bc323b202bd` preserva a primeira captura completa de hashes do ledger remoto. As migrations posteriores a `20260809153337` passam a usar o mesmo `version id` no Supabase e no Git.
 
 ## Convergência daqui em diante
 
