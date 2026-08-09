@@ -187,42 +187,98 @@ function AjudaPage() {
             Perguntas Frequentes
           </h2>
           <Accordion type="single" collapsible className="space-y-3">
-            <AccordionItem value="item-1" className="overflow-hidden rounded-2xl border-zinc-900 bg-zinc-900/20 px-4">
-              <AccordionTrigger className="py-4 text-sm font-medium text-zinc-200 hover:no-underline">Como acompanho meu pedido?</AccordionTrigger>
-              <AccordionContent className="pb-4 text-xs leading-relaxed text-zinc-500">Você acompanha o status em tempo real na aba Pedidos e recebe as atualizações operacionais permitidas pelas suas preferências.</AccordionContent>
+            <AccordionItem
+              value="item-1"
+              className="overflow-hidden rounded-2xl border-zinc-900 bg-zinc-900/20 px-4"
+            >
+              <AccordionTrigger className="py-4 text-sm font-medium text-zinc-200 hover:no-underline">
+                Como acompanho meu pedido?
+              </AccordionTrigger>
+              <AccordionContent className="pb-4 text-xs leading-relaxed text-zinc-500">
+                Você acompanha o status em tempo real na aba Pedidos e recebe as atualizações
+                operacionais permitidas pelas suas preferências.
+              </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="item-2" className="overflow-hidden rounded-2xl border-zinc-900 bg-zinc-900/20 px-4">
-              <AccordionTrigger className="py-4 text-sm font-medium text-zinc-200 hover:no-underline">Qual forma de pagamento está disponível?</AccordionTrigger>
-              <AccordionContent className="pb-4 text-xs leading-relaxed text-zinc-500">O checkout atual utiliza PIX. Outras formas só aparecerão quando estiverem efetivamente habilitadas pela plataforma.</AccordionContent>
+            <AccordionItem
+              value="item-2"
+              className="overflow-hidden rounded-2xl border-zinc-900 bg-zinc-900/20 px-4"
+            >
+              <AccordionTrigger className="py-4 text-sm font-medium text-zinc-200 hover:no-underline">
+                Qual forma de pagamento está disponível?
+              </AccordionTrigger>
+              <AccordionContent className="pb-4 text-xs leading-relaxed text-zinc-500">
+                O checkout atual utiliza PIX. Outras formas só aparecerão quando estiverem
+                efetivamente habilitadas pela plataforma.
+              </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="item-3" className="overflow-hidden rounded-2xl border-zinc-900 bg-zinc-900/20 px-4">
-              <AccordionTrigger className="py-4 text-sm font-medium text-zinc-200 hover:no-underline">Como altero meu endereço?</AccordionTrigger>
-              <AccordionContent className="pb-4 text-xs leading-relaxed text-zinc-500">Vá em Perfil &gt; Meus Endereços. Lá você pode adicionar, editar, excluir e definir o endereço padrão.</AccordionContent>
+            <AccordionItem
+              value="item-3"
+              className="overflow-hidden rounded-2xl border-zinc-900 bg-zinc-900/20 px-4"
+            >
+              <AccordionTrigger className="py-4 text-sm font-medium text-zinc-200 hover:no-underline">
+                Como altero meu endereço?
+              </AccordionTrigger>
+              <AccordionContent className="pb-4 text-xs leading-relaxed text-zinc-500">
+                Vá em Perfil &gt; Meus Endereços. Lá você pode adicionar, editar, excluir e definir
+                o endereço padrão.
+              </AccordionContent>
             </AccordionItem>
           </Accordion>
         </section>
 
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="ml-1 text-xs font-bold uppercase tracking-widest text-primary">Meus chamados</h2>
-            <button type="button" onClick={() => openForm("other")} className="flex items-center gap-1 text-xs font-bold text-primary"><Plus className="h-4 w-4" />Novo</button>
+            <h2 className="ml-1 text-xs font-bold uppercase tracking-widest text-primary">
+              Meus chamados
+            </h2>
+            <button
+              type="button"
+              onClick={() => openForm("other")}
+              className="flex items-center gap-1 text-xs font-bold text-primary"
+            >
+              <Plus className="h-4 w-4" />
+              Novo
+            </button>
           </div>
 
           {loadingTickets ? (
-            <div className="flex items-center justify-center gap-2 py-8 text-sm text-zinc-500"><Loader2 className="h-4 w-4 animate-spin text-primary" />Carregando chamados...</div>
+            <div className="flex items-center justify-center gap-2 py-8 text-sm text-zinc-500">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              Carregando chamados...
+            </div>
           ) : ticketsError ? (
-            <div role="alert" className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">{ticketsError}</div>
+            <div
+              role="alert"
+              className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300"
+            >
+              {ticketsError}
+            </div>
           ) : tickets.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5 text-center text-sm text-zinc-500">Você ainda não abriu nenhum chamado.</div>
+            <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5 text-center text-sm text-zinc-500">
+              Você ainda não abriu nenhum chamado.
+            </div>
           ) : (
             <div className="space-y-3">
               {tickets.map((ticket) => (
-                <div key={ticket.id} className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
+                <div
+                  key={ticket.id}
+                  className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4"
+                >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0"><p className="truncate text-sm font-bold text-zinc-200">{ticket.subject}</p><p className="mt-1 text-[10px] uppercase tracking-wide text-zinc-600">{categoryLabels[ticket.category]} • {new Date(ticket.created_at).toLocaleDateString("pt-BR")}</p></div>
-                    <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">{statusLabel[ticket.status] ?? ticket.status}</span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-zinc-200">{ticket.subject}</p>
+                      <p className="mt-1 text-[10px] uppercase tracking-wide text-zinc-600">
+                        {categoryLabels[ticket.category]} •{" "}
+                        {new Date(ticket.created_at).toLocaleDateString("pt-BR")}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">
+                      {statusLabel[ticket.status] ?? ticket.status}
+                    </span>
                   </div>
-                  <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-zinc-500">{ticket.description}</p>
+                  <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-zinc-500">
+                    {ticket.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -230,8 +286,21 @@ function AjudaPage() {
         </section>
 
         <section className="pt-2">
-          <button type="button" onClick={() => openForm("other")} className="flex w-full items-center justify-between rounded-3xl bg-primary p-5 font-bold text-black transition-all active:scale-[0.98]">
-            <div className="flex items-center gap-4"><div className="rounded-2xl bg-black/10 p-2.5"><MessageSquare className="h-6 w-6" /></div><div className="text-left"><p className="text-sm">Falar com suporte</p><p className="text-[10px] opacity-70">Abra um chamado para nossa equipe</p></div></div><ChevronRight className="h-5 w-5 opacity-40" />
+          <button
+            type="button"
+            onClick={() => openForm("other")}
+            className="flex w-full items-center justify-between rounded-3xl bg-primary p-5 font-bold text-black transition-all active:scale-[0.98]"
+          >
+            <div className="flex items-center gap-4">
+              <div className="rounded-2xl bg-black/10 p-2.5">
+                <MessageSquare className="h-6 w-6" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm">Falar com suporte</p>
+                <p className="text-[10px] opacity-70">Abra um chamado para nossa equipe</p>
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 opacity-40" />
           </button>
         </section>
       </main>
@@ -239,11 +308,54 @@ function AjudaPage() {
       {isFormOpen ? (
         <div className="fixed inset-0 z-[100] flex items-end bg-black/70 backdrop-blur-sm sm:items-center sm:justify-center">
           <div className="w-full rounded-t-3xl border border-zinc-800 bg-zinc-950 p-5 sm:max-w-lg sm:rounded-3xl">
-            <div className="mb-5 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-primary">Novo chamado</p><h2 className="mt-1 text-lg font-black">{categoryLabels[category]}</h2></div><button type="button" onClick={() => setIsFormOpen(false)} className="rounded-full bg-zinc-900 p-2" aria-label="Fechar formulário"><X className="h-5 w-5" /></button></div>
-            <label className="block text-xs font-bold text-zinc-400">Assunto<input value={subject} maxLength={150} onChange={(event) => setSubject(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-zinc-800 bg-black px-4 text-sm text-white outline-none focus:border-primary" placeholder="Resuma o que aconteceu" /></label>
-            <label className="mt-4 block text-xs font-bold text-zinc-400">Descrição<textarea value={description} maxLength={3000} onChange={(event) => setDescription(event.target.value)} className="mt-2 min-h-32 w-full rounded-xl border border-zinc-800 bg-black p-4 text-sm text-white outline-none focus:border-primary" placeholder="Descreva o problema com detalhes" /></label>
-            <div className="mt-1 text-right text-[10px] text-zinc-600">{description.length}/3000</div>
-            <button type="button" onClick={() => void createTicket()} disabled={submitting || subject.trim().length < 3 || description.trim().length < 10} className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary font-black uppercase text-black disabled:opacity-50">{submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : null}{submitting ? "Enviando..." : "Abrir chamado"}</button>
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-primary">
+                  Novo chamado
+                </p>
+                <h2 className="mt-1 text-lg font-black">{categoryLabels[category]}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFormOpen(false)}
+                className="rounded-full bg-zinc-900 p-2"
+                aria-label="Fechar formulário"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <label className="block text-xs font-bold text-zinc-400">
+              Assunto
+              <input
+                value={subject}
+                maxLength={150}
+                onChange={(event) => setSubject(event.target.value)}
+                className="mt-2 h-12 w-full rounded-xl border border-zinc-800 bg-black px-4 text-sm text-white outline-none focus:border-primary"
+                placeholder="Resuma o que aconteceu"
+              />
+            </label>
+            <label className="mt-4 block text-xs font-bold text-zinc-400">
+              Descrição
+              <textarea
+                value={description}
+                maxLength={3000}
+                onChange={(event) => setDescription(event.target.value)}
+                className="mt-2 min-h-32 w-full rounded-xl border border-zinc-800 bg-black p-4 text-sm text-white outline-none focus:border-primary"
+                placeholder="Descreva o problema com detalhes"
+              />
+            </label>
+            <div className="mt-1 text-right text-[10px] text-zinc-600">
+              {description.length}/3000
+            </div>
+            <button
+              type="button"
+              onClick={() => void createTicket()}
+              disabled={submitting || subject.trim().length < 3 || description.trim().length < 10}
+              className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary font-black uppercase text-black disabled:opacity-50"
+            >
+              {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+              {submitting ? "Enviando..." : "Abrir chamado"}
+            </button>
           </div>
         </div>
       ) : null}
