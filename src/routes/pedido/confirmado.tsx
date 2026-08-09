@@ -8,6 +8,11 @@ const orderSearchSchema = z.object({
   orderId: z.string(),
 });
 
+type DeliveryAddressSnapshot = {
+  street?: string | null;
+  number?: string | null;
+};
+
 export const Route = createFileRoute("/pedido/confirmado")({
   ssr: false,
   validateSearch: orderSearchSchema,
@@ -101,16 +106,18 @@ function OrderConfirmedPage() {
     );
   }
 
-  let deliveryAddress: Record<string, any> = {};
+  let deliveryAddress: DeliveryAddressSnapshot = {};
   if (typeof order.delivery_address === "string") {
     try {
       const parsed = JSON.parse(order.delivery_address);
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) deliveryAddress = parsed;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        deliveryAddress = parsed as DeliveryAddressSnapshot;
+      }
     } catch {
       deliveryAddress = {};
     }
   } else if (order.delivery_address && typeof order.delivery_address === "object") {
-    deliveryAddress = order.delivery_address;
+    deliveryAddress = order.delivery_address as DeliveryAddressSnapshot;
   }
 
   const isRefunded = order.status === "refunded" || order.payment_status === "refunded";
@@ -181,7 +188,7 @@ function OrderConfirmedPage() {
         <div className="pt-3">
           <span className="text-xs font-bold uppercase text-zinc-500">Entrega</span>
           <p className="mt-1 line-clamp-1 text-sm font-medium text-zinc-400">
-            {deliveryAddress?.street
+            {deliveryAddress.street
               ? `${deliveryAddress.street}, ${deliveryAddress.number || "s/n"}`
               : "Endereço registrado no pedido"}
           </p>
