@@ -122,6 +122,8 @@ A reconciliação foi registrada no Git sem alterar o histórico de produção.
 - `20260809215048` — `enforce_partner_approval_requirements`
 - `20260809215700` — `harden_auth_trigger_search_path`
 - `20260809220123` — `persist_legal_acceptance_audit`
+- `20260809221841` — `enforce_delivery_quote_in_order_creation`
+- `20260809222108` — `fix_pickup_delivery_quote_state`
 
 ## Verificação das migrations novas convergentes
 
@@ -149,6 +151,8 @@ A reconciliação foi registrada no Git sem alterar o histórico de produção.
 | `20260809215048` | `enforce_partner_approval_requirements`       |            9683 | `a6eac3e426d0b98a9c8e29afc65b9fdaf5ec00aa0478dc14bd465356edd71503` |
 | `20260809215700` | `harden_auth_trigger_search_path`             |             699 | `b8036ea85d7519cf2561485dc419deee90c3b8424fef9370632fcd0899aac5d3` |
 | `20260809220123` | `persist_legal_acceptance_audit`              |            3119 | `a3cd751808658019577fe6d0ce9cdecbcc3a4b7fe4029058b292b635932a5261` |
+| `20260809221841` | `enforce_delivery_quote_in_order_creation`    |            6841 | `b614b6e1718693532309699991310c1ea4a0bda4d7df5525e4e944e6262e9999` |
+| `20260809222108` | `fix_pickup_delivery_quote_state`             |            7090 | `6b3f0f4d46befb832bb728f7f6e117b26ad849df2971904c46ee2e939767327b` |
 
 O commit histórico `b9a06ac99970f622838be081df908bc323b202bd` preserva a primeira captura completa de hashes do ledger remoto. As migrations posteriores a `20260809153337` passam a usar o mesmo `version id` no Supabase e no Git.
 
