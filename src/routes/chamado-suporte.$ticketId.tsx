@@ -90,12 +90,22 @@ function SupportConversationPage() {
       .channel(`customer_support_messages_${ticketId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "support_messages", filter: `ticket_id=eq.${ticketId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "support_messages",
+          filter: `ticket_id=eq.${ticketId}`,
+        },
         () => void loadTicket(false),
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "support_tickets", filter: `id=eq.${ticketId}` },
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "support_tickets",
+          filter: `id=eq.${ticketId}`,
+        },
         () => void loadTicket(false),
       )
       .subscribe();
@@ -251,7 +261,11 @@ function SupportConversationPage() {
               className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary text-black disabled:opacity-50"
               aria-label="Enviar mensagem"
             >
-              {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+              {sending ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
             </button>
           </div>
         ) : (

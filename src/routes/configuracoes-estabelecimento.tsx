@@ -127,20 +127,23 @@ function MerchantSettingsPage() {
       ((hoursRes.data ?? []) as MerchantHour[]).map((row) => [row.weekday, row]),
     );
     setHours(
-      dayNames.map((_, weekday) =>
-        existing.get(weekday) ?? {
-          merchant_id: merchantId,
-          weekday,
-          opens_at: "09:00:00",
-          closes_at: "22:00:00",
-          is_closed: false,
-        },
+      dayNames.map(
+        (_, weekday) =>
+          existing.get(weekday) ?? {
+            merchant_id: merchantId,
+            weekday,
+            opens_at: "09:00:00",
+            closes_at: "22:00:00",
+            is_closed: false,
+          },
       ),
     );
 
     if (hoursRes.error) {
       console.error("Erro ao carregar horários:", hoursRes.error);
-      toast.warning("Os dados do estabelecimento foram carregados, mas os horários precisam ser revisados.");
+      toast.warning(
+        "Os dados do estabelecimento foram carregados, mas os horários precisam ser revisados.",
+      );
     }
     setLoading(false);
   }, []);
@@ -254,7 +257,9 @@ function MerchantSettingsPage() {
       <div className="flex h-screen w-full flex-col items-center justify-center bg-black p-6 text-center text-white">
         <Store className="h-10 w-10 text-zinc-700" />
         <h1 className="mt-4 text-xl font-black">Configurações indisponíveis</h1>
-        <p className="mt-2 max-w-sm text-sm text-zinc-500">{loadError || "Estabelecimento não encontrado."}</p>
+        <p className="mt-2 max-w-sm text-sm text-zinc-500">
+          {loadError || "Estabelecimento não encontrado."}
+        </p>
         <button
           type="button"
           onClick={() => navigate({ to: "/merchant" })}
@@ -278,7 +283,9 @@ function MerchantSettingsPage() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">APOIS ESTABELECIMENTO</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">
+            APOIS ESTABELECIMENTO
+          </p>
           <h1 className="truncate text-lg font-black">Configurações</h1>
         </div>
         <span
@@ -300,7 +307,9 @@ function MerchantSettingsPage() {
             </div>
             <div>
               <h2 className="font-black">Dados do estabelecimento</h2>
-              <p className="text-xs text-zinc-500">Informações exibidas ao cliente e usadas no cálculo do pedido.</p>
+              <p className="text-xs text-zinc-500">
+                Informações exibidas ao cliente e usadas no cálculo do pedido.
+              </p>
             </div>
           </div>
 
@@ -310,7 +319,9 @@ function MerchantSettingsPage() {
               <input
                 value={profileDraft.name}
                 maxLength={120}
-                onChange={(event) => setProfileDraft((current) => ({ ...current, name: event.target.value }))}
+                onChange={(event) =>
+                  setProfileDraft((current) => ({ ...current, name: event.target.value }))
+                }
                 className="mt-1 w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-sm text-white outline-none focus:border-primary"
               />
             </label>
@@ -372,7 +383,11 @@ function MerchantSettingsPage() {
             onClick={() => void saveProfile()}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-black text-black disabled:opacity-50"
           >
-            {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {savingProfile ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
             {savingProfile ? "Salvando..." : "Salvar dados"}
           </button>
         </section>
@@ -384,7 +399,9 @@ function MerchantSettingsPage() {
             </div>
             <div>
               <h2 className="font-black">Horário de funcionamento</h2>
-              <p className="text-xs text-zinc-500">Pedidos novos ficam bloqueados quando o estabelecimento estiver fechado.</p>
+              <p className="text-xs text-zinc-500">
+                Pedidos novos ficam bloqueados quando o estabelecimento estiver fechado.
+              </p>
             </div>
           </div>
 
@@ -399,7 +416,9 @@ function MerchantSettingsPage() {
                   <input
                     type="checkbox"
                     checked={row.is_closed}
-                    onChange={(event) => updateHour(row.weekday, { is_closed: event.target.checked })}
+                    onChange={(event) =>
+                      updateHour(row.weekday, { is_closed: event.target.checked })
+                    }
                     className="h-4 w-4 accent-yellow-400"
                   />
                   Fechado
@@ -410,7 +429,9 @@ function MerchantSettingsPage() {
                     type="time"
                     disabled={row.is_closed}
                     value={row.opens_at?.slice(0, 5) ?? "09:00"}
-                    onChange={(event) => updateHour(row.weekday, { opens_at: `${event.target.value}:00` })}
+                    onChange={(event) =>
+                      updateHour(row.weekday, { opens_at: `${event.target.value}:00` })
+                    }
                     className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white outline-none disabled:opacity-40"
                   />
                 </label>
@@ -420,7 +441,9 @@ function MerchantSettingsPage() {
                     type="time"
                     disabled={row.is_closed}
                     value={row.closes_at?.slice(0, 5) ?? "22:00"}
-                    onChange={(event) => updateHour(row.weekday, { closes_at: `${event.target.value}:00` })}
+                    onChange={(event) =>
+                      updateHour(row.weekday, { closes_at: `${event.target.value}:00` })
+                    }
                     className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white outline-none disabled:opacity-40"
                   />
                 </label>
@@ -434,7 +457,11 @@ function MerchantSettingsPage() {
             onClick={() => void saveHours()}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-black text-black disabled:opacity-50"
           >
-            {savingHours ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {savingHours ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
             {savingHours ? "Salvando horários..." : "Salvar horários"}
           </button>
         </section>

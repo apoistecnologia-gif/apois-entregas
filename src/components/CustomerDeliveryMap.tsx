@@ -124,7 +124,7 @@ export function CustomerDeliveryMap({ job }: { job: DeliveryJob | null | undefin
               defaultCenter={
                 location
                   ? { lat: Number(location.latitude), lng: Number(location.longitude) }
-                  : target ?? { lat: -8.0476, lng: -34.877 }
+                  : (target ?? { lat: -8.0476, lng: -34.877 })
               }
               defaultZoom={14}
               gestureHandling="greedy"

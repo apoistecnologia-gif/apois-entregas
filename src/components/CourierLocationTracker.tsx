@@ -57,7 +57,9 @@ export function CourierLocationTracker({
     const sendLocation = async (position: CourierPosition) => {
       if (sendingRef.current || disposed) return;
       const previous = lastSentRef.current;
-      const elapsed = previous ? position.recordedAt - previous.recordedAt : Number.POSITIVE_INFINITY;
+      const elapsed = previous
+        ? position.recordedAt - previous.recordedAt
+        : Number.POSITIVE_INFINITY;
       const moved = previous ? distanceMeters(previous, position) : Number.POSITIVE_INFINITY;
       if (elapsed < 45_000 && moved < 30) return;
 

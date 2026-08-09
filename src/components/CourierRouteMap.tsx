@@ -26,8 +26,7 @@ const distanceMeters = (a: LatLng, b: LatLng) => {
   const deltaLat = ((b.lat - a.lat) * Math.PI) / 180;
   const deltaLng = ((b.lng - a.lng) * Math.PI) / 180;
   const haversine =
-    Math.sin(deltaLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+    Math.sin(deltaLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
   return 2 * radius * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 };
 
