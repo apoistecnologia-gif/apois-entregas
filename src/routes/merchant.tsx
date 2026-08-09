@@ -1,6 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import {
   BadgeDollarSign,
+  BadgePercent,
   Clock3,
   LayoutDashboard,
   Loader2,
@@ -10,7 +11,9 @@ import {
   Settings,
   ShoppingBag,
   Store,
+  Star,
   Trash2,
+  Users,
   UtensilsCrossed,
   WalletCards,
 } from "lucide-react";
@@ -21,6 +24,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { clearPayoutAttemptKey, getPayoutAttemptKey } from "@/lib/payout-attempt";
 import { MerchantProductEditor } from "@/components/MerchantProductEditor";
+import {
+  MerchantCustomersPanel,
+  MerchantPromotionsPanel,
+  MerchantReviewsPanel,
+} from "@/components/MerchantGrowthPanels";
 
 export const Route = createFileRoute("/merchant")({
   ssr: false,
@@ -548,6 +556,9 @@ function MerchantWorkspace() {
     { id: "orders", label: "Pedidos", icon: ShoppingBag, badge: pendingOrders.length },
     { id: "menu", label: "Cardápio", icon: UtensilsCrossed },
     { id: "hours", label: "Horários", icon: Clock3 },
+    { id: "promotions", label: "Promoções", icon: BadgePercent },
+    { id: "customers", label: "Clientes", icon: Users },
+    { id: "reviews", label: "Avaliações", icon: Star },
     { id: "finance", label: "Financeiro", icon: WalletCards },
     { id: "settings", label: "Configurações", icon: Settings },
   ];
@@ -871,6 +882,24 @@ function MerchantWorkspace() {
             })}
           </div>
         </section>
+      )}
+
+      {activeTab === "promotions" && (
+        <MerchantPromotionsPanel
+          merchantId={merchant.id}
+          products={products}
+          categories={menuCategories}
+        />
+      )}
+
+      {activeTab === "customers" && <MerchantCustomersPanel orders={orders} />}
+
+      {activeTab === "reviews" && (
+        <MerchantReviewsPanel
+          reviews={reviews}
+          rating={Number(merchant.rating ?? 0)}
+          reviewCount={Number(merchant.review_count ?? reviews.length)}
+        />
       )}
 
       {activeTab === "finance" && (

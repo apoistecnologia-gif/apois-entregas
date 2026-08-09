@@ -172,7 +172,9 @@ export function MerchantPromotionsPanel({
 
   const targetLabel = (promotion: Promotion) => {
     if (promotion.product_id)
-      return products.find((item) => item.id === promotion.product_id)?.name ?? "Produto específico";
+      return (
+        products.find((item) => item.id === promotion.product_id)?.name ?? "Produto específico"
+      );
     if (promotion.menu_category_id)
       return (
         categories.find((item) => item.id === promotion.menu_category_id)?.name ??
@@ -308,11 +310,17 @@ export function MerchantPromotionsPanel({
             <Loader2 className="h-4 w-4 animate-spin text-primary" /> Carregando promoções...
           </div>
         ) : promotions.length === 0 ? (
-          <EmptyState title="Nenhuma promoção cadastrada" description="Crie a primeira oferta ao lado." />
+          <EmptyState
+            title="Nenhuma promoção cadastrada"
+            description="Crie a primeira oferta ao lado."
+          />
         ) : (
           <div className="space-y-3">
             {promotions.map((promotion) => (
-              <article key={promotion.id} className="rounded-2xl border border-zinc-900 bg-black p-4">
+              <article
+                key={promotion.id}
+                className="rounded-2xl border border-zinc-900 bg-black p-4"
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -332,7 +340,9 @@ export function MerchantPromotionsPanel({
                   </p>
                 </div>
                 {promotion.description ? (
-                  <p className="mt-3 text-sm leading-relaxed text-zinc-400">{promotion.description}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+                    {promotion.description}
+                  </p>
                 ) : null}
                 <div className="mt-3 grid gap-2 text-[10px] text-zinc-500 sm:grid-cols-2">
                   <span>Início: {dateTime(promotion.starts_at)}</span>
@@ -427,7 +437,10 @@ export function MerchantCustomersPanel({ orders }: { orders: MerchantOrder[] }) 
           <Users className="h-5 w-5 text-primary" />
         </div>
         {customers.length === 0 ? (
-          <EmptyState title="Sem clientes no histórico" description="Os clientes aparecerão após os primeiros pedidos." />
+          <EmptyState
+            title="Sem clientes no histórico"
+            description="Os clientes aparecerão após os primeiros pedidos."
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[620px] text-left text-sm">
@@ -524,7 +537,10 @@ export function MerchantReviewsPanel({
           </div>
         </div>
         {filtered.length === 0 ? (
-          <EmptyState title="Nenhuma avaliação neste filtro" description="As avaliações concluídas aparecerão aqui." />
+          <EmptyState
+            title="Nenhuma avaliação neste filtro"
+            description="As avaliações concluídas aparecerão aqui."
+          />
         ) : (
           <div className="space-y-3">
             {filtered.map((review) => (
