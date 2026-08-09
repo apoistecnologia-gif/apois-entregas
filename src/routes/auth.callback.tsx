@@ -33,7 +33,8 @@ function AuthCallbackPage() {
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
-          if (!cancelled) setErrorMessage("Não foi possível confirmar este acesso. Solicite um novo link.");
+          if (!cancelled)
+            setErrorMessage("Não foi possível confirmar este acesso. Solicite um novo link.");
           return;
         }
       }
@@ -43,7 +44,8 @@ function AuthCallbackPage() {
         error,
       } = await supabase.auth.getSession();
       if (error || !session) {
-        if (!cancelled) setErrorMessage("O link expirou ou já foi utilizado. Tente entrar novamente.");
+        if (!cancelled)
+          setErrorMessage("O link expirou ou já foi utilizado. Tente entrar novamente.");
         return;
       }
 

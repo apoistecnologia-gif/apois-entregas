@@ -90,20 +90,33 @@ function RedefinirSenhaPage() {
       <div className="w-full max-w-sm rounded-3xl border border-zinc-900 bg-zinc-950 p-6">
         <div className="text-center">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary">
-            {checking ? <Loader2 className="h-7 w-7 animate-spin" /> : <LockKeyhole className="h-7 w-7" />}
+            {checking ? (
+              <Loader2 className="h-7 w-7 animate-spin" />
+            ) : (
+              <LockKeyhole className="h-7 w-7" />
+            )}
           </div>
           <h1 className="mt-4 text-2xl font-black">Redefinir senha</h1>
           <p className="mt-2 text-sm text-zinc-500">Crie uma nova senha para sua conta APOIS.</p>
         </div>
 
         {checking ? (
-          <p className="mt-6 text-center text-sm text-zinc-500">Validando o link de recuperação...</p>
+          <p className="mt-6 text-center text-sm text-zinc-500">
+            Validando o link de recuperação...
+          </p>
         ) : linkError ? (
           <div className="mt-6">
-            <p role="alert" className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+            <p
+              role="alert"
+              className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300"
+            >
               {linkError}
             </p>
-            <Button type="button" onClick={() => navigate({ to: "/login" })} className="mt-4 h-12 w-full">
+            <Button
+              type="button"
+              onClick={() => navigate({ to: "/login" })}
+              className="mt-4 h-12 w-full"
+            >
               Voltar ao login
             </Button>
           </div>

@@ -23,8 +23,10 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as MerchantRouteImport } from './routes/merchant'
 import { Route as PedidosRouteImport } from './routes/pedidos'
 import { Route as PerfilRouteImport } from './routes/perfil'
+import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SacolaRouteImport } from './routes/sacola'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ChamadoSuporteTicketIdRouteImport } from './routes/chamado-suporte.$ticketId'
 import { Route as EnderecosNovoRouteImport } from './routes/enderecos/novo'
 import { Route as EstabelecimentoMerchantIdRouteImport } from './routes/estabelecimento.$merchantId'
@@ -112,6 +114,11 @@ const PerfilRoute = PerfilRouteImport.update({
   path: '/perfil',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RedefinirSenhaRoute = RedefinirSenhaRouteImport.update({
+  id: '/redefinir-senha',
+  path: '/redefinir-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -120,6 +127,11 @@ const RegisterRoute = RegisterRouteImport.update({
 const SacolaRoute = SacolaRouteImport.update({
   id: '/sacola',
   path: '/sacola',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChamadoSuporteTicketIdRoute = ChamadoSuporteTicketIdRouteImport.update({
@@ -216,8 +228,10 @@ export interface FileRoutesByFullPath {
   '/merchant': typeof MerchantRoute
   '/pedidos': typeof PedidosRoute
   '/perfil': typeof PerfilRouteWithChildren
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/register': typeof RegisterRoute
   '/sacola': typeof SacolaRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/chamado-suporte/$ticketId': typeof ChamadoSuporteTicketIdRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
@@ -248,8 +262,10 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/merchant': typeof MerchantRoute
   '/pedidos': typeof PedidosRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/register': typeof RegisterRoute
   '/sacola': typeof SacolaRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/chamado-suporte/$ticketId': typeof ChamadoSuporteTicketIdRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
@@ -281,8 +297,10 @@ export interface FileRoutesById {
   '/merchant': typeof MerchantRoute
   '/pedidos': typeof PedidosRoute
   '/perfil': typeof PerfilRouteWithChildren
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/register': typeof RegisterRoute
   '/sacola': typeof SacolaRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/chamado-suporte/$ticketId': typeof ChamadoSuporteTicketIdRoute
   '/enderecos/novo': typeof EnderecosNovoRoute
   '/estabelecimento/$merchantId': typeof EstabelecimentoMerchantIdRoute
@@ -316,8 +334,10 @@ export interface FileRouteTypes {
     | '/merchant'
     | '/pedidos'
     | '/perfil'
+    | '/redefinir-senha'
     | '/register'
     | '/sacola'
+    | '/auth/callback'
     | '/chamado-suporte/$ticketId'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
@@ -348,8 +368,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/merchant'
     | '/pedidos'
+    | '/redefinir-senha'
     | '/register'
     | '/sacola'
+    | '/auth/callback'
     | '/chamado-suporte/$ticketId'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
@@ -380,8 +402,10 @@ export interface FileRouteTypes {
     | '/merchant'
     | '/pedidos'
     | '/perfil'
+    | '/redefinir-senha'
     | '/register'
     | '/sacola'
+    | '/auth/callback'
     | '/chamado-suporte/$ticketId'
     | '/enderecos/novo'
     | '/estabelecimento/$merchantId'
@@ -414,8 +438,10 @@ export interface RootRouteChildren {
   MerchantRoute: typeof MerchantRoute
   PedidosRoute: typeof PedidosRoute
   PerfilRoute: typeof PerfilRouteWithChildren
+  RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   RegisterRoute: typeof RegisterRoute
   SacolaRoute: typeof SacolaRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   ChamadoSuporteTicketIdRoute: typeof ChamadoSuporteTicketIdRoute
   EstabelecimentoMerchantIdRoute: typeof EstabelecimentoMerchantIdRoute
   PedidoOrderIdRoute: typeof PedidoOrderIdRouteWithChildren
@@ -522,6 +548,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PerfilRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/redefinir-senha': {
+      id: '/redefinir-senha'
+      path: '/redefinir-senha'
+      fullPath: '/redefinir-senha'
+      preLoaderRoute: typeof RedefinirSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -534,6 +567,13 @@ declare module '@tanstack/react-router' {
       path: '/sacola'
       fullPath: '/sacola'
       preLoaderRoute: typeof SacolaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chamado-suporte/$ticketId': {
@@ -720,8 +760,10 @@ const rootRouteChildren: RootRouteChildren = {
   MerchantRoute: MerchantRoute,
   PedidosRoute: PedidosRoute,
   PerfilRoute: PerfilRouteWithChildren,
+  RedefinirSenhaRoute: RedefinirSenhaRoute,
   RegisterRoute: RegisterRoute,
   SacolaRoute: SacolaRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   ChamadoSuporteTicketIdRoute: ChamadoSuporteTicketIdRoute,
   EstabelecimentoMerchantIdRoute: EstabelecimentoMerchantIdRoute,
   PedidoOrderIdRoute: PedidoOrderIdRouteWithChildren,
