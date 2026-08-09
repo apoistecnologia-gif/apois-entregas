@@ -1,16 +1,20 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import {
   ArrowLeft,
-  MapPin,
-  CheckCircle2,
   Bike,
-  PackageCheck,
-  UtensilsCrossed,
-  Star,
+  CheckCircle2,
+  KeyRound,
   Loader2,
+  MapPin,
+  PackageCheck,
+  Star,
+  Store,
+  Tag,
+  UtensilsCrossed,
   XCircle,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CustomerDeliveryMap } from "@/components/CustomerDeliveryMap";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -19,44 +23,84 @@ export const Route = createFileRoute("/pedido/$orderId/")({
   head: () => ({ meta: [{ title: "Detalhes do Pedido | APOIS ENTREGA" }] }),
 });
 
+const money = (value: unknown) =>
+  `R$ ${Number(value ?? 0)
+    .toFixed(2)
+    .replace(".", ",")}`;
+
 function OrderDetailsPage() {
   const navigate = useNavigate();
   const { orderId } = useParams({ from: "/pedido/$orderId/" });
   const [order, setOrder] = useState<any | null>(null);
+  const [deliveryJob, setDeliveryJob] = useState<any | null>(null);
+  const [pickupPin, setPickupPin] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
 
   const fetchOrder = useCallback(async () => {
-    const { data, error } = await supabase
+    const orderResult = await supabase
       .from("orders")
       .select("*, merchants (*), order_items (*)")
       .eq("id", orderId)
       .single();
-    if (error) {
+
+    if (orderResult.error || !orderResult.data) {
       toast.error("Não foi possível carregar os detalhes deste pedido.");
       setOrder(null);
-    } else {
-      setOrder(data);
+      setDeliveryJob(null);
+      setPickupPin(null);
+      setLoading(false);
+      return;
     }
+
+    const nextOrder: any = orderResult.data;
+    setOrder(nextOrder);
+
+    if (nextOrder.fulfillment_type === "delivery") {
+      const { data, error } = await (supabase.from as any)("delivery_jobs")
+        .select("id,courier_id,status,delivery_latitude,delivery_longitude")
+        .eq("order_id", orderId)
+        .maybeSingle();
+      if (error) console.warn("Não foi possível carregar o rastreamento da entrega:", error.code);
+      setDeliveryJob(data ?? null);
+      setPickupPin(null);
+    } else {
+      const { data, error } = await (supabase.from as any)("delivery_confirmation_secrets")
+        .select("pin_code,locked_until")
+        .eq("order_id", orderId)
+        .maybeSingle();
+      if (error) console.warn("PIN de retirada indisponível:", error.code);
+      setPickupPin(data?.pin_code ?? null);
+      setDeliveryJob(null);
+    }
+
     setLoading(false);
   }, [orderId]);
 
   useEffect(() => {
     void fetchOrder();
-    const channel = supabase
+    const orderChannel = supabase
       .channel(`order_status_${orderId}`)
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${orderId}` },
-        (payload) => {
-          setOrder((previous: any) => (previous ? { ...previous, ...payload.new } : null));
-        },
+        () => void fetchOrder(),
       )
       .subscribe();
+    const deliveryChannel = supabase
+      .channel(`order_delivery_${orderId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "delivery_jobs", filter: `order_id=eq.${orderId}` },
+        () => void fetchOrder(),
+      )
+      .subscribe();
+
     return () => {
-      void supabase.removeChannel(channel);
+      void supabase.removeChannel(orderChannel);
+      void supabase.removeChannel(deliveryChannel);
     };
-  }, [orderId, fetchOrder]);
+  }, [fetchOrder, orderId]);
 
   const cancelOrder = async () => {
     if (!order || cancelling) return;
@@ -64,7 +108,7 @@ function OrderDetailsPage() {
     if (!reason) return;
     if (
       !window.confirm(
-        "Confirma o cancelamento? Depois de cancelado, o pedido não seguirá para preparo/entrega.",
+        "Confirma o cancelamento? Depois de cancelado, o pedido não seguirá para preparo ou recebimento.",
       )
     )
       return;
@@ -97,6 +141,79 @@ function OrderDetailsPage() {
     }
   };
 
+  const deliverySteps = useMemo(() => {
+    if (!order) return [];
+    const stepIndex = (() => {
+      switch (order.status) {
+        case "confirmed":
+        case "accepted":
+          return 0;
+        case "preparing":
+          return 1;
+        case "ready":
+        case "searching_driver":
+        case "driver_assigned":
+        case "driver_arriving_store":
+          return 2;
+        case "picked_up":
+        case "out_for_delivery":
+        case "on_the_way":
+          return 3;
+        case "delivered":
+          return 4;
+        default:
+          return -1;
+      }
+    })();
+    const status = (index: number) => {
+      if (stepIndex < 0) return "pending";
+      if (order.status === "delivered" && index <= stepIndex) return "completed";
+      if (index < stepIndex) return "completed";
+      if (index === stepIndex) return "current";
+      return "pending";
+    };
+    return [
+      { label: "Pedido confirmado", icon: CheckCircle2, status: status(0) },
+      { label: "Estabelecimento preparando", icon: UtensilsCrossed, status: status(1) },
+      { label: "Pedido pronto", icon: PackageCheck, status: status(2) },
+      { label: "Saiu para entrega", icon: Bike, status: status(3) },
+      { label: "Entregue", icon: CheckCircle2, status: status(4) },
+    ];
+  }, [order]);
+
+  const pickupSteps = useMemo(() => {
+    if (!order) return [];
+    const stepIndex = (() => {
+      switch (order.status) {
+        case "confirmed":
+        case "accepted":
+          return 0;
+        case "preparing":
+          return 1;
+        case "ready":
+        case "ready_for_pickup":
+          return 2;
+        case "delivered":
+          return 3;
+        default:
+          return -1;
+      }
+    })();
+    const status = (index: number) => {
+      if (stepIndex < 0) return "pending";
+      if (order.status === "delivered" && index <= stepIndex) return "completed";
+      if (index < stepIndex) return "completed";
+      if (index === stepIndex) return "current";
+      return "pending";
+    };
+    return [
+      { label: "Pedido confirmado", icon: CheckCircle2, status: status(0) },
+      { label: "Estabelecimento preparando", icon: UtensilsCrossed, status: status(1) },
+      { label: "Pronto para retirada", icon: PackageCheck, status: status(2) },
+      { label: "Pedido retirado", icon: CheckCircle2, status: status(3) },
+    ];
+  }, [order]);
+
   if (loading)
     return (
       <div className="flex h-screen w-full items-center justify-center bg-black">
@@ -119,49 +236,12 @@ function OrderDetailsPage() {
     );
   }
 
-  const getStatusStep = (status: string) => {
-    switch (status) {
-      case "confirmed":
-      case "accepted":
-        return 0;
-      case "preparing":
-        return 1;
-      case "ready":
-      case "ready_for_pickup":
-      case "searching_driver":
-      case "driver_assigned":
-      case "driver_arriving_store":
-        return 2;
-      case "picked_up":
-      case "out_for_delivery":
-      case "on_the_way":
-        return 3;
-      case "delivered":
-        return 4;
-      default:
-        return -1;
-    }
-  };
-
-  const currentStepIdx = getStatusStep(order.status);
+  const isPickup = order.fulfillment_type === "pickup";
+  const steps = isPickup ? pickupSteps : deliverySteps;
   const isCancelled = order.status === "cancelled";
   const isRefunded = order.status === "refunded" || order.payment_status === "refunded";
   const canCancel = ["created", "pending_payment", "paid", "confirmed"].includes(order.status);
-  const stepStatus = (index: number) => {
-    if (currentStepIdx < 0) return "pending";
-    if (order.status === "delivered" && index <= currentStepIdx) return "completed";
-    if (index < currentStepIdx) return "completed";
-    if (index === currentStepIdx) return "current";
-    return "pending";
-  };
-
-  const steps = [
-    { label: "Pedido confirmado", icon: CheckCircle2, status: stepStatus(0) },
-    { label: "Estabelecimento preparando", icon: UtensilsCrossed, status: stepStatus(1) },
-    { label: "Pedido pronto", icon: PackageCheck, status: stepStatus(2) },
-    { label: "Saiu para entrega", icon: Bike, status: stepStatus(3) },
-    { label: "Entregue", icon: CheckCircle2, status: stepStatus(4) },
-  ];
+  const pickupReady = isPickup && ["ready", "ready_for_pickup"].includes(order.status);
 
   let deliveryAddress: any = order.delivery_address;
   if (typeof deliveryAddress === "string") {
@@ -172,6 +252,14 @@ function OrderDetailsPage() {
     }
   }
 
+  const merchantAddress = [
+    order.merchants?.address_line,
+    order.merchants?.neighborhood,
+    [order.merchants?.city, order.merchants?.state].filter(Boolean).join(" - "),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-black text-white">
       <header className="sticky top-0 z-50 flex items-center gap-4 border-b border-zinc-900 bg-black/80 p-4 backdrop-blur-lg">
@@ -179,6 +267,7 @@ function OrderDetailsPage() {
           type="button"
           onClick={() => navigate({ to: "/pedidos" })}
           className="rounded-full bg-zinc-900 p-2"
+          aria-label="Voltar para meus pedidos"
         >
           <ArrowLeft />
         </button>
@@ -201,7 +290,7 @@ function OrderDetailsPage() {
                 ? "O pagamento deste pedido foi reembolsado."
                 : order.payment_status === "paid"
                   ? "O pedido foi cancelado. Se houver estorno pendente, ele será conciliado pelo sistema."
-                  : "Este pedido foi cancelado e não seguirá para entrega."}
+                  : "Este pedido foi cancelado e não seguirá para recebimento."}
             </p>
           </section>
         ) : (
@@ -239,6 +328,50 @@ function OrderDetailsPage() {
             </div>
           </section>
         )}
+
+        {!isPickup && !isCancelled && !isRefunded ? <CustomerDeliveryMap job={deliveryJob} /> : null}
+
+        {pickupReady ? (
+          <section className="rounded-3xl border border-primary/30 bg-primary/5 p-5">
+            <div className="flex items-start gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary text-black">
+                <KeyRound className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-primary">
+                  Pronto para retirada
+                </p>
+                <h2 className="mt-1 text-lg font-black">Mostre este PIN no estabelecimento</h2>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                  Só informe o código quando estiver retirando o pedido. O estabelecimento usa o PIN
+                  para concluir a entrega com segurança.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 rounded-2xl border border-zinc-800 bg-black p-5 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">
+                Código de retirada
+              </p>
+              <p className="mt-2 text-4xl font-black tracking-[0.35em] text-primary">
+                {pickupPin ?? "••••"}
+              </p>
+              {!pickupPin ? (
+                <p className="mt-2 text-xs text-zinc-500">
+                  Atualizando o código de retirada. Tente novamente em alguns instantes.
+                </p>
+              ) : null}
+            </div>
+            <div className="mt-4 flex gap-3 rounded-2xl border border-zinc-900 bg-black p-4">
+              <Store className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <div>
+                <p className="text-sm font-bold">{order.merchants?.name}</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                  {merchantAddress || "Consulte o estabelecimento no app antes de se deslocar."}
+                </p>
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {canCancel ? (
           <button
@@ -278,9 +411,7 @@ function OrderDetailsPage() {
                   <span className="text-zinc-300">
                     {item.quantity}x {item.product_name}
                   </span>
-                  <span className="font-bold">
-                    R$ {Number(item.line_total).toFixed(2).replace(".", ",")}
-                  </span>
+                  <span className="font-bold">{money(item.line_total)}</span>
                 </div>
                 {item.selected_options ? (
                   <p className="text-[10px] text-zinc-500">
@@ -299,32 +430,57 @@ function OrderDetailsPage() {
           <div className="space-y-2 border-t border-zinc-900 pt-3">
             <div className="flex justify-between text-xs text-zinc-500">
               <span>Subtotal</span>
-              <span>R$ {Number(order.subtotal).toFixed(2).replace(".", ",")}</span>
+              <span>{money(order.subtotal)}</span>
             </div>
             <div className="flex justify-between text-xs text-zinc-500">
-              <span>Taxa de entrega</span>
-              <span>R$ {Number(order.delivery_fee).toFixed(2).replace(".", ",")}</span>
+              <span>{isPickup ? "Retirada" : "Taxa de entrega"}</span>
+              <span>{money(order.delivery_fee)}</span>
             </div>
-            <div className="flex justify-between pt-2 text-lg font-black text-primary">
+            {Number(order.discount ?? 0) > 0 ? (
+              <div className="flex justify-between text-xs text-emerald-400">
+                <span className="flex items-center gap-1">
+                  <Tag className="h-3.5 w-3.5" /> Desconto
+                </span>
+                <span>- {money(order.discount)}</span>
+              </div>
+            ) : null}
+            <div className="mt-2 flex justify-between border-t border-zinc-900 pt-3 text-lg font-black text-primary">
               <span>Total</span>
-              <span>R$ {Number(order.total).toFixed(2).replace(".", ",")}</span>
+              <span>{money(order.total)}</span>
             </div>
           </div>
         </section>
 
         <section className="flex gap-4 rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-zinc-900">
-            <MapPin className="h-5 w-5 text-primary" />
+            {isPickup ? (
+              <Store className="h-5 w-5 text-primary" />
+            ) : (
+              <MapPin className="h-5 w-5 text-primary" />
+            )}
           </div>
           <div>
-            <p className="text-xs font-bold uppercase text-zinc-500">Endereço de entrega</p>
-            <p className="mt-0.5 text-sm font-bold">
-              {deliveryAddress?.street || "—"}, {deliveryAddress?.number || "s/n"}
+            <p className="text-xs font-bold uppercase text-zinc-500">
+              {isPickup ? "Local de retirada" : "Endereço de entrega"}
             </p>
-            <p className="text-[11px] text-zinc-500">
-              {deliveryAddress?.label ? `${deliveryAddress.label} • ` : ""}
-              {deliveryAddress?.neighborhood || ""}
-            </p>
+            {isPickup ? (
+              <>
+                <p className="mt-0.5 text-sm font-bold">{order.merchants?.name}</p>
+                <p className="text-[11px] leading-relaxed text-zinc-500">
+                  {merchantAddress || "Endereço do estabelecimento não informado."}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-0.5 text-sm font-bold">
+                  {deliveryAddress?.street || "—"}, {deliveryAddress?.number || "s/n"}
+                </p>
+                <p className="text-[11px] text-zinc-500">
+                  {deliveryAddress?.label ? `${deliveryAddress.label} • ` : ""}
+                  {deliveryAddress?.neighborhood || ""}
+                </p>
+              </>
+            )}
           </div>
         </section>
 
