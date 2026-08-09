@@ -1,0 +1,78 @@
+name: Integrate merchant growth panels
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/integrate-merchant-growth-panels.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Wire promotions customers and reviews
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          path = Path('src/routes/merchant.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          product_import = 'import { MerchantProductEditor } from "@/components/MerchantProductEditor";\n'
+          growth_import = '''import {\n  MerchantCustomersPanel,\n  MerchantPromotionsPanel,\n  MerchantReviewsPanel,\n} from "@/components/MerchantGrowthPanels";\n'''
+          if growth_import not in text:
+              if product_import not in text:
+                  raise SystemExit('merchant product import anchor missing')
+              text = text.replace(product_import, product_import + growth_import, 1)
+
+          if '  BadgePercent,\n' not in text:
+              text = text.replace('  BadgeDollarSign,\n', '  BadgeDollarSign,\n  BadgePercent,\n', 1)
+          if '  Star,\n' not in text:
+              text = text.replace('  Store,\n', '  Store,\n  Star,\n', 1)
+          if '  Users,\n' not in text:
+              text = text.replace('  UtensilsCrossed,\n', '  Users,\n  UtensilsCrossed,\n', 1)
+
+          old_tabs = '''    { id: "menu", label: "Cardápio", icon: UtensilsCrossed },\n    { id: "hours", label: "Horários", icon: Clock3 },\n    { id: "finance", label: "Financeiro", icon: WalletCards },\n'''
+          new_tabs = '''    { id: "menu", label: "Cardápio", icon: UtensilsCrossed },\n    { id: "hours", label: "Horários", icon: Clock3 },\n    { id: "promotions", label: "Promoções", icon: BadgePercent },\n    { id: "customers", label: "Clientes", icon: Users },\n    { id: "reviews", label: "Avaliações", icon: Star },\n    { id: "finance", label: "Financeiro", icon: WalletCards },\n'''
+          if new_tabs not in text:
+              if old_tabs not in text:
+                  raise SystemExit('merchant tabs anchor missing')
+              text = text.replace(old_tabs, new_tabs, 1)
+
+          finance_anchor = '      {activeTab === "finance" && (\n'
+          panels = '''      {activeTab === "promotions" && (\n        <MerchantPromotionsPanel\n          merchantId={merchant.id}\n          products={products}\n          categories={menuCategories}\n        />\n      )}\n\n      {activeTab === "customers" && <MerchantCustomersPanel orders={orders} />}\n\n      {activeTab === "reviews" && (\n        <MerchantReviewsPanel\n          reviews={reviews}\n          rating={Number(merchant.rating ?? 0)}\n          reviewCount={Number(merchant.review_count ?? reviews.length)}\n        />\n      )}\n\n'''
+          if panels not in text:
+              if finance_anchor not in text:
+                  raise SystemExit('finance render anchor missing')
+              text = text.replace(finance_anchor, panels + finance_anchor, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+          bunx prettier src/routes/merchant.tsx src/components/MerchantGrowthPanels.tsx --write
+      - name: Full verification
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit integration and remove workflow
+        run: |
+          rm .github/workflows/integrate-merchant-growth-panels.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(merchant): wire promotions customers and reviews"
+          git push
