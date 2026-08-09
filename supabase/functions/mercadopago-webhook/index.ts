@@ -80,6 +80,10 @@ async function validSignature(request: Request, dataId: string, secrets: string[
   return false;
 }
 
+function isSandboxOrderId(value: string): boolean {
+  return /^ORDTST[0-9A-Z]{20,}$/i.test(value);
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method !== "POST") return response(405, { error: "method_not_allowed" });
 
@@ -113,9 +117,18 @@ Deno.serve(async (request: Request) => {
   const dataId = url.searchParams.get("data.id")?.trim() ?? text(bodyData?.id);
   if (!dataId) return response(400, { error: "missing_data_id" });
 
-  if (!(await validSignature(request, dataId, webhookSecrets))) {
+  const signatureValid = await validSignature(request, dataId, webhookSecrets);
+  const sandboxVerifiedByProvider = !signatureValid && isSandboxOrderId(dataId);
+
+  // Production resources require a valid HMAC signature. Mercado Pago sandbox Orders
+  // can be emitted by the auto-created test seller application, whose webhook signing
+  // secret is not exposed in the productive developer panel. For ORDTST resources only,
+  // we authenticate the resource server-to-server below using our test Access Token and
+  // trust exclusively the provider response, never the unsigned notification body.
+  if (!signatureValid && !sandboxVerifiedByProvider) {
     console.warn("mercadopago webhook invalid signature", {
       dataId,
+      sandbox: false,
       testSecretConfigured: Boolean(webhookSecretTest),
       productionSecretConfigured: Boolean(webhookSecretProduction || webhookSecretLegacy),
     });
@@ -133,14 +146,23 @@ Deno.serve(async (request: Request) => {
     // Keep a safe ignored response for simulated/unknown resources.
   }
 
-  if (providerResponse.status === 404) return response(200, { accepted: true, ignored: true });
+  if (providerResponse.status === 404) {
+    return signatureValid
+      ? response(200, { accepted: true, ignored: true })
+      : response(401, { error: "sandbox_resource_not_verified" });
+  }
 
   if (!providerResponse.ok || !isRecord(providerOrder)) {
     console.error("mercadopago webhook order lookup failed", {
       status: providerResponse.status,
       dataId,
+      signatureValid,
     });
     return response(503, { error: "provider_lookup_failed" });
+  }
+
+  if (text(providerOrder.id) !== dataId) {
+    return response(409, { error: "provider_resource_mismatch" });
   }
 
   const externalReference = text(providerOrder.external_reference);
@@ -154,9 +176,12 @@ Deno.serve(async (request: Request) => {
 
   const providerStatus = text(providerOrder.status) ?? "unknown";
   const providerStatusDetail = text(providerOrder.status_detail) ?? "unknown";
-  const eventType = text(payload.action) ?? text(payload.type) ?? "order.updated";
-  const providerNotificationId =
-    text(payload.id) ?? `${eventType}:${dataId}:${providerStatus}:${providerStatusDetail}`;
+  const eventType = signatureValid
+    ? text(payload.action) ?? text(payload.type) ?? "order.updated"
+    : "order.reconciled";
+  const providerNotificationId = signatureValid
+    ? text(payload.id) ?? `${eventType}:${dataId}:${providerStatus}:${providerStatusDetail}`
+    : `provider-reconcile:${dataId}:${providerStatus}:${providerStatusDetail}`;
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -204,6 +229,14 @@ Deno.serve(async (request: Request) => {
 
   if (existingEvent) return response(200, { accepted: true, duplicate: true });
 
+  const safeNotification = signatureValid
+    ? payload
+    : {
+        type: "order",
+        data: { id: dataId },
+        source: "sandbox_provider_reconciliation",
+      };
+
   const { data: eventRow, error: eventError } = await admin
     .from("payment_events")
     .insert({
@@ -211,7 +244,7 @@ Deno.serve(async (request: Request) => {
       provider_event_id: eventId,
       event_type: eventType,
       payment_id: payment.id,
-      payload: { notification: payload, order: providerOrder },
+      payload: { notification: safeNotification, order: providerOrder },
       status: "received",
     })
     .select("id")
@@ -346,5 +379,9 @@ Deno.serve(async (request: Request) => {
     .update({ status: "processed", processed_at: now })
     .eq("id", eventRow.id);
 
-  return response(200, { accepted: true, processed: providerStatus });
+  return response(200, {
+    accepted: true,
+    processed: providerStatus,
+    verification: signatureValid ? "hmac" : "sandbox_provider_lookup",
+  });
 });
