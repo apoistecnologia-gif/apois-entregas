@@ -1,0 +1,98 @@
+name: One-shot customer UI integrity fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/customer-ui-integrity-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Remove misleading controls and wire real navigation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          inicio = Path("src/routes/inicio.tsx")
+          text = inicio.read_text(encoding="utf-8")
+          text = text.replace("  Heart,\n", "", 1)
+          old = '''            <span className="flex shrink-0 items-center gap-0.5 text-[13px] font-semibold text-primary">
+              Ver mais <ChevronRight className="h-4 w-4" />
+            </span>'''
+          new = '''            <button
+              type="button"
+              onClick={() => navigate({ to: "/buscar", search: {} })}
+              className="flex shrink-0 items-center gap-0.5 text-[13px] font-semibold text-primary"
+            >
+              Ver mais <ChevronRight className="h-4 w-4" />
+            </button>'''
+          if old not in text:
+              raise SystemExit("inicio: Ver mais block not found")
+          text = text.replace(old, new, 1)
+          old = '''                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="truncate text-base font-extrabold text-white">
+                          {merchant.name}
+                        </h3>
+                        <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
+                      </div>'''
+          new = '''                      <div className="flex items-center gap-2">
+                        <h3 className="truncate text-base font-extrabold text-white">
+                          {merchant.name}
+                        </h3>
+                      </div>'''
+          if old not in text:
+              raise SystemExit("inicio: decorative heart block not found")
+          text = text.replace(old, new, 1)
+          old = '''        <button className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-zinc-950 to-black px-3 py-4 text-left shadow-[0_10px_30px_-18px_rgba(255,215,0,0.7)] transition-transform active:scale-[0.99]">'''
+          new = '''        <button
+          type="button"
+          onClick={() => navigate({ to: "/apois-plus" })}
+          className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-zinc-950 to-black px-3 py-4 text-left shadow-[0_10px_30px_-18px_rgba(255,215,0,0.7)] transition-transform active:scale-[0.99]"
+        >'''
+          if old not in text:
+              raise SystemExit("inicio: APOIS+ button not found")
+          text = text.replace(old, new, 1)
+          text = text.replace(
+              "Frete grátis e benefícios exclusivos",
+              "Conheça os benefícios que estão chegando",
+              1,
+          )
+          inicio.write_text(text, encoding="utf-8")
+
+          buscar = Path("src/routes/buscar.tsx")
+          text = buscar.read_text(encoding="utf-8")
+          text = text.replace("  Heart,\n", "", 1)
+          old = '''                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="truncate text-base font-extrabold text-white">
+                          {merchant.name}
+                        </h3>
+                        <Heart className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-colors" />
+                      </div>'''
+          new = '''                      <div className="flex items-center gap-2">
+                        <h3 className="truncate text-base font-extrabold text-white">
+                          {merchant.name}
+                        </h3>
+                      </div>'''
+          if old not in text:
+              raise SystemExit("buscar: decorative heart block not found")
+          text = text.replace(old, new, 1)
+          buscar.write_text(text, encoding="utf-8")
+          PY
+      - name: Format and commit changes
+        run: |
+          npx prettier@3.9.6 src/routes/inicio.tsx src/routes/buscar.tsx --write
+          if git diff --quiet -- src/routes/inicio.tsx src/routes/buscar.tsx; then
+            echo "No changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/inicio.tsx src/routes/buscar.tsx
+          git commit -m "fix(customer): remove misleading controls and wire navigation"
+          git push
