@@ -1,0 +1,74 @@
+name: Customer live tracking integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/customer-live-tracking.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Integrate customer delivery tracking
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/routes/pedido/$orderId/index.tsx")
+          text = path.read_text(encoding="utf-8")
+
+          import_anchor = 'import { toast } from "sonner";\n'
+          import_line = 'import { CustomerDeliveryMap } from "@/components/CustomerDeliveryMap";\n'
+          if import_line not in text:
+              if import_anchor not in text:
+                  raise SystemExit("order detail import anchor missing")
+              text = text.replace(import_anchor, import_anchor + import_line, 1)
+
+          old_select = '.select("*, merchants (*), order_items (*)")'
+          new_select = '.select("*, merchants (*), order_items (*), delivery_jobs(id,courier_id,status,delivery_latitude,delivery_longitude)")'
+          if old_select in text:
+              text = text.replace(old_select, new_select, 1)
+
+          if '<CustomerDeliveryMap job={order.delivery_jobs?.[0] ?? null} />' not in text:
+              cancel_anchor = '''        {canCancel ? (
+          <button'''
+              insertion = '''        <CustomerDeliveryMap job={order.delivery_jobs?.[0] ?? null} />
+
+'''
+              if cancel_anchor not in text:
+                  raise SystemExit("customer tracking render anchor missing")
+              text = text.replace(cancel_anchor, insertion + cancel_anchor, 1)
+
+          path.write_text(text, encoding="utf-8")
+          PY
+      - name: Format
+        run: bunx prettier src/components/CustomerDeliveryMap.tsx 'src/routes/pedido/$orderId/index.tsx' --write
+      - name: Verify
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit and cleanup
+        run: |
+          rm -f .github/workflows/customer-live-tracking.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(customer): track assigned courier in real time"
+          git push
