@@ -127,8 +127,16 @@ function PerfilIndexPage() {
 
       <main className="scrollbar-none flex-1 overflow-y-auto p-4 pb-20">
         <div className="mb-8 flex flex-col items-center rounded-3xl border border-zinc-900/50 bg-zinc-900/40 p-6 backdrop-blur-sm">
-          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full border-2 border-primary bg-zinc-900 shadow-[0_0_15px_rgba(255,215,0,0.3)]">
-            <User className="h-10 w-10 text-primary" />
+          <div className="mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-zinc-900 shadow-[0_0_15px_rgba(255,215,0,0.3)]">
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt="Foto de perfil"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <User className="h-10 w-10 text-primary" />
+            )}
           </div>
           <h2 className="mb-1 text-xl font-bold">
             {loading ? "Carregando..." : profile?.full_name || "Usuário"}

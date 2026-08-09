@@ -292,8 +292,19 @@ function Register() {
               className="mt-0.5 border-zinc-700 data-[state=checked]:bg-primary data-[state=checked]:text-black"
             />
             <label htmlFor="terms" className="text-[11px] text-zinc-400 leading-snug">
-              Aceito os <span className="text-primary font-bold">Termos de Uso</span> e a{" "}
-              <span className="text-primary font-bold">Política de Privacidade</span>.
+              Aceito os{" "}
+              <Link to="/termos" target="_blank" className="text-primary font-bold hover:underline">
+                Termos de Uso
+              </Link>{" "}
+              e a{" "}
+              <Link
+                to="/privacidade"
+                target="_blank"
+                className="text-primary font-bold hover:underline"
+              >
+                Política de Privacidade
+              </Link>
+              .
             </label>
           </div>
 

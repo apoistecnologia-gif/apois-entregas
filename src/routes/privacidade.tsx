@@ -103,14 +103,18 @@ function PrivacidadePage() {
       <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-zinc-900 bg-black/90 p-4 backdrop-blur">
         <button
           type="button"
-          onClick={() => (window.history.length > 1 ? window.history.back() : navigate({ to: "/" }))}
+          onClick={() =>
+            window.history.length > 1 ? window.history.back() : navigate({ to: "/" })
+          }
           className="rounded-full bg-zinc-900 p-2"
           aria-label="Voltar"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">APOIS ENTREGA</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">
+            APOIS ENTREGA
+          </p>
           <h1 className="font-black">Política de Privacidade</h1>
         </div>
       </header>
@@ -120,12 +124,16 @@ function PrivacidadePage() {
           <ShieldCheck className="h-7 w-7 text-emerald-400" />
           <h2 className="mt-3 text-xl font-black">Privacidade e proteção de dados</h2>
           <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-            Transparência sobre quais dados são usados, por que são necessários e quais direitos você pode exercer.
+            Transparência sobre quais dados são usados, por que são necessários e quais direitos
+            você pode exercer.
           </p>
         </section>
 
         {sections.map((section) => (
-          <section key={section.title} className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+          <section
+            key={section.title}
+            className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5"
+          >
             <h2 className="font-black text-primary">{section.title}</h2>
             <div className="mt-3 space-y-3 text-sm leading-6 text-zinc-400">
               {section.paragraphs.map((paragraph) => (

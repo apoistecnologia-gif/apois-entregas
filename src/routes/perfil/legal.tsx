@@ -83,8 +83,8 @@ function LegalPage() {
           </h2>
           <div className="space-y-4 text-[11px] leading-relaxed text-zinc-500">
             <p>
-              O APOIS ENTREGA é uma plataforma de tecnologia que conecta usuários a
-              estabelecimentos parceiros e entregadores independentes.
+              O APOIS ENTREGA é uma plataforma de tecnologia que conecta usuários a estabelecimentos
+              parceiros e entregadores independentes.
             </p>
             <p>Versão dos documentos legais: 09/08/2026.</p>
             <p className="pt-2 italic">© 2026 APOIS ENTREGA. Todos os direitos reservados.</p>

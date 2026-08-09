@@ -239,7 +239,11 @@ function DadosPessoaisPage() {
               <div className="relative">
                 <div className="grid h-24 w-24 place-items-center overflow-hidden rounded-full border-2 border-primary bg-zinc-900 shadow-[0_0_20px_rgba(255,215,0,0.2)]">
                   {avatarSrc ? (
-                    <img src={avatarSrc} alt="Foto de perfil" className="h-full w-full object-cover" />
+                    <img
+                      src={avatarSrc}
+                      alt="Foto de perfil"
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
                     <User className="h-12 w-12 text-primary" />
                   )}
@@ -333,7 +337,11 @@ function DadosPessoaisPage() {
                 disabled={saving}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 font-bold text-black transition-all active:scale-[0.98] disabled:opacity-50"
               >
-                {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                {saving ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Save className="h-5 w-5" />
+                )}
                 {saving ? "Salvando..." : "Salvar alterações"}
               </button>
             </form>
@@ -380,7 +388,9 @@ function Field({
 }) {
   return (
     <div className="space-y-2">
-      <label className="ml-1 text-xs font-bold uppercase tracking-widest text-primary">{label}</label>
+      <label className="ml-1 text-xs font-bold uppercase tracking-widest text-primary">
+        {label}
+      </label>
       <div className="relative">
         <Icon className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
         <div className="[&_.profile-input]:w-full [&_.profile-input]:rounded-2xl [&_.profile-input]:border [&_.profile-input]:border-zinc-800 [&_.profile-input]:bg-zinc-900 [&_.profile-input]:py-4 [&_.profile-input]:pl-12 [&_.profile-input]:pr-4 [&_.profile-input]:text-white [&_.profile-input]:outline-none [&_.profile-input]:transition-colors [&_.profile-input]:focus:border-primary">
