@@ -49,7 +49,9 @@ jobs:
               errors.push(`requestfailed:${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`),
             );
 
-            await page.goto(`${process.env.E2E_BASE_URL}/login`, { waitUntil: 'domcontentloaded' });
+            // Login has no long-lived Realtime subscription; networkidle here is an intentional
+            // hydration barrier so the button click cannot fall back to native form submission.
+            await page.goto(`${process.env.E2E_BASE_URL}/login`, { waitUntil: 'networkidle' });
             await page.waitForTimeout(1200);
             await page.getByPlaceholder('Digite seu e-mail').fill(process.env.E2E_EMAIL);
             await page.getByPlaceholder('Sua senha').fill(process.env.E2E_PASSWORD);
