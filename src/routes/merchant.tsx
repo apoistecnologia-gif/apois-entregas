@@ -587,6 +587,7 @@ function MerchantWorkspace() {
           "accepted",
           "preparing",
           "ready",
+          "ready_for_pickup",
           "searching_driver",
           "driver_assigned",
           "driver_arriving_store",
@@ -700,6 +701,7 @@ function MerchantWorkspace() {
                   busy={busyAction === `order:${order.id}`}
                   onTransition={transitionOrder}
                   onReject={rejectOrder}
+                  onRefresh={() => merchant?.id && void loadOperations(merchant.id)}
                 />
               ))}
               {pendingOrders.length === 0 ? (
@@ -728,7 +730,13 @@ function MerchantWorkspace() {
             {
               id: "ready",
               label: "Prontos para coleta",
-              statuses: ["ready", "searching_driver", "driver_assigned", "driver_arriving_store"],
+              statuses: [
+                "ready",
+                "ready_for_pickup",
+                "searching_driver",
+                "driver_assigned",
+                "driver_arriving_store",
+              ],
               accent: "border-emerald-500/30",
             },
             {
@@ -782,6 +790,7 @@ function MerchantWorkspace() {
                           busy={busyAction === `order:${order.id}`}
                           onTransition={transitionOrder}
                           onReject={rejectOrder}
+                          onRefresh={() => merchant?.id && void loadOperations(merchant.id)}
                           detailed
                         />
                       ))}
@@ -1642,7 +1651,7 @@ function printMerchantOrder(order: any) {
   window.setTimeout(() => popup.print(), 150);
 }
 
-function OrderRow({ order, busy, onTransition, onReject, detailed = false }: any) {
+function OrderRow({ order, busy, onTransition, onReject, onRefresh, detailed = false }: any) {
   const nextActions: Array<{ status: string; label: string }> =
     order.status === "confirmed"
       ? [
@@ -1711,6 +1720,9 @@ function OrderRow({ order, busy, onTransition, onReject, detailed = false }: any
         <Printer className="mr-1 h-3.5 w-3.5" />
         Imprimir pedido
       </Button>
+      {order.fulfillment_type === "pickup" && order.status === "ready_for_pickup" ? (
+        <PickupCompletion orderId={order.id} onDone={onRefresh} />
+      ) : null}
       {nextActions.length > 0 || canReject ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {nextActions.map((action) => (
@@ -1743,6 +1755,62 @@ function OrderRow({ order, busy, onTransition, onReject, detailed = false }: any
           ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function PickupCompletion({ orderId, onDone }: { orderId: string; onDone?: () => void }) {
+  const [pin, setPin] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const completePickup = async () => {
+    if (pin.length !== 4 || busy) return;
+    setBusy(true);
+    const { data, error } = await rpc("complete_pickup_with_pin", {
+      _order_id: orderId,
+      _pin: pin,
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message || "Não foi possível confirmar a retirada.");
+      return;
+    }
+    if (data !== true) {
+      setPin("");
+      toast.error("PIN incorreto ou temporariamente bloqueado. Confirme o código com o cliente.");
+      return;
+    }
+    setPin("");
+    toast.success("Retirada confirmada e pedido concluído.");
+    onDone?.();
+  };
+
+  return (
+    <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+      <p className="text-xs font-black uppercase tracking-wider text-primary">
+        Retirada pelo cliente
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+        Peça ao cliente o PIN de 4 dígitos exibido no pedido. A conclusão financeira só ocorre após
+        a confirmação correta.
+      </p>
+      <div className="mt-3 flex gap-2">
+        <input
+          value={pin}
+          onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 4))}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          placeholder="0000"
+          className="min-w-0 flex-1 rounded-xl border border-zinc-800 bg-black px-4 py-3 text-center text-xl font-black tracking-[0.35em] outline-none focus:border-primary"
+        />
+        <Button
+          type="button"
+          disabled={pin.length !== 4 || busy}
+          onClick={() => void completePickup()}
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar"}
+        </Button>
+      </div>
     </div>
   );
 }

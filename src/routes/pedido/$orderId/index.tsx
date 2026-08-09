@@ -329,7 +329,9 @@ function OrderDetailsPage() {
           </section>
         )}
 
-        {!isPickup && !isCancelled && !isRefunded ? <CustomerDeliveryMap job={deliveryJob} /> : null}
+        {!isPickup && !isCancelled && !isRefunded ? (
+          <CustomerDeliveryMap job={deliveryJob} />
+        ) : null}
 
         {pickupReady ? (
           <section className="rounded-3xl border border-primary/30 bg-primary/5 p-5">

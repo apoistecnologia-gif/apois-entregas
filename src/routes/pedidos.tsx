@@ -27,6 +27,31 @@ export const Route = createFileRoute("/pedidos")({
   }),
 });
 
+const statusLabels: Record<string, string> = {
+  created: "Criado",
+  pending_payment: "Aguardando pagamento",
+  paid: "Pagamento confirmado",
+  confirmed: "Confirmado",
+  accepted: "Aceito",
+  preparing: "Em preparo",
+  ready: "Pronto",
+  ready_for_pickup: "Pronto para retirada",
+  searching_driver: "Buscando entregador",
+  driver_assigned: "Entregador encontrado",
+  driver_arriving_store: "Entregador indo à loja",
+  picked_up: "Pedido coletado",
+  out_for_delivery: "Saiu para entrega",
+  on_the_way: "A caminho",
+  delivered: "Concluído",
+  cancelled: "Cancelado",
+  refunded: "Reembolsado",
+};
+
+function orderStatusLabel(status: string, fulfillmentType: string | null | undefined) {
+  if (status === "delivered" && fulfillmentType === "pickup") return "Retirado";
+  return statusLabels[status] ?? status.replaceAll("_", " ");
+}
+
 function PedidosPage() {
   const navigate = useNavigate();
   const { totalItems } = useCart();
@@ -136,11 +161,12 @@ function PedidosPage() {
                     {order.merchants?.name || "Estabelecimento"}
                   </h3>
                   <span className="text-[10px] font-black uppercase text-primary bg-primary/10 px-2 py-0.5 rounded-full ring-1 ring-primary/20">
-                    {order.status}
+                    {orderStatusLabel(order.status, order.fulfillment_type)}
                   </span>
                 </div>
                 <p className="text-[11px] text-zinc-500 mt-0.5">
                   Pedido #{order.order_number} •{" "}
+                  {order.fulfillment_type === "pickup" ? "Retirada" : "Entrega"} •{" "}
                   {new Date(order.created_at).toLocaleDateString("pt-BR")}
                 </p>
                 <p className="text-sm font-bold text-white mt-1">
