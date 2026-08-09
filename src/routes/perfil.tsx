@@ -2,6 +2,7 @@ import { createFileRoute, redirect, Outlet } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/perfil")({
+  ssr: false,
   beforeLoad: async ({ location }) => {
     const {
       data: { session },
