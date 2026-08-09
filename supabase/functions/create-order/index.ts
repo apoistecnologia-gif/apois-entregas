@@ -17,6 +17,7 @@ const corsHeaders = {
 const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" };
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PAYMENT_METHODS = new Set(["pix", "credit", "debit", "cash", "wallet"]);
+const FULFILLMENT_TYPES = new Set(["delivery", "pickup"]);
 
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -110,11 +111,45 @@ function mapOrderError(message: string) {
       error: "O estabelecimento está fechado no momento.",
     };
   }
-  if (normalized.includes("merchant is inactive") || normalized.includes("merchant not found")) {
+  if (
+    normalized.includes("merchant is inactive") ||
+    normalized.includes("merchant not found") ||
+    normalized.includes("active customer account required")
+  ) {
     return {
       status: 409,
       code: "MERCHANT_UNAVAILABLE",
-      error: "O estabelecimento não está disponível.",
+      error: "O estabelecimento ou sua conta não está disponível para este pedido.",
+    };
+  }
+  if (normalized.includes("delivery is unavailable")) {
+    return {
+      status: 409,
+      code: "DELIVERY_UNAVAILABLE",
+      error: "Este estabelecimento não está aceitando entregas no momento.",
+    };
+  }
+  if (normalized.includes("pickup is unavailable")) {
+    return {
+      status: 409,
+      code: "PICKUP_UNAVAILABLE",
+      error: "Este estabelecimento não está aceitando retirada no momento.",
+    };
+  }
+  if (normalized.includes("merchant minimum order")) {
+    return {
+      status: 409,
+      code: "MINIMUM_ORDER_NOT_REACHED",
+      error: "O valor mínimo de pedido deste estabelecimento ainda não foi atingido.",
+    };
+  }
+  if (normalized.includes("coupon")) {
+    return {
+      status: 409,
+      code: "COUPON_INVALID",
+      error: normalized.includes("minimum order")
+        ? "O valor mínimo necessário para usar este cupom ainda não foi atingido."
+        : "Este cupom não pode ser utilizado neste pedido.",
     };
   }
   if (normalized.includes("group") || normalized.includes("selection")) {
@@ -198,8 +233,10 @@ Deno.serve(async (request: Request) => {
   const merchantId = payload.merchantId;
   const requestKey = payload.requestKey;
   const paymentMethod = payload.paymentMethod;
-  const deliveryAddress = payload.deliveryAddress;
+  const fulfillmentType = payload.fulfillmentType ?? "delivery";
+  const rawDeliveryAddress = payload.deliveryAddress;
   const observation = payload.observation;
+  const rawCouponCode = payload.couponCode;
   const items = parseItems(payload.items);
 
   if (typeof merchantId !== "string" || !UUID_RE.test(merchantId)) {
@@ -211,36 +248,52 @@ Deno.serve(async (request: Request) => {
   if (typeof paymentMethod !== "string" || !PAYMENT_METHODS.has(paymentMethod)) {
     return badRequest("Forma de pagamento inválida.");
   }
+  if (typeof fulfillmentType !== "string" || !FULFILLMENT_TYPES.has(fulfillmentType)) {
+    return badRequest("Modalidade de recebimento inválida.");
+  }
+
+  const deliveryAddress = fulfillmentType === "pickup" ? {} : rawDeliveryAddress;
   if (!isRecord(deliveryAddress)) return badRequest("Endereço de entrega inválido.");
+  if (fulfillmentType === "delivery" && Object.keys(deliveryAddress).length === 0) {
+    return badRequest("Selecione um endereço de entrega.");
+  }
   if (observation !== undefined && observation !== null && typeof observation !== "string") {
     return badRequest("Observação inválida.");
   }
   if (typeof observation === "string" && observation.length > 1000) {
     return badRequest("A observação é muito longa.");
   }
+  if (rawCouponCode !== undefined && rawCouponCode !== null && typeof rawCouponCode !== "string") {
+    return badRequest("Cupom inválido.");
+  }
+  if (typeof rawCouponCode === "string" && rawCouponCode.trim().length > 80) {
+    return badRequest("Cupom inválido.");
+  }
   if (!items) return badRequest("A sacola contém itens inválidos.");
 
   const normalizedObservation =
     typeof observation === "string" && observation.trim() ? observation.trim() : null;
+  const couponCode =
+    typeof rawCouponCode === "string" && rawCouponCode.trim()
+      ? rawCouponCode.trim().toUpperCase()
+      : null;
   const canonicalPayload = {
     merchantId,
     paymentMethod,
-    fulfillmentType: "delivery",
+    fulfillmentType,
     deliveryAddress,
+    couponCode,
     observation: normalizedObservation,
     items: canonicalItems(items),
   };
 
-  // requestKey keeps one browser operation idempotent. checkoutIntentKey is deliberately
-  // independent from that browser seed so reloads, retries and an expired local TTL cannot
-  // duplicate the same active unpaid purchase.
   const effectiveRequestKey = await deriveUuid(`attempt:${requestKey}`, canonicalPayload);
   const checkoutIntentKey = await deriveUuid(`checkout:${userData.user.id}`, canonicalPayload);
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data, error } = await adminClient.rpc("create_order_for_checkout_intent", {
+  const { data, error } = await adminClient.rpc("create_order_for_checkout_intent_v2", {
     p_customer_user_id: userData.user.id,
     p_merchant_id: merchantId,
     p_items: items,
@@ -248,6 +301,8 @@ Deno.serve(async (request: Request) => {
     p_delivery_address: deliveryAddress,
     p_request_key: effectiveRequestKey,
     p_checkout_intent_key: checkoutIntentKey,
+    p_fulfillment_type: fulfillmentType,
+    p_coupon_code: couponCode,
     p_observation: normalizedObservation,
   });
 
@@ -282,7 +337,7 @@ Deno.serve(async (request: Request) => {
   const { data: snapshot, error: snapshotError } = await adminClient
     .from("orders")
     .select(
-      `id,order_number,created_at,status,payment_method,payment_status,subtotal,delivery_fee,discount,total,observation,order_items(id,product_id,product_name,product_description,base_price,unit_price,quantity,line_total,selected_options)`,
+      `id,order_number,created_at,status,payment_method,payment_status,fulfillment_type,coupon_id,subtotal,delivery_fee,discount,total,observation,order_items(id,product_id,product_name,product_description,base_price,unit_price,quantity,line_total,selected_options)`,
     )
     .eq("id", created.order_id)
     .single();
@@ -310,6 +365,8 @@ Deno.serve(async (request: Request) => {
       status: snapshot.status,
       paymentMethod: snapshot.payment_method,
       paymentStatus: snapshot.payment_status,
+      fulfillmentType: snapshot.fulfillment_type,
+      couponId: snapshot.coupon_id,
       subtotal: snapshot.subtotal,
       deliveryFee: snapshot.delivery_fee,
       discount: snapshot.discount,
