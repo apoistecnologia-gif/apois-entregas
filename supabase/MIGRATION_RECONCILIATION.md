@@ -87,6 +87,7 @@ Esses registros não devem ser “corrigidos” retroativamente no banco. A dive
 - `20260809025818` — `remove_duplicate_operational_indexes`
 - `20260809153337` — `harden_checkout_intent_idempotency`
 - `20260809162700` — `enforce_refund_aware_merchant_cancellation`
+- `20260809173533` — `courier_online_sessions_and_metrics`
 
 ## Verificação das migrations novas convergentes
 
@@ -103,6 +104,13 @@ Esses registros não devem ser “corrigidos” retroativamente no banco. A dive
 - nome remoto: `enforce_refund_aware_merchant_cancellation`;
 - bytes do SQL no ledger: `2468`;
 - SHA-256 remoto: `5c19c1162b64a7c51b7c5622a2ea17aa2bbea098f3fde9eaf2bdd0bc4e880d3d`.
+
+### `20260809173533_courier_online_sessions_and_metrics.sql`
+
+- versão remota: `20260809173533`;
+- nome remoto: `courier_online_sessions_and_metrics`;
+- bytes do SQL no ledger: `7837`;
+- SHA-256 remoto: `859bfbab53340d4d9cdad8c1dd6ff4a745679452c52b5e3e16d1dedc44a99c99`.
 
 O commit histórico `b9a06ac99970f622838be081df908bc323b202bd` preserva a primeira captura completa de hashes do ledger remoto. As migrations posteriores a `20260809153337` passam a usar o mesmo `version id` no Supabase e no Git.
 
