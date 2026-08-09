@@ -1,0 +1,53 @@
+name: Remove obsolete local order persistence
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/remove-local-orders.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Remove obsolete local order persistence
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          checkout = Path('src/routes/checkout.tsx')
+          text = checkout.read_text(encoding='utf-8')
+          target = 'import type { LocalAddressSnapshot } from "@/lib/local-orders";\n'
+          if target not in text:
+              raise SystemExit('local-orders checkout import not found')
+          checkout.write_text(text.replace(target, '', 1), encoding='utf-8')
+          Path('src/lib/local-orders.ts').unlink()
+          PY
+          bunx prettier src/routes/checkout.tsx --write
+      - name: Full verification
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit cleanup and remove one-shot workflow
+        run: |
+          rm .github/workflows/remove-local-orders.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "refactor(customer): remove obsolete local order persistence"
+          git push
