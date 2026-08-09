@@ -3,6 +3,7 @@ import { ArrowLeft, Crown, Check, ChevronRight, Zap, ShoppingBag, Gift } from "l
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/apois-plus")({
+  ssr: false,
   beforeLoad: async ({ location }) => {
     const {
       data: { session },

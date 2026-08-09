@@ -29,6 +29,7 @@ import catFarmacias from "@/assets/cat-farmacias.png";
 import catLojas from "@/assets/cat-lojas.png";
 
 export const Route = createFileRoute("/inicio")({
+  ssr: false,
   beforeLoad: async ({ location }) => {
     const {
       data: { session },

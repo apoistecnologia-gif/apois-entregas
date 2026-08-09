@@ -33,6 +33,7 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute("/buscar")({
+  ssr: false,
   validateSearch: (search) => searchSchema.parse(search),
   beforeLoad: async ({ location }) => {
     const {
