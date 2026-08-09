@@ -1,0 +1,47 @@
+name: Integrate admin order workspace
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/integrate-admin-orders.yml
+      - .github/scripts/integrate-admin-orders.py
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Integrate admin orders and migration ledger
+        run: python .github/scripts/integrate-admin-orders.py
+      - name: Format changed source
+        run: bunx prettier src/components/AdminOrdersPanel.tsx src/routes/admin.tsx supabase/MIGRATION_RECONCILIATION.md --write
+      - name: Full verification
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_MAP_ID: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit integration and remove one-shot files
+        run: |
+          rm .github/workflows/integrate-admin-orders.yml
+          rm .github/scripts/integrate-admin-orders.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(admin): complete order search and timeline"
+          git push
