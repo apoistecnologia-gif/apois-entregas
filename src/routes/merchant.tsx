@@ -7,6 +7,7 @@ import {
   Loader2,
   PackageCheck,
   Plus,
+  Printer,
   RefreshCw,
   Settings,
   ShoppingBag,
@@ -1253,6 +1254,70 @@ function MerchantReviewState({
   );
 }
 
+function formatOrderAddress(address: any) {
+  if (!address || typeof address !== "object") return "Não informado";
+  return [
+    [address.street || address.address_line, address.number].filter(Boolean).join(", "),
+    address.neighborhood,
+    [address.city, address.state].filter(Boolean).join(" - "),
+    address.complement,
+    address.reference ? `Referência: ${address.reference}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function printMerchantOrder(order: any) {
+  const popup = window.open("", "_blank", "width=520,height=760");
+  if (!popup) {
+    toast.error("O navegador bloqueou a janela de impressão.");
+    return;
+  }
+  popup.opener = null;
+  popup.document.title = `Pedido ${order.order_number} - APOIS ENTREGA`;
+
+  const style = popup.document.createElement("style");
+  style.textContent =
+    "body{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin:24px;color:#111}h1{font-size:18px;margin:0 0 4px}.muted{color:#555;font-size:12px}hr{border:0;border-top:1px dashed #777;margin:16px 0}pre{white-space:pre-wrap;font:inherit;line-height:1.5}@media print{body{margin:0}}";
+  popup.document.head.appendChild(style);
+
+  const heading = popup.document.createElement("h1");
+  heading.textContent = `APOIS ENTREGA · PEDIDO #${order.order_number}`;
+  const meta = popup.document.createElement("div");
+  meta.className = "muted";
+  meta.textContent = `${dateTime(order.created_at)} · ${String(order.status ?? "").toUpperCase()}`;
+  const separator = popup.document.createElement("hr");
+  const receipt = popup.document.createElement("pre");
+
+  const itemLines = (order.order_items ?? []).map(
+    (item: any) => `${item.quantity}x ${item.product_name}    ${money(item.line_total)}`,
+  );
+  const customer = order.customer_user_id
+    ? `Cliente #${String(order.customer_user_id).slice(0, 8).toUpperCase()}`
+    : "Cliente não identificado";
+  const details = [
+    customer,
+    `Modalidade: ${String(order.fulfillment_type ?? "delivery").toUpperCase()}`,
+    `Pagamento: ${String(order.payment_method ?? "pix").toUpperCase()} · ${String(order.payment_status ?? "").toUpperCase()}`,
+    order.fulfillment_type === "pickup"
+      ? "Retirada no estabelecimento"
+      : `Endereço: ${formatOrderAddress(order.delivery_address)}`,
+    "",
+    ...itemLines,
+    "",
+    `Subtotal: ${money(order.subtotal)}`,
+    `Desconto: ${money(order.discount)}`,
+    `Taxa de entrega: ${money(order.delivery_fee)}`,
+    `TOTAL: ${money(order.total)}`,
+    order.observation ? `\nOBSERVAÇÃO: ${order.observation}` : "",
+  ].filter((line) => line !== "");
+  receipt.textContent = details.join("\n");
+
+  popup.document.body.append(heading, meta, separator, receipt);
+  popup.focus();
+  window.setTimeout(() => popup.print(), 150);
+}
+
 function OrderRow({ order, busy, onTransition, onReject, detailed = false }: any) {
   const nextActions: Array<{ status: string; label: string }> =
     order.status === "confirmed"
@@ -1294,8 +1359,34 @@ function OrderRow({ order, busy, onTransition, onReject, detailed = false }: any
               Obs.: {order.observation}
             </p>
           ) : null}
+          <div className="mt-3 grid gap-2 rounded-xl border border-zinc-900 bg-zinc-950 p-3 text-xs text-zinc-500 sm:grid-cols-2">
+            <p>
+              Cliente: #
+              {String(order.customer_user_id ?? "")
+                .slice(0, 8)
+                .toUpperCase() || "—"}
+            </p>
+            <p>Modalidade: {String(order.fulfillment_type ?? "delivery").toUpperCase()}</p>
+            <p>Pagamento: {String(order.payment_method ?? "pix").toUpperCase()}</p>
+            <p>Status financeiro: {String(order.payment_status ?? "—").toUpperCase()}</p>
+            <p className="sm:col-span-2">
+              {order.fulfillment_type === "pickup"
+                ? "Retirada no estabelecimento"
+                : `Endereço: ${formatOrderAddress(order.delivery_address)}`}
+            </p>
+          </div>
         </div>
       ) : null}
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={() => printMerchantOrder(order)}
+        className="mt-4 border-zinc-800 bg-zinc-950"
+      >
+        <Printer className="mr-1 h-3.5 w-3.5" />
+        Imprimir pedido
+      </Button>
       {nextActions.length > 0 || canReject ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {nextActions.map((action) => (
