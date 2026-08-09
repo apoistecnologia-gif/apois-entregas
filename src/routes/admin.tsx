@@ -290,42 +290,81 @@ function AdminWorkspace() {
   };
 
   const toggleCity = async (city: any) => {
-    const { error } = await from("cities").update({ is_active: !city.is_active }).eq("id", city.id);
+    setBusy(`city:${city.id}`);
+    const { error } = await rpc("admin_set_city_active", {
+      _city_id: city.id,
+      _is_active: !city.is_active,
+    });
+    setBusy(null);
     if (error) return toast.error(error.message);
+    toast.success(city.is_active ? "Cidade desativada." : "Cidade ativada.");
     await loadAll(true);
   };
 
   const editFeeRule = async (rule: any) => {
-    const commission = window.prompt(
+    const commissionRaw = window.prompt(
       "Comissão do estabelecimento (%):",
       String(rule.merchant_commission_percent ?? 0),
     );
-    if (commission === null) return;
-    const courierBase = window.prompt(
+    if (commissionRaw === null) return;
+    const courierBaseRaw = window.prompt(
       "Base do entregador (R$):",
       String(rule.courier_base_fee ?? 0),
     );
-    if (courierBase === null) return;
-    const perKm = window.prompt(
+    if (courierBaseRaw === null) return;
+    const perKmRaw = window.prompt(
       "Valor por km do entregador (R$):",
       String(rule.courier_per_km ?? 0),
     );
-    if (perKm === null) return;
-    const customerFee = window.prompt(
+    if (perKmRaw === null) return;
+    const minimumRaw = window.prompt(
+      "Ganho mínimo do entregador (R$):",
+      String(rule.courier_minimum_fee ?? 0),
+    );
+    if (minimumRaw === null) return;
+    const customerFeeRaw = window.prompt(
       "Taxa de serviço do cliente (R$):",
       String(rule.customer_service_fee ?? 0),
     );
-    if (customerFee === null) return;
-    const { error } = await from("fee_rules")
-      .update({
-        merchant_commission_percent: Number(commission),
-        courier_base_fee: Number(courierBase),
-        courier_per_km: Number(perKm),
-        customer_service_fee: Number(customerFee),
-      })
-      .eq("id", rule.id);
+    if (customerFeeRaw === null) return;
+
+    const values = {
+      commission: Number(commissionRaw.replace(",", ".")),
+      courierBase: Number(courierBaseRaw.replace(",", ".")),
+      perKm: Number(perKmRaw.replace(",", ".")),
+      minimum: Number(minimumRaw.replace(",", ".")),
+      customerFee: Number(customerFeeRaw.replace(",", ".")),
+    };
+
+    if (
+      !Number.isFinite(values.commission) ||
+      values.commission < 0 ||
+      values.commission > 100 ||
+      !Number.isFinite(values.courierBase) ||
+      values.courierBase < 0 ||
+      !Number.isFinite(values.perKm) ||
+      values.perKm < 0 ||
+      !Number.isFinite(values.minimum) ||
+      values.minimum < 0 ||
+      !Number.isFinite(values.customerFee) ||
+      values.customerFee < 0
+    ) {
+      toast.error("Revise os valores da regra financeira.");
+      return;
+    }
+
+    setBusy(`fee:${rule.id}`);
+    const { error } = await rpc("admin_update_fee_rule", {
+      _fee_rule_id: rule.id,
+      _merchant_commission_percent: values.commission,
+      _courier_base_fee: values.courierBase,
+      _courier_per_km: values.perKm,
+      _courier_minimum_fee: values.minimum,
+      _customer_service_fee: values.customerFee,
+    });
+    setBusy(null);
     if (error) return toast.error(error.message);
-    toast.success("Regra financeira atualizada.");
+    toast.success("Regra financeira atualizada e auditada.");
     await loadAll(true);
   };
 
@@ -334,13 +373,17 @@ function AdminWorkspace() {
     if (raw === null) return;
     try {
       const value = JSON.parse(raw);
-      const { error } = await from("platform_settings")
-        .update({ value, updated_by: user.id })
-        .eq("key", setting.key);
+      setBusy(`setting:${setting.key}`);
+      const { error } = await rpc("admin_update_platform_setting", {
+        _key: setting.key,
+        _value: value,
+      });
+      setBusy(null);
       if (error) throw error;
-      toast.success("Configuração atualizada.");
+      toast.success("Configuração atualizada e auditada.");
       await loadAll(true);
     } catch (error: any) {
+      setBusy(null);
       toast.error(error?.message || "JSON inválido.");
     }
   };
@@ -640,6 +683,7 @@ function AdminWorkspace() {
           cities={cities}
           feeRules={feeRules}
           settingsRows={settingsRows}
+          busy={busy}
           onToggleCity={toggleCity}
           onEditFee={editFeeRule}
           onEditSetting={editSetting}
@@ -930,6 +974,7 @@ function OperationPanel({
   cities,
   feeRules,
   settingsRows,
+  busy,
   onToggleCity,
   onEditFee,
   onEditSetting,
@@ -958,7 +1003,8 @@ function OperationPanel({
               <button
                 type="button"
                 onClick={() => void onToggleCity(city)}
-                className={`rounded-full px-3 py-1 text-xs font-black ${city.is_active ? "bg-emerald-500/15 text-emerald-400" : "bg-zinc-900 text-zinc-500"}`}
+                disabled={busy === `city:${city.id}`}
+                className={`rounded-full px-3 py-1 text-xs font-black disabled:opacity-50 ${city.is_active ? "bg-emerald-500/15 text-emerald-400" : "bg-zinc-900 text-zinc-500"}`}
               >
                 {city.is_active ? "Ativa" : "Inativa"}
               </button>
@@ -976,8 +1022,9 @@ function OperationPanel({
             <button
               type="button"
               onClick={() => void onEditFee(rule)}
+              disabled={busy === `fee:${rule.id}`}
               key={rule.id}
-              className="w-full rounded-xl bg-black p-3 text-left"
+              className="w-full rounded-xl bg-black p-3 text-left disabled:opacity-50"
             >
               <div className="flex justify-between">
                 <b>{rule.name}</b>
@@ -1001,8 +1048,9 @@ function OperationPanel({
             <button
               type="button"
               onClick={() => void onEditSetting(setting)}
+              disabled={busy === `setting:${setting.key}`}
               key={setting.key}
-              className="rounded-xl bg-black p-3 text-left"
+              className="rounded-xl bg-black p-3 text-left disabled:opacity-50"
             >
               <p className="font-mono text-xs font-bold text-primary">{setting.key}</p>
               <p className="mt-1 line-clamp-2 text-xs text-zinc-500">
