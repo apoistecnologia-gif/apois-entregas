@@ -26,6 +26,11 @@ const csrfMiddleware = createCsrfMiddleware({
 });
 
 export const startInstance = createStart(() => ({
+  // Supabase Auth in this app persists the user session in browser storage. Protected
+  // route beforeLoad guards therefore need the browser runtime on hard reload/deep-link;
+  // keeping route execution client-side by default prevents false logout redirects.
+  // Server functions remain server-side and keep the auth/CSRF middleware below.
+  defaultSsr: false,
   functionMiddleware: [attachSupabaseAuth],
   requestMiddleware: [errorMiddleware, csrfMiddleware],
 }));
