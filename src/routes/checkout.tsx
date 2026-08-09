@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/integrations/supabase/client";
-import type { LocalAddressSnapshot } from "@/lib/local-orders";
+import type { LocalAddressSnapshot } from "@/types/address";
 import { toast } from "sonner";
 
 const ACTIVE_PIX_STORAGE_KEY = "apois_active_pix";
