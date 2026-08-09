@@ -1,0 +1,85 @@
+name: Customer payment confirmation realtime gate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/customer-confirmation-realtime.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Keep confirmation screen synchronized with webhook updates
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("src/routes/pedido/confirmado.tsx")
+          text = path.read_text(encoding="utf-8")
+
+          old = '''    void fetchOrder();
+    return () => {
+      disposed = true;
+    };
+  }, [orderId]);'''
+          new = '''    void fetchOrder();
+
+    const channel = supabase
+      .channel(`payment_confirmation_${orderId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
+          filter: `id=eq.${orderId}`,
+        },
+        (payload) => {
+          if (disposed) return;
+          setOrder((current: any) => (current ? { ...current, ...payload.new } : current));
+        },
+      )
+      .subscribe();
+
+    return () => {
+      disposed = true;
+      void supabase.removeChannel(channel);
+    };
+  }, [orderId]);'''
+          if old not in text:
+              if 'payment_confirmation_' not in text:
+                  raise SystemExit("confirmation realtime anchor missing")
+          else:
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding="utf-8")
+          PY
+      - name: Format and verify
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bunx prettier src/routes/pedido/confirmado.tsx --write
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit and cleanup
+        run: |
+          rm -f .github/workflows/customer-confirmation-realtime.yml
+          rm -f .github/workflows/customer-confirmation-truth.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(customer): sync payment confirmation in real time"
+          git push
