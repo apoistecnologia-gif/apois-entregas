@@ -1,8 +1,9 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, CreditCard, Landmark, Wallet, Plus, ChevronRight } from "lucide-react";
+import { ArrowLeft, CreditCard, Landmark, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/perfil/pagamentos")({
+  ssr: false,
   beforeLoad: async ({ location }) => {
     const {
       data: { session },
@@ -10,14 +11,13 @@ export const Route = createFileRoute("/perfil/pagamentos")({
     if (!session) {
       throw redirect({
         to: "/login",
-        search: {
-          redirect: location.href,
-        },
+        search: { redirect: location.href },
       });
     }
     return { session };
   },
   component: PagamentosPage,
+  head: () => ({ meta: [{ title: "Pagamentos | APOIS ENTREGA" }] }),
 });
 
 function PagamentosPage() {
@@ -28,57 +28,73 @@ function PagamentosPage() {
       id: "pix",
       label: "Pix",
       icon: Landmark,
-      description: "Pagamento instantâneo",
+      description: "Disponível para finalizar pedidos",
       color: "text-emerald-400",
+      enabled: true,
     },
     {
       id: "card",
       label: "Cartão de Crédito/Débito",
       icon: CreditCard,
-      description: "Visa, Mastercard, Elo",
+      description: "Ainda não habilitado",
       color: "text-blue-400",
+      enabled: false,
     },
     {
       id: "money",
       label: "Dinheiro",
       icon: Wallet,
-      description: "Pagamento na entrega",
+      description: "Ainda não habilitado",
       color: "text-primary",
+      enabled: false,
     },
   ];
 
   return (
-    <div className="flex h-screen w-full flex-col bg-black text-white overflow-hidden relative">
-      <header className="shrink-0 z-50 flex items-center justify-between p-4 bg-black/80 backdrop-blur-lg border-b border-zinc-900">
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
+      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 p-4 backdrop-blur-lg">
         <button
+          type="button"
           onClick={() => navigate({ to: "/perfil" })}
-          className="p-2 rounded-full bg-zinc-900 shadow-lg"
+          className="rounded-full bg-zinc-900 p-2 shadow-lg"
+          aria-label="Voltar para o perfil"
         >
-          <ArrowLeft className="w-5 h-5 text-zinc-300" />
+          <ArrowLeft className="h-5 w-5 text-zinc-300" />
         </button>
-        <h1 className="text-xl font-bold text-primary text-center flex-1">Pagamentos</h1>
+        <h1 className="flex-1 text-center text-xl font-bold text-primary">Pagamentos</h1>
         <div className="w-9" />
       </header>
 
-      <main className="flex-1 overflow-y-auto p-6 scrollbar-none space-y-8">
+      <main className="scrollbar-none flex-1 space-y-8 overflow-y-auto p-6">
         <section className="space-y-4">
-          <h2 className="text-xs font-bold text-primary uppercase tracking-widest ml-1">
-            Métodos disponíveis
+          <h2 className="ml-1 text-xs font-bold uppercase tracking-widest text-primary">
+            Métodos de pagamento
           </h2>
           <div className="space-y-3">
             {paymentMethods.map((method) => (
               <div
                 key={method.id}
-                className="flex items-center justify-between p-4 rounded-2xl bg-zinc-900/40 border border-zinc-900/50 backdrop-blur-sm"
+                className={`flex items-center justify-between rounded-2xl border p-4 ${
+                  method.enabled
+                    ? "border-primary/20 bg-primary/5"
+                    : "border-zinc-900/50 bg-zinc-900/30 opacity-60"
+                }`}
               >
                 <div className="flex items-center gap-4">
                   <div
-                    className={`p-3 rounded-xl bg-zinc-900 border border-zinc-800 ${method.color}`}
+                    className={`rounded-xl border border-zinc-800 bg-zinc-900 p-3 ${method.color}`}
                   >
-                    <method.icon className="w-6 h-6" />
+                    <method.icon className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="font-bold text-sm text-zinc-200">{method.label}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-zinc-200">{method.label}</p>
+                      {method.enabled ? (
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-black uppercase text-primary">
+                          Disponível
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="text-xs text-zinc-500">{method.description}</p>
                   </div>
                 </div>
@@ -88,36 +104,32 @@ function PagamentosPage() {
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-xs font-bold text-primary uppercase tracking-widest ml-1 text-center">
-            Cartões Salvos
+          <h2 className="ml-1 text-center text-xs font-bold uppercase tracking-widest text-primary">
+            Cartões salvos
           </h2>
-          <div className="p-8 rounded-3xl border border-dashed border-zinc-800 bg-zinc-900/20 flex flex-col items-center justify-center text-center space-y-4">
-            <div className="p-4 rounded-full bg-zinc-900/50 text-zinc-700">
-              <CreditCard className="w-10 h-10" />
+          <div className="flex flex-col items-center justify-center space-y-4 rounded-3xl border border-dashed border-zinc-800 bg-zinc-900/20 p-8 text-center">
+            <div className="rounded-full bg-zinc-900/50 p-4 text-zinc-700">
+              <CreditCard className="h-10 w-10" />
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-bold text-zinc-400">Nenhum cartão salvo</p>
-              <p className="text-xs text-zinc-600 px-4">
-                Por segurança, cartões salvos serão configurados quando integrarmos nosso provedor
-                de pagamentos oficial.
+              <p className="text-sm font-bold text-zinc-400">Cartões ainda não disponíveis</p>
+              <p className="px-4 text-xs text-zinc-600">
+                O cadastro de cartões só será liberado quando esse método estiver integrado e
+                habilitado no checkout.
               </p>
             </div>
-            <button className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-zinc-900 text-zinc-400 font-bold text-xs opacity-50 cursor-not-allowed border border-zinc-800">
-              <Plus className="w-4 h-4" />
-              Adicionar cartão (Em breve)
-            </button>
           </div>
         </section>
 
-        <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-start gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Landmark className="w-4 h-4 text-primary" />
+        <div className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+          <div className="rounded-lg bg-primary/10 p-2">
+            <Landmark className="h-4 w-4 text-primary" />
           </div>
           <div className="space-y-1">
-            <p className="text-xs font-bold text-primary">Pagamento Seguro</p>
-            <p className="text-[10px] text-zinc-400 leading-relaxed">
-              O APOIS utiliza criptografia de ponta a ponta. Seus dados financeiros são processados
-              por parceiros certificados PCI-DSS.
+            <p className="text-xs font-bold text-primary">Pagamento atual</p>
+            <p className="text-[10px] leading-relaxed text-zinc-400">
+              No momento, o checkout da APOIS ENTREGA aceita apenas PIX. A cobrança é criada pelo
+              provedor de pagamentos integrado e o pedido só avança após a confirmação do pagamento.
             </p>
           </div>
         </div>
