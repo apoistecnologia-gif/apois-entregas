@@ -124,7 +124,7 @@ A reconciliação foi registrada no Git sem alterar o histórico de produção.
 | Version ID | Migration | Bytes no ledger | SHA-256 remoto |
 | --- | --- | ---: | --- |
 | `20260809153337` | `harden_checkout_intent_idempotency` | 5547 | `2441d15e4cc37fe275d4fc6f1556fe5061f958319ff28924f6f2bacb632dd016` |
-| `20260809162700` | `enforce_refund_aware_merchant_cancellation` | 2468 | `5c19f1162b64a7c51b7c5622a2ea17aa2bbea098f3fde9eaf2bdd0bc4e880d3d` |
+| `20260809162700` | `enforce_refund_aware_merchant_cancellation` | 2468 | `5c19c1162b64a7c51b7c5622a2ea17aa2bbea098f3fde9eaf2bdd0bc4e880d3d` |
 | `20260809173533` | `courier_online_sessions_and_metrics` | 7837 | `859bfbab53340d4d9cdad8c1dd6ff4a745679452c52b5e3e16d1dedc44a99c99` |
 | `20260809174412` | `audit_admin_operational_configuration` | 3577 | `a43163118c21bb32a84a38459433e84e884c64739ac8e623314b44cecca39478` |
 | `20260809175133` | `audit_admin_support_replies` | 2472 | `02a823429ff40098a2872c8b6c4515e0530748d719a92b474566b67c8ba3fe06` |
