@@ -121,26 +121,26 @@ A reconciliação foi registrada no Git sem alterar o histórico de produção.
 
 ## Verificação das migrations novas convergentes
 
-| Version ID | Migration | Bytes no ledger | SHA-256 remoto |
-| --- | --- | ---: | --- |
-| `20260809153337` | `harden_checkout_intent_idempotency` | 5547 | `2441d15e4cc37fe275d4fc6f1556fe5061f958319ff28924f6f2bacb632dd016` |
-| `20260809162700` | `enforce_refund_aware_merchant_cancellation` | 2468 | `5c19c1162b64a7c51b7c5622a2ea17aa2bbea098f3fde9eaf2bdd0bc4e880d3d` |
-| `20260809173533` | `courier_online_sessions_and_metrics` | 7837 | `859bfbab53340d4d9cdad8c1dd6ff4a745679452c52b5e3e16d1dedc44a99c99` |
-| `20260809174412` | `audit_admin_operational_configuration` | 3577 | `a43163118c21bb32a84a38459433e84e884c64739ac8e623314b44cecca39478` |
-| `20260809175133` | `audit_admin_support_replies` | 2472 | `02a823429ff40098a2872c8b6c4515e0530748d719a92b474566b67c8ba3fe06` |
-| `20260809190114` | `enforce_active_accounts_for_courier_finance` | 17051 | `951faae3bb3bada88dd6531ee9f89442a0402a7c1674d5b0c891fe4542cb89d3` |
-| `20260809190300` | `customer_self_deactivation` | 1258 | `9b9a924681fad78d2cda79b6bdc637c80115d73bdf349f909d0b8872e5a1e9fd` |
-| `20260809191243` | `merchant_split_and_special_hours` | 2901 | `2dbfa500e4d9a50a4e03c635b4bdc26cc6cd39e5bd844fdf1c1a62ba99fd638a` |
-| `20260809192545` | `pickup_coupon_checkout_v2` | 17628 | `140f625bc12b26b4ef19ffc096d59108547a73583ecb2c92de3b92ece261637d` |
-| `20260809193044` | `fix_coupon_redemption_conflict` | 803 | `69c2a97def931f267781f84e232eda60b1af28b7582ff2d13ac09749c29de221` |
-| `20260809193645` | `secure_pickup_completion_with_pin` | 5561 | `5bd0a9537ca25de589d29f41bcfa55fcec138f041124d9b0c38b91bbf637f037` |
-| `20260809194128` | `fix_pin_random_bytes_schema` | 673 | `caf1ccf881120077851e59b6e76b47d72ceb45890e15ba77b956c82ba4bad96f` |
-| `20260809194317` | `merchant_coupon_redemption_visibility` | 362 | `fc1eccf8a7313ab59f4fbf8b3a91fec3498abcd8ebbdae6ba8cb4e18d97bb4ad` |
-| `20260809195509` | `server_delivery_area_validation` | 12556 | `bfd733fb8642d29dfa813fed75250b597e85c7f5b50efef2612868769b84ae34` |
-| `20260809195717` | `admin_city_delivery_zone_management` | 7455 | `50dc8be815ce15eeec3f9341c0040b3a98bebcc332b91d7e89568dd39b7caaff` |
-| `20260809200510` | `enforce_active_profile_role_helpers` | 2124 | `7c4a024450e8caaa621676be3c8e7e89d92be2787e0374cfb8aa70fcd9eaee1b` |
-| `20260809200812` | `customer_notification_feed` | 4331 | `d3765e81c8bf1c091bb1fa8ecd0e1e8ef5e924b1e5a60d0bbe0c4beccf5d24ba` |
-| `20260809212129` | `allow_customer_active_courier_tracking` | 628 | `852e11a19afc8735634ffdd3354d6bea5fbb19981a1515418a3f52e88149ac19` |
+| Version ID       | Migration                                     | Bytes no ledger | SHA-256 remoto                                                     |
+| ---------------- | --------------------------------------------- | --------------: | ------------------------------------------------------------------ |
+| `20260809153337` | `harden_checkout_intent_idempotency`          |            5547 | `2441d15e4cc37fe275d4fc6f1556fe5061f958319ff28924f6f2bacb632dd016` |
+| `20260809162700` | `enforce_refund_aware_merchant_cancellation`  |            2468 | `5c19c1162b64a7c51b7c5622a2ea17aa2bbea098f3fde9eaf2bdd0bc4e880d3d` |
+| `20260809173533` | `courier_online_sessions_and_metrics`         |            7837 | `859bfbab53340d4d9cdad8c1dd6ff4a745679452c52b5e3e16d1dedc44a99c99` |
+| `20260809174412` | `audit_admin_operational_configuration`       |            3577 | `a43163118c21bb32a84a38459433e84e884c64739ac8e623314b44cecca39478` |
+| `20260809175133` | `audit_admin_support_replies`                 |            2472 | `02a823429ff40098a2872c8b6c4515e0530748d719a92b474566b67c8ba3fe06` |
+| `20260809190114` | `enforce_active_accounts_for_courier_finance` |           17051 | `951faae3bb3bada88dd6531ee9f89442a0402a7c1674d5b0c891fe4542cb89d3` |
+| `20260809190300` | `customer_self_deactivation`                  |            1258 | `9b9a924681fad78d2cda79b6bdc637c80115d73bdf349f909d0b8872e5a1e9fd` |
+| `20260809191243` | `merchant_split_and_special_hours`            |            2901 | `2dbfa500e4d9a50a4e03c635b4bdc26cc6cd39e5bd844fdf1c1a62ba99fd638a` |
+| `20260809192545` | `pickup_coupon_checkout_v2`                   |           17628 | `140f625bc12b26b4ef19ffc096d59108547a73583ecb2c92de3b92ece261637d` |
+| `20260809193044` | `fix_coupon_redemption_conflict`              |             803 | `69c2a97def931f267781f84e232eda60b1af28b7582ff2d13ac09749c29de221` |
+| `20260809193645` | `secure_pickup_completion_with_pin`           |            5561 | `5bd0a9537ca25de589d29f41bcfa55fcec138f041124d9b0c38b91bbf637f037` |
+| `20260809194128` | `fix_pin_random_bytes_schema`                 |             673 | `caf1ccf881120077851e59b6e76b47d72ceb45890e15ba77b956c82ba4bad96f` |
+| `20260809194317` | `merchant_coupon_redemption_visibility`       |             362 | `fc1eccf8a7313ab59f4fbf8b3a91fec3498abcd8ebbdae6ba8cb4e18d97bb4ad` |
+| `20260809195509` | `server_delivery_area_validation`             |           12556 | `bfd733fb8642d29dfa813fed75250b597e85c7f5b50efef2612868769b84ae34` |
+| `20260809195717` | `admin_city_delivery_zone_management`         |            7455 | `50dc8be815ce15eeec3f9341c0040b3a98bebcc332b91d7e89568dd39b7caaff` |
+| `20260809200510` | `enforce_active_profile_role_helpers`         |            2124 | `7c4a024450e8caaa621676be3c8e7e89d92be2787e0374cfb8aa70fcd9eaee1b` |
+| `20260809200812` | `customer_notification_feed`                  |            4331 | `d3765e81c8bf1c091bb1fa8ecd0e1e8ef5e924b1e5a60d0bbe0c4beccf5d24ba` |
+| `20260809212129` | `allow_customer_active_courier_tracking`      |             628 | `852e11a19afc8735634ffdd3354d6bea5fbb19981a1515418a3f52e88149ac19` |
 
 O commit histórico `b9a06ac99970f622838be081df908bc323b202bd` preserva a primeira captura completa de hashes do ledger remoto. As migrations posteriores a `20260809153337` passam a usar o mesmo `version id` no Supabase e no Git.
 
