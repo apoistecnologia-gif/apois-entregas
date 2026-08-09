@@ -1,0 +1,33 @@
+name: One-shot PIX automatic homologation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/pix-auto-homol.yml
+
+jobs:
+  homologate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run Mercado Pago automatic PIX flow
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --max-time 150 \
+            --request POST \
+            'https://sbvhdgyuuperszlsllji.supabase.co/functions/v1/apois-pix-auto-homol-8f4c3e9a' \
+            --output /tmp/pix-homol.json || {
+              cat /tmp/pix-homol.json 2>/dev/null || true
+              exit 1
+            }
+          cat /tmp/pix-homol.json
+          jq -e '
+            .success == true and
+            .finalPaymentStatus == "paid" and
+            .finalOrderPaymentStatus == "paid" and
+            .confirmationSource == "automatic_mercadopago_webhook" and
+            .realPaymentUsed == false and
+            .simulatorUsed == false
+          ' /tmp/pix-homol.json >/dev/null
