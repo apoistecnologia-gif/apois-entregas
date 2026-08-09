@@ -121,6 +121,7 @@ A reconciliação foi registrada no Git sem alterar o histórico de produção.
 - `20260809213849` — `harden_rpc_and_core_table_privileges`
 - `20260809215048` — `enforce_partner_approval_requirements`
 - `20260809215700` — `harden_auth_trigger_search_path`
+- `20260809220123` — `persist_legal_acceptance_audit`
 
 ## Verificação das migrations novas convergentes
 
@@ -147,6 +148,7 @@ A reconciliação foi registrada no Git sem alterar o histórico de produção.
 | `20260809213849` | `harden_rpc_and_core_table_privileges`        |            3899 | `4508a1484e9b1711ba99f61366e5fb396c9ddc191a0ccbf30812f008259fb1a7` |
 | `20260809215048` | `enforce_partner_approval_requirements`       |            9683 | `a6eac3e426d0b98a9c8e29afc65b9fdaf5ec00aa0478dc14bd465356edd71503` |
 | `20260809215700` | `harden_auth_trigger_search_path`             |             699 | `b8036ea85d7519cf2561485dc419deee90c3b8424fef9370632fcd0899aac5d3` |
+| `20260809220123` | `persist_legal_acceptance_audit`              |            3119 | `a3cd751808658019577fe6d0ce9cdecbcc3a4b7fe4029058b292b635932a5261` |
 
 O commit histórico `b9a06ac99970f622838be081df908bc323b202bd` preserva a primeira captura completa de hashes do ledger remoto. As migrations posteriores a `20260809153337` passam a usar o mesmo `version id` no Supabase e no Git.
 
