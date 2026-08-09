@@ -1,0 +1,63 @@
+name: Enforce active account login
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/enforce-active-login.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Reject inactive profiles after authentication
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          path = Path('src/routes/login.tsx')
+          text = path.read_text(encoding='utf-8')
+          marker = 'await supabase.auth.signInWithPassword'
+          start = text.find(marker)
+          if start == -1:
+              raise SystemExit('signInWithPassword anchor not found')
+          if 'Sua conta está desativada' in text:
+              raise SystemExit('active-profile login guard already present')
+
+          error_anchor = text.find('if (error)', start)
+          if error_anchor == -1:
+              raise SystemExit('post sign-in error anchor not found')
+          line_start = text.rfind('\n', 0, error_anchor) + 1
+          indent = text[line_start:error_anchor]
+          guard = f'''{indent}if (!error) {{\n{indent}  const {{ data: authData, error: authError }} = await supabase.auth.getUser();\n{indent}  if (authError || !authData.user) {{\n{indent}    await supabase.auth.signOut();\n{indent}    toast.error("Não foi possível validar sua conta. Tente novamente.");\n{indent}    setIsLoading(false);\n{indent}    return;\n{indent}  }}\n{indent}  const {{ data: profile, error: profileError }} = await supabase\n{indent}    .from("profiles")\n{indent}    .select("is_active,blocked_reason")\n{indent}    .eq("id", authData.user.id)\n{indent}    .maybeSingle();\n{indent}  if (profileError || !profile) {{\n{indent}    await supabase.auth.signOut();\n{indent}    toast.error("Não foi possível validar seu perfil. Tente novamente.");\n{indent}    setIsLoading(false);\n{indent}    return;\n{indent}  }}\n{indent}  if (profile.is_active === false) {{\n{indent}    await supabase.auth.signOut();\n{indent}    toast.error(profile.blocked_reason || "Sua conta está desativada. Entre em contato com o suporte.");\n{indent}    setIsLoading(false);\n{indent}    return;\n{indent}  }}\n{indent}}}\n\n'''
+          text = text[:line_start] + guard + text[line_start:]
+          path.write_text(text, encoding='utf-8')
+          PY
+          bunx prettier src/routes/login.tsx --write
+      - name: Full verification
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit integration and remove workflow
+        run: |
+          rm .github/workflows/enforce-active-login.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(auth): reject inactive profiles at login"
+          git push
