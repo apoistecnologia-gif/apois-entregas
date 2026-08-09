@@ -1,0 +1,33 @@
+name: One-shot formatter for recent routes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/format-recent-customer-merchant.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Format recent customer and merchant files
+        run: bunx prettier src/routes/pedido/confirmado.tsx src/components/MerchantProductEditor.tsx --write
+      - name: Commit formatting
+        run: |
+          if git diff --quiet -- src/routes/pedido/confirmado.tsx src/components/MerchantProductEditor.tsx; then
+            echo "No formatting changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/pedido/confirmado.tsx src/components/MerchantProductEditor.tsx
+          git commit -m "style: format recent customer and merchant files"
+          git push
