@@ -19,6 +19,17 @@ function response(status: number, body: JsonRecord) {
   return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 }
 
+function accessTokenForOrder(providerOrderId: string): string | null {
+  if (/^ORDTST/i.test(providerOrderId)) {
+    return (
+      Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_TEST")?.trim() ||
+      Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN")?.trim() ||
+      null
+    );
+  }
+  return Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION")?.trim() || null;
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS")
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -33,7 +44,6 @@ Deno.serve(async (request: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const accessToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
   const apiBase = (Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com").replace(
     /\/$/,
     "",
@@ -45,13 +55,6 @@ Deno.serve(async (request: Request) => {
       code: "SERVER_CONFIGURATION",
     });
   }
-  if (!accessToken) {
-    return response(503, {
-      error: "Estornos ainda não estão habilitados.",
-      code: "PAYMENT_PROVIDER_NOT_CONFIGURED",
-    });
-  }
-
   const token = authorization.slice("Bearer ".length);
   const authClient = createClient(supabaseUrl, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -139,6 +142,14 @@ Deno.serve(async (request: Request) => {
       code: "PROVIDER_MISMATCH",
     });
   }
+  const accessToken = accessTokenForOrder(payment.provider_charge_id);
+  if (!accessToken) {
+    return response(503, {
+      error: "Estornos ainda não estão habilitados para este ambiente.",
+      code: "PAYMENT_PROVIDER_NOT_CONFIGURED",
+    });
+  }
+
   if (Math.round(Number(payment.amount) * 100) !== Math.round(Number(refund.amount) * 100)) {
     return response(409, {
       error: "O estorno total possui valor divergente do pagamento.",
@@ -171,7 +182,9 @@ Deno.serve(async (request: Request) => {
     return { response: providerResponse, body };
   };
 
-  let { response: currentProviderResponse, body: providerPayload } = await readProviderOrder();
+  const providerLookup = await readProviderOrder();
+  const currentProviderResponse = providerLookup.response;
+  let providerPayload = providerLookup.body;
   if (!currentProviderResponse.ok || !isRecord(providerPayload)) {
     return response(502, {
       error: "Não foi possível consultar o pagamento no Mercado Pago.",

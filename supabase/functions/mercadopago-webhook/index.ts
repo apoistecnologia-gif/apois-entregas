@@ -93,7 +93,13 @@ Deno.serve(async (request: Request) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const accessToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
+  const environment = (Deno.env.get("MERCADO_PAGO_ENVIRONMENT") ?? "test").trim().toLowerCase();
+  const accessTokenTest =
+    Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_TEST")?.trim() ||
+    Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN")?.trim() ||
+    null;
+  const accessTokenProduction =
+    Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION")?.trim() || null;
   const webhookSecretTest = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET_TEST")?.trim() || null;
   const webhookSecretProduction =
     Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET_PRODUCTION")?.trim() || null;
@@ -110,7 +116,7 @@ Deno.serve(async (request: Request) => {
     "",
   );
 
-  if (!supabaseUrl || !serviceRoleKey || !accessToken || webhookSecrets.length === 0) {
+  if (!supabaseUrl || !serviceRoleKey || webhookSecrets.length === 0) {
     console.error("mercadopago-webhook environment incomplete");
     return response(500, { error: "server_configuration" });
   }
@@ -129,8 +135,29 @@ Deno.serve(async (request: Request) => {
   const dataId = url.searchParams.get("data.id")?.trim() ?? text(bodyData?.id);
   if (!dataId) return response(400, { error: "missing_data_id" });
 
-  const signatureValid = await validSignature(request, dataId, webhookSecrets);
-  const sandboxVerifiedByProvider = !signatureValid && isSandboxOrderId(dataId);
+  const sandboxOrder = isSandboxOrderId(dataId);
+  const signatureSecrets = sandboxOrder
+    ? Array.from(
+        new Set(
+          [webhookSecretTest, webhookSecretLegacy, webhookSecretProduction].filter(
+            (value): value is string => Boolean(value),
+          ),
+        ),
+      )
+    : Array.from(
+        new Set(
+          [webhookSecretProduction, webhookSecretLegacy].filter((value): value is string =>
+            Boolean(value),
+          ),
+        ),
+      );
+  const signatureValid = await validSignature(request, dataId, signatureSecrets);
+  const sandboxVerifiedByProvider = !signatureValid && environment !== "production" && sandboxOrder;
+  const accessToken = sandboxOrder ? accessTokenTest : accessTokenProduction;
+  if (!accessToken) {
+    console.error("mercadopago-webhook provider credential missing", { sandboxOrder });
+    return response(500, { error: "provider_configuration" });
+  }
 
   // Production resources require a valid HMAC signature. Mercado Pago sandbox Orders
   // can be emitted by the auto-created test seller application, whose webhook signing
@@ -140,7 +167,7 @@ Deno.serve(async (request: Request) => {
   if (!signatureValid && !sandboxVerifiedByProvider) {
     console.warn("mercadopago webhook invalid signature", {
       dataId,
-      sandbox: false,
+      sandbox: sandboxOrder,
       testSecretConfigured: Boolean(webhookSecretTest),
       productionSecretConfigured: Boolean(webhookSecretProduction || webhookSecretLegacy),
     });

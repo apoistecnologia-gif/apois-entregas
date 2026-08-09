@@ -30,11 +30,7 @@ function accessTokenForOrder(providerOrderId: string): string | null {
       null
     );
   }
-  return (
-    Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION")?.trim() ||
-    Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN")?.trim() ||
-    null
-  );
+  return Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION")?.trim() || null;
 }
 
 Deno.serve(async (request: Request) => {
