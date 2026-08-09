@@ -45,12 +45,25 @@ jobs:
             page.on('console', (message) => {
               if (message.type() === 'error') errors.push(`console:${message.text()}`);
             });
+            page.on('requestfailed', (request) =>
+              errors.push(`requestfailed:${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`),
+            );
 
-            await page.goto(`${process.env.E2E_BASE_URL}/login`, { waitUntil: 'domcontentloaded' });
+            await page.goto(`${process.env.E2E_BASE_URL}/login`, { waitUntil: 'networkidle' });
+            // The React Start page is server-rendered first. Waiting one extra tick prevents
+            // a native HTML form submit from racing the client hydration in CI.
+            await page.waitForTimeout(1200);
             await page.getByPlaceholder('Digite seu e-mail').fill(process.env.E2E_EMAIL);
             await page.getByPlaceholder('Sua senha').fill(process.env.E2E_PASSWORD);
             await page.getByRole('button', { name: 'Entrar' }).click();
-            await page.waitForURL(/\/inicio(?:\?|$)/, { timeout: 20000 });
+            try {
+              await page.waitForURL(/\/inicio(?:\?|$)/, { timeout: 20000 });
+            } catch (error) {
+              console.log(`LOGIN_DEBUG_URL=${page.url()}`);
+              console.log(`LOGIN_DEBUG_ERRORS=${JSON.stringify(errors)}`);
+              console.log(`LOGIN_DEBUG_BODY=${(await page.locator('body').innerText()).slice(0, 2000)}`);
+              throw error;
+            }
 
             await page.evaluate(() => {
               localStorage.setItem('apois_cart', JSON.stringify([
@@ -81,7 +94,7 @@ jobs:
               sessionStorage.removeItem('apois_active_pix_v1');
             });
 
-            await page.goto(`${process.env.E2E_BASE_URL}/checkout`, { waitUntil: 'domcontentloaded' });
+            await page.goto(`${process.env.E2E_BASE_URL}/checkout`, { waitUntil: 'networkidle' });
             await expect(page.getByText('Rua de Homologação, 1')).toBeVisible({ timeout: 20000 });
             await expect(page.getByRole('button', { name: 'Finalizar Pedido' })).toBeEnabled();
             await page.getByRole('button', { name: 'Finalizar Pedido' }).click();
@@ -109,14 +122,15 @@ jobs:
             const orderNumber = orderNumberText.replace('#', '').trim();
             expect(orderNumber).toMatch(/^\d+$/);
 
-            await page.goto(`${process.env.E2E_BASE_URL}/pedidos`, { waitUntil: 'domcontentloaded' });
+            await page.goto(`${process.env.E2E_BASE_URL}/pedidos`, { waitUntil: 'networkidle' });
             await expect(page.getByText(`Pedido #${orderNumber}`, { exact: false })).toBeVisible({ timeout: 20000 });
             await expect(page.getByText('Açaí no Grau').first()).toBeVisible();
 
             const fatalErrors = errors.filter((entry) =>
               !entry.includes('Failed to load resource') &&
               !entry.includes('favicon') &&
-              !entry.includes('Google Maps')
+              !entry.includes('Google Maps') &&
+              !entry.includes('requestfailed:GET data:image')
             );
             expect(fatalErrors, fatalErrors.join('\n')).toEqual([]);
 
