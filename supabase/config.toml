@@ -2,5 +2,6 @@ project_id = "sbvhdgyuuperszlsllji"
 
 # Mercado Pago calls this endpoint directly and authenticates with its own HMAC signature.
 # All other Edge Functions keep Supabase JWT verification enabled by default.
+# Keep this file aligned with the deployed function authentication settings.
 [functions.mercadopago-webhook]
 verify_jwt = false
