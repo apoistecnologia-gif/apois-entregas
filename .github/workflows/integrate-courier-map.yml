@@ -18,154 +18,10 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
-      - name: Use one GPS watcher and wire live courier route
-        run: |
-          python <<'PY'
-          from pathlib import Path
-
-          path = Path('src/routes/courier.tsx')
-          text = path.read_text(encoding='utf-8')
-
-          text = text.replace(
-              'import { useCallback, useEffect, useMemo, useRef, useState } from "react";',
-              'import { useCallback, useEffect, useMemo, useState } from "react";',
-              1,
-          )
-
-          panel_import = '''import {
-            CourierBottomNav,
-            CourierHistoryPanel,
-            CourierProfilePanel,
-          } from "@/components/CourierPanels";'''.replace('          ', '')
-          map_imports = '''import {
-            CourierLocationTracker,
-            type CourierPosition,
-          } from "@/components/CourierLocationTracker";
-          import { CourierRouteMap } from "@/components/CourierRouteMap";'''.replace('          ', '')
-          if 'CourierLocationTracker' not in text:
-              if panel_import not in text:
-                  raise SystemExit('CourierPanels import anchor missing')
-              text = text.replace(panel_import, panel_import + '\n' + map_imports, 1)
-
-          watcher_state = '  const locationWatchRef = useRef<number | null>(null);'
-          if watcher_state in text:
-              text = text.replace(
-                  watcher_state,
-                  '  const [currentPosition, setCurrentPosition] = useState<CourierPosition | null>(null);',
-                  1,
-              )
-
-          send_start = text.find('  const sendLocation = useCallback((position: GeolocationPosition) => {')
-          logout_start = text.find('  const logout = async () => {', send_start)
-          if send_start != -1:
-              if logout_start == -1:
-                  raise SystemExit('logout anchor missing after location watcher')
-              text = text[:send_start] + text[logout_start:]
-
-          old_send = '        sendLocation(position);'
-          if old_send in text:
-              position_state = '''        setCurrentPosition({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : null,
-            heading:
-              position.coords.heading !== null && Number.isFinite(position.coords.heading)
-                ? position.coords.heading
-                : null,
-            speed:
-              position.coords.speed !== null && Number.isFinite(position.coords.speed)
-                ? position.coords.speed
-                : null,
-            recordedAt: Date.now(),
-          });'''
-              text = text.replace(old_send, position_state, 1)
-
-          offline_anchor = '''      if (error) {
-        setBusy(null);
-        return toast.error(error.message);
-      }
-    }
-    setBusy(null);'''
-          offline_new = '''      if (error) {
-        setBusy(null);
-        return toast.error(error.message);
-      }
-      setCurrentPosition(null);
-    }
-    setBusy(null);'''
-          if offline_anchor in text:
-              text = text.replace(offline_anchor, offline_new, 1)
-
-          status_end = '''          ) : null}
-        </section>
-
-        <div className="grid grid-cols-2 gap-3">'''
-          tracker_insert = '''          ) : null}
-        </section>
-
-        <CourierLocationTracker
-          enabled={Boolean(availability?.is_online)}
-          onPosition={setCurrentPosition}
-        />
-
-        <div className="grid grid-cols-2 gap-3">'''
-          if '<CourierLocationTracker' not in text:
-              if status_end not in text:
-                  raise SystemExit('status section anchor missing')
-              text = text.replace(status_end, tracker_insert, 1)
-
-          active_old = '''        {activeJob ? (
-          <ActiveDelivery
-            job={activeJob}
-            busy={busy === "delivery" || busy === "support"}
-            supportBusy={busy === "support"}
-            pin={pin}
-            setPin={setPin}
-            onTransition={transitionDelivery}
-            onComplete={completeDelivery}
-            onReport={reportDeliveryProblem}
-          />
-        ) : null}'''
-          active_new = '''        {activeJob ? (
-          <>
-            <CourierRouteMap job={activeJob} currentPosition={currentPosition} />
-            <ActiveDelivery
-              job={activeJob}
-              busy={busy === "delivery" || busy === "support"}
-              supportBusy={busy === "support"}
-              pin={pin}
-              setPin={setPin}
-              onTransition={transitionDelivery}
-              onComplete={completeDelivery}
-              onReport={reportDeliveryProblem}
-            />
-          </>
-        ) : null}'''
-          if '<CourierRouteMap job={activeJob}' not in text:
-              if active_old not in text:
-                  raise SystemExit('active delivery render anchor missing')
-              text = text.replace(active_old, active_new, 1)
-
-          path.write_text(text, encoding='utf-8')
-
-          for component in [
-              Path('src/components/CourierRouteMap.tsx'),
-              Path('src/components/CustomerDeliveryMap.tsx'),
-              Path('src/components/GoogleMapsAddressSelector.tsx'),
-          ]:
-              content = component.read_text(encoding='utf-8')
-              old = 'const browserKey = (import.meta as any).env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;'
-              if old in content:
-                  content = content.replace(
-                      old,
-                      '''const browserKey =
-            (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY ||
-            (import.meta as any).env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;'''.replace('          ', ''),
-                      1,
-                  )
-              component.write_text(content, encoding='utf-8')
-          PY
-          bunx prettier src/routes/courier.tsx src/components/CourierRouteMap.tsx src/components/CustomerDeliveryMap.tsx src/components/GoogleMapsAddressSelector.tsx --write
+      - name: Integrate one GPS watcher and live courier route
+        run: python .github/scripts/integrate-courier-map.py
+      - name: Format changed source
+        run: bunx prettier src/routes/courier.tsx src/components/CourierRouteMap.tsx src/components/CustomerDeliveryMap.tsx src/components/GoogleMapsAddressSelector.tsx --write
       - name: Full verification
         env:
           VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
@@ -178,9 +34,10 @@ jobs:
           bun run test
           bun run format:check
           bun run lint
-      - name: Commit integration and remove workflow
+      - name: Commit integration and remove one-shot files
         run: |
           rm .github/workflows/integrate-courier-map.yml
+          rm .github/scripts/integrate-courier-map.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
