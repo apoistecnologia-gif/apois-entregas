@@ -1,13 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import {
-  ArrowLeft,
-  Bell,
-  MessageSquare,
-  Tag,
-  Info,
-  ShoppingBag,
-  Loader2,
-} from "lucide-react";
+import { ArrowLeft, Bell, MessageSquare, Tag, Info, ShoppingBag, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
@@ -204,7 +196,10 @@ function NotificacoesPage() {
             Carregando preferências...
           </div>
         ) : loadError ? (
-          <div role="alert" className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-center text-sm text-red-300">
+          <div
+            role="alert"
+            className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-center text-sm text-red-300"
+          >
             {loadError}
           </div>
         ) : (
@@ -246,7 +241,8 @@ function NotificacoesPage() {
 
         <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4 text-center">
           <p className="text-[10px] text-zinc-600">
-            Dica: você também pode gerenciar as permissões do sistema nas configurações do seu celular.
+            Dica: você também pode gerenciar as permissões do sistema nas configurações do seu
+            celular.
           </p>
         </div>
       </main>
