@@ -5,6 +5,7 @@ import { AppBottomNav } from "@/components/AppBottomNav";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/favoritos")({
+  ssr: false,
   beforeLoad: async ({ location }) => {
     const {
       data: { session },
