@@ -1,0 +1,53 @@
+name: Retry merchant split and special hours
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/retry-special-hours.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Reuse the reviewed integration script
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          source = Path('.github/workflows/integrate-special-hours.yml').read_text(encoding='utf-8')
+          marker = '      - name: Wire merchant schedule exceptions\n        run: |\n'
+          start = source.index(marker) + len(marker)
+          end = source.index('      - name: Full verification\n', start)
+          lines = source[start:end].splitlines()
+          script = '\n'.join(line[10:] if line.startswith('          ') else line for line in lines)
+          Path('/tmp/integrate-special-hours.sh').write_text(script + '\n', encoding='utf-8')
+          PY
+          bash /tmp/integrate-special-hours.sh
+      - name: Full verification
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit integration and remove one-shot workflows
+        run: |
+          rm .github/workflows/integrate-special-hours.yml .github/workflows/retry-special-hours.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(hours): integrate split and special merchant schedules"
+          git push
