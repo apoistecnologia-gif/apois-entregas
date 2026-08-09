@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState, MetricCard, WorkspaceShell } from "@/components/WorkspaceShell";
+import { AdminSupportPanel } from "@/components/AdminSupportPanel";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -95,7 +96,10 @@ function AdminWorkspace() {
           .select("*, merchants(name), payments(id,status,amount,provider,provider_charge_id)")
           .order("created_at", { ascending: false })
           .limit(500),
-        from("support_tickets").select("*").order("created_at", { ascending: false }).limit(300),
+        from("support_tickets")
+          .select("*, support_messages(id,sender_user_id,message,is_internal,created_at)")
+          .order("created_at", { ascending: false })
+          .limit(300),
         from("payouts")
           .select("*, wallets(owner_type,merchant_id,courier_id)")
           .order("requested_at", { ascending: false })
@@ -242,6 +246,32 @@ function AdminWorkspace() {
     setBusy(null);
     if (error) return toast.error(error.message);
     toast.success("Chamado atualizado.");
+    await loadAll(true);
+  };
+
+  const replyTicket = async (ticket: any, internal: boolean) => {
+    const message = window
+      .prompt(
+        internal ? "Nota interna para a equipe:" : "Resposta que será enviada ao solicitante:",
+        "",
+      )
+      ?.trim();
+    if (!message) return;
+    if (message.length > 5000) {
+      toast.error("A mensagem pode ter no máximo 5.000 caracteres.");
+      return;
+    }
+
+    setBusy(`ticket-reply:${ticket.id}`);
+    const { error } = await rpc("admin_reply_support_ticket", {
+      _ticket_id: ticket.id,
+      _message: message,
+      _is_internal: internal,
+      _set_in_progress: !internal,
+    });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success(internal ? "Nota interna registrada." : "Resposta enviada ao chamado.");
     await loadAll(true);
   };
 
@@ -635,47 +665,12 @@ function AdminWorkspace() {
       )}
 
       {activeTab === "support" && (
-        <div className="space-y-3">
-          {tickets.map((ticket) => (
-            <div key={ticket.id} className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-black uppercase text-primary">
-                    {ticket.category} · {ticket.priority}
-                  </p>
-                  <h3 className="mt-1 font-black">{ticket.subject}</h3>
-                  <p className="mt-2 max-w-3xl text-sm text-zinc-400">{ticket.description}</p>
-                  <p className="mt-2 text-xs text-zinc-600">
-                    Aberto em {dateTime(ticket.created_at)} · {ticket.requester_user_id}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={busy === `ticket:${ticket.id}`}
-                    onClick={() => void updateTicket(ticket, "in_progress")}
-                    className="border-zinc-800"
-                  >
-                    Em atendimento
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={busy === `ticket:${ticket.id}`}
-                    onClick={() => void updateTicket(ticket, "resolved")}
-                  >
-                    Resolver
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
-          {tickets.length === 0 ? (
-            <EmptyState title="Sem chamados" description="Nenhum chamado de suporte registrado." />
-          ) : null}
-        </div>
+        <AdminSupportPanel
+          tickets={tickets}
+          busy={busy}
+          onStatus={updateTicket}
+          onReply={replyTicket}
+        />
       )}
 
       {activeTab === "settings" && (

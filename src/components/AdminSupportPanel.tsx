@@ -44,8 +44,7 @@ export function AdminSupportPanel({
       {tickets.map((ticket) => {
         const ticketBusy = busy === `ticket:${ticket.id}` || busy === `ticket-reply:${ticket.id}`;
         const messages = [...(ticket.support_messages ?? [])].sort(
-          (a: any, b: any) =>
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+          (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
         );
 
         return (
@@ -53,7 +52,9 @@ export function AdminSupportPanel({
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-black uppercase text-primary">{ticket.category}</span>
+                  <span className="text-xs font-black uppercase text-primary">
+                    {ticket.category}
+                  </span>
                   <span className="text-[10px] font-black uppercase text-zinc-600">
                     {ticket.priority}
                   </span>
@@ -167,13 +168,19 @@ export function AdminSupportPanel({
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-black uppercase text-zinc-400">
-                              {message.is_internal ? "Nota interna" : fromRequester ? "Cliente" : "Equipe APOIS"}
+                              {message.is_internal
+                                ? "Nota interna"
+                                : fromRequester
+                                  ? "Cliente"
+                                  : "Equipe APOIS"}
                             </span>
                             {message.is_internal ? (
                               <LockKeyhole className="h-3 w-3 text-amber-300" />
                             ) : null}
                           </div>
-                          <span className="text-[9px] text-zinc-600">{dateTime(message.created_at)}</span>
+                          <span className="text-[9px] text-zinc-600">
+                            {dateTime(message.created_at)}
+                          </span>
                         </div>
                         <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-zinc-300">
                           {message.message}
