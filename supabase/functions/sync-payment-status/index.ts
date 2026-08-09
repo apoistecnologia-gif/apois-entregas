@@ -21,6 +21,18 @@ function response(status: number, body: JsonRecord) {
   return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 }
 
+function accessTokenForOrder(providerOrderId: string): string | null {
+  const sandbox = /^ORDTST/i.test(providerOrderId);
+  if (sandbox) {
+    return Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_TEST")?.trim()
+      || Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN")?.trim()
+      || null;
+  }
+  return Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION")?.trim()
+    || Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN")?.trim()
+    || null;
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
   if (request.method !== "POST") return response(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
@@ -33,10 +45,9 @@ Deno.serve(async (request: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const accessToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
   const apiBase = (Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com").replace(/\/$/, "");
 
-  if (!supabaseUrl || !anonKey || !serviceRoleKey || !accessToken) {
+  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     return response(500, { error: "Serviço temporariamente indisponível.", code: "SERVER_CONFIGURATION" });
   }
 
@@ -101,6 +112,11 @@ Deno.serve(async (request: Request) => {
     return response(200, { paymentStatus: "refunded", providerStatus: "refunded", reconciled: false });
   }
 
+  const accessToken = accessTokenForOrder(payment.provider_charge_id);
+  if (!accessToken) {
+    return response(503, { error: "Credencial do gateway não configurada.", code: "PAYMENT_PROVIDER_NOT_CONFIGURED" });
+  }
+
   const providerResponse = await fetch(
     `${apiBase}/v1/orders/${encodeURIComponent(payment.provider_charge_id)}`,
     { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } },
@@ -114,10 +130,7 @@ Deno.serve(async (request: Request) => {
   }
 
   if (!providerResponse.ok || !isRecord(providerOrder)) {
-    console.error("sync-payment-status provider lookup failed", {
-      status: providerResponse.status,
-      orderId: order.id,
-    });
+    console.error("sync-payment-status provider lookup failed", { status: providerResponse.status, orderId: order.id });
     return response(502, { error: "Não foi possível confirmar o pagamento agora.", code: "PROVIDER_LOOKUP_FAILED" });
   }
 
@@ -150,91 +163,58 @@ Deno.serve(async (request: Request) => {
   const providerRefunds = transactions && Array.isArray(transactions.refunds) ? transactions.refunds : [];
   const providerRefund = providerRefunds.length > 0 && isRecord(providerRefunds[0]) ? providerRefunds[0] : null;
   const providerRefundId = providerRefund ? text(providerRefund.id) : null;
-  const providerRefundAmount = providerRefund && Number.isFinite(Number(providerRefund.amount))
-    ? Number(providerRefund.amount)
-    : Number(payment.amount);
+  const providerRefundAmount = providerRefund && Number.isFinite(Number(providerRefund.amount)) ? Number(providerRefund.amount) : Number(payment.amount);
 
   if (paid) {
-    await admin
-      .from("payments")
-      .update({ status: "paid", paid_at: payment.paid_at ?? now, failed_at: null, failure_reason: null })
-      .eq("id", payment.id)
-      .neq("status", "refunded");
-
-    if (!["cancelled", "refunded"].includes(order.status)) {
-      await admin.from("orders").update({ payment_status: "paid" }).eq("id", order.id);
-    }
+    await admin.from("payments").update({ status: "paid", paid_at: payment.paid_at ?? now, failed_at: null, failure_reason: null }).eq("id", payment.id).neq("status", "refunded");
+    if (!["cancelled", "refunded"].includes(order.status)) await admin.from("orders").update({ payment_status: "paid" }).eq("id", order.id);
   } else if (refunded) {
     await admin.from("payments").update({ status: "refunded" }).eq("id", payment.id);
     await admin.from("orders").update({ payment_status: "refunded" }).eq("id", order.id);
-    await admin
-      .from("refunds")
-      .update({ status: "completed", provider_refund_id: providerRefundId, processed_at: now })
-      .eq("payment_id", payment.id)
-      .in("status", ["pending", "processing", "failed"]);
+    await admin.from("refunds").update({ status: "completed", provider_refund_id: providerRefundId, processed_at: now }).eq("payment_id", payment.id).in("status", ["pending", "processing", "failed"]);
   } else if (failed) {
-    await admin
-      .from("payments")
-      .update({ status: "failed", failed_at: now, failure_reason: `${providerStatus}:${providerStatusDetail}` })
-      .eq("id", payment.id)
-      .in("status", ["pending", "processing"]);
-    if (order.payment_status !== "paid") {
-      await admin.from("orders").update({ payment_status: "failed" }).eq("id", order.id);
-    }
+    await admin.from("payments").update({ status: "failed", failed_at: now, failure_reason: `${providerStatus}:${providerStatusDetail}` }).eq("id", payment.id).in("status", ["pending", "processing"]);
+    if (order.payment_status !== "paid") await admin.from("orders").update({ payment_status: "failed" }).eq("id", order.id);
   } else if (processing) {
     await admin.from("payments").update({ status: "processing" }).eq("id", payment.id).eq("status", "pending");
   }
 
   if (providerTransactionId) {
-    await admin.from("payment_transactions").upsert(
-      {
-        payment_id: payment.id,
-        provider_transaction_id: providerTransactionId,
-        transaction_type: "charge",
-        amount: Number(payment.amount),
-        status: paid || refunded ? "completed" : failed ? "failed" : "pending",
-        processed_at: paid || refunded || failed ? now : null,
-      },
-      { onConflict: "payment_id,provider_transaction_id,transaction_type" },
-    );
+    await admin.from("payment_transactions").upsert({
+      payment_id: payment.id,
+      provider_transaction_id: providerTransactionId,
+      transaction_type: "charge",
+      amount: Number(payment.amount),
+      status: paid || refunded ? "completed" : failed ? "failed" : "pending",
+      processed_at: paid || refunded || failed ? now : null,
+    }, { onConflict: "payment_id,provider_transaction_id,transaction_type" });
   }
 
   if (refunded && providerRefundId) {
-    await admin.from("payment_transactions").upsert(
-      {
-        payment_id: payment.id,
-        provider_transaction_id: providerRefundId,
-        transaction_type: "refund",
-        amount: providerRefundAmount,
-        status: "completed",
-        processed_at: now,
-      },
-      { onConflict: "payment_id,provider_transaction_id,transaction_type" },
-    );
+    await admin.from("payment_transactions").upsert({
+      payment_id: payment.id,
+      provider_transaction_id: providerRefundId,
+      transaction_type: "refund",
+      amount: providerRefundAmount,
+      status: "completed",
+      processed_at: now,
+    }, { onConflict: "payment_id,provider_transaction_id,transaction_type" });
   }
 
   const eventId = `customer-reconcile:${payment.provider_charge_id}:${providerStatus}:${providerStatusDetail}`;
-  await admin.from("payment_events").upsert(
-    {
-      provider: "mercadopago",
-      provider_event_id: eventId,
-      event_type: "order.reconciled",
-      payment_id: payment.id,
-      payload: {
-        notification: { source: "authenticated_customer_reconciliation", data: { id: payment.provider_charge_id } },
-        order: providerOrder,
-      },
-      status: "processed",
-      processed_at: now,
+  await admin.from("payment_events").upsert({
+    provider: "mercadopago",
+    provider_event_id: eventId,
+    event_type: "order.reconciled",
+    payment_id: payment.id,
+    payload: {
+      notification: { source: "authenticated_customer_reconciliation", data: { id: payment.provider_charge_id } },
+      order: providerOrder,
     },
-    { onConflict: "provider,provider_event_id", ignoreDuplicates: true },
-  );
+    status: "processed",
+    processed_at: now,
+  }, { onConflict: "provider,provider_event_id", ignoreDuplicates: true });
 
   const paymentStatus = paid ? "paid" : refunded ? "refunded" : failed ? "failed" : processing ? "processing" : payment.status;
-  return response(200, {
-    paymentStatus,
-    providerStatus,
-    providerStatusDetail,
-    reconciled: true,
-  });
+  return response(200, { paymentStatus, providerStatus, providerStatusDetail, reconciled: true });
 });
