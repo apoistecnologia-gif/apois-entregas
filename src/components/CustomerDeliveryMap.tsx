@@ -31,9 +31,8 @@ export function CustomerDeliveryMap({ job }: { job: DeliveryJob | null | undefin
   const [location, setLocation] = useState<CourierLocation | null>(null);
   const [loading, setLoading] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
-  const browserKey =
-    (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY ||
-    (import.meta as any).env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
+  const browserKey = (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+  const mapId = (import.meta as any).env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined;
 
   const target = useMemo(() => {
     const lat = Number(job?.delivery_latitude);
@@ -100,6 +99,8 @@ export function CustomerDeliveryMap({ job }: { job: DeliveryJob | null | undefin
 
   if (!job?.courier_id || !activeTrackingStatuses.has(job.status)) return null;
 
+  const mapConfigured = Boolean(browserKey && mapId);
+
   return (
     <section className="overflow-hidden rounded-2xl border border-zinc-900 bg-zinc-950">
       <div className="flex items-center justify-between gap-3 border-b border-zinc-900 p-4">
@@ -119,19 +120,19 @@ export function CustomerDeliveryMap({ job }: { job: DeliveryJob | null | undefin
         {loading ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : null}
       </div>
 
-      {browserKey && (location || target) ? (
-        <APIProvider apiKey={browserKey}>
+      {mapConfigured && (location || target) ? (
+        <APIProvider apiKey={browserKey!}>
           <div className="h-64 w-full bg-zinc-900">
             <Map
               defaultCenter={
                 location
                   ? { lat: Number(location.latitude), lng: Number(location.longitude) }
-                  : (target ?? { lat: -8.0476, lng: -34.877 })
+                  : target!
               }
               defaultZoom={14}
               gestureHandling="greedy"
               disableDefaultUI
-              mapId="DEMO_MAP_ID"
+              mapId={mapId!}
             >
               {location ? (
                 <AdvancedMarker
@@ -154,9 +155,11 @@ export function CustomerDeliveryMap({ job }: { job: DeliveryJob | null | undefin
         </APIProvider>
       ) : (
         <div className="p-5 text-center text-xs text-zinc-500">
-          {unavailable
-            ? "A localização do entregador ainda não está disponível para este pedido."
-            : "O mapa ficará disponível assim que a localização da entrega estiver pronta."}
+          {!mapConfigured
+            ? "O mapa de acompanhamento está indisponível neste ambiente."
+            : unavailable
+              ? "A localização do entregador ainda não está disponível para este pedido."
+              : "O mapa ficará disponível assim que a localização da entrega estiver pronta."}
         </div>
       )}
     </section>
