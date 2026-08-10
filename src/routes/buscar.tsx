@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, useNavigate, useSearch } from "@tanstack/react-router";
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchMerchantCategories, fetchMerchants } from "@/lib/catalog";
 import {
@@ -76,7 +76,7 @@ function Buscar() {
   const [searchTerm, setSearchTerm] = useState(searchParams.q || "");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -111,11 +111,11 @@ function Buscar() {
           } else {
             setMerchantsHours([]);
             setMerchantsSpecialHours([]);
-            setMerchantsSpecialHours([]);
           }
         } else {
           setMerchants([]);
           setMerchantsHours([]);
+          setMerchantsSpecialHours([]);
         }
       }
     } catch (err: any) {
@@ -124,14 +124,17 @@ function Buscar() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchData();
+    void fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
     if (searchInputRef.current && !searchParams.categoria && !searchParams.q) {
       searchInputRef.current.focus();
     }
-  }, []);
+  }, [searchParams.categoria, searchParams.q]);
 
   useEffect(() => {
     setSearchTerm(searchParams.q || "");

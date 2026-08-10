@@ -1,5 +1,5 @@
 import { ImagePlus, Loader2, Pencil, Plus, Store, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -78,7 +78,7 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
     });
   }, [product]);
 
-  const loadOptions = async () => {
+  const loadOptions = useCallback(async () => {
     setLoadingOptions(true);
     const groupRes = await from("product_option_groups")
       .select("*")
@@ -120,11 +120,11 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
       setOptions((optionRes.data ?? []) as ProductOption[]);
     }
     setLoadingOptions(false);
-  };
+  }, [product.id]);
 
   useEffect(() => {
     if (open) void loadOptions();
-  }, [open, product.id]);
+  }, [open, loadOptions]);
 
   const optionsByGroup = useMemo(() => {
     const grouped = new Map<string, ProductOption[]>();

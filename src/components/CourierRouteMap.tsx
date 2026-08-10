@@ -100,7 +100,7 @@ function RouteMapContent({
     return () => {
       disposed = true;
     };
-  }, [currentPosition, map, target.lat, target.lng]);
+  }, [currentPosition, map, target]);
 
   useEffect(
     () => () => {

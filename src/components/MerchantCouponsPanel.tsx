@@ -1,5 +1,5 @@
 import { Copy, Loader2, Tag, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState, MetricCard } from "@/components/WorkspaceShell";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,7 +56,7 @@ export function MerchantCouponsPanel({ merchantId }: { merchantId: string }) {
     };
   });
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     const couponsResult = await from("coupons")
       .select("*")
@@ -89,11 +89,11 @@ export function MerchantCouponsPanel({ merchantId }: { merchantId: string }) {
       setRedemptions((redemptionResult.data ?? []) as Redemption[]);
     }
     setLoading(false);
-  };
+  }, [merchantId]);
 
   useEffect(() => {
     void load();
-  }, [merchantId]);
+  }, [load]);
 
   const usageByCoupon = useMemo(() => {
     const map = new Map<string, number>();

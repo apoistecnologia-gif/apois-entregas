@@ -1,5 +1,5 @@
 import { CirclePlus, Loader2, MapPinned, Pencil, Save, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState, MetricCard } from "@/components/WorkspaceShell";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,7 +93,7 @@ export function AdminCoveragePanel({
     [cities, selectedCityId],
   );
 
-  const loadZones = async () => {
+  const loadZones = useCallback(async () => {
     if (!selectedCityId) {
       setZones([]);
       return;
@@ -110,11 +110,11 @@ export function AdminCoveragePanel({
       return;
     }
     setZones((data ?? []) as DeliveryZone[]);
-  };
+  }, [selectedCityId]);
 
   useEffect(() => {
     void loadZones();
-  }, [selectedCityId]);
+  }, [loadZones]);
 
   const saveCity = async (city: City) => {
     const radius = Number(city.default_delivery_radius_km);

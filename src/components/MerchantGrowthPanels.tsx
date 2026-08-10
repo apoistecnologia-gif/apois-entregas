@@ -1,5 +1,5 @@
 import { BadgePercent, Loader2, Star, Trash2, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { EmptyState, MetricCard } from "@/components/WorkspaceShell";
@@ -82,7 +82,7 @@ export function MerchantPromotionsPanel({
     };
   });
 
-  const loadPromotions = async () => {
+  const loadPromotions = useCallback(async () => {
     setLoading(true);
     const { data, error } = await (supabase.from as any)("promotions")
       .select("*")
@@ -95,11 +95,11 @@ export function MerchantPromotionsPanel({
       setPromotions((data ?? []) as Promotion[]);
     }
     setLoading(false);
-  };
+  }, [merchantId]);
 
   useEffect(() => {
     void loadPromotions();
-  }, [merchantId]);
+  }, [loadPromotions]);
 
   const createPromotion = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
