@@ -60,7 +60,7 @@ Deno.serve(async (request: Request) => {
       .from("support_tickets")
       .select(
         `
-        id,category,subject,description,priority,status,order_id,delivery_job_id,created_at,updated_at,resolved_at,closed_at,
+        id,requester_user_id,category,subject,description,priority,status,order_id,delivery_job_id,created_at,updated_at,resolved_at,closed_at,
         support_messages(id,sender_user_id,message,attachment_paths,is_internal,created_at)
       `,
       )
@@ -124,18 +124,28 @@ Deno.serve(async (request: Request) => {
   if (payload.action === "message") {
     const ticketId = payload.ticketId;
     const message = payload.message;
+    const attachmentPaths = payload.attachmentPaths ?? [];
     if (
       typeof ticketId !== "string" ||
       typeof message !== "string" ||
-      message.trim().length < 1 ||
-      message.trim().length > 3000
+      message.trim().length > 3000 ||
+      !Array.isArray(attachmentPaths) ||
+      attachmentPaths.length > 4 ||
+      attachmentPaths.some(
+        (path) =>
+          typeof path !== "string" ||
+          path.length > 500 ||
+          path.includes("..") ||
+          !path.startsWith(`${authData.user.id}/${ticketId}/`),
+      ) ||
+      (message.trim().length < 1 && attachmentPaths.length === 0)
     ) {
-      return reply(400, { error: "Mensagem inválida.", code: "INVALID_MESSAGE" });
+      return reply(400, { error: "Mensagem ou anexo inválido.", code: "INVALID_MESSAGE" });
     }
     const { error } = await client.rpc("add_support_message", {
       _ticket_id: ticketId,
       _message: message.trim(),
-      _attachment_paths: [],
+      _attachment_paths: attachmentPaths,
       _is_internal: false,
     });
     if (error) {
