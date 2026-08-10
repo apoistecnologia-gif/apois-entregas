@@ -26,7 +26,7 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: python .github/scripts/complete-support-attachments.py
-      - run: bunx prettier 'src/routes/perfil/ajuda/chamado/$ticketId.tsx' src/routes/admin.tsx src/components/AdminSupportPanel.tsx --write
+      - run: bunx prettier 'src/routes/perfil/ajuda/chamado/$ticketId.tsx' src/routes/admin.tsx src/components/AdminSupportPanel.tsx supabase/functions/customer-support/index.ts --write
       - name: Full verification
         env:
           VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
