@@ -247,35 +247,47 @@ Deno.serve(async (request: Request) => {
     const payment = providerPayment(raw);
     const transactionId = identifier(payment?.id);
     if (orderPaid(raw)) {
-      const periodEnd = addOneMonth(now);
-      await admin
-        .from("merchant_subscription_payments")
-        .update({
-          provider_payment_id: transactionId ?? paymentRow.provider_payment_id,
-          status: "approved",
-          paid_at: now,
-          failure_reason: null,
-          provider_payload: raw,
-          updated_at: now,
-        })
-        .eq("id", paymentRow.id);
-      const updated = await admin
-        .from("merchant_subscriptions")
-        .update({
-          provider_status: "paid",
-          current_period_start: now,
-          current_period_end: periodEnd,
-          next_payment_at: periodEnd,
-          last_payment_at: now,
-          last_payment_status: "approved",
-          metadata: { environment, billingModel: "monthly_pix" },
-          updated_at: now,
-        })
-        .eq("id", subscription.id)
-        .select("*")
-        .single();
-      if (!updated.error && updated.data) subscription = updated.data;
-      return true;
+      const alreadyApproved = paymentRow.status === "approved";
+      const paidAt = alreadyApproved && text(paymentRow.paid_at) ? text(paymentRow.paid_at)! : now;
+      const periodEnd = addOneMonth(paidAt);
+
+      if (!alreadyApproved) {
+        await admin
+          .from("merchant_subscription_payments")
+          .update({
+            provider_payment_id: transactionId ?? paymentRow.provider_payment_id,
+            status: "approved",
+            paid_at: paidAt,
+            failure_reason: null,
+            provider_payload: raw,
+            updated_at: now,
+          })
+          .eq("id", paymentRow.id);
+      }
+
+      const storedPeriodEnd = text(subscription.current_period_end);
+      const needsPeriodRepair =
+        !storedPeriodEnd || new Date(storedPeriodEnd).getTime() < new Date(periodEnd).getTime();
+
+      if (!alreadyApproved || needsPeriodRepair) {
+        const updated = await admin
+          .from("merchant_subscriptions")
+          .update({
+            provider_status: "paid",
+            current_period_start: paidAt,
+            current_period_end: periodEnd,
+            next_payment_at: periodEnd,
+            last_payment_at: paidAt,
+            last_payment_status: "approved",
+            metadata: { environment, billingModel: "monthly_pix" },
+            updated_at: now,
+          })
+          .eq("id", subscription.id)
+          .select("*")
+          .single();
+        if (!updated.error && updated.data) subscription = updated.data;
+      }
+      return !alreadyApproved;
     }
 
     if (orderFailed(raw)) {

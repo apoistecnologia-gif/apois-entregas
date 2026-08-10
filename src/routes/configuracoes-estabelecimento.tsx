@@ -15,7 +15,7 @@ type MerchantSettings = {
   delivery_fee: number;
   delivery_min_minutes: number | null;
   delivery_max_minutes: number | null;
-  status: string;
+  approval_status: string;
   is_active: boolean;
 };
 
@@ -77,9 +77,9 @@ function MerchantSettingsPage() {
     }
 
     const membership = await from("merchant_members")
-      .select("merchant_id,role,is_active")
+      .select("merchant_id,role,status")
       .eq("user_id", user.id)
-      .eq("is_active", true)
+      .eq("status", "active")
       .limit(1)
       .maybeSingle();
 
@@ -93,7 +93,7 @@ function MerchantSettingsPage() {
     const [merchantRes, hoursRes] = await Promise.all([
       from("merchants")
         .select(
-          "id,name,description,delivery_fee,delivery_min_minutes,delivery_max_minutes,status,is_active",
+          "id,name,description,delivery_fee,delivery_min_minutes,delivery_max_minutes,approval_status,is_active",
         )
         .eq("id", merchantId)
         .maybeSingle(),
@@ -290,12 +290,12 @@ function MerchantSettingsPage() {
         </div>
         <span
           className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${
-            merchant.is_active && merchant.status === "approved"
+            merchant.is_active && merchant.approval_status === "approved"
               ? "bg-emerald-500/10 text-emerald-400"
               : "bg-amber-500/10 text-amber-300"
           }`}
         >
-          {merchant.status}
+          {merchant.approval_status}
         </span>
       </header>
 
