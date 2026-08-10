@@ -36,9 +36,9 @@ const autocompleteResponseSchema = z.object({
       structured_formatting: z
         .object({
           main_text: z.string(),
-          secondary_text: z.string().nullable(),
+          secondary_text: z.string().optional(),
         })
-        .nullable(),
+        .optional(),
     }),
   ),
 });
@@ -115,7 +115,18 @@ export const autocompleteAddress = createServerFn({ method: "GET" })
     const raw = await fetchGoogleMapsJson(url);
     assertApiStatus(raw, ["OK", "ZERO_RESULTS"]);
     const parsed = autocompleteResponseSchema.parse(raw);
-    return { predictions: parsed.predictions };
+    return {
+      predictions: parsed.predictions.map((prediction) => ({
+        place_id: prediction.place_id,
+        description: prediction.description,
+        structured_formatting: prediction.structured_formatting
+          ? {
+              main_text: prediction.structured_formatting.main_text,
+              secondary_text: prediction.structured_formatting.secondary_text ?? null,
+            }
+          : null,
+      })),
+    };
   });
 
 export const getPlaceDetails = createServerFn({ method: "GET" })
