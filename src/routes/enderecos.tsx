@@ -60,9 +60,7 @@ function EnderecosLayout() {
     setLoadError(null);
     const { data, error } = await supabase
       .from("customer_addresses")
-      .select(
-        "id,label,street,number,complement,neighborhood,city,state,postal_code,is_default",
-      )
+      .select("id,label,street,number,complement,neighborhood,city,state,postal_code,is_default")
       .order("is_default", { ascending: false })
       .order("created_at", { ascending: false });
 
@@ -163,7 +161,10 @@ function EnderecosLayout() {
             <span className="sr-only">Carregando endereços</span>
           </div>
         ) : loadError ? (
-          <div className="flex flex-col items-center justify-center space-y-4 py-16 text-center" role="alert">
+          <div
+            className="flex flex-col items-center justify-center space-y-4 py-16 text-center"
+            role="alert"
+          >
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-500/10 ring-1 ring-red-500/20">
               <MapPin className="h-10 w-10 text-red-400" />
             </div>
@@ -211,7 +212,9 @@ function EnderecosLayout() {
                     }`}
                     aria-hidden="true"
                   >
-                    {addr.is_default ? <span className="block h-3 w-3 rounded-full bg-primary" /> : null}
+                    {addr.is_default ? (
+                      <span className="block h-3 w-3 rounded-full bg-primary" />
+                    ) : null}
                   </span>
 
                   <div className="flex items-start gap-3">
@@ -221,7 +224,9 @@ function EnderecosLayout() {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-lg font-extrabold leading-none text-white">{addr.label}</span>
+                        <span className="text-lg font-extrabold leading-none text-white">
+                          {addr.label}
+                        </span>
                         {addr.is_default ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-black">
                             <Star className="h-3 w-3 fill-black" />
