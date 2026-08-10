@@ -106,7 +106,9 @@ export function CustomerDeliveryMap({ job }: { job: DeliveryJob | null | undefin
 
     let disposed = false;
     const loadConfirmationPin = async () => {
-      const { data: delivery, error: deliveryError } = await (supabase.from as any)("delivery_jobs")
+      const { data: delivery, error: deliveryError } = await (supabase.from as any)(
+        "delivery_jobs",
+      )
         .select("order_id")
         .eq("id", job.id)
         .maybeSingle();
@@ -215,7 +217,9 @@ export function CustomerDeliveryMap({ job }: { job: DeliveryJob | null | undefin
                 <p className="text-xs font-black uppercase tracking-wider text-primary">
                   Entregador no destino
                 </p>
-                <p className="mt-1 text-sm font-black">Informe o PIN somente ao receber seu pedido</p>
+                <p className="mt-1 text-sm font-black">
+                  Informe o PIN somente ao receber seu pedido
+                </p>
               </div>
             </div>
             <div className="mt-4 rounded-xl bg-black p-4 text-center">
