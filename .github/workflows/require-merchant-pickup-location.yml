@@ -1,0 +1,44 @@
+name: Require merchant pickup location
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/require-merchant-pickup-location.yml
+      - .github/scripts/require-merchant-pickup-location.py
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: python .github/scripts/require-merchant-pickup-location.py
+      - run: bunx prettier src/routes/merchant.tsx --write
+      - name: Full verification
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit verified fix and remove one-shot files
+        run: |
+          rm .github/workflows/require-merchant-pickup-location.yml
+          rm .github/scripts/require-merchant-pickup-location.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(merchant): capture pickup location before approval"
+          git push
