@@ -18,6 +18,8 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
+      - name: Repository safety audit
+        run: bun run audit:repo
       - name: Build and generate routes
         env:
           VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
