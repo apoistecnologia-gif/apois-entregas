@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const BOUND_USER_KEY = "apois_bound_user_id";
@@ -54,7 +54,10 @@ export function AuthSessionIsolation({ children }: { children: ReactNode }) {
       }
     };
 
-    void supabase.auth.getSession().then(({ data }) => bindIdentity(data.session?.user.id ?? null));
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => bindIdentity(data.session?.user.id ?? null))
+      .catch(() => bindIdentity(null));
 
     const {
       data: { subscription },
@@ -77,5 +80,5 @@ export function AuthSessionIsolation({ children }: { children: ReactNode }) {
     );
   }
 
-  return <div key={userId ?? "anonymous"}>{children}</div>;
+  return <Fragment key={userId ?? "anonymous"}>{children}</Fragment>;
 }
