@@ -1,0 +1,63 @@
+name: Apply Critical Audit Fixes
+
+on:
+  push:
+    paths:
+      - ".github/workflows/fix-audit-critical.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Fix merchant settings schema drift and monthly PIX renewal idempotency
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          settings = Path('src/routes/configuracoes-estabelecimento.tsx')
+          text = settings.read_text()
+          replacements = [
+              ('  status: string;\n  is_active: boolean;', '  approval_status: string;\n  is_active: boolean;'),
+              ('.select("merchant_id,role,is_active")\n      .eq("user_id", user.id)\n      .eq("is_active", true)', '.select("merchant_id,role,status")\n      .eq("user_id", user.id)\n      .eq("status", "active")'),
+              ('"id,name,description,delivery_fee,delivery_min_minutes,delivery_max_minutes,status,is_active",', '"id,name,description,delivery_fee,delivery_min_minutes,delivery_max_minutes,approval_status,is_active",'),
+              ('merchant.is_active && merchant.status === "approved"', 'merchant.is_active && merchant.approval_status === "approved"'),
+              ('{merchant.status}', '{merchant.approval_status}'),
+          ]
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'settings marker not found: {old[:80]}')
+              text = text.replace(old, new, 1)
+          settings.write_text(text)
+
+          billing = Path('supabase/functions/merchant-subscription/index.ts')
+          text = billing.read_text()
+          old = '''    if (orderPaid(raw)) {\n      const periodEnd = addOneMonth(now);\n      await admin\n        .from("merchant_subscription_payments")\n        .update({\n          provider_payment_id: transactionId ?? paymentRow.provider_payment_id,\n          status: "approved",\n          paid_at: now,\n          failure_reason: null,\n          provider_payload: raw,\n          updated_at: now,\n        })\n        .eq("id", paymentRow.id);\n      const updated = await admin\n        .from("merchant_subscriptions")\n        .update({\n          provider_status: "paid",\n          current_period_start: now,\n          current_period_end: periodEnd,\n          next_payment_at: periodEnd,\n          last_payment_at: now,\n          last_payment_status: "approved",\n          metadata: { environment, billingModel: "monthly_pix" },\n          updated_at: now,\n        })\n        .eq("id", subscription.id)\n        .select("*")\n        .single();\n      if (!updated.error && updated.data) subscription = updated.data;\n      return true;\n    }'''
+          new = '''    if (orderPaid(raw)) {\n      const alreadyApproved = paymentRow.status === "approved";\n      const paidAt = alreadyApproved && text(paymentRow.paid_at) ? text(paymentRow.paid_at)! : now;\n      const periodEnd = addOneMonth(paidAt);\n\n      if (!alreadyApproved) {\n        await admin\n          .from("merchant_subscription_payments")\n          .update({\n            provider_payment_id: transactionId ?? paymentRow.provider_payment_id,\n            status: "approved",\n            paid_at: paidAt,\n            failure_reason: null,\n            provider_payload: raw,\n            updated_at: now,\n          })\n          .eq("id", paymentRow.id);\n      }\n\n      const storedPeriodEnd = text(subscription.current_period_end);\n      const needsPeriodRepair =\n        !storedPeriodEnd || new Date(storedPeriodEnd).getTime() < new Date(periodEnd).getTime();\n\n      if (!alreadyApproved || needsPeriodRepair) {\n        const updated = await admin\n          .from("merchant_subscriptions")\n          .update({\n            provider_status: "paid",\n            current_period_start: paidAt,\n            current_period_end: periodEnd,\n            next_payment_at: periodEnd,\n            last_payment_at: paidAt,\n            last_payment_status: "approved",\n            metadata: { environment, billingModel: "monthly_pix" },\n            updated_at: now,\n          })\n          .eq("id", subscription.id)\n          .select("*")\n          .single();\n        if (!updated.error && updated.data) subscription = updated.data;\n      }\n      return !alreadyApproved;\n    }'''
+          if old not in text:
+              raise SystemExit('billing renewal marker not found')
+          billing.write_text(text.replace(old, new, 1))
+          PY
+      - name: Format and verify
+        run: |
+          bunx prettier --write src/routes/configuracoes-estabelecimento.tsx supabase/functions/merchant-subscription/index.ts
+          bun run typecheck
+          bun run test
+          bun run build
+          bun run lint
+      - name: Commit fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/configuracoes-estabelecimento.tsx supabase/functions/merchant-subscription/index.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(audit): harden merchant billing and settings"
+          git push
