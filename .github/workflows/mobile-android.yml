@@ -159,18 +159,18 @@ jobs:
               raise SystemExit("public/favicon.png is required for Android branding")
           (drawable / "apois_icon.png").write_bytes(icon_source.read_bytes())
 
-          for png in res.glob("drawable*/splash.png"):
-              png.unlink()
-          (drawable / "splash.xml").write_text(
-              '''<?xml version="1.0" encoding="utf-8"?>\n<layer-list xmlns:android="http://schemas.android.com/apk/res/android">\n    <item android:drawable="#000000" />\n    <item android:gravity="center">\n        <bitmap android:src="@drawable/apois_icon" android:gravity="center" />\n    </item>\n</layer-list>\n''',
-              encoding="utf-8",
-          )
-
           values = res / "values"
           values.mkdir(parents=True, exist_ok=True)
           colors = values / "colors.xml"
           colors.write_text(
               '''<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="apois_black">#000000</color>\n    <color name="apois_gold">#F6B900</color>\n</resources>\n''',
+              encoding="utf-8",
+          )
+
+          for png in res.glob("drawable*/splash.png"):
+              png.unlink()
+          (drawable / "splash.xml").write_text(
+              '''<?xml version="1.0" encoding="utf-8"?>\n<layer-list xmlns:android="http://schemas.android.com/apk/res/android">\n    <item android:drawable="@color/apois_black" />\n    <item android:gravity="center">\n        <bitmap android:src="@drawable/apois_icon" android:gravity="center" />\n    </item>\n</layer-list>\n''',
               encoding="utf-8",
           )
 
