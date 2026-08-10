@@ -1,5 +1,5 @@
 import { APIProvider, AdvancedMarker, Map } from "@vis.gl/react-google-maps";
-import { Bike, Loader2, MapPin, Navigation } from "lucide-react";
+import { Bike, KeyRound, Loader2, MapPin, Navigation } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -29,6 +29,7 @@ const activeTrackingStatuses = new Set([
 
 export function CustomerDeliveryMap({ job }: { job: DeliveryJob | null | undefined }) {
   const [location, setLocation] = useState<CourierLocation | null>(null);
+  const [confirmationPin, setConfirmationPin] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
   const browserKey = (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
@@ -97,6 +98,46 @@ export function CustomerDeliveryMap({ job }: { job: DeliveryJob | null | undefin
     };
   }, [job?.courier_id, job?.status]);
 
+  useEffect(() => {
+    if (!job?.id || job.status !== "arrived_destination") {
+      setConfirmationPin(null);
+      return;
+    }
+
+    let disposed = false;
+    const loadConfirmationPin = async () => {
+      const { data: delivery, error: deliveryError } = await (supabase.from as any)("delivery_jobs")
+        .select("order_id")
+        .eq("id", job.id)
+        .maybeSingle();
+      if (disposed) return;
+      if (deliveryError || !delivery?.order_id) {
+        console.warn("Pedido da entrega indisponível para confirmação:", deliveryError?.code);
+        setConfirmationPin(null);
+        return;
+      }
+
+      const { data: secret, error: secretError } = await (supabase.from as any)(
+        "delivery_confirmation_secrets",
+      )
+        .select("pin_code")
+        .eq("order_id", delivery.order_id)
+        .maybeSingle();
+      if (disposed) return;
+      if (secretError) {
+        console.warn("PIN de entrega indisponível para o cliente:", secretError.code);
+        setConfirmationPin(null);
+        return;
+      }
+      setConfirmationPin(secret?.pin_code ?? null);
+    };
+
+    void loadConfirmationPin();
+    return () => {
+      disposed = true;
+    };
+  }, [job?.id, job?.status]);
+
   if (!job?.courier_id || !activeTrackingStatuses.has(job.status)) return null;
 
   const mapConfigured = Boolean(browserKey && mapId);
@@ -162,6 +203,37 @@ export function CustomerDeliveryMap({ job }: { job: DeliveryJob | null | undefin
               : "O mapa ficará disponível assim que a localização da entrega estiver pronta."}
         </div>
       )}
+
+      {job.status === "arrived_destination" ? (
+        <div className="border-t border-zinc-900 p-4">
+          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-black">
+                <KeyRound className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-black uppercase tracking-wider text-primary">
+                  Entregador no destino
+                </p>
+                <p className="mt-1 text-sm font-black">Informe o PIN somente ao receber seu pedido</p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-xl bg-black p-4 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-600">
+                Código de entrega
+              </p>
+              <p className="mt-2 text-4xl font-black tracking-[0.35em] text-primary">
+                {confirmationPin ?? "••••"}
+              </p>
+              {!confirmationPin ? (
+                <p className="mt-2 text-xs text-zinc-500">
+                  Atualizando o código de confirmação. Tente novamente em alguns instantes.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
