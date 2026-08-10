@@ -88,6 +88,19 @@ function scanSource(file, content) {
     });
   }
 
+  const serverOnlySource =
+    file === "src/server.ts" ||
+    file.startsWith("src/server/") ||
+    file.endsWith(".server.ts") ||
+    file.endsWith(".server.tsx");
+  if (
+    file.startsWith("src/") &&
+    !serverOnlySource &&
+    /\b(?:APOIS_SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SERVICE_ROLE_KEY)\b/.test(content)
+  ) {
+    report(file, "client-service-role-reference", "service-role key referenced outside server-only source");
+  }
+
   for (const check of checks) {
     if (check.regex.test(content)) {
       report(file, check.rule, check.detail);
@@ -115,6 +128,46 @@ async function verifySupabaseConfig() {
   }
 }
 
+async function verifyMigrationDirectory() {
+  const relativeDir = "supabase/migrations";
+  const entries = await readdir(path.join(ROOT, relativeDir), { withFileTypes: true });
+  const seenVersions = new Map();
+  const seenNames = new Map();
+
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith(".sql")) continue;
+
+    const match = entry.name.match(/^(\d{14})_(.+)\.sql$/);
+    if (!match) {
+      report(`${relativeDir}/${entry.name}`, "invalid-migration-name", "expected YYYYMMDDHHMMSS_name.sql");
+      continue;
+    }
+
+    const [, version, name] = match;
+    const previousVersion = seenVersions.get(version);
+    if (previousVersion) {
+      report(
+        `${relativeDir}/${entry.name}`,
+        "duplicate-migration-version",
+        `version ${version} is also used by ${previousVersion}`,
+      );
+    } else {
+      seenVersions.set(version, entry.name);
+    }
+
+    const previousName = seenNames.get(name);
+    if (previousName) {
+      report(
+        `${relativeDir}/${entry.name}`,
+        "duplicate-migration-name",
+        `migration name ${name} is also used by ${previousName}`,
+      );
+    } else {
+      seenNames.set(name, entry.name);
+    }
+  }
+}
+
 for (const sourceRoot of SOURCE_ROOTS) {
   for (const file of await collectFiles(sourceRoot)) {
     const content = await readFile(path.join(ROOT, file), "utf8");
@@ -123,6 +176,7 @@ for (const sourceRoot of SOURCE_ROOTS) {
 }
 
 await verifySupabaseConfig();
+await verifyMigrationDirectory();
 
 if (findings.length > 0) {
   console.error("Repository safety audit failed:\n");
