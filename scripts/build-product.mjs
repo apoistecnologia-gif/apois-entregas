@@ -2,12 +2,12 @@
 import { spawnSync } from "node:child_process";
 
 const allowedProducts = new Set(["customer", "merchant", "courier", "admin"]);
-const product = String(process.argv[2] ?? "").trim().toLowerCase();
+const product = String(process.argv[2] ?? "")
+  .trim()
+  .toLowerCase();
 
 if (!allowedProducts.has(product)) {
-  console.error(
-    "Usage: node scripts/build-product.mjs <customer|merchant|courier|admin>",
-  );
+  console.error("Usage: node scripts/build-product.mjs <customer|merchant|courier|admin>");
   process.exit(1);
 }
 
