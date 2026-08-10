@@ -1,0 +1,78 @@
+name: Admin Billing Patch
+
+on:
+  push:
+    paths:
+      - ".github/workflows/patch-admin-billing.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Add merchant billing visibility to admin finance
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/routes/admin.tsx')
+          text = path.read_text()
+
+          old = '''  const [payments, setPayments] = useState<any[]>([]);\n  const [cities, setCities] = useState<any[]>([]);'''
+          new = '''  const [payments, setPayments] = useState<any[]>([]);\n  const [merchantSubscriptions, setMerchantSubscriptions] = useState<any[]>([]);\n  const [cities, setCities] = useState<any[]>([]);'''
+          if old not in text: raise SystemExit('state marker not found')
+          text = text.replace(old, new, 1)
+
+          old = '''        from("payments").select("*").order("created_at", { ascending: false }).limit(500),\n        from("cities").select("*").order("name"),'''
+          new = '''        from("payments").select("*").order("created_at", { ascending: false }).limit(500),\n        from("merchant_subscriptions")\n          .select(\n            "*, merchants(id,name,city,state), merchant_subscription_payments(id,status,amount,method,paid_at,expires_at,created_at,provider_authorized_payment_id)",\n          )\n          .order("updated_at", { ascending: false })\n          .limit(500),\n        from("cities").select("*").order("name"),'''
+          if old not in text: raise SystemExit('query marker not found')
+          text = text.replace(old, new, 1)
+
+          old = '''      setPayments(checks[8].data ?? []);\n      setCities(checks[9].data ?? []);\n      setFeeRules(checks[10].data ?? []);\n      setSettingsRows(checks[11].data ?? []);\n      setAuditLogs(checks[12].data ?? []);'''
+          new = '''      setPayments(checks[8].data ?? []);\n      setMerchantSubscriptions(checks[9].data ?? []);\n      setCities(checks[10].data ?? []);\n      setFeeRules(checks[11].data ?? []);\n      setSettingsRows(checks[12].data ?? []);\n      setAuditLogs(checks[13].data ?? []);'''
+          if old not in text: raise SystemExit('setter marker not found')
+          text = text.replace(old, new, 1)
+
+          old = '''  const pendingRefunds = useMemo(\n    () => refunds.filter((item) => ["pending", "processing", "failed"].includes(item.status)),\n    [refunds],\n  );\n  const paidVolume = useMemo('''
+          new = '''  const pendingRefunds = useMemo(\n    () => refunds.filter((item) => ["pending", "processing", "failed"].includes(item.status)),\n    [refunds],\n  );\n  const overdueMerchantSubscriptions = useMemo(\n    () =>\n      merchantSubscriptions.filter(\n        (item) =>\n          !item.current_period_end || new Date(item.current_period_end).getTime() <= Date.now(),\n      ),\n    [merchantSubscriptions],\n  );\n  const paidVolume = useMemo('''
+          if old not in text: raise SystemExit('memo marker not found')
+          text = text.replace(old, new, 1)
+
+          old = '''      badge: pendingPayouts.length + pendingRefunds.length,'''
+          new = '''      badge: pendingPayouts.length + pendingRefunds.length + overdueMerchantSubscriptions.length,'''
+          if old not in text: raise SystemExit('finance badge marker not found')
+          text = text.replace(old, new, 1)
+
+          old = '''          payments={payments}\n          pendingPayouts={pendingPayouts}'''
+          new = '''          payments={payments}\n          merchantSubscriptions={merchantSubscriptions}\n          pendingPayouts={pendingPayouts}'''
+          if old not in text: raise SystemExit('finance props marker not found')
+          text = text.replace(old, new, 1)
+
+          old = '''function FinancePanel({\n  payouts,\n  refunds,\n  payments,\n  pendingPayouts,'''
+          new = '''function FinancePanel({\n  payouts,\n  refunds,\n  payments,\n  merchantSubscriptions,\n  pendingPayouts,'''
+          if old not in text: raise SystemExit('finance signature marker not found')
+          text = text.replace(old, new, 1)
+
+          old = '''}: any) {\n  return (\n    <div className="space-y-6">\n      <div className="grid gap-4 sm:grid-cols-3">\n        <MetricCard label="Pagamentos" value={payments.length} />\n        <MetricCard label="Estornos pendentes" value={pendingRefunds.length} />\n        <MetricCard label="Saques pendentes" value={pendingPayouts.length} />\n      </div>\n      <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">\n        <h2 className="font-black">Saques e repasses</h2>'''
+          new = '''}: any) {\n  const subscriptionIsCurrent = (subscription: any) =>\n    Boolean(\n      subscription.current_period_end &&\n        new Date(subscription.current_period_end).getTime() > Date.now(),\n    );\n  const currentSubscriptions = merchantSubscriptions.filter(subscriptionIsCurrent);\n  const overdueSubscriptions = merchantSubscriptions.filter(\n    (subscription: any) => !subscriptionIsCurrent(subscription),\n  );\n  const subscriptionPayments = merchantSubscriptions.flatMap(\n    (subscription: any) => subscription.merchant_subscription_payments ?? [],\n  );\n  const approvedSubscriptionRevenue = subscriptionPayments\n    .filter((payment: any) => payment.status === "approved")\n    .reduce((sum: number, payment: any) => sum + Number(payment.amount ?? 0), 0);\n\n  return (\n    <div className="space-y-6">\n      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">\n        <MetricCard label="Mensalidades vigentes" value={currentSubscriptions.length} />\n        <MetricCard label="Mensalidades pendentes" value={overdueSubscriptions.length} />\n        <MetricCard label="Receita de mensalidades" value={money(approvedSubscriptionRevenue)} />\n        <MetricCard label="Saques pendentes" value={pendingPayouts.length} />\n      </div>\n\n      <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">\n        <div className="flex flex-wrap items-center justify-between gap-3">\n          <div>\n            <h2 className="font-black">Mensalidades dos estabelecimentos</h2>\n            <p className="mt-1 text-xs text-zinc-500">\n              Cobrança fixa de R$ 69,90 por mês. Estabelecimentos sem período pago vigente ficam\n              bloqueados automaticamente para novos pedidos.\n            </p>\n          </div>\n          <Status value={overdueSubscriptions.length > 0 ? "pending" : "active"} />\n        </div>\n        <div className="mt-4 space-y-2">\n          {merchantSubscriptions.map((subscription: any) => {\n            const current = subscriptionIsCurrent(subscription);\n            const paymentsForSubscription = [\n              ...(subscription.merchant_subscription_payments ?? []),\n            ].sort((a: any, b: any) =>\n              String(b.paid_at ?? b.created_at ?? "").localeCompare(\n                String(a.paid_at ?? a.created_at ?? ""),\n              ),\n            );\n            const latestPayment = paymentsForSubscription[0] ?? null;\n            const environment = subscription.metadata?.environment ?? "unknown";\n            return (\n              <div\n                key={subscription.id}\n                className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-black p-3"\n              >\n                <div>\n                  <div className="flex flex-wrap items-center gap-2">\n                    <p className="font-black">\n                      {subscription.merchants?.name ?? subscription.merchant_id}\n                    </p>\n                    <Status value={current ? "active" : "pending"} />\n                    {environment !== "production" ? (\n                      <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-black uppercase text-amber-400">\n                        teste\n                      </span>\n                    ) : null}\n                  </div>\n                  <p className="mt-1 text-xs text-zinc-500">\n                    {subscription.merchants?.city || "Cidade não informada"}\n                    {subscription.merchants?.state ? `/${subscription.merchants.state}` : ""} · mensalidade{" "}\n                    {money(subscription.amount)}\n                  </p>\n                  <p className="mt-1 text-xs text-zinc-600">\n                    Acesso pago até: {dateTime(subscription.current_period_end)} · último pagamento:{" "}\n                    {latestPayment ? `${latestPayment.status} em ${dateTime(latestPayment.paid_at ?? latestPayment.created_at)}` : "nenhum"}\n                  </p>\n                </div>\n                <Status value={subscription.provider_status || (current ? "paid" : "pending")} />\n              </div>\n            );\n          })}\n          {merchantSubscriptions.length === 0 ? (\n            <div className="rounded-xl border border-dashed border-zinc-800 p-4 text-sm text-zinc-500">\n              Nenhuma mensalidade de estabelecimento registrada.\n            </div>\n          ) : null}\n        </div>\n      </section>\n\n      <div className="grid gap-4 sm:grid-cols-2">\n        <MetricCard label="Pagamentos de pedidos" value={payments.length} />\n        <MetricCard label="Estornos pendentes" value={pendingRefunds.length} />\n      </div>\n\n      <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">\n        <h2 className="font-black">Saques e repasses</h2>'''
+          if old not in text: raise SystemExit('finance body marker not found')
+          text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+      - name: Format and validate admin file
+        run: |
+          bunx prettier --write src/routes/admin.tsx
+          bun run typecheck
+      - uses: actions/upload-artifact@v4
+        with:
+          name: admin-billing-file
+          path: src/routes/admin.tsx
+          if-no-files-found: error
