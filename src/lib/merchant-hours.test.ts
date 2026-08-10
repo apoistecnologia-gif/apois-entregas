@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { calculateMerchantStatus, type MerchantHours, type MerchantSpecialHours } from "./merchant-hours";
+import {
+  calculateMerchantStatus,
+  type MerchantHours,
+  type MerchantSpecialHours,
+} from "./merchant-hours";
 
-const weekly = (
-  weekday: number,
-  overrides: Partial<MerchantHours> = {},
-): MerchantHours =>
+const weekly = (weekday: number, overrides: Partial<MerchantHours> = {}): MerchantHours =>
   ({
     id: `hours-${weekday}`,
     merchant_id: "merchant-1",
