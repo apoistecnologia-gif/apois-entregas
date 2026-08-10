@@ -1,0 +1,45 @@
+name: Fix Active Admin Refund Guard
+
+on:
+  push:
+    paths:
+      - ".github/workflows/fix-active-admin-refund.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Require active profile for administrative refund privilege
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('supabase/functions/process-refund/index.ts')
+          t=p.read_text()
+          old='''  const { data: adminRole } = await admin\n    .from("user_roles")\n    .select("user_id")\n    .eq("user_id", authData.user.id)\n    .eq("role", "admin")\n    .maybeSingle();\n  const authorized =\n    order.customer_user_id === authData.user.id ||\n    refund.requested_by === authData.user.id ||\n    Boolean(adminRole);'''
+          new='''  const [{ data: adminRole }, { data: adminProfile }] = await Promise.all([\n    admin\n      .from("user_roles")\n      .select("user_id")\n      .eq("user_id", authData.user.id)\n      .eq("role", "admin")\n      .maybeSingle(),\n    admin.from("profiles").select("is_active").eq("id", authData.user.id).maybeSingle(),\n  ]);\n  const activeAdmin = Boolean(adminRole && adminProfile?.is_active === true);\n  const authorized =\n    order.customer_user_id === authData.user.id ||\n    refund.requested_by === authData.user.id ||\n    activeAdmin;'''
+          if old not in t: raise SystemExit('admin refund marker not found')
+          p.write_text(t.replace(old,new,1))
+          PY
+      - name: Verify and commit
+        run: |
+          bunx prettier --write supabase/functions/process-refund/index.ts
+          bun run typecheck
+          bun run test
+          bun run build
+          bun run lint
+          bun run format:check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/functions/process-refund/index.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(security): require active admin for refunds"
+          git push
