@@ -51,6 +51,8 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+const CART_OWNER_KEY = "apois_cart_owner_id";
+const BOUND_USER_KEY = "apois_bound_user_id";
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -108,6 +110,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setMerchant(restoredMerchant);
       setItems(restoredItems);
     } else {
+      localStorage.removeItem("apois_cart");
+      localStorage.removeItem("apois_merchant");
+      localStorage.removeItem(CART_OWNER_KEY);
       setMerchant(null);
       setItems([]);
     }
@@ -120,11 +125,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!isHydrated) return;
 
-    localStorage.setItem("apois_cart", JSON.stringify(items));
     if (merchant && items.length > 0) {
+      localStorage.setItem("apois_cart", JSON.stringify(items));
       localStorage.setItem("apois_merchant", JSON.stringify(merchant));
+
+      const boundUserId = sessionStorage.getItem(BOUND_USER_KEY);
+      if (boundUserId) localStorage.setItem(CART_OWNER_KEY, boundUserId);
+      else localStorage.removeItem(CART_OWNER_KEY);
     } else {
+      localStorage.removeItem("apois_cart");
       localStorage.removeItem("apois_merchant");
+      localStorage.removeItem(CART_OWNER_KEY);
     }
   }, [items, merchant, isHydrated]);
 
