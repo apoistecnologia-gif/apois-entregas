@@ -112,6 +112,27 @@ export function MerchantSubscriptionGate({
     };
   }, [reconcile]);
 
+  useEffect(() => {
+    if (!merchant?.id) return;
+    const channel = supabase
+      .channel(`merchant_subscription_${merchant.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "merchant_subscriptions",
+          filter: `merchant_id=eq.${merchant.id}`,
+        },
+        () => void onRefresh(),
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [merchant?.id, onRefresh]);
+
   const checkout = async () => {
     setBusy("checkout");
     setLastError(null);
