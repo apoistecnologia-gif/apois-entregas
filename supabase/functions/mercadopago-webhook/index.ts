@@ -176,27 +176,6 @@ Deno.serve(async (request: Request) => {
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: environmentSetting, error: environmentSettingError } = await admin
-    .from("platform_settings")
-    .select("value")
-    .eq("key", "mercado_pago_environment")
-    .maybeSingle();
-  const databaseEnvironment =
-    typeof environmentSetting?.value === "string"
-      ? environmentSetting.value.trim().toLowerCase()
-      : null;
-  if (
-    environmentSettingError ||
-    !["test", "production"].includes(databaseEnvironment ?? "") ||
-    databaseEnvironment !== environment
-  ) {
-    console.error("mercadopago-webhook payment environment mismatch", {
-      edgeEnvironment: environment,
-      databaseEnvironment,
-    });
-    return response(503, { error: "payment_environment_mismatch" });
-  }
-
   if (notificationType === "subscription_preapproval") {
     const providerResponse = await fetch(`${apiBase}/preapproval/${encodeURIComponent(dataId)}`, {
       headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
