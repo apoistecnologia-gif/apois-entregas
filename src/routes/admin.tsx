@@ -1,9 +1,11 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import {
   Activity,
+  BarChart3,
   Bike,
   Building2,
   CircleDollarSign,
+  Download,
   FileCheck2,
   Headphones,
   LayoutDashboard,
@@ -37,6 +39,55 @@ const money = (value: unknown) =>
     .replace(".", ",")}`;
 const dateTime = (value: string | null | undefined) =>
   value ? new Date(value).toLocaleString("pt-BR") : "—";
+
+function adminCsvCell(value: unknown) {
+  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+}
+
+function downloadAdminOrdersCsv(orders: any[]) {
+  const header = [
+    "Pedido",
+    "Data",
+    "Estabelecimento",
+    "Status",
+    "Pagamento",
+    "Modalidade",
+    "Subtotal",
+    "Desconto",
+    "Taxa de entrega",
+    "Taxa de serviço",
+    "Total",
+    "Repasse estabelecimento",
+    "Ganho entregador",
+    "Receita plataforma",
+  ];
+  const rows = orders.map((order) => [
+    order.order_number,
+    order.created_at ? new Date(order.created_at).toLocaleString("pt-BR") : "",
+    order.merchants?.name ?? order.merchant_id,
+    order.status,
+    order.payment_status,
+    order.fulfillment_type ?? "delivery",
+    Number(order.subtotal ?? 0).toFixed(2),
+    Number(order.discount ?? 0).toFixed(2),
+    Number(order.delivery_fee ?? 0).toFixed(2),
+    Number(order.service_fee ?? 0).toFixed(2),
+    Number(order.total ?? 0).toFixed(2),
+    Number(order.merchant_net ?? 0).toFixed(2),
+    Number(order.courier_earnings ?? 0).toFixed(2),
+    Number(order.platform_fee ?? 0).toFixed(2),
+  ]);
+  const csv = [header, ...rows].map((row) => row.map(adminCsvCell).join(";")).join("\n");
+  const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `apois-admin-pedidos-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -576,6 +627,7 @@ function AdminWorkspace() {
     { id: "users", label: "Usuários", icon: Users },
     { id: "reviews", label: "Avaliações", icon: Star },
     { id: "coverage", label: "Cobertura", icon: MapPinned },
+    { id: "reports", label: "Relatórios", icon: BarChart3 },
     {
       id: "finance",
       label: "Financeiro",
@@ -724,6 +776,10 @@ function AdminWorkspace() {
 
       {activeTab === "coverage" && (
         <AdminCoveragePanel cities={cities} onRefresh={() => loadAll(true)} />
+      )}
+
+      {activeTab === "reports" && (
+        <AdminReportsPanel orders={orders} refunds={refunds} payouts={payouts} />
       )}
 
       {activeTab === "finance" && (
@@ -959,6 +1015,162 @@ function ApplicationCard({ kind, item, profile, busy, onReview, onDocument, onOp
           <p className="text-sm text-zinc-600">Nenhum documento enviado.</p>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function AdminReportsPanel({ orders, refunds, payouts }: any) {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const monthOrders = orders.filter((order: any) => {
+    const createdAt = order.created_at ? new Date(order.created_at).getTime() : 0;
+    return createdAt >= monthStart;
+  });
+  const paidOrders = monthOrders.filter(
+    (order: any) =>
+      order.payment_status === "paid" && !["cancelled", "refunded"].includes(order.status),
+  );
+  const delivered = monthOrders.filter((order: any) => order.status === "delivered");
+  const gmv = paidOrders.reduce((sum: number, order: any) => sum + Number(order.total ?? 0), 0);
+  const platformRevenue = delivered.reduce(
+    (sum: number, order: any) => sum + Number(order.platform_fee ?? 0),
+    0,
+  );
+  const merchantRepasse = delivered.reduce(
+    (sum: number, order: any) => sum + Number(order.merchant_net ?? 0),
+    0,
+  );
+  const courierEarnings = delivered.reduce(
+    (sum: number, order: any) => sum + Number(order.courier_earnings ?? 0),
+    0,
+  );
+  const monthRefunds = refunds.filter((refund: any) => {
+    const createdAt = refund.created_at ? new Date(refund.created_at).getTime() : 0;
+    return createdAt >= monthStart && ["completed", "refunded"].includes(refund.status);
+  });
+  const refundVolume = monthRefunds.reduce(
+    (sum: number, refund: any) => sum + Number(refund.amount ?? 0),
+    0,
+  );
+  const monthPayouts = payouts.filter((payout: any) => {
+    const createdAt = payout.requested_at ? new Date(payout.requested_at).getTime() : 0;
+    return createdAt >= monthStart && payout.status === "paid";
+  });
+  const payoutVolume = monthPayouts.reduce(
+    (sum: number, payout: any) => sum + Number(payout.amount ?? 0),
+    0,
+  );
+  const completionRate = monthOrders.length > 0 ? (delivered.length / monthOrders.length) * 100 : 0;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-black">Relatórios operacionais</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Consolidado do mês atual com valores calculados a partir dos pedidos e liquidações
+            reais.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => downloadAdminOrdersCsv(monthOrders)}
+          disabled={monthOrders.length === 0}
+          className="border-zinc-800 bg-zinc-950"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Exportar pedidos CSV
+        </Button>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Pedidos no mês" value={monthOrders.length} />
+        <MetricCard label="GMV pago" value={money(gmv)} />
+        <MetricCard label="Receita da plataforma" value={money(platformRevenue)} />
+        <MetricCard
+          label="Taxa de conclusão"
+          value={`${completionRate.toFixed(1).replace(".", ",")}%`}
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Pedidos entregues" value={delivered.length} />
+        <MetricCard label="Repasse a estabelecimentos" value={money(merchantRepasse)} />
+        <MetricCard label="Ganhos de entregadores" value={money(courierEarnings)} />
+        <MetricCard label="Estornos concluídos" value={money(refundVolume)} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+          <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">Saques pagos</p>
+          <p className="mt-2 text-2xl font-black">{money(payoutVolume)}</p>
+          <p className="mt-1 text-xs text-zinc-600">
+            {monthPayouts.length} repasse(s) concluído(s) no mês.
+          </p>
+        </section>
+        <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+          <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+            Ticket médio pago
+          </p>
+          <p className="mt-2 text-2xl font-black">
+            {money(paidOrders.length > 0 ? gmv / paidOrders.length : 0)}
+          </p>
+          <p className="mt-1 text-xs text-zinc-600">
+            Baseado apenas em pedidos pagos e não estornados.
+          </p>
+        </section>
+        <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+          <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+            Pedidos pagos válidos
+          </p>
+          <p className="mt-2 text-2xl font-black">{paidOrders.length}</p>
+          <p className="mt-1 text-xs text-zinc-600">
+            Exclui cancelados e reembolsados do indicador de GMV.
+          </p>
+        </section>
+      </div>
+
+      <section className="overflow-hidden rounded-2xl border border-zinc-900 bg-zinc-950">
+        <div className="border-b border-zinc-900 p-5">
+          <h3 className="font-black">Pedidos recentes do período</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead className="bg-black/40 text-xs uppercase text-zinc-500">
+              <tr>
+                <th className="px-5 py-3">Pedido</th>
+                <th className="px-5 py-3">Estabelecimento</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3">Pagamento</th>
+                <th className="px-5 py-3 text-right">Total</th>
+                <th className="px-5 py-3 text-right">Receita APOIS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthOrders.slice(0, 50).map((order: any) => (
+                <tr key={order.id} className="border-t border-zinc-900/80">
+                  <td className="px-5 py-3 font-bold">#{order.order_number}</td>
+                  <td className="px-5 py-3 text-zinc-300">{order.merchants?.name ?? "—"}</td>
+                  <td className="px-5 py-3">
+                    <Status value={order.status} />
+                  </td>
+                  <td className="px-5 py-3 text-zinc-400">{order.payment_status}</td>
+                  <td className="px-5 py-3 text-right font-bold">{money(order.total)}</td>
+                  <td className="px-5 py-3 text-right font-bold text-primary">
+                    {money(order.platform_fee)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {monthOrders.length === 0 ? (
+          <div className="p-8 text-center text-sm text-zinc-500">
+            Ainda não há pedidos registrados neste mês.
+          </div>
+        ) : null}
+      </section>
     </div>
   );
 }
