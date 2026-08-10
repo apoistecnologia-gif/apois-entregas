@@ -118,12 +118,22 @@ function SupportConversationPage() {
       .channel(`customer_support_${ticketId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "support_messages", filter: `ticket_id=eq.${ticketId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "support_messages",
+          filter: `ticket_id=eq.${ticketId}`,
+        },
         () => void loadTicket(false),
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "support_tickets", filter: `id=eq.${ticketId}` },
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "support_tickets",
+          filter: `id=eq.${ticketId}`,
+        },
         () => void loadTicket(false),
       )
       .subscribe();
@@ -370,7 +380,9 @@ function SupportConversationPage() {
                     <button
                       type="button"
                       onClick={() =>
-                        setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))
+                        setAttachments((current) =>
+                          current.filter((_, itemIndex) => itemIndex !== index),
+                        )
                       }
                       className="text-zinc-600 hover:text-white"
                       aria-label={`Remover ${file.name}`}

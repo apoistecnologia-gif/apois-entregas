@@ -2,7 +2,9 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import {
   BadgeDollarSign,
   BadgePercent,
+  BarChart3,
   Clock3,
+  Download,
   LayoutDashboard,
   Loader2,
   PackageCheck,
@@ -56,6 +58,49 @@ const rpc = (name: string, args?: Record<string, unknown>) =>
   (supabase.rpc as any)(name, args ?? {});
 const from = (table: string) => (supabase.from as any)(table);
 const week = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+function csvCell(value: unknown) {
+  const normalized = String(value ?? "").replaceAll('"', '""');
+  return `"${normalized}"`;
+}
+
+function downloadMerchantReportCsv(orders: any[], merchantName: string) {
+  const header = [
+    "Pedido",
+    "Data",
+    "Status",
+    "Pagamento",
+    "Modalidade",
+    "Subtotal",
+    "Taxa de entrega",
+    "Taxa de serviço",
+    "Desconto",
+    "Total",
+  ];
+  const rows = orders.map((order) => [
+    order.order_number,
+    order.created_at ? new Date(order.created_at).toLocaleString("pt-BR") : "",
+    order.status,
+    order.payment_status,
+    order.fulfillment_type ?? "delivery",
+    Number(order.subtotal ?? 0).toFixed(2),
+    Number(order.delivery_fee ?? 0).toFixed(2),
+    Number(order.service_fee ?? 0).toFixed(2),
+    Number(order.discount ?? 0).toFixed(2),
+    Number(order.total ?? 0).toFixed(2),
+  ]);
+  const csv = [header, ...rows].map((row) => row.map(csvCell).join(";")).join("\n");
+  const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  const date = new Date().toISOString().slice(0, 10);
+  anchor.href = url;
+  anchor.download = `apois-${merchantName.toLowerCase().replace(/[^a-z0-9]+/gi, "-")}-${date}.csv`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
 
 function MerchantWorkspace() {
   const navigate = useNavigate();
@@ -758,6 +803,7 @@ function MerchantWorkspace() {
     { id: "coupons", label: "Cupons", icon: TicketPercent },
     { id: "customers", label: "Clientes", icon: Users },
     { id: "reviews", label: "Avaliações", icon: Star },
+    { id: "reports", label: "Relatórios", icon: BarChart3 },
     { id: "finance", label: "Financeiro", icon: WalletCards },
     { id: "settings", label: "Configurações", icon: Settings },
   ];
@@ -1372,6 +1418,132 @@ function MerchantWorkspace() {
           reviewCount={Number(merchant.review_count ?? reviews.length)}
         />
       )}
+
+      {activeTab === "reports" &&
+        (() => {
+          const now = new Date();
+          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+          const monthOrders = orders.filter((order) => {
+            const createdAt = order.created_at ? new Date(order.created_at).getTime() : 0;
+            return createdAt >= monthStart;
+          });
+          const completed = monthOrders.filter((order) => order.status === "delivered");
+          const cancelled = monthOrders.filter((order) =>
+            ["cancelled", "refunded"].includes(order.status),
+          );
+          const paid = monthOrders.filter(
+            (order) =>
+              order.payment_status === "paid" && !["cancelled", "refunded"].includes(order.status),
+          );
+          const gross = paid.reduce((sum, order) => sum + Number(order.total ?? 0), 0);
+          const ticket = paid.length > 0 ? gross / paid.length : 0;
+          const deliveryFees = paid.reduce(
+            (sum, order) => sum + Number(order.delivery_fee ?? 0),
+            0,
+          );
+
+          return (
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-black">Relatórios</h2>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    Indicadores do mês atual calculados a partir dos pedidos reais do
+                    estabelecimento.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => downloadMerchantReportCsv(monthOrders, merchant.name)}
+                  disabled={monthOrders.length === 0}
+                  className="border-zinc-800 bg-zinc-950"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar CSV
+                </Button>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <MetricCard label="Pedidos no mês" value={monthOrders.length} />
+                <MetricCard label="Entregues" value={completed.length} />
+                <MetricCard label="Vendas pagas" value={money(gross)} />
+                <MetricCard label="Ticket médio" value={money(ticket)} />
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-3">
+                <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                    Cancelamentos
+                  </p>
+                  <p className="mt-2 text-2xl font-black">{cancelled.length}</p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    Pedidos cancelados ou reembolsados no mês.
+                  </p>
+                </section>
+                <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                    Taxas de entrega
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-primary">{money(deliveryFees)}</p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    Somatório das taxas em pedidos pagos e válidos.
+                  </p>
+                </section>
+                <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                    Taxa de conclusão
+                  </p>
+                  <p className="mt-2 text-2xl font-black">
+                    {monthOrders.length > 0
+                      ? `${((completed.length / monthOrders.length) * 100).toFixed(1).replace(".", ",")}%`
+                      : "0,0%"}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    Entregues sobre todos os pedidos registrados no mês.
+                  </p>
+                </section>
+              </div>
+
+              <section className="overflow-hidden rounded-2xl border border-zinc-900 bg-zinc-950">
+                <div className="border-b border-zinc-900 p-5">
+                  <h3 className="font-black">Pedidos recentes do período</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[720px] text-left text-sm">
+                    <thead className="bg-black/40 text-xs uppercase text-zinc-500">
+                      <tr>
+                        <th className="px-5 py-3">Pedido</th>
+                        <th className="px-5 py-3">Data</th>
+                        <th className="px-5 py-3">Status</th>
+                        <th className="px-5 py-3">Pagamento</th>
+                        <th className="px-5 py-3 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monthOrders.slice(0, 30).map((order) => (
+                        <tr key={order.id} className="border-t border-zinc-900/80">
+                          <td className="px-5 py-3 font-bold">#{order.order_number}</td>
+                          <td className="px-5 py-3 text-zinc-400">{dateTime(order.created_at)}</td>
+                          <td className="px-5 py-3 text-zinc-300">{order.status}</td>
+                          <td className="px-5 py-3 text-zinc-400">{order.payment_status}</td>
+                          <td className="px-5 py-3 text-right font-bold text-primary">
+                            {money(order.total)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {monthOrders.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-zinc-500">
+                    Ainda não há pedidos registrados neste mês.
+                  </div>
+                ) : null}
+              </section>
+            </div>
+          );
+        })()}
 
       {activeTab === "finance" && (
         <div className="space-y-6">
