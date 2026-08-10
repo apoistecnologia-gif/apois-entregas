@@ -1,0 +1,53 @@
+name: Complete support attachments
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/complete-support-attachments.yml
+      - .github/scripts/complete-support-attachments.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: complete-support-attachments
+  cancel-in-progress: false
+
+jobs:
+  complete-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: python .github/scripts/complete-support-attachments.py
+      - run: bunx prettier 'src/routes/perfil/ajuda/chamado/$ticketId.tsx' src/routes/admin.tsx src/components/AdminSupportPanel.tsx --write
+      - name: Full verification
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit verified implementation and remove one-shot files
+        run: |
+          rm -f .github/workflows/complete-support-attachments.yml .github/scripts/complete-support-attachments.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "feat(support): complete secure attachment flow"
+          git push origin HEAD:main
