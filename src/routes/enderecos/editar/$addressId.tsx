@@ -23,7 +23,14 @@ export const Route = createFileRoute("/enderecos/editar/$addressId")({
   }),
 });
 
-const locationFields = new Set(["postal_code", "street", "number", "neighborhood", "city", "state"]);
+const locationFields = new Set([
+  "postal_code",
+  "street",
+  "number",
+  "neighborhood",
+  "city",
+  "state",
+]);
 
 function EditarEndereco() {
   const { addressId } = useParams({ from: "/enderecos/editar/$addressId" });
