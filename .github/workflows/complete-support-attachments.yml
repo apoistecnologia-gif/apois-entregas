@@ -39,15 +39,44 @@ jobs:
           bun run test
           bun run format:check
           bun run lint
-      - name: Commit verified implementation and remove one-shot files
+      - name: Commit and safely integrate concurrent main updates
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
         run: |
-          rm -f .github/workflows/complete-support-attachments.yml .github/scripts/complete-support-attachments.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/complete-support-attachments.yml .github/scripts/complete-support-attachments.py
           git add -A
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
           fi
           git commit -m "feat(support): complete secure attachment flow"
-          git push origin HEAD:main
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            if ! git merge-base --is-ancestor origin/main HEAD; then
+              git merge --no-edit origin/main
+              bun run format
+              git add -A
+              if ! git diff --cached --quiet; then
+                git commit -m "chore: format after concurrent main merge"
+              fi
+              bun run build
+              bun run typecheck
+              bun run test
+              bun run format:check
+              bun run lint
+            fi
+
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Concurrent main update detected; retrying safely (${attempt}/3)."
+          done
+
+          echo "Could not push after three safe retries."
+          exit 1
