@@ -124,6 +124,7 @@ function AdminWorkspace() {
   const [payouts, setPayouts] = useState<any[]>([]);
   const [refunds, setRefunds] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [merchantSubscriptions, setMerchantSubscriptions] = useState<any[]>([]);
   const [cities, setCities] = useState<any[]>([]);
   const [feeRules, setFeeRules] = useState<any[]>([]);
   const [settingsRows, setSettingsRows] = useState<any[]>([]);
@@ -168,6 +169,12 @@ function AdminWorkspace() {
           .order("created_at", { ascending: false })
           .limit(300),
         from("payments").select("*").order("created_at", { ascending: false }).limit(500),
+        from("merchant_subscriptions")
+          .select(
+            "*, merchants(id,name,city,state), merchant_subscription_payments(id,status,amount,method,paid_at,expires_at,created_at,provider_authorized_payment_id)",
+          )
+          .order("updated_at", { ascending: false })
+          .limit(500),
         from("cities").select("*").order("name"),
         from("fee_rules").select("*").order("created_at", { ascending: false }),
         from("platform_settings").select("*").order("key"),
@@ -184,10 +191,11 @@ function AdminWorkspace() {
       setPayouts(checks[6].data ?? []);
       setRefunds(checks[7].data ?? []);
       setPayments(checks[8].data ?? []);
-      setCities(checks[9].data ?? []);
-      setFeeRules(checks[10].data ?? []);
-      setSettingsRows(checks[11].data ?? []);
-      setAuditLogs(checks[12].data ?? []);
+      setMerchantSubscriptions(checks[9].data ?? []);
+      setCities(checks[10].data ?? []);
+      setFeeRules(checks[11].data ?? []);
+      setSettingsRows(checks[12].data ?? []);
+      setAuditLogs(checks[13].data ?? []);
     } catch (error: any) {
       toast.error(error?.message || "Não foi possível carregar a administração.");
     } finally {
@@ -594,6 +602,14 @@ function AdminWorkspace() {
     () => refunds.filter((item) => ["pending", "processing", "failed"].includes(item.status)),
     [refunds],
   );
+  const overdueMerchantSubscriptions = useMemo(
+    () =>
+      merchantSubscriptions.filter(
+        (item) =>
+          !item.current_period_end || new Date(item.current_period_end).getTime() <= Date.now(),
+      ),
+    [merchantSubscriptions],
+  );
   const paidVolume = useMemo(
     () =>
       payments
@@ -632,7 +648,7 @@ function AdminWorkspace() {
       id: "finance",
       label: "Financeiro",
       icon: WalletCards,
-      badge: pendingPayouts.length + pendingRefunds.length,
+      badge: pendingPayouts.length + pendingRefunds.length + overdueMerchantSubscriptions.length,
     },
     { id: "support", label: "Suporte", icon: Headphones, badge: openTickets.length },
     { id: "settings", label: "Operação", icon: Settings },
@@ -787,6 +803,7 @@ function AdminWorkspace() {
           payouts={payouts}
           refunds={refunds}
           payments={payments}
+          merchantSubscriptions={merchantSubscriptions}
           pendingPayouts={pendingPayouts}
           pendingRefunds={pendingRefunds}
           busy={busy}
@@ -1179,19 +1196,107 @@ function FinancePanel({
   payouts,
   refunds,
   payments,
+  merchantSubscriptions,
   pendingPayouts,
   pendingRefunds,
   busy,
   onPayout,
   onRefund,
 }: any) {
+  const subscriptionIsCurrent = (subscription: any) =>
+    Boolean(
+      subscription.current_period_end &&
+      new Date(subscription.current_period_end).getTime() > Date.now(),
+    );
+  const currentSubscriptions = merchantSubscriptions.filter(subscriptionIsCurrent);
+  const overdueSubscriptions = merchantSubscriptions.filter(
+    (subscription: any) => !subscriptionIsCurrent(subscription),
+  );
+  const subscriptionPayments = merchantSubscriptions.flatMap(
+    (subscription: any) => subscription.merchant_subscription_payments ?? [],
+  );
+  const approvedSubscriptionRevenue = subscriptionPayments
+    .filter((payment: any) => payment.status === "approved")
+    .reduce((sum: number, payment: any) => sum + Number(payment.amount ?? 0), 0);
+
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <MetricCard label="Pagamentos" value={payments.length} />
-        <MetricCard label="Estornos pendentes" value={pendingRefunds.length} />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Mensalidades vigentes" value={currentSubscriptions.length} />
+        <MetricCard label="Mensalidades pendentes" value={overdueSubscriptions.length} />
+        <MetricCard label="Receita de mensalidades" value={money(approvedSubscriptionRevenue)} />
         <MetricCard label="Saques pendentes" value={pendingPayouts.length} />
       </div>
+
+      <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-black">Mensalidades dos estabelecimentos</h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Cobrança fixa de R$ 69,90 por mês. Estabelecimentos sem período pago vigente ficam
+              bloqueados automaticamente para novos pedidos.
+            </p>
+          </div>
+          <Status value={overdueSubscriptions.length > 0 ? "pending" : "active"} />
+        </div>
+        <div className="mt-4 space-y-2">
+          {merchantSubscriptions.map((subscription: any) => {
+            const current = subscriptionIsCurrent(subscription);
+            const paymentsForSubscription = [
+              ...(subscription.merchant_subscription_payments ?? []),
+            ].sort((a: any, b: any) =>
+              String(b.paid_at ?? b.created_at ?? "").localeCompare(
+                String(a.paid_at ?? a.created_at ?? ""),
+              ),
+            );
+            const latestPayment = paymentsForSubscription[0] ?? null;
+            const environment = subscription.metadata?.environment ?? "unknown";
+            return (
+              <div
+                key={subscription.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-black p-3"
+              >
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-black">
+                      {subscription.merchants?.name ?? subscription.merchant_id}
+                    </p>
+                    <Status value={current ? "active" : "pending"} />
+                    {environment !== "production" ? (
+                      <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-black uppercase text-amber-400">
+                        teste
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {subscription.merchants?.city || "Cidade não informada"}
+                    {subscription.merchants?.state ? `/${subscription.merchants.state}` : ""} ·
+                    mensalidade {money(subscription.amount)}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    Acesso pago até: {dateTime(subscription.current_period_end)} · último pagamento:{" "}
+                    {latestPayment
+                      ? `${latestPayment.status} em ${dateTime(latestPayment.paid_at ?? latestPayment.created_at)}`
+                      : "nenhum"}
+                  </p>
+                </div>
+                <Status value={subscription.provider_status || (current ? "paid" : "pending")} />
+              </div>
+            );
+          })}
+          {merchantSubscriptions.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-zinc-800 p-4 text-sm text-zinc-500">
+              Nenhuma mensalidade de estabelecimento registrada.
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <MetricCard label="Pagamentos de pedidos" value={payments.length} />
+        <MetricCard label="Estornos pendentes" value={pendingRefunds.length} />
+      </div>
+
       <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
         <h2 className="font-black">Saques e repasses</h2>
         <div className="mt-4 space-y-2">
