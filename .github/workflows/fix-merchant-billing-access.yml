@@ -32,7 +32,7 @@ jobs:
           '''  onRefresh,\n  onLogout,\n}: MerchantSubscriptionGateProps) {''',
           '''  onRefresh,\n  onLogout,\n  embedded = false,\n}: MerchantSubscriptionGateProps) {''', 1)
           old = '''  return (\n    <div className="min-h-dvh bg-black px-4 py-8 text-white">\n      <div className="mx-auto max-w-2xl">\n        <div className="mb-5 flex items-center justify-between gap-3">\n          <div>\n            <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">\n              APOIS ENTREGA\n            </p>\n            <h1 className="mt-1 text-2xl font-black">{merchant?.name ?? "Estabelecimento"}</h1>\n          </div>\n          <Button\n            type="button"\n            variant="outline"\n            onClick={() => void onLogout()}\n            className="border-zinc-800 bg-zinc-950"\n          >\n            <LogOut className="mr-2 h-4 w-4" /> Sair\n          </Button>\n        </div>\n\n        <section className="rounded-3xl border border-primary/30 bg-zinc-950 p-6 shadow-2xl md:p-8">'''
-          new = '''  return (\n    <div className={embedded ? "text-white" : "min-h-dvh bg-black px-4 py-8 text-white"}>\n      <div className={embedded ? "mx-auto max-w-2xl" : "mx-auto max-w-2xl"}>\n        {!embedded ? (\n          <div className="mb-5 flex items-center justify-between gap-3">\n            <div>\n              <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">\n                APOIS ENTREGA\n              </p>\n              <h1 className="mt-1 text-2xl font-black">{merchant?.name ?? "Estabelecimento"}</h1>\n            </div>\n            <Button\n              type="button"\n              variant="outline"\n              onClick={() => void onLogout()}\n              className="border-zinc-800 bg-zinc-950"\n            >\n              <LogOut className="mr-2 h-4 w-4" /> Sair\n            </Button>\n          </div>\n        ) : null}\n\n        <section className="rounded-3xl border border-primary/30 bg-zinc-950 p-6 shadow-2xl md:p-8">'''
+          new = '''  return (\n    <div className={embedded ? "text-white" : "min-h-dvh bg-black px-4 py-8 text-white"}>\n      <div className="mx-auto max-w-2xl">\n        {!embedded ? (\n          <div className="mb-5 flex items-center justify-between gap-3">\n            <div>\n              <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">\n                APOIS ENTREGA\n              </p>\n              <h1 className="mt-1 text-2xl font-black">{merchant?.name ?? "Estabelecimento"}</h1>\n            </div>\n            <Button\n              type="button"\n              variant="outline"\n              onClick={() => void onLogout()}\n              className="border-zinc-800 bg-zinc-950"\n            >\n              <LogOut className="mr-2 h-4 w-4" /> Sair\n            </Button>\n          </div>\n        ) : null}\n\n        <section className="rounded-3xl border border-primary/30 bg-zinc-950 p-6 shadow-2xl md:p-8">'''
           if old not in text: raise SystemExit('gate wrapper marker not found')
           text = text.replace(old,new,1)
           text = text.replace(
@@ -45,11 +45,23 @@ jobs:
 
           route = Path('src/routes/merchant.tsx')
           text = route.read_text()
+          old = '''        if (\n          merchantRes.data.approval_status === "approved" &&\n          merchantRes.data.is_active &&\n          subscriptionAllowed\n        ) {\n          await loadOperations(merchantRes.data.id);\n        }'''
+          new = '''        if (merchantRes.data.approval_status === "approved" && merchantRes.data.is_active) {\n          await loadOperations(merchantRes.data.id);\n        }'''
+          if old not in text: raise SystemExit('load operations billing marker not found')
+          text = text.replace(old,new,1)
+          old = '''    if (!merchant?.id || merchant.approval_status !== "approved" || !subscriptionAccessAllowed)\n      return;'''
+          new = '''    if (!merchant?.id || merchant.approval_status !== "approved") return;'''
+          if old not in text: raise SystemExit('realtime billing marker not found')
+          text = text.replace(old,new,1)
+          old = '''  }, [merchant?.id, merchant?.approval_status, subscriptionAccessAllowed, loadOperations]);'''
+          new = '''  }, [merchant?.id, merchant?.approval_status, loadOperations]);'''
+          if old not in text: raise SystemExit('realtime deps marker not found')
+          text = text.replace(old,new,1)
           old = '''  if (!subscriptionAccessAllowed) {\n    return (\n      <MerchantSubscriptionGate\n        merchant={merchant}\n        subscription={subscription}\n        onRefresh={() => loadAll(true)}\n        onLogout={logout}\n      />\n    );\n  }\n\n  const tabs = ['''
           if old not in text: raise SystemExit('merchant hard gate marker not found')
           text = text.replace(old, '''  const tabs = [''', 1)
           old = '''    { id: "finance", label: "Financeiro", icon: WalletCards },\n    { id: "settings", label: "Configurações", icon: Settings },'''
-          new = '''    { id: "finance", label: "Financeiro", icon: WalletCards },\n    { id: "billing", label: "Mensalidade", icon: BadgePercent, badge: subscriptionAccessAllowed ? undefined : 1 },\n    { id: "settings", label: "Configurações", icon: Settings },'''
+          new = '''    { id: "finance", label: "Financeiro", icon: WalletCards },\n    {\n      id: "billing",\n      label: "Mensalidade",\n      icon: BadgePercent,\n      ...(subscriptionAccessAllowed ? {} : { badge: 1 }),\n    },\n    { id: "settings", label: "Configurações", icon: Settings },'''
           if old not in text: raise SystemExit('merchant tabs marker not found')
           text = text.replace(old,new,1)
           old = '''      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">'''
