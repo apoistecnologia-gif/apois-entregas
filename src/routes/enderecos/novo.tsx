@@ -23,7 +23,14 @@ export const Route = createFileRoute("/enderecos/novo")({
   }),
 });
 
-const locationFields = new Set(["postal_code", "street", "number", "neighborhood", "city", "state"]);
+const locationFields = new Set([
+  "postal_code",
+  "street",
+  "number",
+  "neighborhood",
+  "city",
+  "state",
+]);
 
 function NovoEndereco() {
   const navigate = useNavigate();
