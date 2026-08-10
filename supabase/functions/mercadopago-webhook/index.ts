@@ -421,6 +421,144 @@ Deno.serve(async (request: Request) => {
   }
 
   const externalReference = text(providerOrder.external_reference);
+
+  const merchantSubscriptionPrefix = "apois-merchant-subscription-";
+  if (externalReference?.startsWith(merchantSubscriptionPrefix)) {
+    const subscriptionId = externalReference.slice(merchantSubscriptionPrefix.length);
+    if (!/^[0-9a-f-]{36}$/i.test(subscriptionId)) {
+      return response(200, { accepted: true, ignored: true });
+    }
+
+    const providerAmount = Number(providerOrder.total_amount);
+    if (!Number.isFinite(providerAmount) || Math.round(providerAmount * 100) !== 6990) {
+      return response(409, { error: "amount_mismatch" });
+    }
+
+    const { data: subscription } = await admin
+      .from("merchant_subscriptions")
+      .select("id,current_period_end")
+      .eq("id", subscriptionId)
+      .maybeSingle();
+    if (!subscription) return response(200, { accepted: true, ignored: true });
+
+    const { data: subscriptionPayment, error: subscriptionPaymentError } = await admin
+      .from("merchant_subscription_payments")
+      .select("id,status,provider_payment_id")
+      .eq("merchant_subscription_id", subscription.id)
+      .eq("provider_authorized_payment_id", dataId)
+      .maybeSingle();
+    if (subscriptionPaymentError) {
+      console.error("merchant subscription webhook payment lookup failed", {
+        code: subscriptionPaymentError.code,
+      });
+      return response(500, { error: "subscription_payment_lookup_failed" });
+    }
+    if (!subscriptionPayment) return response(503, { error: "subscription_payment_not_ready" });
+
+    const transactions = isRecord(providerOrder.transactions) ? providerOrder.transactions : null;
+    const providerPayments =
+      transactions && Array.isArray(transactions.payments) ? transactions.payments : [];
+    const providerPayment =
+      providerPayments.length > 0 && isRecord(providerPayments[0]) ? providerPayments[0] : null;
+    const providerTransactionId = providerPayment ? identifier(providerPayment.id) : null;
+    const providerStatus = text(providerOrder.status) ?? "unknown";
+    const providerStatusDetail = text(providerOrder.status_detail) ?? "unknown";
+    const paymentStatus = providerPayment ? text(providerPayment.status) : null;
+    const paymentStatusDetail = providerPayment ? text(providerPayment.status_detail) : null;
+    const paid =
+      (providerStatus === "processed" && providerStatusDetail === "accredited") ||
+      paymentStatus === "approved" ||
+      (paymentStatus === "processed" && paymentStatusDetail === "accredited");
+    const failed = [providerStatus, providerStatusDetail, paymentStatus, paymentStatusDetail].some(
+      (value) => ["canceled", "cancelled", "expired", "failed", "rejected"].includes(value ?? ""),
+    );
+    const now = new Date().toISOString();
+
+    const eventId = `monthly-pix:${dataId}:${providerStatus}:${providerStatusDetail}:${providerTransactionId ?? "none"}`;
+    const { data: existingSubscriptionEvent } = await admin
+      .from("merchant_subscription_events")
+      .select("id")
+      .eq("provider_event_id", eventId)
+      .maybeSingle();
+    if (existingSubscriptionEvent) {
+      return response(200, { accepted: true, duplicate: true });
+    }
+
+    const { data: subscriptionEvent } = await admin
+      .from("merchant_subscription_events")
+      .insert({
+        merchant_subscription_id: subscription.id,
+        provider_event_id: eventId,
+        event_type: "monthly_pix_order",
+        provider_resource_id: dataId,
+        payload: { notification: payload, order: providerOrder },
+      })
+      .select("id")
+      .single();
+
+    if (paid && subscriptionPayment.status !== "approved") {
+      const periodEnd = addOneMonth(now);
+      await admin
+        .from("merchant_subscription_payments")
+        .update({
+          provider_payment_id: providerTransactionId ?? subscriptionPayment.provider_payment_id,
+          status: "approved",
+          paid_at: now,
+          failure_reason: null,
+          provider_payload: providerOrder,
+          updated_at: now,
+        })
+        .eq("id", subscriptionPayment.id);
+      await admin
+        .from("merchant_subscriptions")
+        .update({
+          provider_status: "paid",
+          current_period_start: now,
+          current_period_end: periodEnd,
+          next_payment_at: periodEnd,
+          last_payment_at: now,
+          last_payment_status: "approved",
+          metadata: { environment, billingModel: "monthly_pix" },
+          updated_at: now,
+        })
+        .eq("id", subscription.id);
+    } else if (failed && subscriptionPayment.status !== "approved") {
+      await admin
+        .from("merchant_subscription_payments")
+        .update({
+          provider_payment_id: providerTransactionId ?? subscriptionPayment.provider_payment_id,
+          status: "failed",
+          failure_reason: `${providerStatus}:${providerStatusDetail}`,
+          provider_payload: providerOrder,
+          updated_at: now,
+        })
+        .eq("id", subscriptionPayment.id);
+    } else if (!paid && !failed && subscriptionPayment.status !== "approved") {
+      await admin
+        .from("merchant_subscription_payments")
+        .update({
+          provider_payment_id: providerTransactionId ?? subscriptionPayment.provider_payment_id,
+          status: "pending",
+          provider_payload: providerOrder,
+          updated_at: now,
+        })
+        .eq("id", subscriptionPayment.id);
+    }
+
+    if (subscriptionEvent) {
+      await admin
+        .from("merchant_subscription_events")
+        .update({ processed_at: now })
+        .eq("id", subscriptionEvent.id);
+    }
+
+    return response(200, {
+      accepted: true,
+      processed: paid ? "approved" : failed ? "failed" : "pending",
+      verification: signatureValid ? "hmac" : "sandbox_provider_lookup",
+    });
+  }
+
   const internalOrderId = externalReference?.startsWith("apois-order-")
     ? externalReference.slice("apois-order-".length)
     : null;
