@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, Eye, EyeOff, Loader2 } from "lucide-react";
@@ -6,6 +6,11 @@ import { useState } from "react";
 import logoAsset from "@/assets/logo.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  getProductHomeRoute,
+  getProductLabel,
+  productAllowsPublicSignup,
+} from "@/lib/product-routing";
 
 export const Route = createFileRoute("/login")({
   beforeLoad: async () => {
@@ -13,18 +18,20 @@ export const Route = createFileRoute("/login")({
       data: { session },
     } = await supabase.auth.getSession();
     if (session) {
-      throw redirect({ to: "/inicio" });
+      throw redirect({ to: getProductHomeRoute() });
     }
   },
   component: Login,
   head: () => ({
-    title: "Login - APOIS ENTREGA",
-    meta: [{ name: "description", content: "Entre na sua conta do APOIS ENTREGA" }],
+    title: `Login - ${getProductLabel()}`,
+    meta: [{ name: "description", content: `Entre na sua conta do ${getProductLabel()}` }],
   }),
 });
 
 function Login() {
   const navigate = useNavigate();
+  const productLabel = getProductLabel();
+  const allowsSignup = productAllowsPublicSignup();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -105,7 +112,7 @@ function Login() {
         if (safeRedirectPath) {
           navigate({ to: safeRedirectPath });
         } else {
-          navigate({ to: "/inicio" });
+          navigate({ to: getProductHomeRoute() });
         }
       }
     } catch (err: any) {
@@ -129,7 +136,7 @@ function Login() {
       </header>
 
       <main className="flex-1 flex flex-col px-6 justify-between pb-4 min-h-0">
-        {/* Top Section: Logo, Greeting, Google, Forms */}
+        {/* Top Section: Logo, Greeting, Forms */}
         <div className="flex flex-col">
           {/* Logo and Greeting */}
           <div className="flex flex-col items-center mb-4 text-center">
@@ -138,7 +145,10 @@ function Login() {
               alt="APOIS ENTREGA"
               className="h-12 w-auto object-contain mb-3"
             />
-            <h1 className="text-[20px] font-black text-white leading-tight">
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-primary">
+              {productLabel}
+            </p>
+            <h1 className="mt-2 text-[20px] font-black text-white leading-tight">
               Que bom ter você de volta
             </h1>
           </div>
@@ -202,12 +212,18 @@ function Login() {
         {/* Bottom Section: Register Link and Copyright */}
         <div className="flex flex-col space-y-4">
           <div className="text-center">
-            <p className="text-zinc-500 text-xs">
-              Ainda não tem uma conta?{" "}
-              <Link to="/register" className="text-primary font-bold hover:underline">
-                Criar minha conta
-              </Link>
-            </p>
+            {allowsSignup ? (
+              <p className="text-zinc-500 text-xs">
+                Ainda não tem uma conta?{" "}
+                <Link to="/register" className="text-primary font-bold hover:underline">
+                  Criar minha conta
+                </Link>
+              </p>
+            ) : (
+              <p className="text-zinc-500 text-xs">
+                Acesso restrito a administradores autorizados.
+              </p>
+            )}
           </div>
 
           <div className="text-center opacity-40">
