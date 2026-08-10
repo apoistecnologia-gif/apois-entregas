@@ -1,17 +1,22 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+const accessTokenSchema = z.string().trim().min(20).max(8192);
+
 const geocodeInput = z.object({
   lat: z.number().finite().min(-90).max(90),
   lng: z.number().finite().min(-180).max(180),
+  accessToken: accessTokenSchema,
 });
 
 const autocompleteInput = z.object({
   input: z.string().trim().min(3).max(256),
+  accessToken: accessTokenSchema,
 });
 
 const placeDetailsInput = z.object({
   placeId: z.string().trim().min(1).max(512),
+  accessToken: accessTokenSchema,
 });
 
 const addressComponentSchema = z.object({
@@ -69,6 +74,36 @@ function getGoogleMapsApiKey() {
   return apiKey;
 }
 
+function getSupabaseServerConfig() {
+  const url = (
+    process.env["SUPABASE_URL"] ?? process.env["VITE_SUPABASE_URL"]
+  )?.trim();
+  const publicKey = (
+    process.env["SUPABASE_ANON_KEY"] ?? process.env["VITE_SUPABASE_PUBLISHABLE_KEY"]
+  )?.trim();
+
+  if (!url || !publicKey) {
+    throw new Error("Supabase server authentication is not configured");
+  }
+
+  return { url: url.replace(/\/$/, ""), publicKey };
+}
+
+async function requireAuthenticatedUser(accessToken: string) {
+  const { url, publicKey } = getSupabaseServerConfig();
+  const authResponse = await fetch(`${url}/auth/v1/user`, {
+    headers: {
+      Accept: "application/json",
+      apikey: publicKey,
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!authResponse.ok) {
+    throw new Error("Authentication required for address lookup");
+  }
+}
+
 async function fetchGoogleMapsJson(url: URL): Promise<unknown> {
   const response = await fetch(url, {
     headers: { Accept: "application/json" },
@@ -91,6 +126,7 @@ function assertApiStatus(payload: unknown, allowedStatuses: string[]) {
 export const geocodeAddress = createServerFn({ method: "GET" })
   .validator((data: unknown) => geocodeInput.parse(data))
   .handler(async ({ data }) => {
+    await requireAuthenticatedUser(data.accessToken);
     const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
     url.searchParams.set("latlng", `${data.lat},${data.lng}`);
     url.searchParams.set("language", "pt-BR");
@@ -106,6 +142,7 @@ export const geocodeAddress = createServerFn({ method: "GET" })
 export const autocompleteAddress = createServerFn({ method: "GET" })
   .validator((data: unknown) => autocompleteInput.parse(data))
   .handler(async ({ data }) => {
+    await requireAuthenticatedUser(data.accessToken);
     const url = new URL("https://maps.googleapis.com/maps/api/place/autocomplete/json");
     url.searchParams.set("input", data.input);
     url.searchParams.set("components", "country:br");
@@ -132,6 +169,7 @@ export const autocompleteAddress = createServerFn({ method: "GET" })
 export const getPlaceDetails = createServerFn({ method: "GET" })
   .validator((data: unknown) => placeDetailsInput.parse(data))
   .handler(async ({ data }) => {
+    await requireAuthenticatedUser(data.accessToken);
     const url = new URL("https://maps.googleapis.com/maps/api/place/details/json");
     url.searchParams.set("place_id", data.placeId);
     url.searchParams.set("fields", "address_components,geometry");
