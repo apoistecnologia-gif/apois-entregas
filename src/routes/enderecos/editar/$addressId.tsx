@@ -23,6 +23,8 @@ export const Route = createFileRoute("/enderecos/editar/$addressId")({
   }),
 });
 
+const locationFields = new Set(["postal_code", "street", "number", "neighborhood", "city", "state"]);
+
 function EditarEndereco() {
   const { addressId } = useParams({ from: "/enderecos/editar/$addressId" });
   const navigate = useNavigate();
@@ -51,8 +53,8 @@ function EditarEndereco() {
         .single();
 
       if (error) {
-        toast.error("Erro ao carregar endereço");
-        navigate({ to: "/enderecos" });
+        toast.error("Endereço não encontrado ou sem permissão de acesso");
+        await navigate({ to: "/enderecos" });
       } else {
         setFormData({
           label: data.label,
@@ -64,29 +66,47 @@ function EditarEndereco() {
           city: data.city,
           state: data.state,
           reference: data.reference || "",
-          latitude: data.latitude,
-          longitude: data.longitude,
+          latitude: data.latitude === null ? null : Number(data.latitude),
+          longitude: data.longitude === null ? null : Number(data.longitude),
         });
       }
       setIsLoading(false);
     };
 
-    fetchAddress();
+    void fetchAddress();
   }, [addressId, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(locationFields.has(name) ? { latitude: null, longitude: null } : {}),
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (formData.postal_code.replace(/\D/g, "").length !== 8) {
+      toast.error("Informe um CEP válido com 8 dígitos");
+      return;
+    }
+    if (formData.state.trim().length !== 2) {
+      toast.error("O estado (UF) deve ter exatamente 2 letras");
+      return;
+    }
+
     setIsSaving(true);
 
     try {
       const { error } = await (supabase as any)
         .from("customer_addresses")
-        .update(formData)
+        .update({
+          ...formData,
+          postal_code: formData.postal_code.replace(/\D/g, ""),
+          state: formData.state.toUpperCase(),
+        })
         .eq("id", addressId);
 
       if (error) throw error;
@@ -102,8 +122,9 @@ function EditarEndereco() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-full items-center justify-center bg-black">
+      <div className="flex min-h-full items-center justify-center bg-black" role="status">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <span className="sr-only">Carregando endereço</span>
       </div>
     );
   }
@@ -114,8 +135,10 @@ function EditarEndereco() {
     <div className="absolute inset-0 z-[160] bg-black overflow-y-auto overflow-x-hidden flex flex-col w-full shadow-2xl">
       <header className="flex items-center p-4 sticky top-0 z-50 bg-black/80 backdrop-blur-lg border-b border-white/10">
         <button
+          type="button"
           onClick={() => navigate({ to: "/enderecos" })}
           className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors"
+          aria-label="Voltar"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -126,7 +149,7 @@ function EditarEndereco() {
         <div className="px-6 py-4 border-b border-white/5 bg-zinc-950/50">
           <GoogleMapsAddressSelector
             initialCenter={
-              formData.latitude && formData.longitude
+              formData.latitude !== null && formData.longitude !== null
                 ? { lat: formData.latitude, lng: formData.longitude }
                 : undefined
             }
@@ -174,6 +197,7 @@ function EditarEndereco() {
                 name="postal_code"
                 value={formData.postal_code}
                 onChange={handleChange}
+                inputMode="numeric"
                 className="bg-zinc-900 border-zinc-800 h-12 rounded-xl"
                 required
               />
