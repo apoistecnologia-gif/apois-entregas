@@ -9,6 +9,7 @@ type MerchantSubscriptionGateProps = {
   subscription: any;
   onRefresh: () => void | Promise<void>;
   onLogout: () => void | Promise<void>;
+  embedded?: boolean;
 };
 
 type PixPayment = {
@@ -69,6 +70,7 @@ export function MerchantSubscriptionGate({
   subscription,
   onRefresh,
   onLogout,
+  embedded = false,
 }: MerchantSubscriptionGateProps) {
   const [busy, setBusy] = useState<"checkout" | "sync" | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -191,33 +193,39 @@ export function MerchantSubscriptionGate({
   };
 
   return (
-    <div className="min-h-dvh bg-black px-4 py-8 text-white">
+    <div className={embedded ? "text-white" : "min-h-dvh bg-black px-4 py-8 text-white"}>
       <div className="mx-auto max-w-2xl">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">
-              APOIS ENTREGA
-            </p>
-            <h1 className="mt-1 text-2xl font-black">{merchant?.name ?? "Estabelecimento"}</h1>
+        {!embedded ? (
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">
+                APOIS ENTREGA
+              </p>
+              <h1 className="mt-1 text-2xl font-black">{merchant?.name ?? "Estabelecimento"}</h1>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void onLogout()}
+              className="border-zinc-800 bg-zinc-950"
+            >
+              <LogOut className="mr-2 h-4 w-4" /> Sair
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void onLogout()}
-            className="border-zinc-800 bg-zinc-950"
-          >
-            <LogOut className="mr-2 h-4 w-4" /> Sair
-          </Button>
-        </div>
+        ) : null}
 
         <section className="rounded-3xl border border-primary/30 bg-zinc-950 p-6 shadow-2xl md:p-8">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <ShieldAlert className="h-6 w-6" />
           </div>
-          <h2 className="mt-5 text-2xl font-black">Mensalidade necessária para acessar o painel</h2>
+          <h2 className="mt-5 text-2xl font-black">
+            Mensalidade necessária para receber novos pedidos
+          </h2>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
-            A APOIS ENTREGA cobra apenas <strong className="text-white">R$ 69,90 por mês</strong>
-            do estabelecimento. Não existe comissão sobre os pedidos nem taxa de serviço do cliente.
+            A mensalidade do estabelecimento é de{" "}
+            <strong className="text-white">R$ 69,90 por mês</strong>. Enquanto ela estiver vencida,
+            novos pedidos ficam bloqueados, mas pedidos já aceitos, histórico e valores já ganhos
+            continuam acessíveis.
           </p>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -237,9 +245,9 @@ export function MerchantSubscriptionGate({
 
           <div className="mt-6 rounded-2xl border border-zinc-900 bg-black p-4 text-sm text-zinc-400">
             A mensalidade é paga por PIX pelo Mercado Pago. Assim que o pagamento for confirmado, o
-            acesso é liberado automaticamente por um mês. Se o período vencer sem uma nova
-            mensalidade paga, o painel operacional e novos pedidos ficam bloqueados até a
-            regularização.
+            liberação para novos pedidos ocorre automaticamente por um mês. Se o período vencer sem
+            uma nova mensalidade paga, novos pedidos ficam bloqueados até a regularização; pedidos
+            em andamento, histórico e financeiro permanecem acessíveis.
           </div>
 
           {testMode ? (

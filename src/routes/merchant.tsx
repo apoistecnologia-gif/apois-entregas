@@ -309,11 +309,7 @@ function MerchantWorkspace() {
         const subscriptionAllowed = Boolean(
           periodEnd && new Date(periodEnd).getTime() > Date.now(),
         );
-        if (
-          merchantRes.data.approval_status === "approved" &&
-          merchantRes.data.is_active &&
-          subscriptionAllowed
-        ) {
+        if (merchantRes.data.approval_status === "approved" && merchantRes.data.is_active) {
           await loadOperations(merchantRes.data.id);
         }
       } catch (error: any) {
@@ -346,8 +342,7 @@ function MerchantWorkspace() {
   }, [subscriptionAccessAllowed, subscription?.current_period_end, loadAll]);
 
   useEffect(() => {
-    if (!merchant?.id || merchant.approval_status !== "approved" || !subscriptionAccessAllowed)
-      return;
+    if (!merchant?.id || merchant.approval_status !== "approved") return;
     const channel = supabase
       .channel(`merchant_orders_${merchant.id}`)
       .on(
@@ -359,7 +354,7 @@ function MerchantWorkspace() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [merchant?.id, merchant?.approval_status, subscriptionAccessAllowed, loadOperations]);
+  }, [merchant?.id, merchant?.approval_status, loadOperations]);
 
   const logout = async () => {
     await supabase.auth.signOut();
@@ -826,17 +821,6 @@ function MerchantWorkspace() {
     );
   }
 
-  if (!subscriptionAccessAllowed) {
-    return (
-      <MerchantSubscriptionGate
-        merchant={merchant}
-        subscription={subscription}
-        onRefresh={() => loadAll(true)}
-        onLogout={logout}
-      />
-    );
-  }
-
   const tabs = [
     { id: "dashboard", label: "Visão geral", icon: LayoutDashboard },
     { id: "orders", label: "Pedidos", icon: ShoppingBag, badge: pendingOrders.length },
@@ -848,6 +832,12 @@ function MerchantWorkspace() {
     { id: "reviews", label: "Avaliações", icon: Star },
     { id: "reports", label: "Relatórios", icon: BarChart3 },
     { id: "finance", label: "Financeiro", icon: WalletCards },
+    {
+      id: "billing",
+      label: "Mensalidade",
+      icon: BadgePercent,
+      ...(subscriptionAccessAllowed ? {} : { badge: 1 }),
+    },
     { id: "settings", label: "Configurações", icon: Settings },
   ];
 
@@ -861,6 +851,23 @@ function MerchantWorkspace() {
       onLogout={logout}
       userLabel={user?.email}
     >
+      {!subscriptionAccessAllowed ? (
+        <section className="mb-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-black text-amber-300">Mensalidade pendente</p>
+              <p className="mt-1 text-sm text-zinc-400">
+                Novos pedidos estão bloqueados. Você ainda pode concluir pedidos existentes,
+                consultar histórico e acessar seu financeiro.
+              </p>
+            </div>
+            <Button type="button" onClick={() => setActiveTab("billing")}>
+              Regularizar mensalidade
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-zinc-500">Operação em tempo real</p>
@@ -1587,6 +1594,16 @@ function MerchantWorkspace() {
             </div>
           );
         })()}
+
+      {activeTab === "billing" && (
+        <MerchantSubscriptionGate
+          merchant={merchant}
+          subscription={subscription}
+          onRefresh={() => loadAll(true)}
+          onLogout={logout}
+          embedded
+        />
+      )}
 
       {activeTab === "finance" && (
         <div className="space-y-6">
