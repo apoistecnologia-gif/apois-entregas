@@ -27,8 +27,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Apply merchant reports
         run: python .github/scripts/add-merchant-reports.py
-      - name: Format changed source
-        run: bunx prettier src/routes/merchant.tsx --write
+      - name: Format repository
+        run: bun run format
       - name: Full verification
         env:
           VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
