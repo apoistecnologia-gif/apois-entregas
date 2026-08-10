@@ -1,4 +1,4 @@
-import { CreditCard, Loader2, LogOut, RefreshCw, ShieldAlert } from "lucide-react";
+import { Copy, Loader2, LogOut, QrCode, RefreshCw, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,27 +11,38 @@ type MerchantSubscriptionGateProps = {
   onLogout: () => void | Promise<void>;
 };
 
+type PixPayment = {
+  id: string;
+  status: string;
+  amount: number;
+  qrCodeText: string;
+  qrCodeImageUrl: string | null;
+  expiresAt: string | null;
+  providerChargeId: string;
+};
+
 const dateLabel = (value: string | null | undefined) =>
   value ? new Date(value).toLocaleString("pt-BR") : "—";
 
 function statusLabel(value: string | null | undefined) {
   switch (value) {
+    case "paid":
     case "authorized":
-      return "Assinatura autorizada";
+      return "Mensalidade paga";
     case "pending":
       return "Pagamento pendente";
     case "paused":
-      return "Assinatura pausada";
+      return "Cobrança pausada";
     case "cancelled":
     case "canceled":
-      return "Assinatura cancelada";
+      return "Cobrança cancelada";
     default:
-      return value ? `Status: ${value}` : "Assinatura ainda não ativada";
+      return value ? `Status: ${value}` : "Mensalidade ainda não ativada";
   }
 }
 
 async function subscriptionErrorMessage(error: unknown): Promise<string> {
-  const fallback = "Não foi possível abrir o pagamento da mensalidade.";
+  const fallback = "Não foi possível gerar o PIX da mensalidade.";
   if (!error || typeof error !== "object") return fallback;
 
   const context = "context" in error ? (error as { context?: unknown }).context : null;
@@ -61,6 +72,8 @@ export function MerchantSubscriptionGate({
 }: MerchantSubscriptionGateProps) {
   const [busy, setBusy] = useState<"checkout" | "sync" | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [pixPayment, setPixPayment] = useState<PixPayment | null>(null);
+  const [testMode, setTestMode] = useState(false);
 
   const reconcile = useCallback(
     async (interactive = false) => {
@@ -74,6 +87,7 @@ export function MerchantSubscriptionGate({
         });
         if (error) throw error;
         if (data?.accessAllowed) {
+          setPixPayment(null);
           if (interactive) toast.success("Pagamento confirmado. Acesso liberado.");
           await onRefresh();
           return true;
@@ -113,6 +127,12 @@ export function MerchantSubscriptionGate({
   }, [reconcile]);
 
   useEffect(() => {
+    if (!pixPayment) return;
+    const timer = window.setInterval(() => void reconcile(false), 5000);
+    return () => window.clearInterval(timer);
+  }, [pixPayment, reconcile]);
+
+  useEffect(() => {
     if (!merchant?.id) return;
     const channel = supabase
       .channel(`merchant_subscription_${merchant.id}`)
@@ -137,9 +157,8 @@ export function MerchantSubscriptionGate({
     setBusy("checkout");
     setLastError(null);
     try {
-      const returnUrl = `${window.location.origin}/merchant`;
       const { data, error } = await supabase.functions.invoke("merchant-subscription", {
-        body: { action: "checkout", returnUrl },
+        body: { action: "checkout" },
       });
       if (error) throw error;
       if (data?.accessAllowed) {
@@ -147,15 +166,27 @@ export function MerchantSubscriptionGate({
         await onRefresh();
         return;
       }
-      const checkoutUrl = String(data?.checkoutUrl ?? "");
-      if (!checkoutUrl) throw new Error("O Mercado Pago não retornou o link da assinatura.");
-      window.location.assign(checkoutUrl);
+      const payment = data?.payment as PixPayment | undefined;
+      if (!payment?.qrCodeText) throw new Error("O Mercado Pago não retornou um PIX válido.");
+      setPixPayment(payment);
+      setTestMode(Boolean(data?.testMode));
+      toast.success(data?.reused ? "PIX pendente recuperado." : "PIX da mensalidade gerado.");
     } catch (error: unknown) {
       const message = await subscriptionErrorMessage(error);
       setLastError(message);
       toast.error(message);
     } finally {
       setBusy(null);
+    }
+  };
+
+  const copyPix = async () => {
+    if (!pixPayment?.qrCodeText) return;
+    try {
+      await navigator.clipboard.writeText(pixPayment.qrCodeText);
+      toast.success("Código PIX copiado.");
+    } catch {
+      toast.error("Não foi possível copiar automaticamente. Selecione o código abaixo.");
     }
   };
 
@@ -205,14 +236,54 @@ export function MerchantSubscriptionGate({
           </div>
 
           <div className="mt-6 rounded-2xl border border-zinc-900 bg-black p-4 text-sm text-zinc-400">
-            Quando uma cobrança mensal é aprovada, o acesso é liberado automaticamente. Se a
-            mensalidade vencer sem pagamento aprovado, o painel operacional e novos pedidos ficam
-            bloqueados até a regularização.
+            A mensalidade é paga por PIX pelo Mercado Pago. Assim que o pagamento for confirmado, o
+            acesso é liberado automaticamente por um mês. Se o período vencer sem uma nova
+            mensalidade paga, o painel operacional e novos pedidos ficam bloqueados até a
+            regularização.
           </div>
+
+          {testMode ? (
+            <div className="mt-4 rounded-2xl border border-amber-800/60 bg-amber-950/20 p-4 text-sm text-amber-200">
+              Ambiente de testes do Mercado Pago: este PIX não movimenta dinheiro real.
+            </div>
+          ) : null}
 
           {lastError ? (
             <div className="mt-4 rounded-2xl border border-red-900/70 bg-red-950/30 p-4 text-sm text-red-200">
-              <strong>Falha ao abrir o Mercado Pago:</strong> {lastError}
+              <strong>Falha ao gerar o PIX:</strong> {lastError}
+            </div>
+          ) : null}
+
+          {pixPayment ? (
+            <div className="mt-6 rounded-3xl border border-primary/30 bg-black p-5">
+              <div className="flex items-center gap-2 text-primary">
+                <QrCode className="h-5 w-5" />
+                <h3 className="font-black">PIX da mensalidade</h3>
+              </div>
+              <p className="mt-2 text-sm text-zinc-400">
+                Valor: <strong className="text-white">R$ {pixPayment.amount.toFixed(2).replace(".", ",")}</strong>
+                {pixPayment.expiresAt ? ` · válido até ${dateLabel(pixPayment.expiresAt)}` : ""}
+              </p>
+
+              {pixPayment.qrCodeImageUrl ? (
+                <div className="mx-auto mt-5 w-fit rounded-2xl bg-white p-3">
+                  <img
+                    src={pixPayment.qrCodeImageUrl}
+                    alt="QR Code PIX da mensalidade"
+                    className="h-52 w-52 object-contain"
+                  />
+                </div>
+              ) : null}
+
+              <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-950 p-3">
+                <p className="break-all text-xs leading-5 text-zinc-300">{pixPayment.qrCodeText}</p>
+              </div>
+              <Button type="button" className="mt-3 w-full" onClick={() => void copyPix()}>
+                <Copy className="mr-2 h-4 w-4" /> Copiar código PIX
+              </Button>
+              <p className="mt-3 text-center text-xs text-zinc-500">
+                Estamos verificando o pagamento automaticamente.
+              </p>
             </div>
           ) : null}
 
@@ -221,9 +292,9 @@ export function MerchantSubscriptionGate({
               {busy === "checkout" ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <CreditCard className="mr-2 h-4 w-4" />
+                <QrCode className="mr-2 h-4 w-4" />
               )}
-              Pagar R$ 69,90 / mês
+              {pixPayment ? "Gerar novo PIX" : "Pagar R$ 69,90 por PIX"}
             </Button>
             <Button
               type="button"
