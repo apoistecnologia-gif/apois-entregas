@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Crown, Check, ChevronRight, Zap, ShoppingBag, Gift } from "lucide-react";
+import { ArrowLeft, Crown, Zap, ShoppingBag, Gift, Tag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/apois-plus")({
@@ -111,17 +111,8 @@ function ApoisPlusPage() {
             Estamos finalizando o plano comercial para garantir a você as melhores vantagens do
             mercado.
           </p>
-          <button
-            disabled
-            className="w-full bg-zinc-900 border border-zinc-800 text-zinc-600 font-bold py-4 rounded-2xl cursor-not-allowed"
-          >
-            Quero entrar na fila
-          </button>
         </section>
       </main>
     </div>
   );
 }
-
-// Fixed missing import in benefits array
-import { Tag } from "lucide-react";

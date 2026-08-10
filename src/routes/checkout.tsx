@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   Check,
   Copy,
-  CreditCard,
   Loader2,
   MapPin,
   QrCode,
@@ -756,16 +755,6 @@ function CheckoutPage() {
               <div className="flex-1">
                 <p className="text-sm font-bold">PIX</p>
                 <p className="text-[10px] font-bold text-primary">DISPONÍVEL</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 rounded-xl border border-zinc-900 p-3 opacity-30 grayscale">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800">
-                <CreditCard className="h-4 w-4 text-zinc-500" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold">Cartão de Crédito</p>
-                <p className="text-[10px] font-bold uppercase text-zinc-500">Em breve</p>
               </div>
             </div>
           </div>

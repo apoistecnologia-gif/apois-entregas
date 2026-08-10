@@ -7,7 +7,6 @@ import {
   Plus,
   MapPin,
   ChevronRight,
-  CreditCard,
   CircleDollarSign,
   ShieldCheck,
   Store,
@@ -288,38 +287,16 @@ function SacolaPage() {
                   PIX habilitado
                 </span>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-primary bg-primary/5 py-4 text-primary shadow-[0_0_15px_rgba(255,215,0,0.15)] ring-1 ring-primary/30">
-                  <div className="relative">
-                    <CircleDollarSign className="h-6 w-6" />
-                    <div className="absolute -bottom-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary ring-2 ring-black">
-                      <div className="h-1.5 w-1.5 rounded-full bg-black" />
-                    </div>
-                  </div>
-                  <span className="text-[12px] font-bold">Pix</span>
-                </div>
-
-                <button
-                  type="button"
-                  disabled
-                  className="flex cursor-not-allowed flex-col items-center justify-center gap-2 rounded-xl border border-zinc-900 bg-zinc-950 py-4 text-zinc-700 opacity-60"
-                  aria-label="Cartão indisponível"
-                >
-                  <CreditCard className="h-6 w-6" />
-                  <span className="text-[12px] font-bold">Cartão</span>
-                  <span className="text-[9px] font-black uppercase">Em breve</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled
-                  className="flex cursor-not-allowed flex-col items-center justify-center gap-2 rounded-xl border border-zinc-900 bg-zinc-950 py-4 text-zinc-700 opacity-60"
-                  aria-label="Dinheiro indisponível"
-                >
+              <div className="rounded-xl border border-primary bg-primary/5 p-4 text-primary shadow-[0_0_15px_rgba(255,215,0,0.15)] ring-1 ring-primary/30">
+                <div className="flex items-center gap-3">
                   <CircleDollarSign className="h-6 w-6" />
-                  <span className="text-[12px] font-bold">Dinheiro</span>
-                  <span className="text-[9px] font-black uppercase">Em breve</span>
-                </button>
+                  <div>
+                    <p className="text-sm font-bold">PIX</p>
+                    <p className="text-[11px] text-zinc-400">
+                      Pagamento disponível e confirmado automaticamente.
+                    </p>
+                  </div>
+                </div>
               </div>
             </section>
 

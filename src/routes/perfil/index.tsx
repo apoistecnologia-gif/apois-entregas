@@ -11,7 +11,6 @@ import {
   Bell,
   HelpCircle,
   FileText,
-  Star,
   LogOut,
   Store,
   Bike,
@@ -79,7 +78,6 @@ function PerfilIndexPage() {
       { icon: Bell, label: "Notificações", path: "/perfil/notificacoes" },
       { icon: HelpCircle, label: "Ajuda e suporte", path: "/perfil/ajuda" },
       { icon: FileText, label: "Termos de Uso e Privacidade", path: "/perfil/legal" },
-      { icon: Star, label: "APOIS+", path: "/apois-plus", highlight: true },
     ];
     const work: any[] = [
       {

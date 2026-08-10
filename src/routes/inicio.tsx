@@ -16,7 +16,6 @@ import {
   ChevronRight,
   ChevronDown,
   Bell,
-  Crown,
   Bike,
   Store,
   Star,
@@ -434,26 +433,6 @@ function Inicio() {
             )}
           </div>
         </section>
-
-        {/* Banner APOIS+ */}
-        <button
-          type="button"
-          onClick={() => navigate({ to: "/apois-plus" })}
-          className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 via-zinc-950 to-black px-3 py-4 text-left shadow-[0_10px_30px_-18px_rgba(255,215,0,0.7)] transition-transform active:scale-[0.99]"
-        >
-          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-primary/10 ring-1 ring-primary/30">
-            <Crown className="h-7 w-7 text-primary" />
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-[17px] font-bold text-white">
-              Seja <span className="text-primary">APOIS+</span>
-            </span>
-            <span className="block truncate text-[13px] text-zinc-400">
-              Conheça os benefícios que estão chegando
-            </span>
-          </span>
-          <ChevronRight className="h-5 w-5 shrink-0 text-primary" />
-        </button>
       </main>
 
       <AppBottomNav activeTab="inicio" />
