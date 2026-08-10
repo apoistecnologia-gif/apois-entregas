@@ -12,19 +12,17 @@ Do **not** run `supabase migration repair`, rename applied migrations, or re-app
 
 The following production migrations are represented in Git by files with a different timestamp prefix. The semantic migration name identifies the intended counterpart:
 
-| Production ledger | Git migration |
-|---|---|
-| `20260810013806 merchant_monthly_subscriptions` | `20260810014000_merchant_monthly_subscriptions.sql` |
-| `20260810054741 merchant_subscription_provider_plan` | `20260810055500_merchant_subscription_provider_plan.sql` |
-| `20260810055613 merchant_subscription_realtime` | `20260810061000_merchant_subscription_realtime.sql` |
-| `20260810061411 merchant_subscription_pix_billing` | `20260810073500_merchant_subscription_pix_billing.sql` |
-| `20260810062935 index_merchant_subscription_events` | `20260810074500_index_merchant_subscription_events.sql` |
-| `20260810071641 harden_merchant_subscription_period_integrity` | `20260810041600_harden_merchant_subscription_period_integrity.sql` |
-| `20260810072758 protect_approved_merchant_identity` | `20260810043000_protect_approved_merchant_identity.sql` |
-| `20260810073032 separate_merchant_membership_from_billing_state` | `20260810044500_separate_merchant_membership_from_billing_state.sql` |
-| `20260810074049 validate_courier_identity_fields` | `20260810050500_validate_courier_identity_fields.sql` |
-| `20260810075155 isolate_merchant_private_data` | `20260810055000_isolate_merchant_private_data.sql` |
-| `20260810081209 bind_merchant_subscription_to_payment_environment` | `20260810062000_bind_merchant_subscription_to_payment_environment.sql` |
+- `20260810013806 merchant_monthly_subscriptions` → `20260810014000_merchant_monthly_subscriptions.sql`
+- `20260810054741 merchant_subscription_provider_plan` → `20260810055500_merchant_subscription_provider_plan.sql`
+- `20260810055613 merchant_subscription_realtime` → `20260810061000_merchant_subscription_realtime.sql`
+- `20260810061411 merchant_subscription_pix_billing` → `20260810073500_merchant_subscription_pix_billing.sql`
+- `20260810062935 index_merchant_subscription_events` → `20260810074500_index_merchant_subscription_events.sql`
+- `20260810071641 harden_merchant_subscription_period_integrity` → `20260810041600_harden_merchant_subscription_period_integrity.sql`
+- `20260810072758 protect_approved_merchant_identity` → `20260810043000_protect_approved_merchant_identity.sql`
+- `20260810073032 separate_merchant_membership_from_billing_state` → `20260810044500_separate_merchant_membership_from_billing_state.sql`
+- `20260810074049 validate_courier_identity_fields` → `20260810050500_validate_courier_identity_fields.sql`
+- `20260810075155 isolate_merchant_private_data` → `20260810055000_isolate_merchant_private_data.sql`
+- `20260810081209 bind_merchant_subscription_to_payment_environment` → `20260810062000_bind_merchant_subscription_to_payment_environment.sql`
 
 These rows are documentation of an already-existing historical mismatch; they are **not** instructions to execute either side again.
 
