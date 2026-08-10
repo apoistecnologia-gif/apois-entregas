@@ -9,6 +9,10 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 const isMobileBuild = process.env["APOIS_MOBILE_BUILD"] === "1";
 
 export default defineConfig({
+  // The package defaults production builds to Cloudflare. TanStack Start's SPA
+  // prerenderer boots the built server locally in Node, so mobile packaging needs a
+  // Node-compatible Nitro target while the normal web build keeps its default target.
+  ...(isMobileBuild ? { nitro: { preset: "node" } } : {}),
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
@@ -17,9 +21,6 @@ export default defineConfig({
       ? {
           spa: {
             enabled: true,
-            // Keep the shell-generation request away from product landing redirects/guards.
-            // TanStack renders only the root shell for this mask path and the hydrated
-            // client router then resolves the real product URL normally.
             maskPath: "/__apois_mobile_shell__",
             prerender: {
               outputPath: "/index.html",
