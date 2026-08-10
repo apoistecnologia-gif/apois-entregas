@@ -9,26 +9,11 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 const isMobileBuild = process.env["APOIS_MOBILE_BUILD"] === "1";
 
 export default defineConfig({
-  // The package defaults production builds to Cloudflare. TanStack Start's SPA
-  // prerenderer boots the built server locally in Node, so mobile packaging needs a
-  // Node-compatible Nitro target while the normal web build keeps its default target.
+  // Mobile packaging renders the built app once in CI to produce Capacitor's index.html.
+  // Use a Node-compatible Nitro server for that build-only render while normal web
+  // deployments retain the package's Cloudflare default.
   ...(isMobileBuild ? { nitro: { preset: "node" } } : {}),
   tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
     server: { entry: "server" },
-    ...(isMobileBuild
-      ? {
-          spa: {
-            enabled: true,
-            maskPath: "/__apois_mobile_shell__",
-            prerender: {
-              outputPath: "/index.html",
-              crawlLinks: false,
-              retryCount: 0,
-            },
-          },
-        }
-      : {}),
   },
 });
