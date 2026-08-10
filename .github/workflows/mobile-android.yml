@@ -1,6 +1,12 @@
 name: Mobile Android
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/mobile-android.yml"
+      - "capacitor.config.ts"
   workflow_dispatch:
     inputs:
       product:
@@ -20,8 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      APOIS_MOBILE_PRODUCT: ${{ inputs.product }}
-      VITE_APOIS_PRODUCT_MODE: ${{ inputs.product }}
+      APOIS_MOBILE_PRODUCT: ${{ inputs.product || 'courier' }}
+      VITE_APOIS_PRODUCT_MODE: ${{ inputs.product || 'courier' }}
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
@@ -94,7 +100,7 @@ jobs:
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: apois-${{ inputs.product }}-android
+          name: apois-${{ inputs.product || 'courier' }}-android
           if-no-files-found: error
           path: |
             android/app/build/outputs/apk/debug/app-debug.apk
