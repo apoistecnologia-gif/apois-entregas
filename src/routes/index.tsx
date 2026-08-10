@@ -1,10 +1,15 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import logoAsset from "@/assets/logo.png.asset.json";
 import { ArrowRight } from "lucide-react";
 import heroImage from "@/assets/delivery-hero.png.asset.json";
+import { getProductLandingRoute } from "@/lib/product-routing";
 
 export const Route = createFileRoute("/")({
+  beforeLoad: () => {
+    const landingRoute = getProductLandingRoute();
+    if (landingRoute !== "/") throw redirect({ to: landingRoute });
+  },
   component: Index,
   head: () => ({
     title: "APOIS ENTREGA - Seu delivery do seu jeito",
