@@ -1,0 +1,101 @@
+name: Mobile Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      product:
+        description: "Produto mobile"
+        required: true
+        default: courier
+        type: choice
+        options:
+          - courier
+          - customer
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APOIS_MOBILE_PRODUCT: ${{ inputs.product }}
+      VITE_APOIS_PRODUCT_MODE: ${{ inputs.product }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install web dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate required production environment
+        shell: bash
+        run: |
+          test -n "$VITE_SUPABASE_URL" || (echo "Missing VITE_SUPABASE_URL secret" && exit 1)
+          test -n "$VITE_SUPABASE_ANON_KEY" || (echo "Missing VITE_SUPABASE_ANON_KEY secret" && exit 1)
+
+      - name: Build product web bundle
+        shell: bash
+        run: |
+          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+            bun run build:courier
+          else
+            bun run build:customer
+          fi
+
+      - name: Install Capacitor runtime for packaging
+        run: npm install --no-save @capacitor/core@8.4.2 @capacitor/cli@8.4.2 @capacitor/android@8.4.2
+
+      - name: Create Android native project
+        run: npx cap add android
+
+      - name: Configure Android location permissions
+        shell: python
+        run: |
+          from pathlib import Path
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          text = manifest.read_text(encoding="utf-8")
+          permissions = """    <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />\n    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />\n    <uses-feature android:name=\"android.hardware.location.gps\" android:required=\"false\" />\n"""
+          if "android.permission.ACCESS_FINE_LOCATION" not in text:
+              marker = "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n"
+              text = text.replace(marker, marker + permissions, 1)
+              manifest.write_text(text, encoding="utf-8")
+
+      - name: Sync web bundle into Android
+        run: npx cap sync android
+
+      - name: Build installable debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Build release AAB
+        working-directory: android
+        run: ./gradlew bundleRelease
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: apois-${{ inputs.product }}-android
+          if-no-files-found: error
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/bundle/release/app-release.aab
