@@ -1,5 +1,5 @@
 import { CreditCard, Loader2, LogOut, RefreshCw, ShieldAlert } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,6 +62,56 @@ export function MerchantSubscriptionGate({
   const [busy, setBusy] = useState<"checkout" | "sync" | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
 
+  const reconcile = useCallback(
+    async (interactive = false) => {
+      if (interactive) {
+        setBusy("sync");
+        setLastError(null);
+      }
+      try {
+        const { data, error } = await supabase.functions.invoke("merchant-subscription", {
+          body: { action: "sync" },
+        });
+        if (error) throw error;
+        if (data?.accessAllowed) {
+          if (interactive) toast.success("Pagamento confirmado. Acesso liberado.");
+          await onRefresh();
+          return true;
+        }
+        if (interactive) {
+          toast.info("O pagamento ainda não consta como aprovado no Mercado Pago.");
+        }
+        return false;
+      } catch (error: unknown) {
+        if (interactive) {
+          const message = await subscriptionErrorMessage(error);
+          setLastError(message);
+          toast.error(message);
+        }
+        return false;
+      } finally {
+        if (interactive) setBusy(null);
+      }
+    },
+    [onRefresh],
+  );
+
+  useEffect(() => {
+    void reconcile(false);
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void reconcile(false);
+    };
+    const refreshOnFocus = () => void reconcile(false);
+
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("focus", refreshOnFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("focus", refreshOnFocus);
+    };
+  }, [reconcile]);
+
   const checkout = async () => {
     setBusy("checkout");
     setLastError(null);
@@ -79,29 +129,6 @@ export function MerchantSubscriptionGate({
       const checkoutUrl = String(data?.checkoutUrl ?? "");
       if (!checkoutUrl) throw new Error("O Mercado Pago não retornou o link da assinatura.");
       window.location.assign(checkoutUrl);
-    } catch (error: unknown) {
-      const message = await subscriptionErrorMessage(error);
-      setLastError(message);
-      toast.error(message);
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const sync = async () => {
-    setBusy("sync");
-    setLastError(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("merchant-subscription", {
-        body: { action: "sync" },
-      });
-      if (error) throw error;
-      if (data?.accessAllowed) {
-        toast.success("Pagamento confirmado. Acesso liberado.");
-        await onRefresh();
-      } else {
-        toast.info("O pagamento ainda não consta como aprovado no Mercado Pago.");
-      }
     } catch (error: unknown) {
       const message = await subscriptionErrorMessage(error);
       setLastError(message);
@@ -180,7 +207,7 @@ export function MerchantSubscriptionGate({
             <Button
               type="button"
               variant="outline"
-              onClick={() => void sync()}
+              onClick={() => void reconcile(true)}
               disabled={busy !== null}
               className="border-zinc-800 bg-black"
             >
