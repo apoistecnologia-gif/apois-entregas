@@ -342,9 +342,10 @@ Deno.serve(async (request: Request) => {
   }
 
   const returnUrl = safeReturnUrl(request, body.returnUrl);
-  const payerEmail = testMode
-    ? Deno.env.get("MERCADO_PAGO_TEST_PAYER_EMAIL")?.trim() || "test_user_br@testuser.com"
-    : user.email ?? merchant.contact_email;
+  // Mercado Pago exige um comprador de teste válido quando a integração usa
+  // credenciais de teste. O valor abaixo é o e-mail de comprador de teste
+  // documentado oficialmente para os fluxos de homologação.
+  const payerEmail = testMode ? "test@testuser.com" : user.email ?? merchant.contact_email;
   if (!payerEmail) return json(request, 409, { error: "payer_email_required" });
 
   const preapprovalPayload = {
