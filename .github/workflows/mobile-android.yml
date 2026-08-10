@@ -56,16 +56,6 @@ jobs:
       - name: Install web dependencies
         run: bun install --frozen-lockfile
 
-      - name: Prepare TanStack SPA prerender server shim
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist/server
-          cat > dist/server/server.js <<'EOF'
-          export { default } from "../../.output/server/index.mjs";
-          export * from "../../.output/server/index.mjs";
-          EOF
-
       - name: Build product web bundle
         shell: bash
         run: |
@@ -75,10 +65,31 @@ jobs:
             bun run build:customer
           fi
 
-      - name: Validate Capacitor SPA shell
+      - name: Render Capacitor entry from built app
         shell: bash
         run: |
           set -euo pipefail
+          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+            PRODUCT_PATH="/courier"
+          else
+            PRODUCT_PATH="/"
+          fi
+
+          HOST=127.0.0.1 PORT=4173 node .output/server/index.mjs > /tmp/apois-mobile-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --location "http://127.0.0.1:4173${PRODUCT_PATH}" -o .output/public/index.html; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              cat /tmp/apois-mobile-server.log
+              exit 1
+            fi
+            sleep 1
+          done
+
           test -s .output/public/index.html
           grep -qi '<html' .output/public/index.html
           grep -qi '<script' .output/public/index.html
