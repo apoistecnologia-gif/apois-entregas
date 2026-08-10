@@ -1,17 +1,19 @@
 # APOIS ENTREGAS
 
-Ecossistema de delivery da APOIS com aplicações de cliente, estabelecimento, entregador e administração integradas ao mesmo backend Supabase.
+Ecossistema de delivery da APOIS com cliente, estabelecimento, entregador e administração integrados ao mesmo backend Supabase.
 
 ## Arquitetura
 
-O frontend utiliza React 19, TypeScript, TanStack Start/Router, Vite 8 e Tailwind CSS 4. O backend operacional utiliza Supabase Auth, PostgreSQL, Row Level Security, Realtime, Storage, RPCs e Edge Functions. A integração de pagamento PIX usa Mercado Pago Checkout Transparente / Orders API.
+O frontend utiliza React 19, TypeScript, TanStack Start/Router, Vite 8 e Tailwind CSS 4. O backend operacional utiliza Supabase Auth, PostgreSQL, Row Level Security, Realtime, Storage, RPCs e Edge Functions. O pagamento PIX utiliza Mercado Pago Checkout Transparente / Orders API.
 
-As áreas principais são expostas pelas rotas da aplicação e protegidas por autenticação e autorização no banco/backend:
+Projeto Supabase oficial de produção: `sbvhdgyuuperszlsllji`.
+
+As áreas principais são protegidas por autenticação e autorização no banco/backend:
 
 - Cliente: início, busca, estabelecimento, sacola, checkout, pedidos, perfil, endereços, notificações, suporte e avaliações.
-- Estabelecimento: workspace `/merchant` para pedidos, cardápio, operação, financeiro e configurações autorizadas.
-- Entregador: workspace `/courier` para disponibilidade, ofertas, ciclo da entrega, ganhos e operação autorizada.
-- Administração: workspace `/admin` para operação, parceiros, pedidos, taxas, financeiro, suporte e auditoria autorizada.
+- Estabelecimento: workspace `/merchant` com pedidos em tempo real, cardápio, adicionais, horários, promoções, cupons, clientes, avaliações, financeiro, relatórios e configurações.
+- Entregador: workspace `/courier` com cadastro/aprovação, disponibilidade, GPS, ofertas, aceite atômico, ciclo da entrega, PIN, rota, histórico, carteira e saque.
+- Administração: workspace `/admin` com operação, usuários, parceiros, pedidos, cobertura, taxas, financeiro, suporte, auditoria, configurações e relatórios.
 
 ## Stack
 
@@ -62,7 +64,7 @@ MERCADO_PAGO_WEBHOOK_SECRET_PRODUCTION=
 
 ## Banco e migrations
 
-As migrations rastreáveis ficam em `supabase/migrations/`. Mudanças estruturais, policies, índices, constraints, RPCs e hardenings devem ser aplicadas por migration, nunca por alterações manuais não versionadas.
+As migrations rastreáveis ficam em `supabase/migrations/`. Mudanças estruturais, policies, índices, constraints, RPCs e hardenings devem ser aplicadas por migration, nunca por alteração manual sem rastreabilidade.
 
 Com Supabase CLI conectado ao projeto correto:
 
@@ -70,11 +72,25 @@ Com Supabase CLI conectado ao projeto correto:
 supabase db push
 ```
 
-Antes de aplicar em produção, confira o project ref e faça backup conforme o procedimento operacional da conta Supabase.
+Antes de aplicar em produção, confira sempre o project ref e o ambiente alvo.
+
+### Regras críticas implementadas no banco
+
+- RLS nas tabelas públicas sensíveis e autorização por usuário/papel no servidor.
+- Criação idempotente de pedidos e pagamentos.
+- State machines e validações para transições críticas de pedido/entrega.
+- Aceite atômico de oferta pelo entregador.
+- Validação server-side de cidade, zona, coordenadas e distância da entrega.
+- Coordenadas exatas do estabelecimento obrigatórias para despacho e aprovação operacional.
+- Cálculo server-side de taxa de entrega, taxa de serviço, comissão, ganho do entregador, repasse do estabelecimento e receita da plataforma.
+- Carteiras e lançamentos financeiros idempotentes.
+- Saques com reserva de saldo e proteção contra repetição.
+- Estornos, webhooks e conciliação protegidos contra processamento duplicado.
+- PIN de confirmação de entrega armazenado fora das leituras públicas do pedido.
 
 ## Edge Functions
 
-As funções versionadas ficam em `supabase/functions/`. Entre os fluxos principais estão criação do pedido, criação/reconciliação do PIX, webhook do Mercado Pago, estorno e APIs autenticadas do cliente.
+As funções versionadas ficam em `supabase/functions/`. Entre os fluxos principais estão criação do pedido, criação/reconciliação do PIX, webhook do Mercado Pago, estorno e APIs autenticadas do cliente/suporte.
 
 Exemplo de deploy:
 
@@ -83,14 +99,37 @@ supabase functions deploy create-order
 supabase functions deploy create-pix-charge
 supabase functions deploy sync-payment-status
 supabase functions deploy process-refund
+supabase functions deploy customer-support
 supabase functions deploy mercadopago-webhook --no-verify-jwt
 ```
 
-O webhook do Mercado Pago não usa JWT do usuário porque recebe chamadas externas do provedor; ele valida a autenticidade da notificação dentro da própria função. As demais funções sensíveis devem exigir usuário autenticado quando aplicável.
+O webhook do Mercado Pago não usa JWT do usuário porque recebe chamadas externas do provedor; ele valida a autenticidade da notificação na própria função. Funções de usuário exigem autenticação quando aplicável.
 
-## Pagamentos
+## Pagamentos e financeiro
 
-Em homologação, `MERCADO_PAGO_ENVIRONMENT=test` seleciona as credenciais de teste e o fluxo PIX de teste. Em produção, configure separadamente as credenciais de produção e altere explicitamente o ambiente para `production`. O frontend nunca confirma pagamento por conta própria: a fonte de verdade é o gateway consultado pelo backend/webhook, com persistência idempotente no banco.
+Em homologação, `MERCADO_PAGO_ENVIRONMENT=test` seleciona as credenciais de teste. Em produção, configure separadamente as credenciais de produção e altere explicitamente o ambiente para `production` somente depois do webhook e dos secrets de produção estarem prontos.
+
+O frontend nunca confirma pagamento por conta própria. A fonte de verdade é o gateway consultado pelo backend/webhook, com persistência idempotente no banco.
+
+As regras financeiras podem ser configuradas pelo admin por cidade/estabelecimento. O checkout consulta a taxa de serviço real do backend. A liquidação de pedido entregue calcula e credita as carteiras de estabelecimento, entregador e plataforma sem criar saldo artificial.
+
+O pedido de saque já possui fluxo interno de carteira, reserva, idempotência e liquidação administrativa. A transferência PIX automática para a conta externa do favorecido só deve ser habilitada quando um provedor de payout estiver formalmente escolhido e configurado; não há fallback que finja transferência externa.
+
+## Geolocalização e despacho
+
+- Endereços de entrega precisam de coordenadas válidas para a cotação operacional.
+- Estabelecimentos precisam registrar a posição exata da loja antes de operar delivery.
+- Entregador aprovado precisa estar online e enviar localização fresca.
+- Ao receber a primeira localização fresca, o backend reavalia entregas aguardando entregador.
+- O mapa/rota usa Google Maps; falha no desenho da rota não altera o estado financeiro ou operacional da entrega.
+
+## Suporte e anexos
+
+Chamados de suporte possuem conversa em tempo real e anexos privados. O bucket `support-attachments` é privado; arquivos são limitados por quantidade/tamanho/tipo, vinculados ao usuário e ao chamado e abertos por URL assinada temporária. O admin também visualiza os anexos autorizados pelo mesmo bucket privado.
+
+## Relatórios
+
+O painel do estabelecimento possui relatórios operacionais e exportação CSV do período permitido. O painel administrativo possui filtros por período e exportação de dados operacionais para auditoria/análise.
 
 ## Verificação local
 
@@ -112,23 +151,41 @@ bun run build
 bun run preview
 ```
 
-O build atual é gerado pelo TanStack Start/Nitro. O artefato de implantação deve ser produzido a partir de um commit cujo CI esteja verde.
+O build é gerado pelo TanStack Start/Nitro. O artefato de implantação deve ser produzido a partir do mesmo commit aprovado nos gates de release.
 
 ## Segurança
 
 - RLS é habilitado nas tabelas públicas sensíveis.
 - Autorização administrativa, de estabelecimento e de entregador é validada no backend/banco.
-- Operações críticas usam RPCs/functions e regras atômicas quando necessário.
-- Pagamentos, estornos e webhooks são tratados de forma idempotente.
+- Operações críticas usam RPCs/functions e transações/locks quando necessário.
+- Pagamentos, estornos, saques e webhooks são tratados de forma idempotente.
+- Buckets de documentos e suporte são privados; acesso é controlado por policies/URLs assinadas.
 - `.env` e variantes permanecem ignorados pelo Git; somente `.env.example` é versionado.
-- Funções temporárias de diagnóstico não devem expor credenciais e permanecem desativadas fora da homologação.
+- Nenhuma chave `service_role` ou credencial de gateway deve aparecer no frontend.
+
+### Gate manual do Supabase Auth
+
+Antes do go-live, ative **Leaked Password Protection** no painel do Supabase Auth. Esse ajuste é configuração da conta/plataforma e não deve ser simulado por migration de aplicação.
+
+## Pendências externas para go-live real
+
+Estas pendências não devem ser resolvidas com valores inventados no código:
+
+1. Credenciais reais do Mercado Pago (`MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION`) e webhook secret de produção.
+2. Alteração explícita para `MERCADO_PAGO_ENVIRONMENT=production` e smoke test PIX real de baixo valor.
+3. Provedor/credencial de payout para automatizar a transferência externa dos saques; o ledger e o fluxo interno já estão protegidos.
+4. Ativação manual de Leaked Password Protection no Supabase Auth.
+5. Captura física da localização dos estabelecimentos reais que ainda estiverem sem latitude/longitude.
+6. Caso seja exigido push fora da aplicação, configurar o provedor/credenciais de push antes de habilitar entrega externa; o sistema não inventa um provedor.
 
 ## Deploy de produção
 
 1. Garanta CI verde no commit que será publicado.
-2. Confirme migrations aplicadas e funções na versão esperada.
-3. Configure somente no ambiente seguro os secrets de produção.
-4. Configure o webhook de produção do Mercado Pago e seu secret correspondente.
-5. Defina `MERCADO_PAGO_ENVIRONMENT=production` somente depois das credenciais e webhook de produção estarem prontos.
-6. Gere o build do mesmo commit aprovado e publique no host escolhido.
-7. Execute o smoke test de autenticação, pedido, pagamento, estabelecimento, entrega e administração.
+2. Confirme migrations aplicadas e Edge Functions na versão esperada no projeto `sbvhdgyuuperszlsllji`.
+3. Confirme que estabelecimentos ativos de delivery possuem coordenadas reais.
+4. Configure somente no ambiente seguro os secrets de produção.
+5. Configure o webhook de produção do Mercado Pago e seu secret correspondente.
+6. Ative Leaked Password Protection no Supabase Auth.
+7. Defina `MERCADO_PAGO_ENVIRONMENT=production` somente depois das credenciais e webhook estarem prontos.
+8. Gere o build do mesmo commit aprovado e publique no host escolhido.
+9. Execute smoke test de autenticação, pedido, pagamento, estabelecimento, despacho, coleta, PIN, entrega, liquidação, avaliação, suporte e administração.
