@@ -5,11 +5,7 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  autocompleteAddress,
-  geocodeAddress,
-  getPlaceDetails,
-} from "@/lib/google-maps.functions";
+import { autocompleteAddress, geocodeAddress, getPlaceDetails } from "@/lib/google-maps.functions";
 import { toast } from "sonner";
 
 interface GoogleMapsAddressSelectorProps {
