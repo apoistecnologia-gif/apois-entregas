@@ -1,0 +1,23 @@
+name: Format diagnostic
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Show Prettier diff
+        run: |
+          cp src/routes/enderecos.tsx /tmp/enderecos.before.tsx
+          cp src/routes/enderecos/novo.tsx /tmp/enderecos-novo.before.tsx
+          bunx prettier --write src/routes/enderecos.tsx src/routes/enderecos/novo.tsx
+          git diff -- src/routes/enderecos.tsx src/routes/enderecos/novo.tsx
