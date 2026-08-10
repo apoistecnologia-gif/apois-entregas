@@ -23,7 +23,7 @@ jobs:
           VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
           VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
-          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_MAP_ID: ci-placeholder
         run: bun run build
       - run: bun run typecheck
       - run: bun run test
