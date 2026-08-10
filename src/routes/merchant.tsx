@@ -741,6 +741,7 @@ function MerchantWorkspace() {
         busyAction={busyAction}
         onUpload={uploadDocument}
         onResubmit={resubmitApplication}
+        onCaptureLocation={captureMerchantLocation}
         onRefresh={() => void loadAll(true)}
         refreshing={refreshing}
         onLogout={logout}
@@ -788,6 +789,30 @@ function MerchantWorkspace() {
           <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Atualizar
         </Button>
       </div>
+
+      {merchant.latitude == null || merchant.longitude == null ? (
+        <section className="mb-5 rounded-2xl border border-primary/30 bg-primary/5 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-black text-primary">Localização da loja pendente</p>
+              <p className="mt-1 text-sm text-zinc-400">
+                Registre a posição exata para habilitar cálculos seguros de entrega e despacho por
+                proximidade.
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={() => void captureMerchantLocation()}
+              disabled={busyAction === "merchant-location"}
+            >
+              {busyAction === "merchant-location" ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Capturar localização
+            </Button>
+          </div>
+        </section>
+      ) : null}
 
       {activeTab === "dashboard" && (
         <div className="space-y-6">
@@ -1725,6 +1750,7 @@ function MerchantReviewState({
   busyAction,
   onUpload,
   onResubmit,
+  onCaptureLocation,
   onRefresh,
   refreshing,
   onLogout,
@@ -1769,6 +1795,39 @@ function MerchantReviewState({
               <strong>Motivo:</strong> {merchant.rejection_reason}
             </div>
           ) : null}
+          <div
+            className={`mt-6 rounded-2xl border p-4 ${
+              merchant.latitude != null && merchant.longitude != null
+                ? "border-emerald-500/20 bg-emerald-500/5"
+                : "border-primary/30 bg-primary/5"
+            }`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black">Localização exata da loja</p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  {merchant.latitude != null && merchant.longitude != null
+                    ? "Localização registrada. Ela será usada para validar a entrega e encontrar entregadores próximos."
+                    : "Obrigatória antes da aprovação para calcular a área de entrega e a retirada do entregador."}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busyAction === "merchant-location"}
+                onClick={() => void onCaptureLocation()}
+                className="border-zinc-800 bg-black"
+              >
+                {busyAction === "merchant-location" ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                {merchant.latitude != null && merchant.longitude != null
+                  ? "Atualizar localização"
+                  : "Capturar localização"}
+              </Button>
+            </div>
+          </div>
+
           <div className="mt-6 grid gap-3 md:grid-cols-3">
             {requiredDocs.map((item) => {
               const doc = documents.find((document: any) => document.document_type === item.type);
