@@ -120,16 +120,20 @@ Deno.serve(async (request: Request) => {
     .maybeSingle();
   if (!order) return response(404, { error: "Pedido não encontrado.", code: "ORDER_NOT_FOUND" });
 
-  const { data: adminRole } = await admin
-    .from("user_roles")
-    .select("user_id")
-    .eq("user_id", authData.user.id)
-    .eq("role", "admin")
-    .maybeSingle();
+  const [{ data: adminRole }, { data: adminProfile }] = await Promise.all([
+    admin
+      .from("user_roles")
+      .select("user_id")
+      .eq("user_id", authData.user.id)
+      .eq("role", "admin")
+      .maybeSingle(),
+    admin.from("profiles").select("is_active").eq("id", authData.user.id).maybeSingle(),
+  ]);
+  const activeAdmin = Boolean(adminRole && adminProfile?.is_active === true);
   const authorized =
     order.customer_user_id === authData.user.id ||
     refund.requested_by === authData.user.id ||
-    Boolean(adminRole);
+    activeAdmin;
   if (!authorized)
     return response(403, { error: "Você não pode processar este estorno.", code: "FORBIDDEN" });
 
