@@ -75,9 +75,7 @@ function getGoogleMapsApiKey() {
 }
 
 function getSupabaseServerConfig() {
-  const url = (
-    process.env["SUPABASE_URL"] ?? process.env["VITE_SUPABASE_URL"]
-  )?.trim();
+  const url = (process.env["SUPABASE_URL"] ?? process.env["VITE_SUPABASE_URL"])?.trim();
   const publicKey = (
     process.env["SUPABASE_ANON_KEY"] ?? process.env["VITE_SUPABASE_PUBLISHABLE_KEY"]
   )?.trim();
