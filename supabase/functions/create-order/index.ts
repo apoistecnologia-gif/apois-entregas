@@ -16,7 +16,7 @@ const corsHeaders = {
 };
 const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" };
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PAYMENT_METHODS = new Set(["pix", "credit", "debit", "cash", "wallet"]);
+const PAYMENT_METHODS = new Set(["pix"]);
 const FULFILLMENT_TYPES = new Set(["delivery", "pickup"]);
 
 function isRecord(value: unknown): value is JsonRecord {
