@@ -143,7 +143,9 @@ function AdminWorkspace() {
         from("profiles").select("*").order("created_at", { ascending: false }).limit(500),
         from("user_roles").select("*").limit(1000),
         from("merchants")
-          .select("*, merchant_documents(*), merchant_categories(name)")
+          .select(
+            "id,category_id,name,slug,description,logo_url,cover_url,tags,delivery_fee,delivery_min_minutes,delivery_max_minutes,rating,review_count,is_open,closes_at,is_active,address_line,neighborhood,city,state,latitude,longitude,created_at,updated_at,minimum_order,pickup_enabled,delivery_enabled,approval_status,temporarily_closed,city_id, merchant_documents(*), merchant_categories(name)",
+          )
           .order("created_at", { ascending: false })
           .limit(300),
         from("couriers")
@@ -179,12 +181,21 @@ function AdminWorkspace() {
         from("fee_rules").select("*").order("created_at", { ascending: false }),
         from("platform_settings").select("*").order("key"),
         from("admin_audit_logs").select("*").order("created_at", { ascending: false }).limit(100),
+        rpc("get_authorized_merchant_private_data", { _merchant_id: null }),
       ]);
       const firstError = checks.find((result) => result.error)?.error;
       if (firstError) throw firstError;
       setProfiles(checks[0].data ?? []);
       setRoles(checks[1].data ?? []);
-      setMerchants(checks[2].data ?? []);
+      const privateMerchantById = new Map(
+        (checks[14].data ?? []).map((row: any) => [row.merchant_id, row]),
+      );
+      setMerchants(
+        (checks[2].data ?? []).map((row: any) => ({
+          ...row,
+          ...(privateMerchantById.get(row.id) ?? {}),
+        })),
+      );
       setCouriers(checks[3].data ?? []);
       setOrders(checks[4].data ?? []);
       setTickets(checks[5].data ?? []);

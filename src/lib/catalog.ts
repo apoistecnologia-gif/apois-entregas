@@ -1,5 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 
+const PUBLIC_MERCHANT_COLUMNS =
+  "id,category_id,name,slug,description,logo_url,cover_url,tags,delivery_fee,delivery_min_minutes,delivery_max_minutes,rating,review_count,is_open,closes_at,is_active,address_line,neighborhood,city,state,latitude,longitude,created_at,updated_at,minimum_order,pickup_enabled,delivery_enabled,approval_status,temporarily_closed,city_id";
+
 export const fetchMerchantCategories = async () => {
   const { data, error } = await supabase
     .from("merchant_categories")
@@ -12,7 +15,7 @@ export const fetchMerchantCategories = async () => {
 };
 
 export const fetchMerchants = async (city?: string, state?: string) => {
-  let query = supabase.from("merchants").select("*").eq("is_active", true);
+  let query = supabase.from("merchants").select(PUBLIC_MERCHANT_COLUMNS).eq("is_active", true);
 
   if (city && state) {
     query = query.ilike("city", city).ilike("state", state);
@@ -27,7 +30,7 @@ export const fetchMerchants = async (city?: string, state?: string) => {
 export const fetchMerchantById = async (id: string) => {
   const { data, error } = await supabase
     .from("merchants")
-    .select("*")
+    .select(PUBLIC_MERCHANT_COLUMNS)
     .eq("id", id)
     .eq("is_active", true)
     .single();

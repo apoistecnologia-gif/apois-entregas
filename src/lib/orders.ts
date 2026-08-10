@@ -6,7 +6,7 @@ export const getOrderDetails = async (orderId: string) => {
     .select(
       `
       *,
-      merchants (*),
+      merchants (id,name,logo_url,cover_url,address_line,neighborhood,city,state,latitude,longitude,delivery_fee,delivery_min_minutes,delivery_max_minutes,pickup_enabled,delivery_enabled,temporarily_closed),
       order_items (*)
     `,
     )

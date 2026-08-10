@@ -275,8 +275,13 @@ function MerchantWorkspace() {
           return;
         }
 
-        const [merchantRes, docsRes, subscriptionRes] = await Promise.all([
-          from("merchants").select("*").eq("id", member.merchant_id).maybeSingle(),
+        const [merchantRes, docsRes, subscriptionRes, privateRes] = await Promise.all([
+          from("merchants")
+            .select(
+              "id,category_id,name,slug,description,logo_url,cover_url,tags,delivery_fee,delivery_min_minutes,delivery_max_minutes,rating,review_count,is_open,closes_at,is_active,address_line,neighborhood,city,state,latitude,longitude,created_at,updated_at,minimum_order,pickup_enabled,delivery_enabled,approval_status,temporarily_closed,city_id",
+            )
+            .eq("id", member.merchant_id)
+            .maybeSingle(),
           from("merchant_documents")
             .select("*")
             .eq("merchant_id", member.merchant_id)
@@ -285,30 +290,30 @@ function MerchantWorkspace() {
             .select("*")
             .eq("merchant_id", member.merchant_id)
             .maybeSingle(),
+          rpc("get_authorized_merchant_private_data", { _merchant_id: member.merchant_id }),
         ]);
         if (merchantRes.error || !merchantRes.data)
           throw merchantRes.error ?? new Error("Estabelecimento não encontrado.");
-        setMerchant(merchantRes.data);
+        if (privateRes.error) throw privateRes.error;
+        const privateMerchant = Array.isArray(privateRes.data) ? privateRes.data[0] : null;
+        const merchantData = { ...merchantRes.data, ...(privateMerchant ?? {}) };
+        setMerchant(merchantData);
         setSubscription(subscriptionRes.data ?? null);
         setDocuments(docsRes.data ?? []);
         setSettingsDraft({
-          name: String(merchantRes.data.name ?? ""),
-          description: String(merchantRes.data.description ?? ""),
-          contactPhone: String(merchantRes.data.contact_phone ?? ""),
-          contactEmail: String(merchantRes.data.contact_email ?? ""),
-          addressLine: String(merchantRes.data.address_line ?? ""),
-          neighborhood: String(merchantRes.data.neighborhood ?? ""),
-          deliveryFee: String(merchantRes.data.delivery_fee ?? 0),
-          minimumOrder: String(merchantRes.data.minimum_order ?? 0),
-          minMinutes: String(merchantRes.data.delivery_min_minutes ?? ""),
-          maxMinutes: String(merchantRes.data.delivery_max_minutes ?? ""),
-          temporarilyClosed: Boolean(merchantRes.data.temporarily_closed),
+          name: String(merchantData.name ?? ""),
+          description: String(merchantData.description ?? ""),
+          contactPhone: String(merchantData.contact_phone ?? ""),
+          contactEmail: String(merchantData.contact_email ?? ""),
+          addressLine: String(merchantData.address_line ?? ""),
+          neighborhood: String(merchantData.neighborhood ?? ""),
+          deliveryFee: String(merchantData.delivery_fee ?? 0),
+          minimumOrder: String(merchantData.minimum_order ?? 0),
+          minMinutes: String(merchantData.delivery_min_minutes ?? ""),
+          maxMinutes: String(merchantData.delivery_max_minutes ?? ""),
+          temporarilyClosed: Boolean(merchantData.temporarily_closed),
         });
 
-        const periodEnd = subscriptionRes.data?.current_period_end;
-        const subscriptionAllowed = Boolean(
-          periodEnd && new Date(periodEnd).getTime() > Date.now(),
-        );
         if (merchantRes.data.approval_status === "approved" && merchantRes.data.is_active) {
           await loadOperations(merchantRes.data.id);
         }
