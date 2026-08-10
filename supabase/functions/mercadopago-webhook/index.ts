@@ -452,7 +452,60 @@ Deno.serve(async (request: Request) => {
       });
       return response(500, { error: "subscription_payment_lookup_failed" });
     }
-    if (!subscriptionPayment) return response(503, { error: "subscription_payment_not_ready" });
+    if (!subscriptionPayment) {
+      const orphanEventId = `monthly-pix-missing-payment:${dataId}`;
+      const { data: orphanEvent, error: orphanLookupError } = await admin
+        .from("merchant_subscription_events")
+        .select("id,created_at,processed_at")
+        .eq("provider_event_id", orphanEventId)
+        .maybeSingle();
+      if (orphanLookupError) {
+        console.error("merchant subscription orphan lookup failed", { code: orphanLookupError.code });
+        return response(500, { error: "subscription_orphan_lookup_failed" });
+      }
+
+      const now = new Date();
+      if (!orphanEvent) {
+        const { error: orphanInsertError } = await admin.from("merchant_subscription_events").insert({
+          merchant_subscription_id: subscription.id,
+          provider_event_id: orphanEventId,
+          event_type: "monthly_pix_missing_payment",
+          provider_resource_id: dataId,
+          payload: { notification: payload, order: providerOrder },
+        });
+        if (orphanInsertError && orphanInsertError.code !== "23505") {
+          console.error("merchant subscription orphan persistence failed", {
+            code: orphanInsertError.code,
+          });
+          return response(500, { error: "subscription_orphan_persistence_failed" });
+        }
+        return response(503, { error: "subscription_payment_not_ready" });
+      }
+
+      if (orphanEvent.processed_at) {
+        return response(200, { accepted: true, duplicate: true, ignored: true });
+      }
+
+      const firstSeenAt = new Date(orphanEvent.created_at).getTime();
+      if (!Number.isFinite(firstSeenAt) || now.getTime() - firstSeenAt < 120_000) {
+        return response(503, { error: "subscription_payment_not_ready" });
+      }
+
+      await admin
+        .from("merchant_subscription_events")
+        .update({ processed_at: now.toISOString() })
+        .eq("id", orphanEvent.id)
+        .is("processed_at", null);
+      console.warn("merchant subscription orphan webhook acknowledged", {
+        subscriptionId: subscription.id,
+        dataId,
+      });
+      return response(200, {
+        accepted: true,
+        ignored: true,
+        reason: "orphaned_subscription_payment",
+      });
+    }
 
     const transactions = isRecord(providerOrder.transactions) ? providerOrder.transactions : null;
     const providerPayments =
