@@ -24,16 +24,16 @@ Com isso, cada deploy pode nascer com a entrada correta. O login também deixa d
 
 ## Builds separados
 
-Scripts disponíveis:
+O helper abaixo injeta o modo de produto sem alterar dependências nem lockfile:
 
 ```sh
-bun run build:customer
-bun run build:merchant
-bun run build:courier
-bun run build:admin
+node scripts/build-product.mjs customer
+node scripts/build-product.mjs merchant
+node scripts/build-product.mjs courier
+node scripts/build-product.mjs admin
 ```
 
-Esses scripts não mudam o backend. Eles apenas geram o frontend com o modo de produto correto.
+Esses comandos não mudam o backend. Eles apenas geram o frontend com o modo de produto correto.
 
 ## Pendência P0: mobile nativo
 
