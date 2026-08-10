@@ -1,0 +1,48 @@
+name: Repair current CI format gate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/repair-current-ci-format.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repair-current-ci-format
+  cancel-in-progress: false
+
+jobs:
+  repair-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Repair the format-only CI regression
+        run: bunx prettier src/lib/merchant-hours.test.ts src/lib/payout-attempt.test.ts --write
+      - name: Full verification
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit verified repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/repair-current-ci-format.yml
+          git add -A
+          git commit -m "chore: format new production tests"
+          git push origin HEAD:main
