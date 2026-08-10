@@ -66,10 +66,8 @@ type Profile = {
 };
 
 const from = (table: string) => (supabase.from as any)(table);
-const browserKey =
-  (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY ||
-  (import.meta as any).env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
-const mapId = (import.meta as any).env.VITE_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
+const browserKey = (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+const mapId = (import.meta as any).env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined;
 
 const activeStatuses = [
   "searching",
@@ -378,10 +376,10 @@ export function AdminRealtimeOperationsPanel() {
             </div>
             <MapPinned className="h-5 w-5 text-primary" />
           </div>
-          {!browserKey ? (
+          {!browserKey || !mapId ? (
             <div className="m-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">
-              Configure `VITE_GOOGLE_MAPS_BROWSER_KEY` no ambiente de publicação para exibir o mapa
-              operacional.
+              Configure `VITE_GOOGLE_MAPS_BROWSER_KEY` e `VITE_GOOGLE_MAPS_MAP_ID` no ambiente de
+              publicação para exibir o mapa operacional.
             </div>
           ) : (
             <div className="h-[430px] bg-zinc-900">
