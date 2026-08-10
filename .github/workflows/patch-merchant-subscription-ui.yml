@@ -96,7 +96,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Format changed files
-        run: bunx prettier --write src/routes/merchant.tsx src/components/MerchantSubscriptionGate.tsx supabase/functions/merchant-subscription/index.ts supabase/functions/mercadopago-webhook/index.ts supabase/migrations/20260810014000_merchant_monthly_subscriptions.sql
+        run: bunx prettier --write src/routes/merchant.tsx src/components/MerchantSubscriptionGate.tsx supabase/functions/merchant-subscription/index.ts supabase/functions/mercadopago-webhook/index.ts
 
       - name: Verify
         env:
