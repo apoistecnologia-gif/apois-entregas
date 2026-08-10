@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, useNavigate, Outlet, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ChevronLeft,
@@ -13,6 +13,7 @@ import {
   Briefcase,
   Map as MapIcon,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -34,79 +35,80 @@ export const Route = createFileRoute("/enderecos")({
   }),
 });
 
+type CustomerAddress = {
+  id: string;
+  label: string;
+  street: string;
+  number: string;
+  complement: string | null;
+  neighborhood: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  is_default: boolean;
+};
+
 function EnderecosLayout() {
   const navigate = useNavigate();
-  const [addresses, setAddresses] = useState<any[]>([]);
+  const router = useRouter();
+  const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const fetchAddresses = async () => {
+  const fetchAddresses = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     const { data, error } = await supabase
-      .from("customer_addresses" as any)
-      .select("*")
+      .from("customer_addresses")
+      .select(
+        "id,label,street,number,complement,neighborhood,city,state,postal_code,is_default",
+      )
       .order("is_default", { ascending: false })
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching addresses:", error);
+      setLoadError("Não foi possível carregar seus endereços.");
       toast.error("Erro ao carregar endereços");
     } else {
-      setAddresses(data || []);
+      setAddresses((data ?? []) as CustomerAddress[]);
     }
     setIsLoading(false);
-  };
-
-  // TanStack Router hook para invalidar e recarregar dados quando a rota ganha foco
-  const router = useRouter();
+  }, []);
 
   useEffect(() => {
-    // Busca inicial
-    fetchAddresses();
+    void fetchAddresses();
 
-    // Inscreve para atualizar sempre que houver navegação concluída para esta rota
     const unsub = router.subscribe("onResolved", (state) => {
       if (state.toLocation.pathname === "/enderecos") {
-        fetchAddresses();
+        void fetchAddresses();
       }
     });
 
-    // Também atualiza quando a janela ganha foco (ex: volta do navegador)
-    window.addEventListener("focus", fetchAddresses);
+    const handleFocus = () => void fetchAddresses();
+    window.addEventListener("focus", handleFocus);
 
     return () => {
       unsub();
-      window.removeEventListener("focus", fetchAddresses);
+      window.removeEventListener("focus", handleFocus);
     };
-  }, [router]);
+  }, [fetchAddresses, router]);
 
   const handleSetDefault = async (id: string) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
     setIsLoading(true);
-    // 1. Remove default from all other addresses of this user
-    await (supabase as any)
-      .from("customer_addresses")
-      .update({ is_default: false })
-      .eq("user_id", user.id);
-
-    // 2. Set this one as default
-    const { error } = await (supabase as any)
-      .from("customer_addresses")
-      .update({ is_default: true })
-      .eq("id", id);
+    const { error } = await (supabase.rpc as any)("set_default_customer_address", {
+      _address_id: id,
+    });
 
     if (error) {
+      console.error("Error setting default address:", error);
       toast.error("Erro ao definir endereço padrão");
-      setIsLoading(false);
-      fetchAddresses();
-    } else {
-      toast.success("Endereço padrão atualizado");
-      // 3. Navigate back to inicio immediately
-      navigate({ to: "/inicio" });
+      await fetchAddresses();
+      return;
     }
+
+    toast.success("Endereço padrão atualizado");
+    navigate({ to: "/inicio" });
   };
 
   const handleDelete = async (id: string, isDefault: boolean) => {
@@ -117,13 +119,13 @@ function EnderecosLayout() {
 
     if (!confirm("Tem certeza que deseja excluir este endereço?")) return;
 
-    const { error } = await (supabase as any).from("customer_addresses").delete().eq("id", id);
+    const { error } = await supabase.from("customer_addresses").delete().eq("id", id);
 
     if (error) {
       toast.error("Erro ao excluir endereço");
     } else {
       toast.success("Endereço excluído");
-      fetchAddresses();
+      await fetchAddresses();
     }
   };
 
@@ -139,32 +141,53 @@ function EnderecosLayout() {
   };
 
   return (
-    <div className="flex min-h-full flex-col bg-black text-white overflow-x-hidden w-full">
-      <header className="relative flex items-center justify-center px-4 py-4 sticky top-0 z-50 bg-black/85 backdrop-blur-lg">
+    <div className="flex min-h-full w-full flex-col overflow-x-hidden bg-black text-white">
+      <header className="sticky top-0 z-50 flex items-center justify-center bg-black/85 px-4 py-4 backdrop-blur-lg">
         <button
+          type="button"
           onClick={() => navigate({ to: "/inicio" })}
-          className="absolute left-3 p-2 text-primary hover:bg-white/10 rounded-full transition-colors"
+          className="absolute left-3 rounded-full p-2 text-primary transition-colors hover:bg-white/10"
           aria-label="Voltar"
         >
-          <ChevronLeft className="w-7 h-7" strokeWidth={2.5} />
+          <ChevronLeft className="h-7 w-7" strokeWidth={2.5} />
         </button>
         <h1 className="text-xl font-extrabold tracking-tight">Meus Endereços</h1>
       </header>
 
-      <main className="flex-1 px-5 pt-3 pb-28">
-        <p className="text-zinc-400 text-[15px] mb-5">Selecione um endereço para suas entregas</p>
+      <main className="flex-1 px-5 pb-28 pt-3">
+        <p className="mb-5 text-[15px] text-zinc-400">Selecione um endereço para suas entregas</p>
 
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <div className="flex flex-col items-center justify-center py-20" role="status">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="sr-only">Carregando endereços</span>
+          </div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center justify-center space-y-4 py-16 text-center" role="alert">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-500/10 ring-1 ring-red-500/20">
+              <MapPin className="h-10 w-10 text-red-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold">Não foi possível carregar</h2>
+              <p className="mt-1 px-8 text-sm text-zinc-500">{loadError}</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void fetchAddresses()}
+              className="border-zinc-800 bg-zinc-950"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Tentar novamente
+            </Button>
           </div>
         ) : addresses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-            <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center ring-1 ring-white/10">
-              <MapPin className="w-10 h-10 text-zinc-700" />
+          <div className="flex flex-col items-center justify-center space-y-3 py-16 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-zinc-900 ring-1 ring-white/10">
+              <MapPin className="h-10 w-10 text-zinc-700" />
             </div>
             <h2 className="text-lg font-bold">Nenhum endereço salvo</h2>
-            <p className="text-zinc-500 text-sm px-8">
+            <p className="px-8 text-sm text-zinc-500">
               Adicione um endereço para ver as opções de entrega na sua região.
             </p>
           </div>
@@ -175,74 +198,73 @@ function EnderecosLayout() {
               return (
                 <div
                   key={addr.id}
-                  onClick={() => !addr.is_default && handleSetDefault(addr.id)}
-                  className={`relative rounded-3xl border p-4 pr-12 transition-all cursor-pointer ${
+                  onClick={() => !addr.is_default && void handleSetDefault(addr.id)}
+                  className={`relative cursor-pointer rounded-3xl border p-4 pr-12 transition-all ${
                     addr.is_default
-                      ? "bg-zinc-950 border-primary/70 shadow-[0_0_20px_-8px_hsl(var(--primary)/0.5)]"
-                      : "bg-zinc-950 border-zinc-800 hover:border-zinc-700"
+                      ? "border-primary/70 bg-zinc-950 shadow-[0_0_20px_-8px_hsl(var(--primary)/0.5)]"
+                      : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
                   }`}
                 >
-                  {/* Selection indicator */}
                   <span
-                    className={`absolute top-4 right-4 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                    className={`absolute right-4 top-4 flex h-6 w-6 items-center justify-center rounded-full border-2 ${
                       addr.is_default ? "border-primary" : "border-zinc-600"
                     }`}
+                    aria-hidden="true"
                   >
-                    {addr.is_default && <span className="w-3 h-3 rounded-full bg-primary block" />}
+                    {addr.is_default ? <span className="block h-3 w-3 rounded-full bg-primary" /> : null}
                   </span>
 
                   <div className="flex items-start gap-3">
-                    <div className="shrink-0 w-12 h-12 rounded-full bg-primary/10 ring-1 ring-primary/40 flex items-center justify-center">
-                      <Icon className="w-6 h-6 text-primary" />
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/40">
+                      <Icon className="h-6 w-6 text-primary" />
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-extrabold text-white text-lg leading-none">
-                          {addr.label}
-                        </span>
-                        {addr.is_default && (
-                          <span className="inline-flex items-center gap-1 bg-primary text-black text-[11px] px-2.5 py-1 rounded-full font-bold">
-                            <Star className="w-3 h-3 fill-black" />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-lg font-extrabold leading-none text-white">{addr.label}</span>
+                        {addr.is_default ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-black">
+                            <Star className="h-3 w-3 fill-black" />
                             Padrão
                           </span>
-                        )}
+                        ) : null}
                       </div>
-                      <p className="text-white font-semibold text-[15px] mt-2 leading-snug truncate">
+                      <p className="mt-2 truncate text-[15px] font-semibold leading-snug text-white">
                         {addr.street}, {addr.number}
-                        {addr.complement && ` - ${addr.complement}`}
+                        {addr.complement ? ` - ${addr.complement}` : ""}
                       </p>
-                      <p className="text-zinc-400 text-sm mt-0.5 truncate">{addr.neighborhood}</p>
-                      <p className="text-zinc-500 text-[13px] mt-0.5 truncate">
+                      <p className="mt-0.5 truncate text-sm text-zinc-400">{addr.neighborhood}</p>
+                      <p className="mt-0.5 truncate text-[13px] text-zinc-500">
                         {addr.city} - {addr.state}
-                        {addr.zip_code ? ` • CEP ${addr.zip_code}` : ""}
+                        {addr.postal_code ? ` • CEP ${addr.postal_code}` : ""}
                       </p>
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-end gap-1">
+                  <div className="mt-3 flex items-center justify-end gap-1 border-t border-white/5 pt-3">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
                         navigate({ to: `/enderecos/editar/${addr.id}` });
                       }}
-                      className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-primary px-3 py-2 rounded-xl transition-colors"
+                      className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-zinc-400 transition-colors hover:text-primary"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <Edit2 className="h-4 w-4" />
                       Editar
                     </button>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(addr.id, addr.is_default);
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void handleDelete(addr.id, addr.is_default);
                       }}
-                      className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-red-500 px-3 py-2 rounded-xl transition-colors"
+                      className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-zinc-400 transition-colors hover:text-red-500"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="h-4 w-4" />
                       Excluir
                     </button>
-                    <ChevronRight className="w-5 h-5 text-primary ml-1" />
+                    <ChevronRight className="ml-1 h-5 w-5 text-primary" aria-hidden="true" />
                   </div>
                 </div>
               );
@@ -252,11 +274,12 @@ function EnderecosLayout() {
 
         <div className="mt-8">
           <Button
+            type="button"
             onClick={() => navigate({ to: "/enderecos/novo" })}
-            className="w-full bg-primary text-black hover:bg-primary/90 font-extrabold h-14 text-lg rounded-2xl shadow-[0_8px_30px_-10px_hsl(var(--primary)/0.8)] flex items-center justify-center gap-3 cursor-pointer"
+            className="flex h-14 w-full cursor-pointer items-center justify-center gap-3 rounded-2xl bg-primary text-lg font-extrabold text-black shadow-[0_8px_30px_-10px_hsl(var(--primary)/0.8)] hover:bg-primary/90"
           >
-            <span className="w-7 h-7 rounded-full bg-black/90 text-primary flex items-center justify-center">
-              <Plus className="w-4 h-4" strokeWidth={3} />
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/90 text-primary">
+              <Plus className="h-4 w-4" strokeWidth={3} />
             </span>
             Adicionar endereço
           </Button>
