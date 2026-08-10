@@ -460,19 +460,23 @@ Deno.serve(async (request: Request) => {
         .eq("provider_event_id", orphanEventId)
         .maybeSingle();
       if (orphanLookupError) {
-        console.error("merchant subscription orphan lookup failed", { code: orphanLookupError.code });
+        console.error("merchant subscription orphan lookup failed", {
+          code: orphanLookupError.code,
+        });
         return response(500, { error: "subscription_orphan_lookup_failed" });
       }
 
       const now = new Date();
       if (!orphanEvent) {
-        const { error: orphanInsertError } = await admin.from("merchant_subscription_events").insert({
-          merchant_subscription_id: subscription.id,
-          provider_event_id: orphanEventId,
-          event_type: "monthly_pix_missing_payment",
-          provider_resource_id: dataId,
-          payload: { notification: payload, order: providerOrder },
-        });
+        const { error: orphanInsertError } = await admin
+          .from("merchant_subscription_events")
+          .insert({
+            merchant_subscription_id: subscription.id,
+            provider_event_id: orphanEventId,
+            event_type: "monthly_pix_missing_payment",
+            provider_resource_id: dataId,
+            payload: { notification: payload, order: providerOrder },
+          });
         if (orphanInsertError && orphanInsertError.code !== "23505") {
           console.error("merchant subscription orphan persistence failed", {
             code: orphanInsertError.code,
