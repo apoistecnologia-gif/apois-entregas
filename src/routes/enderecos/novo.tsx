@@ -23,6 +23,8 @@ export const Route = createFileRoute("/enderecos/novo")({
   }),
 });
 
+const locationFields = new Set(["postal_code", "street", "number", "neighborhood", "city", "state"]);
+
 function NovoEndereco() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +48,11 @@ function NovoEndereco() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(locationFields.has(name) ? { latitude: null, longitude: null } : {}),
+    }));
   };
 
   const handleCEPBlur = async () => {
@@ -55,6 +61,7 @@ function NovoEndereco() {
 
     try {
       const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      if (!response.ok) return;
       const data = await response.json();
 
       if (!data.erro) {
@@ -64,6 +71,8 @@ function NovoEndereco() {
           neighborhood: data.bairro || prev.neighborhood,
           city: data.localidade || prev.city,
           state: data.uf || prev.state,
+          latitude: null,
+          longitude: null,
         }));
       }
     } catch (error) {
@@ -74,13 +83,17 @@ function NovoEndereco() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
     const required = ["postal_code", "street", "number", "neighborhood", "city", "state"];
     for (const field of required) {
       if (!formData[field as keyof typeof formData]) {
         toast.error(`O campo ${field} é obrigatório`);
         return;
       }
+    }
+
+    if (formData.postal_code.replace(/\D/g, "").length !== 8) {
+      toast.error("Informe um CEP válido com 8 dígitos");
+      return;
     }
 
     if (formData.state.length !== 2) {
@@ -96,16 +109,18 @@ function NovoEndereco() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Check if it's the first address
-      const { count } = await (supabase as any)
+      const { count, error: countError } = await (supabase as any)
         .from("customer_addresses")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id);
+      if (countError) throw countError;
 
       const isFirst = count === 0;
 
       const { error } = await (supabase as any).from("customer_addresses").insert({
         ...formData,
+        postal_code: formData.postal_code.replace(/\D/g, ""),
+        state: formData.state.toUpperCase(),
         user_id: user.id,
         is_default: isFirst,
       });
@@ -131,8 +146,10 @@ function NovoEndereco() {
     <div className="absolute inset-0 z-[160] bg-black overflow-y-auto overflow-x-hidden flex flex-col w-full shadow-2xl">
       <header className="flex items-center p-4 sticky top-0 z-50 bg-black/90 backdrop-blur-xl border-b border-white/10">
         <button
+          type="button"
           onClick={() => navigate({ to: "/enderecos" })}
           className="w-10 h-10 flex items-center justify-center -ml-1 rounded-full bg-white/5 border border-white/10 text-primary hover:bg-white/10 transition-colors active:scale-95"
+          aria-label="Voltar"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -191,6 +208,7 @@ function NovoEndereco() {
                 value={formData.postal_code}
                 onChange={handleChange}
                 onBlur={handleCEPBlur}
+                inputMode="numeric"
                 className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
                 required
               />
@@ -260,7 +278,7 @@ function NovoEndereco() {
               <label className="text-xs font-medium text-zinc-500 ml-1">UF*</label>
               <Input
                 name="state"
-                placeholder="SP"
+                placeholder="PE"
                 maxLength={2}
                 value={formData.state}
                 onChange={handleChange}
