@@ -1,0 +1,79 @@
+name: Fix Merchant Billing Access
+
+on:
+  push:
+    paths:
+      - ".github/workflows/fix-merchant-billing-access.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Keep existing operations and finance accessible when billing expires
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          gate = Path('src/components/MerchantSubscriptionGate.tsx')
+          text = gate.read_text()
+          text = text.replace(
+          '''  onLogout: () => void | Promise<void>;\n};''',
+          '''  onLogout: () => void | Promise<void>;\n  embedded?: boolean;\n};''', 1)
+          text = text.replace(
+          '''  onRefresh,\n  onLogout,\n}: MerchantSubscriptionGateProps) {''',
+          '''  onRefresh,\n  onLogout,\n  embedded = false,\n}: MerchantSubscriptionGateProps) {''', 1)
+          old = '''  return (\n    <div className="min-h-dvh bg-black px-4 py-8 text-white">\n      <div className="mx-auto max-w-2xl">\n        <div className="mb-5 flex items-center justify-between gap-3">\n          <div>\n            <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">\n              APOIS ENTREGA\n            </p>\n            <h1 className="mt-1 text-2xl font-black">{merchant?.name ?? "Estabelecimento"}</h1>\n          </div>\n          <Button\n            type="button"\n            variant="outline"\n            onClick={() => void onLogout()}\n            className="border-zinc-800 bg-zinc-950"\n          >\n            <LogOut className="mr-2 h-4 w-4" /> Sair\n          </Button>\n        </div>\n\n        <section className="rounded-3xl border border-primary/30 bg-zinc-950 p-6 shadow-2xl md:p-8">'''
+          new = '''  return (\n    <div className={embedded ? "text-white" : "min-h-dvh bg-black px-4 py-8 text-white"}>\n      <div className={embedded ? "mx-auto max-w-2xl" : "mx-auto max-w-2xl"}>\n        {!embedded ? (\n          <div className="mb-5 flex items-center justify-between gap-3">\n            <div>\n              <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">\n                APOIS ENTREGA\n              </p>\n              <h1 className="mt-1 text-2xl font-black">{merchant?.name ?? "Estabelecimento"}</h1>\n            </div>\n            <Button\n              type="button"\n              variant="outline"\n              onClick={() => void onLogout()}\n              className="border-zinc-800 bg-zinc-950"\n            >\n              <LogOut className="mr-2 h-4 w-4" /> Sair\n            </Button>\n          </div>\n        ) : null}\n\n        <section className="rounded-3xl border border-primary/30 bg-zinc-950 p-6 shadow-2xl md:p-8">'''
+          if old not in text: raise SystemExit('gate wrapper marker not found')
+          text = text.replace(old,new,1)
+          text = text.replace(
+          '''          <h2 className="mt-5 text-2xl font-black">Mensalidade necessária para acessar o painel</h2>\n          <p className="mt-2 text-sm leading-6 text-zinc-400">\n            A APOIS ENTREGA cobra apenas <strong className="text-white">R$ 69,90 por mês</strong>\n            do estabelecimento. Não existe comissão sobre os pedidos nem taxa de serviço do cliente.\n          </p>''',
+          '''          <h2 className="mt-5 text-2xl font-black">Mensalidade necessária para receber novos pedidos</h2>\n          <p className="mt-2 text-sm leading-6 text-zinc-400">\n            A mensalidade do estabelecimento é de <strong className="text-white">R$ 69,90 por mês</strong>.\n            Enquanto ela estiver vencida, novos pedidos ficam bloqueados, mas pedidos já aceitos, histórico e valores já ganhos continuam acessíveis.\n          </p>''', 1)
+          text = text.replace(
+          '''            acesso é liberado automaticamente por um mês. Se o período vencer sem uma nova\n            mensalidade paga, o painel operacional e novos pedidos ficam bloqueados até a\n            regularização.''',
+          '''            liberação para novos pedidos ocorre automaticamente por um mês. Se o período vencer sem uma nova\n            mensalidade paga, novos pedidos ficam bloqueados até a regularização; pedidos em andamento, histórico e financeiro permanecem acessíveis.''', 1)
+          gate.write_text(text)
+
+          route = Path('src/routes/merchant.tsx')
+          text = route.read_text()
+          old = '''  if (!subscriptionAccessAllowed) {\n    return (\n      <MerchantSubscriptionGate\n        merchant={merchant}\n        subscription={subscription}\n        onRefresh={() => loadAll(true)}\n        onLogout={logout}\n      />\n    );\n  }\n\n  const tabs = ['''
+          if old not in text: raise SystemExit('merchant hard gate marker not found')
+          text = text.replace(old, '''  const tabs = [''', 1)
+          old = '''    { id: "finance", label: "Financeiro", icon: WalletCards },\n    { id: "settings", label: "Configurações", icon: Settings },'''
+          new = '''    { id: "finance", label: "Financeiro", icon: WalletCards },\n    { id: "billing", label: "Mensalidade", icon: BadgePercent, badge: subscriptionAccessAllowed ? undefined : 1 },\n    { id: "settings", label: "Configurações", icon: Settings },'''
+          if old not in text: raise SystemExit('merchant tabs marker not found')
+          text = text.replace(old,new,1)
+          old = '''      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">'''
+          new = '''      {!subscriptionAccessAllowed ? (\n        <section className="mb-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">\n          <div className="flex flex-wrap items-center justify-between gap-3">\n            <div>\n              <p className="font-black text-amber-300">Mensalidade pendente</p>\n              <p className="mt-1 text-sm text-zinc-400">\n                Novos pedidos estão bloqueados. Você ainda pode concluir pedidos existentes, consultar histórico e acessar seu financeiro.\n              </p>\n            </div>\n            <Button type="button" onClick={() => setActiveTab("billing")}>\n              Regularizar mensalidade\n            </Button>\n          </div>\n        </section>\n      ) : null}\n\n      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">'''
+          if old not in text: raise SystemExit('merchant header marker not found')
+          text = text.replace(old,new,1)
+          old = '''      {activeTab === "finance" && ('''
+          new = '''      {activeTab === "billing" && (\n        <MerchantSubscriptionGate\n          merchant={merchant}\n          subscription={subscription}\n          onRefresh={() => loadAll(true)}\n          onLogout={logout}\n          embedded\n        />\n      )}\n\n      {activeTab === "finance" && ('''
+          if old not in text: raise SystemExit('finance render marker not found')
+          text = text.replace(old,new,1)
+          route.write_text(text)
+          PY
+      - name: Format and verify
+        run: |
+          bunx prettier --write src/components/MerchantSubscriptionGate.tsx src/routes/merchant.tsx
+          bun run typecheck
+          bun run test
+          bun run build
+          bun run lint
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/MerchantSubscriptionGate.tsx src/routes/merchant.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(billing): preserve existing merchant operations"
+          git push
