@@ -98,7 +98,11 @@ function scanSource(file, content) {
     !serverOnlySource &&
     /\b(?:APOIS_SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SERVICE_ROLE_KEY)\b/.test(content)
   ) {
-    report(file, "client-service-role-reference", "service-role key referenced outside server-only source");
+    report(
+      file,
+      "client-service-role-reference",
+      "service-role key referenced outside server-only source",
+    );
   }
 
   for (const check of checks) {
@@ -139,7 +143,11 @@ async function verifyMigrationDirectory() {
 
     const match = entry.name.match(/^(\d{14})_(.+)\.sql$/);
     if (!match) {
-      report(`${relativeDir}/${entry.name}`, "invalid-migration-name", "expected YYYYMMDDHHMMSS_name.sql");
+      report(
+        `${relativeDir}/${entry.name}`,
+        "invalid-migration-name",
+        "expected YYYYMMDDHHMMSS_name.sql",
+      );
       continue;
     }
 
