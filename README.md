@@ -52,6 +52,7 @@ VITE_GOOGLE_MAPS_MAP_ID=
 Secrets usados apenas no Supabase/servidor:
 
 ```text
+APOIS_SUPABASE_SERVICE_ROLE_KEY=
 GOOGLE_MAPS_API_KEY=
 MERCADO_PAGO_ENVIRONMENT=test
 MERCADO_PAGO_API_URL=https://api.mercadopago.com
@@ -63,7 +64,7 @@ MERCADO_PAGO_WEBHOOK_SECRET_PRODUCTION=
 
 A chave `VITE_GOOGLE_MAPS_BROWSER_KEY` deve ser uma chave de navegador restrita aos domínios oficiais e às APIs necessárias. `GOOGLE_MAPS_API_KEY` é a credencial server-side usada pela busca/geocodificação de endereços e nunca deve ser exposta como `VITE_*`. A aplicação chama a Google Maps Platform diretamente e não depende do connector gateway do Lovable.
 
-`SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` são fornecidos pelo ambiente das Edge Functions. Nunca coloque `service_role`, tokens do Mercado Pago ou webhook secrets em variáveis `VITE_*`, no navegador ou no Git.
+`APOIS_SUPABASE_SERVICE_ROLE_KEY` é usada exclusivamente pelo runtime server-side da aplicação em `src/integrations/supabase/client.server.ts`; nunca deve ser enviada ao navegador nem prefixada com `VITE_`. Nas Edge Functions, `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` são fornecidos pelo ambiente do Supabase. Nunca coloque `service_role`, tokens do Mercado Pago ou webhook secrets em variáveis `VITE_*`, no navegador ou no Git.
 
 ## Banco e migrations
 
