@@ -28,8 +28,6 @@ jobs:
     env:
       APOIS_MOBILE_PRODUCT: ${{ inputs.product || 'courier' }}
       VITE_APOIS_PRODUCT_MODE: ${{ inputs.product || 'courier' }}
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
     steps:
       - name: Checkout
@@ -51,12 +49,6 @@ jobs:
 
       - name: Install web dependencies
         run: bun install --frozen-lockfile
-
-      - name: Validate required production environment
-        shell: bash
-        run: |
-          test -n "$VITE_SUPABASE_URL" || (echo "Missing VITE_SUPABASE_URL secret" && exit 1)
-          test -n "$VITE_SUPABASE_ANON_KEY" || (echo "Missing VITE_SUPABASE_ANON_KEY secret" && exit 1)
 
       - name: Build product web bundle
         shell: bash
