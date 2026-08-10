@@ -14,8 +14,82 @@ import appCss from "../styles.css?url";
 import { AuthSessionIsolation } from "../components/AuthSessionIsolation";
 import { CartProvider } from "../contexts/CartContext";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import {
+  getApoisProductMode,
+  getProductLabel,
+  getProductLandingRoute,
+  type ApoisProductMode,
+} from "../lib/product-routing";
+
+function getDocumentProductLabel() {
+  const product = getApoisProductMode();
+  return product === "customer" ? "APOIS Cliente" : getProductLabel(product);
+}
+
+function isForeignWorkspace(pathname: string, product: ApoisProductMode) {
+  if (product === "customer") {
+    return (
+      pathname === "/courier" ||
+      pathname.startsWith("/courier/") ||
+      pathname === "/merchant" ||
+      pathname.startsWith("/merchant/") ||
+      pathname === "/admin" ||
+      pathname.startsWith("/admin/")
+    );
+  }
+
+  if (product === "courier") {
+    return (
+      pathname === "/merchant" ||
+      pathname.startsWith("/merchant/") ||
+      pathname === "/admin" ||
+      pathname.startsWith("/admin/")
+    );
+  }
+
+  if (product === "merchant") {
+    return (
+      pathname === "/courier" ||
+      pathname.startsWith("/courier/") ||
+      pathname === "/admin" ||
+      pathname.startsWith("/admin/")
+    );
+  }
+
+  return (
+    pathname === "/courier" ||
+    pathname.startsWith("/courier/") ||
+    pathname === "/merchant" ||
+    pathname.startsWith("/merchant/")
+  );
+}
+
+function ProductRouteIsolation({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const product = getApoisProductMode();
+  const blocked = isForeignWorkspace(pathname, product);
+
+  useEffect(() => {
+    if (!blocked) return;
+    void router.navigate({ to: getProductLandingRoute(product), replace: true });
+  }, [blocked, product, router]);
+
+  if (blocked) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-black px-6 text-center text-sm text-zinc-400">
+        Redirecionando para o produto correto…
+      </div>
+    );
+  }
+
+  return children;
+}
 
 function NotFoundComponent() {
+  const product = getApoisProductMode();
+  const landingRoute = getProductLandingRoute(product);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -26,7 +100,7 @@ function NotFoundComponent() {
         </p>
         <div className="mt-6">
           <Link
-            to="/"
+            to={landingRoute}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Voltar ao início
@@ -39,6 +113,8 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
+  const landingRoute = getProductLandingRoute();
+
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
@@ -63,12 +139,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           >
             Tentar novamente
           </button>
-          <a
-            href="/"
+          <Link
+            to={landingRoute}
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
             Ir para o início
-          </a>
+          </Link>
         </div>
       </div>
     </div>
@@ -76,26 +152,29 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "APOIS ENTREGA" },
-      {
-        name: "description",
-        content: "APOIS ENTREGA — pedidos, restaurantes e entregas em um só lugar.",
-      },
-      { name: "author", content: "APOIS" },
-      { property: "og:title", content: "APOIS ENTREGA" },
-      { property: "og:description", content: "Peça, acompanhe e receba com APOIS ENTREGA." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-    links: [
-      { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.png", type: "image/png" },
-    ],
-  }),
+  head: () => {
+    const productLabel = getDocumentProductLabel();
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+        { title: productLabel },
+        {
+          name: "description",
+          content: `${productLabel} — ecossistema operacional APOIS ENTREGAS.`,
+        },
+        { name: "author", content: "APOIS" },
+        { property: "og:title", content: productLabel },
+        { property: "og:description", content: `${productLabel} — APOIS ENTREGAS.` },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+      ],
+      links: [
+        { rel: "stylesheet", href: appCss },
+        { rel: "icon", href: "/favicon.png", type: "image/png" },
+      ],
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -104,7 +183,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const desktopWorkspace = pathname.startsWith("/admin") || pathname.startsWith("/merchant");
+  const product = getApoisProductMode();
+  const desktopWorkspace =
+    (product === "admin" && pathname.startsWith("/admin")) ||
+    (product === "merchant" && pathname.startsWith("/merchant"));
 
   return (
     <html lang="pt-BR" className="dark">
@@ -132,11 +214,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthSessionIsolation>
-        <CartProvider>
-          <Outlet />
-        </CartProvider>
-      </AuthSessionIsolation>
+      <ProductRouteIsolation>
+        <AuthSessionIsolation>
+          <CartProvider>
+            <Outlet />
+          </CartProvider>
+        </AuthSessionIsolation>
+      </ProductRouteIsolation>
     </QueryClientProvider>
   );
 }
