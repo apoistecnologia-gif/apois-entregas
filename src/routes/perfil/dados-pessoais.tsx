@@ -44,6 +44,7 @@ type ProfileDraft = {
 
 const allowedAvatarTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const maxAvatarBytes = 5 * 1024 * 1024;
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function DadosPessoaisPage() {
   const navigate = useNavigate();
@@ -111,6 +112,12 @@ function DadosPessoaisPage() {
       return;
     }
 
+    const requestedEmail = profile.email.trim().toLowerCase();
+    if (!emailPattern.test(requestedEmail)) {
+      toast.error("Informe um e-mail válido.");
+      return;
+    }
+
     setSaving(true);
     try {
       const {
@@ -129,6 +136,22 @@ function DadosPessoaisPage() {
         .eq("id", user.id);
 
       if (error) throw error;
+
+      const currentEmail = (user.email || "").trim().toLowerCase();
+      if (requestedEmail !== currentEmail) {
+        const { error: emailError } = await supabase.auth.updateUser(
+          { email: requestedEmail },
+          { emailRedirectTo: `${window.location.origin}/perfil/dados-pessoais` },
+        );
+        if (emailError) {
+          console.error("Erro ao solicitar troca de e-mail:", emailError);
+          toast.warning("Os outros dados foram salvos, mas não foi possível alterar o e-mail.");
+          return;
+        }
+        toast.success("Dados salvos. Confirme a troca de e-mail pelas mensagens enviadas.");
+        return;
+      }
+
       toast.success("Perfil atualizado com sucesso.");
     } catch (error) {
       console.error("Erro ao salvar dados pessoais:", error);
@@ -316,20 +339,23 @@ function DadosPessoaisPage() {
                   />
                 </Field>
 
-                <div className="space-y-2 opacity-60">
-                  <label className="ml-1 text-xs font-bold uppercase tracking-widest text-primary">
-                    E-mail (apenas leitura)
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
-                    <input
-                      type="email"
-                      value={profile.email}
-                      readOnly
-                      className="w-full cursor-not-allowed rounded-2xl border border-zinc-800/50 bg-zinc-900/50 py-4 pl-12 pr-4 text-zinc-500"
-                    />
-                  </div>
-                </div>
+                <Field label="E-mail" icon={Mail}>
+                  <input
+                    type="email"
+                    value={profile.email}
+                    onChange={(event) =>
+                      setProfile((current) => ({ ...current, email: event.target.value }))
+                    }
+                    className="profile-input"
+                    placeholder="voce@exemplo.com"
+                    autoComplete="email"
+                    required
+                  />
+                </Field>
+                <p className="-mt-2 px-1 text-xs leading-relaxed text-zinc-600">
+                  Se você trocar o e-mail, o Supabase Auth enviará a confirmação de segurança antes
+                  de concluir a alteração.
+                </p>
               </div>
 
               <button
