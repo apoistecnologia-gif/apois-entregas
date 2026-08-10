@@ -25,7 +25,9 @@ const PRODUCT_LABELS: Record<ApoisProductMode, string> = {
 
 export function getApoisProductMode(): ApoisProductMode {
   const raw = String(
-    import.meta.env.VITE_APOIS_PRODUCT_MODE ?? import.meta.env.VITE_APOIS_APP_MODE ?? "customer",
+    import.meta.env["VITE_APOIS_PRODUCT_MODE"] ??
+      import.meta.env["VITE_APOIS_APP_MODE"] ??
+      "customer",
   )
     .trim()
     .toLowerCase();
