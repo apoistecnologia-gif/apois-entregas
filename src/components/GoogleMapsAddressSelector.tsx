@@ -26,13 +26,19 @@ interface GoogleMapsAddressSelectorProps {
   initialCenter?: { lat: number; lng: number } | null | undefined;
 }
 
+type AddressComponent = {
+  long_name: string;
+  short_name: string;
+  types: string[];
+};
+
 type AddressSuggestion = {
   place_id: string;
   description: string;
-  structured_formatting?: {
-    main_text?: string;
-    secondary_text?: string;
-  };
+  structured_formatting: {
+    main_text: string;
+    secondary_text: string | null;
+  } | null;
 };
 
 export function GoogleMapsAddressSelector({
@@ -53,7 +59,7 @@ export function GoogleMapsAddressSelector({
   const autocompleteFn = useServerFn(autocompleteAddress);
   const detailsFn = useServerFn(getPlaceDetails);
 
-  const parseAddressComponents = (components: google.maps.GeocoderAddressComponent[]) => {
+  const parseAddressComponents = (components: AddressComponent[]) => {
     const getComponent = (type: string) =>
       components.find((component) => component.types.includes(type))?.long_name || "";
 
@@ -88,11 +94,8 @@ export function GoogleMapsAddressSelector({
 
     try {
       const data = await geocodeFn({ data: { lat, lng } });
-      const results = Array.isArray(data.results) ? data.results : [];
-      const first = results[0] as
-        | { address_components?: google.maps.GeocoderAddressComponent[] }
-        | undefined;
-      if (first?.address_components) {
+      const first = data.results[0];
+      if (first) {
         const address = parseAddressComponents(first.address_components);
         onAddressSelected({ ...address, latitude: lat, longitude: lng });
       }
@@ -116,11 +119,8 @@ export function GoogleMapsAddressSelector({
 
         try {
           const data = await geocodeFn({ data: { lat, lng } });
-          const results = Array.isArray(data.results) ? data.results : [];
-          const first = results[0] as
-            | { address_components?: google.maps.GeocoderAddressComponent[] }
-            | undefined;
-          if (first?.address_components) {
+          const first = data.results[0];
+          if (first) {
             const address = parseAddressComponents(first.address_components);
             onAddressSelected({ ...address, latitude: lat, longitude: lng });
             toast.success("Localização encontrada!");
@@ -150,7 +150,7 @@ export function GoogleMapsAddressSelector({
 
     try {
       const data = await autocompleteFn({ data: { input: value } });
-      setSuggestions(Array.isArray(data.predictions) ? (data.predictions as AddressSuggestion[]) : []);
+      setSuggestions(data.predictions);
     } catch (error) {
       console.error("Autocomplete error:", error);
       setSuggestions([]);
@@ -164,15 +164,9 @@ export function GoogleMapsAddressSelector({
 
     try {
       const data = await detailsFn({ data: { placeId: suggestion.place_id } });
-      const result = data.result as
-        | {
-            geometry?: { location?: { lat?: number; lng?: number } };
-            address_components?: google.maps.GeocoderAddressComponent[];
-          }
-        | undefined;
-      const lat = Number(result?.geometry?.location?.lat);
-      const lng = Number(result?.geometry?.location?.lng);
-      if (result?.address_components && Number.isFinite(lat) && Number.isFinite(lng)) {
+      const result = data.result;
+      if (result) {
+        const { lat, lng } = result.geometry.location;
         setMarkerPos({ lat, lng });
         const address = parseAddressComponents(result.address_components);
         onAddressSelected({ ...address, latitude: lat, longitude: lng });
@@ -212,10 +206,14 @@ export function GoogleMapsAddressSelector({
                 onClick={() => void handleSuggestionSelect(suggestion)}
                 className="w-full border-b border-zinc-800 p-3 text-left text-sm last:border-0 hover:bg-zinc-800"
               >
-                <p className="font-medium">{suggestion.structured_formatting?.main_text}</p>
-                <p className="truncate text-xs text-zinc-500">
-                  {suggestion.structured_formatting?.secondary_text}
+                <p className="font-medium">
+                  {suggestion.structured_formatting?.main_text ?? suggestion.description}
                 </p>
+                {suggestion.structured_formatting?.secondary_text ? (
+                  <p className="truncate text-xs text-zinc-500">
+                    {suggestion.structured_formatting.secondary_text}
+                  </p>
+                ) : null}
               </button>
             ))}
           </div>
