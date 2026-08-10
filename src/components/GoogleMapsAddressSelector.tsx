@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 import { autocompleteAddress, geocodeAddress, getPlaceDetails } from "@/lib/google-maps.functions";
 import { toast } from "sonner";
 
@@ -55,6 +56,17 @@ export function GoogleMapsAddressSelector({
   const autocompleteFn = useServerFn(autocompleteAddress);
   const detailsFn = useServerFn(getPlaceDetails);
 
+  const getAccessToken = async () => {
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+    if (error || !session?.access_token) {
+      throw new Error("Sessão expirada");
+    }
+    return session.access_token;
+  };
+
   const parseAddressComponents = (components: AddressComponent[]) => {
     const getComponent = (type: string) =>
       components.find((component) => component.types.includes(type))?.long_name || "";
@@ -89,7 +101,8 @@ export function GoogleMapsAddressSelector({
     setMarkerPos({ lat, lng });
 
     try {
-      const data = await geocodeFn({ data: { lat, lng } });
+      const accessToken = await getAccessToken();
+      const data = await geocodeFn({ data: { lat, lng, accessToken } });
       const first = data.results[0];
       if (first) {
         const address = parseAddressComponents(first.address_components);
@@ -114,7 +127,8 @@ export function GoogleMapsAddressSelector({
         setMarkerPos({ lat, lng });
 
         try {
-          const data = await geocodeFn({ data: { lat, lng } });
+          const accessToken = await getAccessToken();
+          const data = await geocodeFn({ data: { lat, lng, accessToken } });
           const first = data.results[0];
           if (first) {
             const address = parseAddressComponents(first.address_components);
@@ -145,7 +159,8 @@ export function GoogleMapsAddressSelector({
     }
 
     try {
-      const data = await autocompleteFn({ data: { input: value } });
+      const accessToken = await getAccessToken();
+      const data = await autocompleteFn({ data: { input: value, accessToken } });
       setSuggestions(data.predictions);
     } catch (error) {
       console.error("Autocomplete error:", error);
@@ -159,7 +174,8 @@ export function GoogleMapsAddressSelector({
     setSuggestions([]);
 
     try {
-      const data = await detailsFn({ data: { placeId: suggestion.place_id } });
+      const accessToken = await getAccessToken();
+      const data = await detailsFn({ data: { placeId: suggestion.place_id, accessToken } });
       const result = data.result;
       if (result) {
         const { lat, lng } = result.geometry.location;
