@@ -89,16 +89,29 @@ function getSupabaseServerConfig() {
 
 async function requireAuthenticatedUser(accessToken: string) {
   const { url, publicKey } = getSupabaseServerConfig();
-  const authResponse = await fetch(`${url}/auth/v1/user`, {
-    headers: {
-      Accept: "application/json",
-      apikey: publicKey,
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  const headers = {
+    Accept: "application/json",
+    apikey: publicKey,
+    Authorization: `Bearer ${accessToken}`,
+  };
+  const authResponse = await fetch(`${url}/auth/v1/user`, { headers });
 
   if (!authResponse.ok) {
     throw new Error("Authentication required for address lookup");
+  }
+
+  const quotaResponse = await fetch(`${url}/rest/v1/rpc/consume_google_maps_lookup_quota`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: "{}",
+  });
+  if (!quotaResponse.ok) {
+    throw new Error("Address lookup quota service is unavailable");
+  }
+
+  const allowed = (await quotaResponse.json()) as unknown;
+  if (allowed !== true) {
+    throw new Error("Too many address lookups. Please wait a moment and try again");
   }
 }
 
