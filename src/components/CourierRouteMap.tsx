@@ -140,9 +140,8 @@ export function CourierRouteMap({
   job: any;
   currentPosition: CourierPosition | null;
 }) {
-  const browserKey =
-    (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY ||
-    (import.meta as any).env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
+  const browserKey = (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+  const mapId = (import.meta as any).env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined;
   const goingToDelivery = ["picked_up", "on_the_way", "arrived_destination"].includes(job.status);
   const target = useMemo(() => {
     const latitude = parseCoordinate(goingToDelivery ? job.delivery_latitude : job.pickup_latitude);
@@ -200,7 +199,7 @@ export function CourierRouteMap({
         </button>
       </div>
 
-      {browserKey ? (
+      {browserKey && mapId ? (
         <APIProvider apiKey={browserKey}>
           <div className="relative h-64 w-full bg-zinc-900">
             <Map
@@ -210,7 +209,7 @@ export function CourierRouteMap({
               defaultZoom={14}
               gestureHandling="greedy"
               disableDefaultUI
-              mapId="DEMO_MAP_ID"
+              mapId={mapId}
             >
               <RouteMapContent currentPosition={currentPosition} target={target} />
             </Map>
