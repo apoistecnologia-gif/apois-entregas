@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.112.1";
 type JsonRecord = Record<string, unknown>;
 
 const MONTHLY_AMOUNT = 69.9;
+const PIX_EXPIRATION_MS = 30 * 60 * 1000;
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -57,6 +58,7 @@ function safeProviderError(payload: unknown) {
     message: text(payload.message),
     error: text(payload.error),
     status: text(payload.status),
+    statusDetail: text(payload.status_detail),
     code:
       typeof payload.code === "string" || typeof payload.code === "number" ? payload.code : null,
     causes,
@@ -75,35 +77,36 @@ function addOneMonth(value: string): string {
   return date.toISOString();
 }
 
-function safeReturnUrl(request: Request, requested: unknown): string {
-  const requestOrigin = request.headers.get("origin")?.trim() ?? "";
-  const fallback = requestOrigin
-    ? `${requestOrigin.replace(/\/$/, "")}/merchant`
-    : "https://apoisentrega.com.br/merchant";
-  const candidate = text(requested) ?? fallback;
-  try {
-    const url = new URL(candidate);
-    if (
-      url.protocol !== "https:" &&
-      !(url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname))
-    ) {
-      return fallback;
-    }
-    if (requestOrigin) {
-      const origin = new URL(requestOrigin);
-      if (url.origin !== origin.origin) return fallback;
-    }
-    return url.toString();
-  } catch {
-    return fallback;
-  }
+function providerPayment(order: JsonRecord): JsonRecord | null {
+  const transactions = isRecord(order.transactions) ? order.transactions : null;
+  const payments = transactions && Array.isArray(transactions.payments) ? transactions.payments : [];
+  return payments.length > 0 && isRecord(payments[0]) ? payments[0] : null;
 }
 
-function validRecurring(resource: JsonRecord): boolean {
-  const recurring = isRecord(resource.auto_recurring) ? resource.auto_recurring : null;
-  const amount = numberValue(recurring?.transaction_amount);
-  const currency = text(recurring?.currency_id);
-  return amount !== null && Math.round(amount * 100) === 6990 && currency === "BRL";
+function orderPaid(order: JsonRecord): boolean {
+  const payment = providerPayment(order);
+  const orderStatus = text(order.status);
+  const orderDetail = text(order.status_detail);
+  const paymentStatus = text(payment?.status);
+  const paymentDetail = text(payment?.status_detail);
+  return (
+    (orderStatus === "processed" && orderDetail === "accredited") ||
+    paymentStatus === "approved" ||
+    (paymentStatus === "processed" && paymentDetail === "accredited")
+  );
+}
+
+function orderFailed(order: JsonRecord): boolean {
+  const payment = providerPayment(order);
+  const statuses = [
+    text(order.status),
+    text(order.status_detail),
+    text(payment?.status),
+    text(payment?.status_detail),
+  ].filter((value): value is string => Boolean(value));
+  return statuses.some((value) =>
+    ["canceled", "cancelled", "expired", "failed", "rejected"].includes(value),
+  );
 }
 
 Deno.serve(async (request: Request) => {
@@ -134,12 +137,6 @@ Deno.serve(async (request: Request) => {
     console.error("merchant-subscription environment incomplete", { environment });
     return json(request, 500, { error: "server_configuration" });
   }
-
-  const providerHeaders = {
-    Authorization: `Bearer ${accessToken}`,
-    Accept: "application/json",
-    "Content-Type": "application/json",
-  };
 
   const authorization = request.headers.get("authorization")?.trim();
   const jwt = authorization?.replace(/^Bearer\s+/i, "").trim();
@@ -177,7 +174,7 @@ Deno.serve(async (request: Request) => {
 
   const { data: merchant } = await admin
     .from("merchants")
-    .select("id,name,approval_status,is_active")
+    .select("id,name,approval_status,is_active,contact_email")
     .eq("id", membership.merchant_id)
     .maybeSingle();
   if (!merchant || merchant.approval_status !== "approved" || !merchant.is_active) {
@@ -200,6 +197,7 @@ Deno.serve(async (request: Request) => {
         amount: MONTHLY_AMOUNT,
         currency: "BRL",
         billing_frequency: "monthly",
+        metadata: { environment, billingModel: "monthly_pix" },
       })
       .select("*")
       .single();
@@ -209,262 +207,301 @@ Deno.serve(async (request: Request) => {
     subscription = created.data;
   }
 
-  const discoverPreapprovalFromPlan = async () => {
-    if (subscription.provider_preapproval_id || !subscription.provider_plan_id) return;
-    const searchResponse = await fetch(
-      `${apiBase}/preapproval/search?preapproval_plan_id=${encodeURIComponent(
-        subscription.provider_plan_id,
-      )}&limit=20&offset=0`,
-      { headers: providerHeaders },
-    );
-    if (!searchResponse.ok) return;
-    const raw: unknown = await searchResponse.json().catch(() => null);
-    if (!isRecord(raw) || !Array.isArray(raw.results)) return;
+  const { data: paymentRows, error: paymentsError } = await admin
+    .from("merchant_subscription_payments")
+    .select("*")
+    .eq("merchant_subscription_id", subscription.id)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (paymentsError) return json(request, 500, { error: "subscription_payment_lookup_failed" });
 
-    const candidates = raw.results
-      .filter(isRecord)
-      .filter((entry) => text(entry.preapproval_plan_id) === subscription.provider_plan_id)
-      .filter(validRecurring)
-      .sort((a, b) =>
-        String(b.last_modified ?? b.date_created ?? "").localeCompare(
-          String(a.last_modified ?? a.date_created ?? ""),
-        ),
-      );
-    const chosen =
-      candidates.find((entry) =>
-        ["authorized", "pending", "paused"].includes(text(entry.status) ?? ""),
-      ) ?? candidates[0];
-    const providerId = chosen ? identifier(chosen.id) : null;
-    if (!providerId) return;
+  const reconcilePayment = async (paymentRow: any) => {
+    const providerOrderId = text(paymentRow?.provider_authorized_payment_id);
+    if (!providerOrderId) return false;
 
-    const saved = await admin
-      .from("merchant_subscriptions")
-      .update({
-        provider_preapproval_id: providerId,
-        provider_status: text(chosen.status) ?? subscription.provider_status,
-        next_payment_at: text(chosen.next_payment_date),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", subscription.id)
-      .select("*")
-      .single();
-    if (!saved.error && saved.data) subscription = saved.data;
-  };
+    const providerResponse = await fetch(`${apiBase}/v1/orders/${encodeURIComponent(providerOrderId)}`, {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+    });
+    const raw: unknown = await providerResponse.json().catch(() => null);
+    if (!providerResponse.ok || !isRecord(raw)) return false;
 
-  const syncProvider = async () => {
-    await discoverPreapprovalFromPlan();
-    if (!subscription.provider_preapproval_id) return;
-
-    const preapprovalResponse = await fetch(
-      `${apiBase}/preapproval/${encodeURIComponent(subscription.provider_preapproval_id)}`,
-      { headers: providerHeaders },
-    );
-    if (!preapprovalResponse.ok) {
-      console.error("merchant-subscription preapproval lookup failed", {
-        status: preapprovalResponse.status,
+    const expectedReference = `apois-merchant-subscription-${subscription.id}`;
+    const amount = numberValue(raw.total_amount);
+    if (
+      text(raw.external_reference) !== expectedReference ||
+      amount === null ||
+      Math.round(amount * 100) !== 6990
+    ) {
+      console.error("merchant subscription PIX provider mismatch", {
+        merchantId: merchant.id,
+        providerOrderId,
       });
-      return;
-    }
-
-    const rawPreapproval: unknown = await preapprovalResponse.json().catch(() => null);
-    if (!isRecord(rawPreapproval) || !validRecurring(rawPreapproval)) return;
-    const planId = text(rawPreapproval.preapproval_plan_id);
-    if (subscription.provider_plan_id && planId && planId !== subscription.provider_plan_id) {
-      console.error("merchant-subscription plan mismatch", { merchantId: merchant.id });
-      return;
-    }
-
-    const invoicesResponse = await fetch(
-      `${apiBase}/authorized_payments/search?preapproval_id=${encodeURIComponent(
-        subscription.provider_preapproval_id,
-      )}&limit=20&offset=0`,
-      { headers: providerHeaders },
-    );
-
-    let approvedInvoice: JsonRecord | null = null;
-    if (invoicesResponse.ok) {
-      const invoicesRaw: unknown = await invoicesResponse.json().catch(() => null);
-      if (isRecord(invoicesRaw) && Array.isArray(invoicesRaw.results)) {
-        const invoices = invoicesRaw.results.filter(isRecord);
-        invoices.sort((a, b) =>
-          String(b.debit_date ?? b.date_created ?? "").localeCompare(
-            String(a.debit_date ?? a.date_created ?? ""),
-          ),
-        );
-        approvedInvoice =
-          invoices.find((invoice) => {
-            const payment = isRecord(invoice.payment) ? invoice.payment : null;
-            return text(payment?.status) === "approved";
-          }) ?? null;
-      }
+      return false;
     }
 
     const now = new Date().toISOString();
-    const nextPaymentAt = text(rawPreapproval.next_payment_date);
-    const update: JsonRecord = {
-      provider_status: text(rawPreapproval.status) ?? subscription.provider_status,
-      next_payment_at: nextPaymentAt,
-      updated_at: now,
-      metadata: {
-        environment,
-        billingModel: "provider_plan_checkout",
-      },
-    };
-
-    if (approvedInvoice) {
-      const payment = isRecord(approvedInvoice.payment) ? approvedInvoice.payment : null;
-      const debitDate =
-        text(approvedInvoice.debit_date) ?? text(approvedInvoice.date_created) ?? now;
-      const periodEnd =
-        nextPaymentAt && new Date(nextPaymentAt).getTime() > new Date(debitDate).getTime()
-          ? nextPaymentAt
-          : addOneMonth(debitDate);
-      update.current_period_start = debitDate;
-      update.current_period_end = periodEnd;
-      update.last_payment_at = debitDate;
-      update.last_payment_status = text(payment?.status) ?? "approved";
-
-      const authorizedPaymentId = identifier(approvedInvoice.id);
-      if (authorizedPaymentId) {
-        await admin.from("merchant_subscription_payments").upsert(
-          {
-            merchant_subscription_id: subscription.id,
-            provider_authorized_payment_id: authorizedPaymentId,
-            provider_payment_id: identifier(payment?.id),
-            amount: numberValue(approvedInvoice.transaction_amount) ?? MONTHLY_AMOUNT,
-            currency: text(approvedInvoice.currency_id) ?? "BRL",
-            status: text(payment?.status) ?? text(approvedInvoice.status) ?? "approved",
-            debit_date: debitDate,
-            paid_at: debitDate,
-            provider_payload: approvedInvoice,
-            updated_at: now,
-          },
-          { onConflict: "provider_authorized_payment_id" },
-        );
-      }
+    const payment = providerPayment(raw);
+    const transactionId = identifier(payment?.id);
+    if (orderPaid(raw)) {
+      const periodEnd = addOneMonth(now);
+      await admin
+        .from("merchant_subscription_payments")
+        .update({
+          provider_payment_id: transactionId ?? paymentRow.provider_payment_id,
+          status: "approved",
+          paid_at: now,
+          failure_reason: null,
+          provider_payload: raw,
+          updated_at: now,
+        })
+        .eq("id", paymentRow.id);
+      const updated = await admin
+        .from("merchant_subscriptions")
+        .update({
+          provider_status: "paid",
+          current_period_start: now,
+          current_period_end: periodEnd,
+          next_payment_at: periodEnd,
+          last_payment_at: now,
+          last_payment_status: "approved",
+          metadata: { environment, billingModel: "monthly_pix" },
+          updated_at: now,
+        })
+        .eq("id", subscription.id)
+        .select("*")
+        .single();
+      if (!updated.error && updated.data) subscription = updated.data;
+      return true;
     }
 
-    const saved = await admin
-      .from("merchant_subscriptions")
-      .update(update)
-      .eq("id", subscription.id)
-      .select("*")
-      .single();
-    if (!saved.error && saved.data) subscription = saved.data;
+    if (orderFailed(raw)) {
+      await admin
+        .from("merchant_subscription_payments")
+        .update({
+          provider_payment_id: transactionId ?? paymentRow.provider_payment_id,
+          status: "failed",
+          failure_reason: `${text(raw.status) ?? "unknown"}:${text(raw.status_detail) ?? "unknown"}`,
+          provider_payload: raw,
+          updated_at: now,
+        })
+        .eq("id", paymentRow.id);
+      return false;
+    }
+
+    if (paymentRow.status !== "pending") {
+      await admin
+        .from("merchant_subscription_payments")
+        .update({
+          provider_payment_id: transactionId ?? paymentRow.provider_payment_id,
+          status: "pending",
+          provider_payload: raw,
+          updated_at: now,
+        })
+        .eq("id", paymentRow.id);
+    }
+    return false;
   };
 
-  await syncProvider();
+  const latestProviderPayment = (paymentRows ?? []).find((row: any) =>
+    Boolean(row.provider_authorized_payment_id),
+  );
+  if (latestProviderPayment) await reconcilePayment(latestProviderPayment);
 
   const accessAllowed = Boolean(
     subscription.current_period_end &&
-    new Date(subscription.current_period_end).getTime() > Date.now(),
+      new Date(subscription.current_period_end).getTime() > Date.now(),
   );
 
-  const responseSubscription = () => ({
+  const baseResponse = () => ({
     status: subscription.provider_status,
     amount: Number(subscription.amount),
     currency: subscription.currency,
     currentPeriodEnd: subscription.current_period_end,
     nextPaymentAt: subscription.next_payment_at,
     lastPaymentStatus: subscription.last_payment_status,
-    checkoutUrl: subscription.checkout_url,
   });
 
   if (action === "sync" || accessAllowed) {
     return json(request, 200, {
       ok: true,
       accessAllowed,
-      subscription: responseSubscription(),
+      subscription: baseResponse(),
     });
   }
 
-  if (subscription.provider_plan_id && subscription.checkout_url) {
-    const returnUrl = safeReturnUrl(request, body.returnUrl);
-    const updatePlanResponse = await fetch(
-      `${apiBase}/preapproval_plan/${encodeURIComponent(subscription.provider_plan_id)}`,
-      {
-        method: "PUT",
-        headers: providerHeaders,
-        body: JSON.stringify({ back_url: returnUrl }),
-      },
-    );
-    if (!updatePlanResponse.ok) {
-      console.warn("merchant-subscription plan return URL update failed", {
-        status: updatePlanResponse.status,
-        merchantId: merchant.id,
-      });
+  const activePending = (paymentRows ?? []).find((row: any) => {
+    if (row.status !== "pending" || !row.qr_code_text || !row.provider_authorized_payment_id) {
+      return false;
     }
+    if (!row.expires_at) return true;
+    return new Date(row.expires_at).getTime() > Date.now();
+  });
+
+  if (activePending) {
     return json(request, 200, {
       ok: true,
       accessAllowed: false,
-      checkoutUrl: subscription.checkout_url,
-      subscription: responseSubscription(),
+      testMode,
+      payment: {
+        id: activePending.id,
+        status: activePending.status,
+        amount: Number(activePending.amount),
+        qrCodeText: activePending.qr_code_text,
+        qrCodeImageUrl: activePending.qr_code_image_url,
+        expiresAt: activePending.expires_at,
+        providerChargeId: activePending.provider_authorized_payment_id,
+      },
+      subscription: baseResponse(),
+      reused: true,
     });
   }
 
-  const returnUrl = safeReturnUrl(request, body.returnUrl);
-  const planPayload = {
-    reason: `APOIS ENTREGA - ${String(merchant.name ?? "Mensalidade").slice(0, 80)}`,
-    auto_recurring: {
-      frequency: 1,
-      frequency_type: "months",
-      transaction_amount: MONTHLY_AMOUNT,
-      currency_id: "BRL",
-    },
-    back_url: returnUrl,
-  };
+  const expiredIds = (paymentRows ?? [])
+    .filter(
+      (row: any) =>
+        row.status === "pending" &&
+        row.expires_at &&
+        new Date(row.expires_at).getTime() <= Date.now(),
+    )
+    .map((row: any) => row.id);
+  if (expiredIds.length > 0) {
+    await admin
+      .from("merchant_subscription_payments")
+      .update({ status: "failed", failure_reason: "expired", updated_at: new Date().toISOString() })
+      .in("id", expiredIds);
+  }
 
-  const providerResponse = await fetch(`${apiBase}/preapproval_plan`, {
+  const attemptNumber = (paymentRows?.length ?? 0) + 1;
+  const mode = testMode ? "test" : "prod";
+  const idempotencyKey = `mercadopago:merchant-subscription:${subscription.id}:pix:${mode}:attempt:${attemptNumber}`;
+  const externalReference = `apois-merchant-subscription-${subscription.id}`;
+  const payerEmail = testMode ? "test_user_br@testuser.com" : user.email ?? merchant.contact_email;
+  if (!payerEmail) return json(request, 409, { error: "payer_email_required" });
+
+  const providerBody = testMode
+    ? {
+        type: "online",
+        external_reference: externalReference,
+        total_amount: MONTHLY_AMOUNT.toFixed(2),
+        payer: { email: payerEmail, first_name: "APRO" },
+        transactions: {
+          payments: [
+            {
+              amount: MONTHLY_AMOUNT.toFixed(2),
+              payment_method: { id: "pix", type: "bank_transfer" },
+            },
+          ],
+        },
+      }
+    : {
+        type: "online",
+        processing_mode: "automatic",
+        external_reference: externalReference,
+        total_amount: MONTHLY_AMOUNT.toFixed(2),
+        payer: { email: payerEmail },
+        transactions: {
+          payments: [
+            {
+              amount: MONTHLY_AMOUNT.toFixed(2),
+              payment_method: { id: "pix", type: "bank_transfer" },
+              expiration_time: "PT30M",
+            },
+          ],
+        },
+      };
+
+  const providerResponse = await fetch(`${apiBase}/v1/orders`, {
     method: "POST",
-    headers: providerHeaders,
-    body: JSON.stringify(planPayload),
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-Idempotency-Key": idempotencyKey,
+    },
+    body: JSON.stringify(providerBody),
   });
   const providerRaw: unknown = await providerResponse.json().catch(() => null);
   if (!providerResponse.ok || !isRecord(providerRaw)) {
     const provider = safeProviderError(providerRaw);
-    console.error("merchant-subscription plan create failed", {
+    console.error("merchant-subscription PIX create failed", {
       status: providerResponse.status,
+      merchantId: merchant.id,
       provider,
       testMode,
     });
     return json(request, 502, {
-      error: "provider_subscription_plan_failed",
+      error: "provider_subscription_pix_failed",
       providerStatus: providerResponse.status,
       provider,
     });
   }
 
-  const providerPlanId = identifier(providerRaw.id);
-  const checkoutUrl = text(providerRaw.init_point);
-  if (!providerPlanId || !checkoutUrl || !validRecurring(providerRaw)) {
-    return json(request, 502, { error: "provider_subscription_plan_incomplete" });
+  const providerOrderId = text(providerRaw.id);
+  const payment = providerPayment(providerRaw);
+  const paymentMethod = payment && isRecord(payment.payment_method) ? payment.payment_method : null;
+  const transactionId = identifier(payment?.id);
+  const qrCodeText = text(paymentMethod?.qr_code);
+  const qrCodeBase64 = text(paymentMethod?.qr_code_base64);
+  const ticketUrl = text(paymentMethod?.ticket_url);
+  const qrCodeImageUrl = qrCodeBase64 ? `data:image/png;base64,${qrCodeBase64}` : ticketUrl;
+  if (!providerOrderId || !qrCodeText) {
+    return json(request, 502, { error: "provider_subscription_pix_incomplete" });
   }
 
-  const saved = await admin
-    .from("merchant_subscriptions")
-    .update({
-      provider_plan_id: providerPlanId,
-      provider_status: "pending",
-      checkout_url: checkoutUrl,
-      metadata: {
-        environment,
-        billingModel: "provider_plan_checkout",
-        planStatus: text(providerRaw.status),
-      },
-      updated_at: new Date().toISOString(),
+  const expiresAt = new Date(Date.now() + PIX_EXPIRATION_MS).toISOString();
+  const inserted = await admin
+    .from("merchant_subscription_payments")
+    .insert({
+      merchant_subscription_id: subscription.id,
+      provider_authorized_payment_id: providerOrderId,
+      provider_payment_id: transactionId,
+      amount: MONTHLY_AMOUNT,
+      currency: "BRL",
+      status: orderPaid(providerRaw) ? "approved" : "pending",
+      method: "pix",
+      qr_code_text: qrCodeText,
+      qr_code_image_url: qrCodeImageUrl,
+      expires_at: expiresAt,
+      idempotency_key: idempotencyKey,
+      debit_date: new Date().toISOString(),
+      paid_at: orderPaid(providerRaw) ? new Date().toISOString() : null,
+      provider_payload: providerRaw,
     })
-    .eq("id", subscription.id)
     .select("*")
     .single();
-  if (saved.error || !saved.data) {
-    return json(request, 500, { error: "subscription_plan_persistence_failed" });
+  if (inserted.error || !inserted.data) {
+    const concurrent = await admin
+      .from("merchant_subscription_payments")
+      .select("*")
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+    if (!concurrent.data) {
+      return json(request, 500, { error: "subscription_pix_persistence_failed" });
+    }
+    inserted.data = concurrent.data;
   }
-  subscription = saved.data;
+
+  if (orderPaid(providerRaw)) {
+    await reconcilePayment(inserted.data);
+  }
 
   return json(request, 201, {
     ok: true,
-    accessAllowed: false,
-    checkoutUrl,
-    subscription: responseSubscription(),
+    accessAllowed: Boolean(
+      subscription.current_period_end &&
+        new Date(subscription.current_period_end).getTime() > Date.now(),
+    ),
+    testMode,
+    payment: {
+      id: inserted.data.id,
+      status: inserted.data.status,
+      amount: Number(inserted.data.amount),
+      qrCodeText: inserted.data.qr_code_text,
+      qrCodeImageUrl: inserted.data.qr_code_image_url,
+      expiresAt: inserted.data.expires_at,
+      providerChargeId: inserted.data.provider_authorized_payment_id,
+    },
+    subscription: baseResponse(),
+    reused: false,
   });
 });
