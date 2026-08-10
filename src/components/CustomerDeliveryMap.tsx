@@ -106,9 +106,7 @@ export function CustomerDeliveryMap({ job }: { job: DeliveryJob | null | undefin
 
     let disposed = false;
     const loadConfirmationPin = async () => {
-      const { data: delivery, error: deliveryError } = await (supabase.from as any)(
-        "delivery_jobs",
-      )
+      const { data: delivery, error: deliveryError } = await (supabase.from as any)("delivery_jobs")
         .select("order_id")
         .eq("id", job.id)
         .maybeSingle();
