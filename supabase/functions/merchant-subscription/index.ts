@@ -47,9 +47,7 @@ function safeProviderError(payload: unknown) {
           if (!isRecord(cause)) return null;
           return {
             code:
-              typeof cause.code === "string" || typeof cause.code === "number"
-                ? cause.code
-                : null,
+              typeof cause.code === "string" || typeof cause.code === "number" ? cause.code : null,
             description: text(cause.description),
           };
         })
@@ -60,9 +58,7 @@ function safeProviderError(payload: unknown) {
     error: text(payload.error),
     status: text(payload.status),
     code:
-      typeof payload.code === "string" || typeof payload.code === "number"
-        ? payload.code
-        : null,
+      typeof payload.code === "string" || typeof payload.code === "number" ? payload.code : null,
     causes,
   };
 }
@@ -361,7 +357,7 @@ Deno.serve(async (request: Request) => {
 
   const accessAllowed = Boolean(
     subscription.current_period_end &&
-      new Date(subscription.current_period_end).getTime() > Date.now(),
+    new Date(subscription.current_period_end).getTime() > Date.now(),
   );
 
   const responseSubscription = () => ({
@@ -383,6 +379,21 @@ Deno.serve(async (request: Request) => {
   }
 
   if (subscription.provider_plan_id && subscription.checkout_url) {
+    const returnUrl = safeReturnUrl(request, body.returnUrl);
+    const updatePlanResponse = await fetch(
+      `${apiBase}/preapproval_plan/${encodeURIComponent(subscription.provider_plan_id)}`,
+      {
+        method: "PUT",
+        headers: providerHeaders,
+        body: JSON.stringify({ back_url: returnUrl }),
+      },
+    );
+    if (!updatePlanResponse.ok) {
+      console.warn("merchant-subscription plan return URL update failed", {
+        status: updatePlanResponse.status,
+        merchantId: merchant.id,
+      });
+    }
     return json(request, 200, {
       ok: true,
       accessAllowed: false,
