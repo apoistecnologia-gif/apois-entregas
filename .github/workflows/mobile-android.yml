@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/mobile-android.yml"
       - "capacitor.config.ts"
+      - "vite.config.ts"
   workflow_dispatch:
     inputs:
       product:
@@ -27,6 +28,7 @@ jobs:
     timeout-minutes: 30
     env:
       APOIS_MOBILE_PRODUCT: ${{ inputs.product || 'courier' }}
+      APOIS_MOBILE_BUILD: "1"
       VITE_APOIS_PRODUCT_MODE: ${{ inputs.product || 'courier' }}
 
     steps:
@@ -59,33 +61,13 @@ jobs:
             bun run build:customer
           fi
 
-      - name: Generate Capacitor index from built product
+      - name: Validate Capacitor SPA shell
         shell: bash
         run: |
           set -euo pipefail
-          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
-            PRODUCT_PATH="/courier"
-          else
-            PRODUCT_PATH="/"
-          fi
-
-          bun run preview -- --host 127.0.0.1 --port 4173 > /tmp/apois-preview.log 2>&1 &
-          PREVIEW_PID=$!
-          trap 'kill "$PREVIEW_PID" 2>/dev/null || true' EXIT
-
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent --show-error "http://127.0.0.1:4173${PRODUCT_PATH}" -o .output/public/index.html; then
-              break
-            fi
-            if [ "$attempt" -eq 30 ]; then
-              cat /tmp/apois-preview.log
-              exit 1
-            fi
-            sleep 1
-          done
-
           test -s .output/public/index.html
-          grep -q '<html' .output/public/index.html
+          grep -qi '<html' .output/public/index.html
+          grep -qi '<script' .output/public/index.html
 
       - name: Install Capacitor runtime for packaging
         run: npm install --no-save @capacitor/core@8.4.2 @capacitor/cli@8.4.2 @capacitor/android@8.4.2
