@@ -1,0 +1,26 @@
+name: Export Payment Functions
+
+on:
+  push:
+    paths:
+      - ".github/workflows/export-payment-functions.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/upload-artifact@v4
+        with:
+          name: payment-functions
+          path: |
+            supabase/functions/merchant-subscription/index.ts
+            supabase/functions/create-pix-charge/index.ts
+            supabase/functions/sync-payment-status/index.ts
+            supabase/functions/process-refund/index.ts
+            supabase/functions/mercadopago-webhook/index.ts
+          if-no-files-found: error
