@@ -261,7 +261,10 @@ export function MerchantSubscriptionGate({
                 <h3 className="font-black">PIX da mensalidade</h3>
               </div>
               <p className="mt-2 text-sm text-zinc-400">
-                Valor: <strong className="text-white">R$ {pixPayment.amount.toFixed(2).replace(".", ",")}</strong>
+                Valor:{" "}
+                <strong className="text-white">
+                  R$ {pixPayment.amount.toFixed(2).replace(".", ",")}
+                </strong>
                 {pixPayment.expiresAt ? ` · válido até ${dateLabel(pixPayment.expiresAt)}` : ""}
               </p>
 
