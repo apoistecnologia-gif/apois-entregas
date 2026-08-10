@@ -26,7 +26,7 @@ As áreas principais são protegidas por autenticação e autorização no banco
 - Supabase JS 2
 - Supabase Auth, PostgreSQL, RLS, Realtime, Storage e Edge Functions
 - Mercado Pago Orders API para PIX
-- Google Maps no frontend
+- Google Maps Platform diretamente, sem gateway do Lovable
 
 ## Instalação
 
@@ -52,6 +52,7 @@ VITE_GOOGLE_MAPS_MAP_ID=
 Secrets usados apenas no Supabase/servidor:
 
 ```text
+GOOGLE_MAPS_API_KEY=
 MERCADO_PAGO_ENVIRONMENT=test
 MERCADO_PAGO_API_URL=https://api.mercadopago.com
 MERCADO_PAGO_ACCESS_TOKEN_TEST=
@@ -59,6 +60,8 @@ MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION=
 MERCADO_PAGO_WEBHOOK_SECRET_TEST=
 MERCADO_PAGO_WEBHOOK_SECRET_PRODUCTION=
 ```
+
+A chave `VITE_GOOGLE_MAPS_BROWSER_KEY` deve ser uma chave de navegador restrita aos domínios oficiais e às APIs necessárias. `GOOGLE_MAPS_API_KEY` é a credencial server-side usada pela busca/geocodificação de endereços e nunca deve ser exposta como `VITE_*`. A aplicação chama a Google Maps Platform diretamente e não depende do connector gateway do Lovable.
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` são fornecidos pelo ambiente das Edge Functions. Nunca coloque `service_role`, tokens do Mercado Pago ou webhook secrets em variáveis `VITE_*`, no navegador ou no Git.
 
@@ -125,7 +128,8 @@ O pedido de saque já possui fluxo interno de carteira, reserva, idempotência e
 - Estabelecimentos precisam registrar a posição exata da loja antes de operar delivery.
 - Entregador aprovado precisa estar online e enviar localização fresca.
 - Ao receber a primeira localização fresca, o backend reavalia entregas aguardando entregador.
-- O mapa/rota usa Google Maps; falha no desenho da rota não altera o estado financeiro ou operacional da entrega.
+- Mapas, rotas, autocomplete e geocodificação usam Google Maps Platform diretamente, sem dependência de runtime do Lovable.
+- Falha no desenho da rota não altera o estado financeiro ou operacional da entrega.
 
 ## Suporte e anexos
 
@@ -179,20 +183,21 @@ Antes do go-live, ative **Leaked Password Protection** no painel do Supabase Aut
 
 Estas pendências não devem ser resolvidas com valores inventados no código:
 
-1. Credenciais reais do Mercado Pago (`MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION`) e webhook secret de produção.
-2. Alteração explícita para `MERCADO_PAGO_ENVIRONMENT=production` e smoke test PIX real de baixo valor, incluindo a mensalidade do estabelecimento.
-3. Provedor/credencial de payout para automatizar a transferência externa dos saques; o ledger e o fluxo interno já estão protegidos.
-4. Ativação manual de Leaked Password Protection no Supabase Auth.
-5. Caso seja exigido push fora da aplicação, configurar o provedor/credenciais de push antes de habilitar entrega externa; o sistema não inventa um provedor.
-6. Homologação física ponta a ponta em aparelhos reais: cliente → pagamento → estabelecimento → entregador → PIN → entrega → liquidação.
-7. Empacotamento e assinatura dos aplicativos Cliente e Entregador para Android/iOS, seguido da publicação nas lojas.
+1. Chaves de produção do Google Maps Platform: chave de navegador restrita, Map ID e chave server-side restrita às APIs utilizadas.
+2. Credenciais reais do Mercado Pago (`MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION`) e webhook secret de produção.
+3. Alteração explícita para `MERCADO_PAGO_ENVIRONMENT=production` e smoke test PIX real de baixo valor, incluindo a mensalidade do estabelecimento.
+4. Provedor/credencial de payout para automatizar a transferência externa dos saques; o ledger e o fluxo interno já estão protegidos.
+5. Ativação manual de Leaked Password Protection no Supabase Auth.
+6. Caso seja exigido push fora da aplicação, configurar o provedor/credenciais de push antes de habilitar entrega externa; o sistema não inventa um provedor.
+7. Homologação física ponta a ponta em aparelhos reais: cliente → pagamento → estabelecimento → entregador → PIN → entrega → liquidação.
+8. Empacotamento e assinatura dos aplicativos Cliente e Entregador para Android/iOS, seguido da publicação nas lojas.
 
 ## Deploy de produção
 
 1. Garanta CI verde no commit que será publicado.
 2. Confirme migrations aplicadas e Edge Functions na versão esperada no projeto `sbvhdgyuuperszlsllji`.
 3. Confirme que estabelecimentos ativos de delivery possuem coordenadas reais.
-4. Configure somente no ambiente seguro os secrets de produção.
+4. Configure somente no ambiente seguro as chaves Google Maps e os demais secrets de produção.
 5. Configure o webhook de produção do Mercado Pago e seu secret correspondente.
 6. Ative Leaked Password Protection no Supabase Auth.
 7. Defina `MERCADO_PAGO_ENVIRONMENT=production` somente depois das credenciais e webhook estarem prontos.
