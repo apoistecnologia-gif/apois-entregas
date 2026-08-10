@@ -123,7 +123,7 @@ function assertApiStatus(payload: unknown, allowedStatuses: string[]) {
   }
 }
 
-export const geocodeAddress = createServerFn({ method: "GET" })
+export const geocodeAddress = createServerFn({ method: "POST" })
   .validator((data: unknown) => geocodeInput.parse(data))
   .handler(async ({ data }) => {
     await requireAuthenticatedUser(data.accessToken);
@@ -139,7 +139,7 @@ export const geocodeAddress = createServerFn({ method: "GET" })
     return { results: parsed.results };
   });
 
-export const autocompleteAddress = createServerFn({ method: "GET" })
+export const autocompleteAddress = createServerFn({ method: "POST" })
   .validator((data: unknown) => autocompleteInput.parse(data))
   .handler(async ({ data }) => {
     await requireAuthenticatedUser(data.accessToken);
@@ -166,7 +166,7 @@ export const autocompleteAddress = createServerFn({ method: "GET" })
     };
   });
 
-export const getPlaceDetails = createServerFn({ method: "GET" })
+export const getPlaceDetails = createServerFn({ method: "POST" })
   .validator((data: unknown) => placeDetailsInput.parse(data))
   .handler(async ({ data }) => {
     await requireAuthenticatedUser(data.accessToken);
