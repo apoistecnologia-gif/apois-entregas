@@ -125,6 +125,7 @@ Deno.serve(async (request: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const environment = (Deno.env.get("MERCADO_PAGO_ENVIRONMENT") ?? "test").trim().toLowerCase();
   const testMode = environment !== "production";
+  const paymentMode = testMode ? "test" : "production";
   const accessToken = testMode
     ? Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_TEST")?.trim() ||
       Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN")?.trim()
@@ -158,6 +159,27 @@ Deno.serve(async (request: Request) => {
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const { data: environmentSetting, error: environmentSettingError } = await admin
+    .from("platform_settings")
+    .select("value")
+    .eq("key", "mercado_pago_environment")
+    .maybeSingle();
+  const databaseEnvironment =
+    typeof environmentSetting?.value === "string"
+      ? environmentSetting.value.trim().toLowerCase()
+      : null;
+  if (
+    environmentSettingError ||
+    !["test", "production"].includes(databaseEnvironment ?? "") ||
+    databaseEnvironment !== environment
+  ) {
+    console.error("merchant-subscription payment environment mismatch", {
+      edgeEnvironment: environment,
+      databaseEnvironment,
+    });
+    return json(request, 503, { error: "payment_environment_mismatch" });
+  }
+
   const { data: userData, error: userError } = await admin.auth.getUser(jwt);
   const user = userData.user;
   if (userError || !user) return json(request, 401, { error: "invalid_session" });
@@ -215,6 +237,11 @@ Deno.serve(async (request: Request) => {
     .order("created_at", { ascending: false })
     .limit(20);
   if (paymentsError) return json(request, 500, { error: "subscription_payment_lookup_failed" });
+
+  const currentEnvironmentPayments = (paymentRows ?? []).filter((row: any) => {
+    const key = text(row.idempotency_key);
+    return Boolean(key?.includes(`:pix:${paymentMode}:attempt:`));
+  });
 
   const reconcilePayment = async (paymentRow: any) => {
     const providerOrderId = text(paymentRow?.provider_authorized_payment_id);
@@ -318,12 +345,17 @@ Deno.serve(async (request: Request) => {
     return false;
   };
 
-  const latestProviderPayment = (paymentRows ?? []).find((row: any) =>
+  const latestProviderPayment = currentEnvironmentPayments.find((row: any) =>
     Boolean(row.provider_authorized_payment_id),
   );
   if (latestProviderPayment) await reconcilePayment(latestProviderPayment);
 
+  const subscriptionEnvironment = isRecord(subscription.metadata)
+    ? text(subscription.metadata.environment)
+    : null;
   const accessAllowed = Boolean(
+    subscriptionEnvironment === environment &&
+    subscription.last_payment_status === "approved" &&
     subscription.current_period_end &&
     new Date(subscription.current_period_end).getTime() > Date.now(),
   );
@@ -345,7 +377,7 @@ Deno.serve(async (request: Request) => {
     });
   }
 
-  const activePending = (paymentRows ?? []).find((row: any) => {
+  const activePending = currentEnvironmentPayments.find((row: any) => {
     if (row.status !== "pending" || !row.qr_code_text || !row.provider_authorized_payment_id) {
       return false;
     }
@@ -372,7 +404,7 @@ Deno.serve(async (request: Request) => {
     });
   }
 
-  const expiredIds = (paymentRows ?? [])
+  const expiredIds = currentEnvironmentPayments
     .filter(
       (row: any) =>
         row.status === "pending" &&
@@ -387,9 +419,8 @@ Deno.serve(async (request: Request) => {
       .in("id", expiredIds);
   }
 
-  const attemptNumber = (paymentRows?.length ?? 0) + 1;
-  const mode = testMode ? "test" : "prod";
-  const idempotencyKey = `mercadopago:merchant-subscription:${subscription.id}:pix:${mode}:attempt:${attemptNumber}`;
+  const attemptNumber = currentEnvironmentPayments.length + 1;
+  const idempotencyKey = `mercadopago:merchant-subscription:${subscription.id}:pix:${paymentMode}:attempt:${attemptNumber}`;
   const externalReference = `apois-merchant-subscription-${subscription.id}`;
   const payerEmail = testMode
     ? "test_user_br@testuser.com"
@@ -506,6 +537,9 @@ Deno.serve(async (request: Request) => {
   return json(request, 201, {
     ok: true,
     accessAllowed: Boolean(
+      isRecord(subscription.metadata) &&
+      text(subscription.metadata.environment) === environment &&
+      subscription.last_payment_status === "approved" &&
       subscription.current_period_end &&
       new Date(subscription.current_period_end).getTime() > Date.now(),
     ),

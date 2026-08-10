@@ -85,6 +85,7 @@ Deno.serve(async (request: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const environment = (Deno.env.get("MERCADO_PAGO_ENVIRONMENT") ?? "test").trim().toLowerCase();
   const testMode = environment !== "production";
+  const paymentMode = testMode ? "test" : "prod";
   const accessToken = testMode
     ? (Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_TEST") ?? Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN"))
     : Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION");
@@ -132,6 +133,30 @@ Deno.serve(async (request: Request) => {
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const { data: environmentSetting, error: environmentSettingError } = await admin
+    .from("platform_settings")
+    .select("value")
+    .eq("key", "mercado_pago_environment")
+    .maybeSingle();
+  const databaseEnvironment =
+    typeof environmentSetting?.value === "string"
+      ? environmentSetting.value.trim().toLowerCase()
+      : null;
+  if (
+    environmentSettingError ||
+    !["test", "production"].includes(databaseEnvironment ?? "") ||
+    databaseEnvironment !== environment
+  ) {
+    console.error("create-pix-charge payment environment mismatch", {
+      edgeEnvironment: environment,
+      databaseEnvironment,
+    });
+    return response(503, {
+      error: "Ambiente de pagamentos temporariamente inconsistente.",
+      code: "PAYMENT_ENVIRONMENT_MISMATCH",
+    });
+  }
+
   const { data: order, error: orderError } = await admin
     .from("orders")
     .select("id,order_number,customer_user_id,status,payment_method,payment_status,total")
@@ -174,7 +199,10 @@ Deno.serve(async (request: Request) => {
       error: "Não foi possível consultar tentativas de pagamento.",
       code: "PAYMENT_LOOKUP_FAILED",
     });
-  const latest = attempts?.[0] ?? null;
+  const currentEnvironmentAttempts = (attempts ?? []).filter((attempt: any) =>
+    text(attempt.idempotency_key)?.includes(`:pix:${paymentMode}:attempt:`),
+  );
+  const latest = currentEnvironmentAttempts[0] ?? null;
 
   if (latest?.status === "paid")
     return response(409, { error: "Este pedido já está pago.", code: "ORDER_ALREADY_PAID" });
@@ -208,8 +236,8 @@ Deno.serve(async (request: Request) => {
       .eq("id", latest.id);
   }
 
-  const attemptNumber = (attempts?.length ?? 0) + 1;
-  const idempotencyKey = `mercadopago:order:${order.id}:pix:${testMode ? "test" : "prod"}:attempt:${attemptNumber}`;
+  const attemptNumber = currentEnvironmentAttempts.length + 1;
+  const idempotencyKey = `mercadopago:order:${order.id}:pix:${paymentMode}:attempt:${attemptNumber}`;
   const externalReference = `apois-order-${order.id}`;
   const providerBody = testMode
     ? {

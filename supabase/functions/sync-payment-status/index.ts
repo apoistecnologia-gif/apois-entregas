@@ -21,18 +21,6 @@ function response(status: number, body: JsonRecord) {
   return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 }
 
-function accessTokenForOrder(providerOrderId: string): string | null {
-  const sandbox = /^ORDTST/i.test(providerOrderId);
-  if (sandbox) {
-    return (
-      Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_TEST")?.trim() ||
-      Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN")?.trim() ||
-      null
-    );
-  }
-  return Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION")?.trim() || null;
-}
-
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS")
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -47,6 +35,12 @@ Deno.serve(async (request: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const environment = (Deno.env.get("MERCADO_PAGO_ENVIRONMENT") ?? "test").trim().toLowerCase();
+  const testMode = environment !== "production";
+  const accessToken = testMode
+    ? Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_TEST")?.trim() ||
+      Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN")?.trim()
+    : Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION")?.trim();
   const apiBase = (Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com").replace(
     /\/$/,
     "",
@@ -82,6 +76,25 @@ Deno.serve(async (request: Request) => {
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const { data: environmentSetting, error: environmentSettingError } = await admin
+    .from("platform_settings")
+    .select("value")
+    .eq("key", "mercado_pago_environment")
+    .maybeSingle();
+  const databaseEnvironment =
+    typeof environmentSetting?.value === "string"
+      ? environmentSetting.value.trim().toLowerCase()
+      : null;
+  if (
+    environmentSettingError ||
+    !["test", "production"].includes(databaseEnvironment ?? "") ||
+    databaseEnvironment !== environment
+  ) {
+    return response(503, {
+      error: "Ambiente de pagamentos temporariamente inconsistente.",
+      code: "PAYMENT_ENVIRONMENT_MISMATCH",
+    });
+  }
 
   const { data: order, error: orderError } = await admin
     .from("orders")
@@ -130,7 +143,13 @@ Deno.serve(async (request: Request) => {
     });
   }
 
-  const accessToken = accessTokenForOrder(payment.provider_charge_id);
+  const sandboxPayment = /^ORDTST/i.test(payment.provider_charge_id);
+  if ((testMode && !sandboxPayment) || (!testMode && sandboxPayment)) {
+    return response(409, {
+      error: "Este pagamento pertence a outro ambiente do gateway.",
+      code: "PAYMENT_ENVIRONMENT_MISMATCH",
+    });
+  }
   if (!accessToken) {
     return response(503, {
       error: "Credencial do gateway não configurada.",
