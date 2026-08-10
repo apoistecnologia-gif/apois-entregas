@@ -103,7 +103,9 @@ function AdminWorkspace() {
           .order("created_at", { ascending: false })
           .limit(500),
         from("support_tickets")
-          .select("*, support_messages(id,sender_user_id,message,is_internal,created_at)")
+          .select(
+            "*, support_messages(id,sender_user_id,message,attachment_paths,is_internal,created_at)",
+          )
           .order("created_at", { ascending: false })
           .limit(300),
         from("payouts")

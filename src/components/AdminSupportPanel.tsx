@@ -1,8 +1,25 @@
-import { Loader2, LockKeyhole, MessageSquareReply } from "lucide-react";
+import { FileText, Loader2, LockKeyhole, MessageSquareReply } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const dateTime = (value: string | null | undefined) =>
   value ? new Date(value).toLocaleString("pt-BR") : "—";
+
+const openSupportAttachment = async (path: string) => {
+  const { data, error } = await supabase.storage
+    .from("support-attachments")
+    .createSignedUrl(path, 60);
+  if (error || !data?.signedUrl) {
+    toast.error("Não foi possível abrir este anexo.");
+    return;
+  }
+  const anchor = document.createElement("a");
+  anchor.href = data.signedUrl;
+  anchor.target = "_blank";
+  anchor.rel = "noopener noreferrer";
+  anchor.click();
+};
 
 const statusClass: Record<string, string> = {
   open: "bg-amber-500/10 text-amber-300",
@@ -154,6 +171,9 @@ export function AdminSupportPanel({
                 <div className="space-y-2">
                   {messages.map((message: any) => {
                     const fromRequester = message.sender_user_id === ticket.requester_user_id;
+                    const attachmentPaths = Array.isArray(message.attachment_paths)
+                      ? message.attachment_paths
+                      : [];
                     return (
                       <div
                         key={message.id}
@@ -185,6 +205,21 @@ export function AdminSupportPanel({
                         <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-zinc-300">
                           {message.message}
                         </p>
+                        {attachmentPaths.length > 0 ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {attachmentPaths.map((path: string, index: number) => (
+                              <button
+                                key={path}
+                                type="button"
+                                onClick={() => void openSupportAttachment(path)}
+                                className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 bg-black px-3 py-2 text-[11px] font-bold text-zinc-300"
+                              >
+                                <FileText className="h-3.5 w-3.5 text-primary" />
+                                Anexo {index + 1}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     );
                   })}
