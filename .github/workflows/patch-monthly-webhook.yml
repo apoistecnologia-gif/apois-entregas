@@ -1,0 +1,39 @@
+name: Monthly Billing Webhook Patch
+
+on:
+  push:
+    paths:
+      - ".github/workflows/patch-monthly-webhook.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Add merchant monthly PIX reconciliation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('supabase/functions/mercadopago-webhook/index.ts')
+          text = path.read_text()
+          marker = '''  const externalReference = text(providerOrder.external_reference);\n  const internalOrderId = externalReference?.startsWith("apois-order-")'''
+          if marker not in text:
+              raise SystemExit('webhook marker not found')
+          block = '''  const externalReference = text(providerOrder.external_reference);\n\n  const merchantSubscriptionPrefix = "apois-merchant-subscription-";\n  if (externalReference?.startsWith(merchantSubscriptionPrefix)) {\n    const subscriptionId = externalReference.slice(merchantSubscriptionPrefix.length);\n    if (!/^[0-9a-f-]{36}$/i.test(subscriptionId)) {\n      return response(200, { accepted: true, ignored: true });\n    }\n\n    const providerAmount = Number(providerOrder.total_amount);\n    if (!Number.isFinite(providerAmount) || Math.round(providerAmount * 100) !== 6990) {\n      return response(409, { error: "amount_mismatch" });\n    }\n\n    const { data: subscription } = await admin\n      .from("merchant_subscriptions")\n      .select("id,current_period_end")\n      .eq("id", subscriptionId)\n      .maybeSingle();\n    if (!subscription) return response(200, { accepted: true, ignored: true });\n\n    const { data: subscriptionPayment, error: subscriptionPaymentError } = await admin\n      .from("merchant_subscription_payments")\n      .select("id,status,provider_payment_id")\n      .eq("merchant_subscription_id", subscription.id)\n      .eq("provider_authorized_payment_id", dataId)\n      .maybeSingle();\n    if (subscriptionPaymentError) {\n      console.error("merchant subscription webhook payment lookup failed", {\n        code: subscriptionPaymentError.code,\n      });\n      return response(500, { error: "subscription_payment_lookup_failed" });\n    }\n    if (!subscriptionPayment) return response(503, { error: "subscription_payment_not_ready" });\n\n    const transactions = isRecord(providerOrder.transactions) ? providerOrder.transactions : null;\n    const providerPayments =\n      transactions && Array.isArray(transactions.payments) ? transactions.payments : [];\n    const providerPayment =\n      providerPayments.length > 0 && isRecord(providerPayments[0]) ? providerPayments[0] : null;\n    const providerTransactionId = providerPayment ? identifier(providerPayment.id) : null;\n    const providerStatus = text(providerOrder.status) ?? "unknown";\n    const providerStatusDetail = text(providerOrder.status_detail) ?? "unknown";\n    const paymentStatus = providerPayment ? text(providerPayment.status) : null;\n    const paymentStatusDetail = providerPayment ? text(providerPayment.status_detail) : null;\n    const paid =\n      (providerStatus === "processed" && providerStatusDetail === "accredited") ||\n      paymentStatus === "approved" ||\n      (paymentStatus === "processed" && paymentStatusDetail === "accredited");\n    const failed = [\n      providerStatus,\n      providerStatusDetail,\n      paymentStatus,\n      paymentStatusDetail,\n    ].some((value) =>\n      ["canceled", "cancelled", "expired", "failed", "rejected"].includes(value ?? ""),\n    );\n    const now = new Date().toISOString();\n\n    const eventId = `monthly-pix:${dataId}:${providerStatus}:${providerStatusDetail}:${providerTransactionId ?? "none"}`;\n    const { data: existingSubscriptionEvent } = await admin\n      .from("merchant_subscription_events")\n      .select("id")\n      .eq("provider_event_id", eventId)\n      .maybeSingle();\n    if (existingSubscriptionEvent) {\n      return response(200, { accepted: true, duplicate: true });\n    }\n\n    const { data: subscriptionEvent } = await admin\n      .from("merchant_subscription_events")\n      .insert({\n        merchant_subscription_id: subscription.id,\n        provider_event_id: eventId,\n        event_type: "monthly_pix_order",\n        provider_resource_id: dataId,\n        payload: { notification: payload, order: providerOrder },\n      })\n      .select("id")\n      .single();\n\n    if (paid && subscriptionPayment.status !== "approved") {\n      const periodEnd = addOneMonth(now);\n      await admin\n        .from("merchant_subscription_payments")\n        .update({\n          provider_payment_id: providerTransactionId ?? subscriptionPayment.provider_payment_id,\n          status: "approved",\n          paid_at: now,\n          failure_reason: null,\n          provider_payload: providerOrder,\n          updated_at: now,\n        })\n        .eq("id", subscriptionPayment.id);\n      await admin\n        .from("merchant_subscriptions")\n        .update({\n          provider_status: "paid",\n          current_period_start: now,\n          current_period_end: periodEnd,\n          next_payment_at: periodEnd,\n          last_payment_at: now,\n          last_payment_status: "approved",\n          metadata: { environment, billingModel: "monthly_pix" },\n          updated_at: now,\n        })\n        .eq("id", subscription.id);\n    } else if (failed && subscriptionPayment.status !== "approved") {\n      await admin\n        .from("merchant_subscription_payments")\n        .update({\n          provider_payment_id: providerTransactionId ?? subscriptionPayment.provider_payment_id,\n          status: "failed",\n          failure_reason: `${providerStatus}:${providerStatusDetail}`,\n          provider_payload: providerOrder,\n          updated_at: now,\n        })\n        .eq("id", subscriptionPayment.id);\n    } else if (!paid && !failed && subscriptionPayment.status !== "approved") {\n      await admin\n        .from("merchant_subscription_payments")\n        .update({\n          provider_payment_id: providerTransactionId ?? subscriptionPayment.provider_payment_id,\n          status: "pending",\n          provider_payload: providerOrder,\n          updated_at: now,\n        })\n        .eq("id", subscriptionPayment.id);\n    }\n\n    if (subscriptionEvent) {\n      await admin\n        .from("merchant_subscription_events")\n        .update({ processed_at: now })\n        .eq("id", subscriptionEvent.id);\n    }\n\n    return response(200, {\n      accepted: true,\n      processed: paid ? "approved" : failed ? "failed" : "pending",\n      verification: signatureValid ? "hmac" : "sandbox_provider_lookup",\n    });\n  }\n\n  const internalOrderId = externalReference?.startsWith("apois-order-")'''
+          path.write_text(text.replace(marker, block, 1))
+          PY
+      - name: Format webhook
+        run: bunx prettier --write supabase/functions/mercadopago-webhook/index.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: monthly-webhook-file
+          path: supabase/functions/mercadopago-webhook/index.ts
+          if-no-files-found: error
