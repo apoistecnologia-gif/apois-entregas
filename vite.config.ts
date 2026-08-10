@@ -6,7 +6,7 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-const isMobileBuild = process.env.APOIS_MOBILE_BUILD === "1";
+const isMobileBuild = process.env["APOIS_MOBILE_BUILD"] === "1";
 
 export default defineConfig({
   tanstackStart: {
