@@ -31,6 +31,35 @@ function json(request: Request, status: number, body: JsonRecord) {
   });
 }
 
+function safeProviderError(payload: unknown) {
+  if (!isRecord(payload)) return null;
+  const causes = Array.isArray(payload.cause)
+    ? payload.cause
+        .slice(0, 5)
+        .map((cause) => {
+          if (!isRecord(cause)) return null;
+          return {
+            code:
+              typeof cause.code === "string" || typeof cause.code === "number"
+                ? cause.code
+                : null,
+            description: text(cause.description),
+          };
+        })
+        .filter(Boolean)
+    : [];
+  return {
+    message: text(payload.message),
+    error: text(payload.error),
+    status: text(payload.status),
+    code:
+      typeof payload.code === "string" || typeof payload.code === "number"
+        ? payload.code
+        : null,
+    causes,
+  };
+}
+
 function addOneMonth(value: string): string {
   const date = new Date(value);
   const originalDay = date.getUTCDate();
@@ -49,7 +78,6 @@ function safeReturnUrl(request: Request, requested: unknown): string {
     ? `${requestOrigin.replace(/\/$/, "")}/merchant`
     : "https://apoisentrega.com.br/merchant";
   const candidate = text(requested) ?? fallback;
-
   try {
     const url = new URL(candidate);
     if (
@@ -82,11 +110,11 @@ Deno.serve(async (request: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const environment = (Deno.env.get("MERCADO_PAGO_ENVIRONMENT") ?? "test").trim().toLowerCase();
-  const accessToken =
-    environment === "production"
-      ? Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION")?.trim()
-      : Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_TEST")?.trim() ||
-        Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN")?.trim();
+  const testMode = environment !== "production";
+  const accessToken = testMode
+    ? Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_TEST")?.trim() ||
+      Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN")?.trim()
+    : Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION")?.trim();
   const apiBase = (Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com").replace(
     /\/$/,
     "",
@@ -214,13 +242,11 @@ Deno.serve(async (request: Request) => {
             String(a.debit_date ?? a.date_created ?? ""),
           ),
         );
-        for (const invoice of invoices) {
-          const payment = isRecord(invoice.payment) ? invoice.payment : null;
-          if (text(payment?.status) === "approved") {
-            approvedInvoice = invoice;
-            break;
-          }
-        }
+        approvedInvoice =
+          invoices.find((invoice) => {
+            const payment = isRecord(invoice.payment) ? invoice.payment : null;
+            return text(payment?.status) === "approved";
+          }) ?? null;
       }
     }
 
@@ -283,7 +309,7 @@ Deno.serve(async (request: Request) => {
 
   const accessAllowed = Boolean(
     subscription.current_period_end &&
-    new Date(subscription.current_period_end).getTime() > Date.now(),
+      new Date(subscription.current_period_end).getTime() > Date.now(),
   );
 
   if (action === "sync" || accessAllowed) {
@@ -316,12 +342,9 @@ Deno.serve(async (request: Request) => {
   }
 
   const returnUrl = safeReturnUrl(request, body.returnUrl);
-  const payerEmail =
-    environment === "production"
-      ? (user.email ?? merchant.contact_email)
-      : Deno.env.get("MERCADO_PAGO_TEST_PAYER_EMAIL")?.trim() ||
-        user.email ||
-        merchant.contact_email;
+  const payerEmail = testMode
+    ? Deno.env.get("MERCADO_PAGO_TEST_PAYER_EMAIL")?.trim() || "test_user_br@testuser.com"
+    : user.email ?? merchant.contact_email;
   if (!payerEmail) return json(request, 409, { error: "payer_email_required" });
 
   const preapprovalPayload = {
@@ -350,13 +373,16 @@ Deno.serve(async (request: Request) => {
   });
   const providerRaw: unknown = await providerResponse.json().catch(() => null);
   if (!providerResponse.ok || !isRecord(providerRaw)) {
+    const provider = safeProviderError(providerRaw);
     console.error("merchant-subscription provider create failed", {
       status: providerResponse.status,
-      providerRaw,
+      provider,
+      testMode,
     });
     return json(request, 502, {
       error: "provider_subscription_failed",
-      status: providerResponse.status,
+      providerStatus: providerResponse.status,
+      provider,
     });
   }
 
