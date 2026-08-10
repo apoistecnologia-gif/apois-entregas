@@ -321,7 +321,8 @@ function CourierApp() {
         setBusy("online");
         const { error } = await rpc("set_courier_online", { _is_online: true });
         if (error) throw error;
-        setCurrentPosition({
+
+        const initialPosition: CourierPosition = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
           accuracy: Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : null,
@@ -334,7 +335,19 @@ function CourierApp() {
               ? position.coords.speed
               : null,
           recordedAt: Date.now(),
+        };
+        const { error: locationError } = await rpc("update_courier_location", {
+          _latitude: initialPosition.lat,
+          _longitude: initialPosition.lng,
+          _accuracy_meters: initialPosition.accuracy,
+          _heading: initialPosition.heading,
+          _speed_mps: initialPosition.speed,
         });
+        if (locationError) {
+          await rpc("set_courier_online", { _is_online: false });
+          throw locationError;
+        }
+        setCurrentPosition(initialPosition);
       } catch (error: any) {
         setBusy(null);
         return toast.error(error?.message || "Ative a localização para ficar online.");
