@@ -61,7 +61,10 @@ function SacolaPage() {
   const subtotal = totalPrice;
 
   const handleFinishOrder = () => {
-    if (items.length === 0) return;
+    if (items.length === 0) {
+      navigate({ to: "/inicio" });
+      return;
+    }
     sessionStorage.setItem("apois_payment_method", "pix");
     navigate({ to: "/checkout" });
   };
