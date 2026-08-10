@@ -30,6 +30,10 @@ jobs:
       APOIS_MOBILE_PRODUCT: ${{ inputs.product || 'courier' }}
       APOIS_MOBILE_BUILD: "1"
       VITE_APOIS_PRODUCT_MODE: ${{ inputs.product || 'courier' }}
+      VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+      VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+      VITE_GOOGLE_MAPS_MAP_ID: ci-placeholder
 
     steps:
       - name: Checkout
