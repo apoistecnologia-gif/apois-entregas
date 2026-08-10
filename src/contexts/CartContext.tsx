@@ -57,35 +57,59 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [merchant, setMerchant] = useState<CartMerchant | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Carrega o estado persistido somente no cliente. A flag impede que o efeito de
-  // persistência apague a sacola antes desta leitura terminar durante hydration/reload.
+  // Carrega e saneia o estado persistido somente no cliente. A sacola nunca pode
+  // conter itens de estabelecimentos diferentes, mesmo se o localStorage estiver
+  // antigo, parcialmente corrompido ou tiver sido alterado manualmente.
   useEffect(() => {
     const savedCart = localStorage.getItem("apois_cart");
     const savedMerchant = localStorage.getItem("apois_merchant");
 
-    if (savedCart) {
+    let restoredMerchant: CartMerchant | null = null;
+    if (savedMerchant) {
+      try {
+        const parsedMerchant = JSON.parse(savedMerchant);
+        if (parsedMerchant?.id && typeof parsedMerchant.id === "string") {
+          restoredMerchant = parsedMerchant as CartMerchant;
+        }
+      } catch (e) {
+        console.error("Erro ao carregar estabelecimento da sacola:", e);
+      }
+    }
+
+    let restoredItems: CartItem[] = [];
+    if (savedCart && restoredMerchant) {
       try {
         const parsedCart = JSON.parse(savedCart);
         if (Array.isArray(parsedCart)) {
-          const normalizedCart = parsedCart.map((item: any) => ({
-            ...item,
-            lineId: item.lineId || item.id,
-            basePrice: item.basePrice !== undefined ? item.basePrice : item.price,
-            selectedOptions: item.selectedOptions || [],
-          }));
-          setItems(normalizedCart);
+          restoredItems = parsedCart
+            .filter(
+              (item: any) =>
+                item &&
+                typeof item.id === "string" &&
+                typeof item.merchantId === "string" &&
+                item.merchantId === restoredMerchant?.id &&
+                Number.isFinite(Number(item.quantity)) &&
+                Number(item.quantity) > 0,
+            )
+            .map((item: any) => ({
+              ...item,
+              lineId: item.lineId || item.id,
+              quantity: Number(item.quantity),
+              basePrice: item.basePrice !== undefined ? item.basePrice : item.price,
+              selectedOptions: Array.isArray(item.selectedOptions) ? item.selectedOptions : [],
+            }));
         }
       } catch (e) {
         console.error("Erro ao carregar itens da sacola:", e);
       }
     }
 
-    if (savedMerchant) {
-      try {
-        setMerchant(JSON.parse(savedMerchant));
-      } catch (e) {
-        console.error("Erro ao carregar estabelecimento da sacola:", e);
-      }
+    if (restoredMerchant && restoredItems.length > 0) {
+      setMerchant(restoredMerchant);
+      setItems(restoredItems);
+    } else {
+      setMerchant(null);
+      setItems([]);
     }
 
     setIsHydrated(true);
@@ -97,7 +121,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isHydrated) return;
 
     localStorage.setItem("apois_cart", JSON.stringify(items));
-    if (merchant) {
+    if (merchant && items.length > 0) {
       localStorage.setItem("apois_merchant", JSON.stringify(merchant));
     } else {
       localStorage.removeItem("apois_merchant");
@@ -112,18 +136,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
     merchantData: CartMerchant,
   ) => {
-    if (!merchant || merchant.id !== merchantData.id) {
-      setMerchant(merchantData);
-    }
-
     const basePrice = newItem.basePrice !== undefined ? newItem.basePrice : newItem.price;
     const selectedOptions = newItem.selectedOptions || [];
 
-    // Calcula o preço unitário final
+    // Calcula o preço unitário final. O backend recalcula os valores oficiais no
+    // checkout; este valor existe somente para a experiência da sacola.
     const priceDelta = selectedOptions.reduce((acc, opt) => acc + opt.priceDelta, 0);
     const finalUnitPrice = basePrice + priceDelta;
 
-    // Gera o lineId determinístico
+    // Gera o lineId determinístico.
     let lineId = newItem.id;
     if (selectedOptions.length > 0) {
       const sortedOptionIds = [...selectedOptions]
@@ -133,15 +154,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       lineId = `${newItem.id}::${sortedOptionIds}`;
     }
 
+    setMerchant(merchantData);
     setItems((prev) => {
-      const existingItem = prev.find((item) => item.lineId === lineId);
+      // Defesa em profundidade: o fluxo da loja já pede confirmação antes de trocar
+      // de estabelecimento, mas o estado global também impede mistura caso outro
+      // chamador ou um estado persistido inconsistente tente fazê-la.
+      const sameMerchantItems = prev.every((item) => item.merchantId === merchantData.id)
+        ? prev
+        : [];
+      const existingItem = sameMerchantItems.find((item) => item.lineId === lineId);
       if (existingItem) {
-        return prev.map((item) =>
+        return sameMerchantItems.map((item) =>
           item.lineId === lineId ? { ...item, quantity: item.quantity + 1 } : item,
         );
       }
       return [
-        ...prev,
+        ...sameMerchantItems,
         {
           ...newItem,
           lineId,
