@@ -17,8 +17,14 @@ export default defineConfig({
       ? {
           spa: {
             enabled: true,
+            // Keep the shell-generation request away from product landing redirects/guards.
+            // TanStack renders only the root shell for this mask path and the hydrated
+            // client router then resolves the real product URL normally.
+            maskPath: "/__apois_mobile_shell__",
             prerender: {
               outputPath: "/index.html",
+              crawlLinks: false,
+              retryCount: 0,
             },
           },
         }
