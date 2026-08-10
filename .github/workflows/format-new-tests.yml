@@ -1,0 +1,70 @@
+name: Format new tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/format-new-tests.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: format-new-tests
+  cancel-in-progress: false
+
+jobs:
+  format-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Format test sources
+        run: bunx prettier src/lib/merchant-hours.test.ts src/lib/payout-attempt.test.ts --write
+      - name: Verify
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          bun run build
+          bun run typecheck
+          bun run test
+          bun run format:check
+          bun run lint
+      - name: Commit and safely integrate concurrent main updates
+        env:
+          VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+          VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+        run: |
+          git config user.name "franciel046631"
+          git config user.email "franciellopes22@gmail.com"
+          rm -f .github/workflows/format-new-tests.yml
+          git add -A
+          git commit -m "style: format production tests"
+          for attempt in 1 2 3; do
+            git fetch origin main
+            if ! git merge-base --is-ancestor origin/main HEAD; then
+              git merge --no-edit origin/main
+              bunx prettier src/lib/merchant-hours.test.ts src/lib/payout-attempt.test.ts --write
+              git add -A
+              if ! git diff --cached --quiet; then
+                git commit -m "chore: reconcile test formatting"
+              fi
+              bun run build
+              bun run typecheck
+              bun run test
+              bun run format:check
+              bun run lint
+            fi
+            if git push origin HEAD:main; then exit 0; fi
+          done
+          exit 1
