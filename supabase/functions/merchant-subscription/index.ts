@@ -79,7 +79,8 @@ function addOneMonth(value: string): string {
 
 function providerPayment(order: JsonRecord): JsonRecord | null {
   const transactions = isRecord(order.transactions) ? order.transactions : null;
-  const payments = transactions && Array.isArray(transactions.payments) ? transactions.payments : [];
+  const payments =
+    transactions && Array.isArray(transactions.payments) ? transactions.payments : [];
   return payments.length > 0 && isRecord(payments[0]) ? payments[0] : null;
 }
 
@@ -219,9 +220,12 @@ Deno.serve(async (request: Request) => {
     const providerOrderId = text(paymentRow?.provider_authorized_payment_id);
     if (!providerOrderId) return false;
 
-    const providerResponse = await fetch(`${apiBase}/v1/orders/${encodeURIComponent(providerOrderId)}`, {
-      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
-    });
+    const providerResponse = await fetch(
+      `${apiBase}/v1/orders/${encodeURIComponent(providerOrderId)}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+      },
+    );
     const raw: unknown = await providerResponse.json().catch(() => null);
     if (!providerResponse.ok || !isRecord(raw)) return false;
 
@@ -309,7 +313,7 @@ Deno.serve(async (request: Request) => {
 
   const accessAllowed = Boolean(
     subscription.current_period_end &&
-      new Date(subscription.current_period_end).getTime() > Date.now(),
+    new Date(subscription.current_period_end).getTime() > Date.now(),
   );
 
   const baseResponse = () => ({
@@ -375,7 +379,9 @@ Deno.serve(async (request: Request) => {
   const mode = testMode ? "test" : "prod";
   const idempotencyKey = `mercadopago:merchant-subscription:${subscription.id}:pix:${mode}:attempt:${attemptNumber}`;
   const externalReference = `apois-merchant-subscription-${subscription.id}`;
-  const payerEmail = testMode ? "test_user_br@testuser.com" : user.email ?? merchant.contact_email;
+  const payerEmail = testMode
+    ? "test_user_br@testuser.com"
+    : (user.email ?? merchant.contact_email);
   if (!payerEmail) return json(request, 409, { error: "payer_email_required" });
 
   const providerBody = testMode
@@ -489,7 +495,7 @@ Deno.serve(async (request: Request) => {
     ok: true,
     accessAllowed: Boolean(
       subscription.current_period_end &&
-        new Date(subscription.current_period_end).getTime() > Date.now(),
+      new Date(subscription.current_period_end).getTime() > Date.now(),
     ),
     testMode,
     payment: {
