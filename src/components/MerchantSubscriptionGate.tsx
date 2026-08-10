@@ -30,6 +30,29 @@ function statusLabel(value: string | null | undefined) {
   }
 }
 
+async function subscriptionErrorMessage(error: unknown): Promise<string> {
+  const fallback = "Não foi possível abrir o pagamento da mensalidade.";
+  if (!error || typeof error !== "object") return fallback;
+
+  const context = "context" in error ? (error as { context?: unknown }).context : null;
+  if (context instanceof Response) {
+    try {
+      const payload = (await context.clone().json()) as any;
+      const provider = payload?.provider;
+      const firstCause = Array.isArray(provider?.causes) ? provider.causes[0] : null;
+      const providerDetail =
+        provider?.message || provider?.error || firstCause?.description || payload?.error;
+      if (providerDetail) return `Mercado Pago: ${String(providerDetail)}`;
+    } catch {
+      // O corpo de erro pode não ser JSON; caímos para a mensagem padrão abaixo.
+    }
+  }
+
+  return "message" in error && typeof (error as { message?: unknown }).message === "string"
+    ? String((error as { message: string }).message)
+    : fallback;
+}
+
 export function MerchantSubscriptionGate({
   merchant,
   subscription,
@@ -37,9 +60,11 @@ export function MerchantSubscriptionGate({
   onLogout,
 }: MerchantSubscriptionGateProps) {
   const [busy, setBusy] = useState<"checkout" | "sync" | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   const checkout = async () => {
     setBusy("checkout");
+    setLastError(null);
     try {
       const returnUrl = `${window.location.origin}/merchant`;
       const { data, error } = await supabase.functions.invoke("merchant-subscription", {
@@ -54,8 +79,10 @@ export function MerchantSubscriptionGate({
       const checkoutUrl = String(data?.checkoutUrl ?? "");
       if (!checkoutUrl) throw new Error("O Mercado Pago não retornou o link da assinatura.");
       window.location.assign(checkoutUrl);
-    } catch (error: any) {
-      toast.error(error?.message || "Não foi possível abrir o pagamento da mensalidade.");
+    } catch (error: unknown) {
+      const message = await subscriptionErrorMessage(error);
+      setLastError(message);
+      toast.error(message);
     } finally {
       setBusy(null);
     }
@@ -63,6 +90,7 @@ export function MerchantSubscriptionGate({
 
   const sync = async () => {
     setBusy("sync");
+    setLastError(null);
     try {
       const { data, error } = await supabase.functions.invoke("merchant-subscription", {
         body: { action: "sync" },
@@ -74,8 +102,10 @@ export function MerchantSubscriptionGate({
       } else {
         toast.info("O pagamento ainda não consta como aprovado no Mercado Pago.");
       }
-    } catch (error: any) {
-      toast.error(error?.message || "Não foi possível atualizar a assinatura.");
+    } catch (error: unknown) {
+      const message = await subscriptionErrorMessage(error);
+      setLastError(message);
+      toast.error(message);
     } finally {
       setBusy(null);
     }
@@ -131,6 +161,12 @@ export function MerchantSubscriptionGate({
             mensalidade vencer sem pagamento aprovado, o painel operacional e novos pedidos ficam
             bloqueados até a regularização.
           </div>
+
+          {lastError ? (
+            <div className="mt-4 rounded-2xl border border-red-900/70 bg-red-950/30 p-4 text-sm text-red-200">
+              <strong>Falha ao abrir o Mercado Pago:</strong> {lastError}
+            </div>
+          ) : null}
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <Button type="button" onClick={() => void checkout()} disabled={busy !== null}>
