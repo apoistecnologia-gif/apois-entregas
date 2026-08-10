@@ -52,6 +52,16 @@ jobs:
       - name: Install web dependencies
         run: bun install --frozen-lockfile
 
+      - name: Prepare TanStack SPA prerender server shim
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/server
+          cat > dist/server/server.js <<'EOF'
+          export { default } from "../../.output/server/index.mjs";
+          export * from "../../.output/server/index.mjs";
+          EOF
+
       - name: Build product web bundle
         shell: bash
         run: |
