@@ -1,11 +1,11 @@
 /// <reference types="@types/google.maps" />
-import { APIProvider, Map, AdvancedMarker } from "@vis.gl/react-google-maps";
-import { useState, useCallback, useEffect, useRef } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, Search, Loader2 } from "lucide-react";
+import { AdvancedMarker, APIProvider, Map } from "@vis.gl/react-google-maps";
+import { Loader2, Navigation, Search } from "lucide-react";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { geocodeAddress, autocompleteAddress, getPlaceDetails } from "@/lib/google-maps.functions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { autocompleteAddress, geocodeAddress, getPlaceDetails } from "@/lib/google-maps.functions";
 import { toast } from "sonner";
 
 interface GoogleMapsAddressSelectorProps {
@@ -22,16 +22,25 @@ interface GoogleMapsAddressSelectorProps {
   initialCenter?: { lat: number; lng: number } | null | undefined;
 }
 
+type AddressSuggestion = {
+  place_id: string;
+  description: string;
+  structured_formatting?: {
+    main_text?: string;
+    secondary_text?: string;
+  };
+};
+
 export function GoogleMapsAddressSelector({
   onAddressSelected,
   initialCenter,
 }: GoogleMapsAddressSelectorProps) {
-  const browserKey =
-    (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY ||
-    (import.meta as any).env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
-  const [markerPos, setMarkerPos] = useState(initialCenter || { lat: -23.5505, lng: -46.6333 }); // Default SP
+  const browserKey = (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+  const mapId = (import.meta as any).env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined;
+  const mapConfigured = Boolean(browserKey && mapId);
+  const [markerPos, setMarkerPos] = useState(initialCenter || { lat: -23.5505, lng: -46.6333 });
   const [searchQuery, setSearchQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [isLocating, setIsLocating] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -40,12 +49,12 @@ export function GoogleMapsAddressSelector({
   const autocompleteFn = useServerFn(autocompleteAddress);
   const detailsFn = useServerFn(getPlaceDetails);
 
-  const parseAddressComponents = (components: any[]) => {
+  const parseAddressComponents = (components: google.maps.GeocoderAddressComponent[]) => {
     const getComponent = (type: string) =>
-      components.find((c: any) => c.types.includes(type))?.long_name || "";
+      components.find((component) => component.types.includes(type))?.long_name || "";
 
     const getShortComponent = (type: string) =>
-      components.find((c: any) => c.types.includes(type))?.short_name || "";
+      components.find((component) => component.types.includes(type))?.short_name || "";
 
     const street = getComponent("route");
     const neighborhood =
@@ -67,17 +76,19 @@ export function GoogleMapsAddressSelector({
     };
   };
 
-  const handleMarkerDragEnd = async (e: google.maps.MapMouseEvent) => {
-    if (!e.latLng) return;
-    const lat = e.latLng.lat();
-    const lng = e.latLng.lng();
+  const handleMarkerDragEnd = async (event: google.maps.MapMouseEvent) => {
+    if (!event.latLng) return;
+    const lat = event.latLng.lat();
+    const lng = event.latLng.lng();
     setMarkerPos({ lat, lng });
 
     try {
       const data = await geocodeFn({ data: { lat, lng } });
-      if (data.results && data.results[0]) {
-        const addr = parseAddressComponents(data.results[0].address_components);
-        onAddressSelected({ ...addr, latitude: lat, longitude: lng });
+      const results = Array.isArray(data.results) ? data.results : [];
+      const first = results[0] as { address_components?: google.maps.GeocoderAddressComponent[] } | undefined;
+      if (first?.address_components) {
+        const address = parseAddressComponents(first.address_components);
+        onAddressSelected({ ...address, latitude: lat, longitude: lng });
       }
     } catch (error) {
       console.error("Geocoding error:", error);
@@ -99,55 +110,74 @@ export function GoogleMapsAddressSelector({
 
         try {
           const data = await geocodeFn({ data: { lat, lng } });
-          if (data.results && data.results[0]) {
-            const addr = parseAddressComponents(data.results[0].address_components);
-            onAddressSelected({ ...addr, latitude: lat, longitude: lng });
+          const results = Array.isArray(data.results) ? data.results : [];
+          const first = results[0] as
+            | { address_components?: google.maps.GeocoderAddressComponent[] }
+            | undefined;
+          if (first?.address_components) {
+            const address = parseAddressComponents(first.address_components);
+            onAddressSelected({ ...address, latitude: lat, longitude: lng });
             toast.success("Localização encontrada!");
+          } else {
+            toast.error("Não foi possível identificar um endereço para esta localização.");
           }
-        } catch (error) {
+        } catch {
           toast.error("Erro ao identificar endereço");
         } finally {
           setIsLocating(false);
         }
       },
-      (error) => {
+      () => {
         setIsLocating(false);
         toast.error("Erro ao obter sua localização. Verifique as permissões.");
       },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 30_000 },
     );
   };
 
-  const handleSearch = async (val: string) => {
-    setSearchQuery(val);
-    if (val.length < 3) {
+  const handleSearch = async (value: string) => {
+    setSearchQuery(value);
+    if (!mapConfigured || value.trim().length < 3) {
       setSuggestions([]);
       return;
     }
 
     try {
-      const data = await autocompleteFn({ data: { input: val } });
-      setSuggestions(data.predictions || []);
+      const data = await autocompleteFn({ data: { input: value } });
+      setSuggestions(Array.isArray(data.predictions) ? (data.predictions as AddressSuggestion[]) : []);
     } catch (error) {
       console.error("Autocomplete error:", error);
+      setSuggestions([]);
     }
   };
 
-  const handleSuggestionSelect = async (suggestion: any) => {
+  const handleSuggestionSelect = async (suggestion: AddressSuggestion) => {
     setIsSearching(true);
     setSearchQuery(suggestion.description);
     setSuggestions([]);
 
     try {
       const data = await detailsFn({ data: { placeId: suggestion.place_id } });
-      if (data.result && data.result.geometry) {
-        const { lat, lng } = data.result.geometry.location;
-        const newPos = { lat, lng };
-        setMarkerPos(newPos);
-
-        const addr = parseAddressComponents(data.result.address_components);
-        onAddressSelected({ ...addr, latitude: lat, longitude: lng });
+      const result = data.result as
+        | {
+            geometry?: { location?: { lat?: number; lng?: number } };
+            address_components?: google.maps.GeocoderAddressComponent[];
+          }
+        | undefined;
+      const lat = Number(result?.geometry?.location?.lat);
+      const lng = Number(result?.geometry?.location?.lng);
+      if (
+        result?.address_components &&
+        Number.isFinite(lat) &&
+        Number.isFinite(lng)
+      ) {
+        setMarkerPos({ lat, lng });
+        const address = parseAddressComponents(result.address_components);
+        onAddressSelected({ ...address, latitude: lat, longitude: lng });
+      } else {
+        toast.error("O endereço selecionado não possui coordenadas válidas.");
       }
-    } catch (error) {
+    } catch {
       toast.error("Erro ao carregar detalhes do endereço");
     } finally {
       setIsSearching(false);
@@ -155,90 +185,103 @@ export function GoogleMapsAddressSelector({
   };
 
   return (
-    <APIProvider apiKey={browserKey}>
-      <div className="space-y-4">
+    <div className="space-y-4">
+      <div className="relative">
         <div className="relative">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Buscar endereço ou CEP..."
-              className="bg-zinc-900 border-zinc-800 h-12 pl-10 rounded-xl focus:ring-primary text-white"
-            />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+          <Input
+            value={searchQuery}
+            onChange={(event) => void handleSearch(event.target.value)}
+            placeholder="Buscar endereço ou CEP..."
+            disabled={!mapConfigured || isSearching}
+            className="h-12 rounded-xl border-zinc-800 bg-zinc-900 pl-10 text-white focus:ring-primary"
+          />
+          {isSearching ? (
+            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
+          ) : null}
+        </div>
+
+        {suggestions.length > 0 ? (
+          <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl">
+            {suggestions.map((suggestion) => (
+              <button
+                type="button"
+                key={suggestion.place_id}
+                onClick={() => void handleSuggestionSelect(suggestion)}
+                className="w-full border-b border-zinc-800 p-3 text-left text-sm last:border-0 hover:bg-zinc-800"
+              >
+                <p className="font-medium">{suggestion.structured_formatting?.main_text}</p>
+                <p className="truncate text-xs text-zinc-500">
+                  {suggestion.structured_formatting?.secondary_text}
+                </p>
+              </button>
+            ))}
           </div>
-
-          {suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 z-50 bg-zinc-900 border border-zinc-800 mt-1 rounded-xl shadow-2xl overflow-hidden">
-              {suggestions.map((s) => (
-                <button
-                  key={s.place_id}
-                  onClick={() => handleSuggestionSelect(s)}
-                  className="w-full text-left p-3 hover:bg-zinc-800 text-sm border-b border-zinc-800 last:border-0"
-                >
-                  <p className="font-medium">{s.structured_formatting?.main_text}</p>
-                  <p className="text-zinc-500 text-xs truncate">
-                    {s.structured_formatting?.secondary_text}
-                  </p>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <Button
-          type="button"
-          onClick={handleGetCurrentLocation}
-          disabled={isLocating}
-          className="w-full bg-[#FFD700] text-black hover:bg-[#FFD700]/90 font-bold h-12 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all"
-        >
-          {isLocating ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <>
-              <Navigation className="w-5 h-5 fill-current" />
-              Usar minha localização atual
-            </>
-          )}
-        </Button>
-
-        <div className="relative h-48 w-full rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900">
-          <Map
-            center={markerPos}
-            zoom={15}
-            gestureHandling={"greedy"}
-            disableDefaultUI={true}
-            mapId="DEMO_MAP_ID"
-            onTilesLoaded={() => setIsMapLoaded(true)}
-          >
-            <AdvancedMarker position={markerPos} draggable={true} onDragEnd={handleMarkerDragEnd} />
-          </Map>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleGetCurrentLocation();
-            }}
-            disabled={isLocating}
-            className="absolute bottom-4 right-4 bg-[#FFD700] text-black hover:bg-[#FFD700]/90 w-12 h-12 p-0 rounded-full shadow-lg z-[150] border-2 border-black active:scale-90 transition-all flex items-center justify-center cursor-pointer"
-            title="Usar minha localização atual"
-          >
-            {isLocating ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
-            ) : (
-              <Navigation className="w-6 h-6 fill-current" />
-            )}
-          </button>
-
-          {!isMapLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 z-20">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          )}
-        </div>
+        ) : null}
       </div>
-    </APIProvider>
+
+      <Button
+        type="button"
+        onClick={handleGetCurrentLocation}
+        disabled={isLocating}
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFD700] font-bold text-black shadow-lg transition-all hover:bg-[#FFD700]/90 active:scale-[0.98]"
+      >
+        {isLocating ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : (
+          <>
+            <Navigation className="h-5 w-5 fill-current" />
+            Usar minha localização atual
+          </>
+        )}
+      </Button>
+
+      {mapConfigured ? (
+        <APIProvider apiKey={browserKey!}>
+          <div className="relative h-48 w-full overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+            <Map
+              center={markerPos}
+              zoom={15}
+              gestureHandling="greedy"
+              disableDefaultUI
+              mapId={mapId!}
+              onTilesLoaded={() => setIsMapLoaded(true)}
+            >
+              <AdvancedMarker position={markerPos} draggable onDragEnd={handleMarkerDragEnd} />
+            </Map>
+
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                handleGetCurrentLocation();
+              }}
+              disabled={isLocating}
+              className="absolute bottom-4 right-4 z-[150] flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border-2 border-black bg-[#FFD700] p-0 text-black shadow-lg transition-all hover:bg-[#FFD700]/90 active:scale-90"
+              title="Usar minha localização atual"
+              aria-label="Usar minha localização atual"
+            >
+              {isLocating ? (
+                <Loader2 className="h-6 w-6 animate-spin" />
+              ) : (
+                <Navigation className="h-6 w-6 fill-current" />
+              )}
+            </button>
+
+            {!isMapLoaded ? (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-zinc-900">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : null}
+          </div>
+        </APIProvider>
+      ) : (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-200">
+          O mapa e a busca automática de endereços estão indisponíveis neste ambiente. Você ainda
+          pode usar sua localização atual e preencher os dados do endereço manualmente.
+        </div>
+      )}
+    </div>
   );
 }
