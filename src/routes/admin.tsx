@@ -343,6 +343,93 @@ function AdminWorkspace() {
     await loadAll(true);
   };
 
+  const createFeeRule = async () => {
+    if (cities.length === 0) {
+      toast.error("Cadastre uma cidade antes de criar uma regra financeira.");
+      return;
+    }
+
+    const suggestedCity = cities.find((city) => city.is_active) ?? cities[0];
+    const cityInput = window
+      .prompt("Cidade da regra (Nome/UF):", `${suggestedCity.name}/${suggestedCity.state}`)
+      ?.trim();
+    if (!cityInput) return;
+    const normalized = cityInput.toLocaleLowerCase("pt-BR").replaceAll(" ", "");
+    const city = cities.find(
+      (item) =>
+        `${item.name}/${item.state}`.toLocaleLowerCase("pt-BR").replaceAll(" ", "") === normalized,
+    );
+    if (!city) {
+      toast.error("Cidade não encontrada. Use o formato Nome/UF exibido no painel.");
+      return;
+    }
+
+    const name = window.prompt("Nome da regra:", `Regra ${city.name}/${city.state}`)?.trim();
+    if (!name) return;
+    const commissionRaw = window.prompt("Comissão do estabelecimento (%):", "0");
+    if (commissionRaw === null) return;
+    const courierBaseRaw = window.prompt("Base do entregador (R$):", "0");
+    if (courierBaseRaw === null) return;
+    const perKmRaw = window.prompt("Valor por km do entregador (R$):", "0");
+    if (perKmRaw === null) return;
+    const minimumRaw = window.prompt("Ganho mínimo do entregador (R$):", "0");
+    if (minimumRaw === null) return;
+    const customerFeeRaw = window.prompt("Taxa de serviço do cliente (R$):", "0");
+    if (customerFeeRaw === null) return;
+
+    const values = {
+      commission: Number(commissionRaw.replace(",", ".")),
+      courierBase: Number(courierBaseRaw.replace(",", ".")),
+      perKm: Number(perKmRaw.replace(",", ".")),
+      minimum: Number(minimumRaw.replace(",", ".")),
+      customerFee: Number(customerFeeRaw.replace(",", ".")),
+    };
+    if (
+      !Number.isFinite(values.commission) ||
+      values.commission < 0 ||
+      values.commission > 100 ||
+      !Number.isFinite(values.courierBase) ||
+      values.courierBase < 0 ||
+      !Number.isFinite(values.perKm) ||
+      values.perKm < 0 ||
+      !Number.isFinite(values.minimum) ||
+      values.minimum < 0 ||
+      !Number.isFinite(values.customerFee) ||
+      values.customerFee < 0
+    ) {
+      toast.error("Revise os valores da regra financeira.");
+      return;
+    }
+
+    setBusy("fee:new");
+    const { error } = await rpc("admin_create_fee_rule", {
+      _name: name,
+      _city_id: city.id,
+      _merchant_id: null,
+      _merchant_commission_percent: values.commission,
+      _courier_base_fee: values.courierBase,
+      _courier_per_km: values.perKm,
+      _courier_minimum_fee: values.minimum,
+      _customer_service_fee: values.customerFee,
+    });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success("Regra financeira criada e auditada.");
+    await loadAll(true);
+  };
+
+  const toggleFeeRule = async (rule: any) => {
+    setBusy(`fee:${rule.id}`);
+    const { error } = await rpc("admin_set_fee_rule_active", {
+      _fee_rule_id: rule.id,
+      _is_active: !rule.is_active,
+    });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success(rule.is_active ? "Regra financeira desativada." : "Regra financeira ativada.");
+    await loadAll(true);
+  };
+
   const editFeeRule = async (rule: any) => {
     const commissionRaw = window.prompt(
       "Comissão do estabelecimento (%):",
@@ -666,7 +753,9 @@ function AdminWorkspace() {
           settingsRows={settingsRows}
           busy={busy}
           onToggleCity={toggleCity}
+          onCreateFee={createFeeRule}
           onEditFee={editFeeRule}
+          onToggleFee={toggleFeeRule}
           onEditSetting={editSetting}
         />
       )}
@@ -984,7 +1073,9 @@ function OperationPanel({
   settingsRows,
   busy,
   onToggleCity,
+  onCreateFee,
   onEditFee,
+  onToggleFee,
   onEditSetting,
 }: any) {
   return (
@@ -1021,29 +1112,69 @@ function OperationPanel({
         </div>
       </section>
       <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-        <div className="flex items-center gap-2">
-          <CircleDollarSign className="h-5 w-5 text-primary" />
-          <h2 className="font-black">Regras financeiras</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <CircleDollarSign className="h-5 w-5 text-primary" />
+            <h2 className="font-black">Regras financeiras</h2>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => void onCreateFee()}
+            disabled={busy === "fee:new"}
+          >
+            {busy === "fee:new" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Nova regra
+          </Button>
         </div>
         <div className="mt-4 space-y-2">
           {feeRules.map((rule: any) => (
-            <button
-              type="button"
-              onClick={() => void onEditFee(rule)}
-              disabled={busy === `fee:${rule.id}`}
-              key={rule.id}
-              className="w-full rounded-xl bg-black p-3 text-left disabled:opacity-50"
-            >
-              <div className="flex justify-between">
-                <b>{rule.name}</b>
+            <div key={rule.id} className="rounded-xl bg-black p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <b>{rule.name}</b>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Comissão {rule.merchant_commission_percent}% · entregador{" "}
+                    {money(rule.courier_base_fee)} + {money(rule.courier_per_km)}/km · mínimo{" "}
+                    {money(rule.courier_minimum_fee)} · serviço {money(rule.customer_service_fee)}
+                  </p>
+                </div>
                 <Status value={rule.is_active ? "active" : "inactive"} />
               </div>
-              <p className="mt-1 text-xs text-zinc-500">
-                Comissão {rule.merchant_commission_percent}% · entregador{" "}
-                {money(rule.courier_base_fee)} + {money(rule.courier_per_km)}/km
-              </p>
-            </button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void onEditFee(rule)}
+                  disabled={busy === `fee:${rule.id}`}
+                  className="border-zinc-800"
+                >
+                  Editar valores
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void onToggleFee(rule)}
+                  disabled={busy === `fee:${rule.id}`}
+                  className={
+                    rule.is_active
+                      ? "border-red-500/20 text-red-400"
+                      : "border-emerald-500/20 text-emerald-400"
+                  }
+                >
+                  {rule.is_active ? "Desativar" : "Ativar"}
+                </Button>
+              </div>
+            </div>
           ))}
+          {feeRules.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-zinc-800 p-4 text-sm text-zinc-500">
+              Nenhuma regra financeira criada. Sem regra ativa, a plataforma usa a taxa de entrega
+              da loja e não cobra taxa de serviço/comissão.
+            </div>
+          ) : null}
         </div>
       </section>
       <section className="xl:col-span-2 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">

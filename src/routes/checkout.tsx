@@ -199,6 +199,7 @@ function CheckoutPage() {
   const { items, merchant, totalPrice, clearCart, isHydrated } = useCart();
   const [address, setAddress] = useState<LocalAddressSnapshot | null>(null);
   const [merchantConfig, setMerchantConfig] = useState<MerchantCheckoutConfig | null>(null);
+  const [serviceFee, setServiceFee] = useState(0);
   const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
   const [deliveryQuoteLoading, setDeliveryQuoteLoading] = useState(false);
   const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>("delivery");
@@ -273,6 +274,33 @@ function CheckoutPage() {
   }, [merchant?.id]);
 
   useEffect(() => {
+    if (!merchant?.id) {
+      setServiceFee(0);
+      return;
+    }
+
+    let disposed = false;
+    const loadServiceFee = async () => {
+      const { data, error } = await (supabase.rpc as any)("preview_checkout_fee", {
+        p_merchant_id: merchant.id,
+      });
+      if (disposed) return;
+      if (error) {
+        console.error("Erro ao carregar taxa de serviço:", error);
+        setServiceFee(0);
+        return;
+      }
+      const value = Number(data ?? 0);
+      setServiceFee(Number.isFinite(value) && value >= 0 ? value : 0);
+    };
+
+    void loadServiceFee();
+    return () => {
+      disposed = true;
+    };
+  }, [merchant?.id]);
+
+  useEffect(() => {
     if (fulfillmentType !== "delivery") {
       setDeliveryQuote(null);
       setDeliveryQuoteLoading(false);
@@ -324,7 +352,7 @@ function CheckoutPage() {
         )
       : 0;
   const discount = Number(appliedCoupon?.discount_amount ?? 0);
-  const total = Math.max(0, subtotal + deliveryFee - discount);
+  const total = Math.max(0, subtotal + deliveryFee + serviceFee - discount);
   const minimumOrder = Number(
     fulfillmentType === "delivery" && deliveryQuote?.eligible
       ? deliveryQuote.minimum_order
@@ -762,6 +790,12 @@ function CheckoutPage() {
             <span>{fulfillmentType === "delivery" ? "Taxa de entrega" : "Retirada"}</span>
             <span>R$ {deliveryFee.toFixed(2).replace(".", ",")}</span>
           </div>
+          {serviceFee > 0 ? (
+            <div className="flex justify-between">
+              <span>Taxa de serviço</span>
+              <span>R$ {serviceFee.toFixed(2).replace(".", ",")}</span>
+            </div>
+          ) : null}
           {fulfillmentType === "delivery" && address ? (
             <div
               role="status"
@@ -786,9 +820,11 @@ function CheckoutPage() {
                     : deliveryQuote?.reason === "outside_delivery_zone" ||
                         deliveryQuote?.reason === "outside_default_radius"
                       ? "Este endereço está fora da área de entrega disponível."
-                      : deliveryQuote?.reason === "coordinates_required"
-                        ? "Atualize este endereço pelo mapa para validar a área de entrega."
-                        : "Não foi possível validar a área de entrega agora."}
+                      : deliveryQuote?.reason === "merchant_location_required"
+                        ? "O estabelecimento precisa confirmar a localização da loja antes de liberar entregas."
+                        : deliveryQuote?.reason === "coordinates_required"
+                          ? "Atualize este endereço pelo mapa para validar a área de entrega."
+                          : "Não foi possível validar a área de entrega agora."}
             </div>
           ) : null}
           {discount > 0 ? (
