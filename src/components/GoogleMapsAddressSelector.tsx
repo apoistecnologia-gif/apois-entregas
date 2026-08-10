@@ -5,7 +5,11 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { autocompleteAddress, geocodeAddress, getPlaceDetails } from "@/lib/google-maps.functions";
+import {
+  autocompleteAddress,
+  geocodeAddress,
+  getPlaceDetails,
+} from "@/lib/google-maps.functions";
 import { toast } from "sonner";
 
 interface GoogleMapsAddressSelectorProps {
@@ -85,7 +89,9 @@ export function GoogleMapsAddressSelector({
     try {
       const data = await geocodeFn({ data: { lat, lng } });
       const results = Array.isArray(data.results) ? data.results : [];
-      const first = results[0] as { address_components?: google.maps.GeocoderAddressComponent[] } | undefined;
+      const first = results[0] as
+        | { address_components?: google.maps.GeocoderAddressComponent[] }
+        | undefined;
       if (first?.address_components) {
         const address = parseAddressComponents(first.address_components);
         onAddressSelected({ ...address, latitude: lat, longitude: lng });
@@ -166,11 +172,7 @@ export function GoogleMapsAddressSelector({
         | undefined;
       const lat = Number(result?.geometry?.location?.lat);
       const lng = Number(result?.geometry?.location?.lng);
-      if (
-        result?.address_components &&
-        Number.isFinite(lat) &&
-        Number.isFinite(lng)
-      ) {
+      if (result?.address_components && Number.isFinite(lat) && Number.isFinite(lng)) {
         setMarkerPos({ lat, lng });
         const address = parseAddressComponents(result.address_components);
         onAddressSelected({ ...address, latitude: lat, longitude: lng });
