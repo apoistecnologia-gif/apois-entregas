@@ -34,6 +34,7 @@ import {
   MerchantReviewsPanel,
 } from "@/components/MerchantGrowthPanels";
 import { MerchantCouponsPanel } from "@/components/MerchantCouponsPanel";
+import { MerchantSubscriptionGate } from "@/components/MerchantSubscriptionGate";
 
 export const Route = createFileRoute("/merchant")({
   ssr: false,
@@ -110,6 +111,7 @@ function MerchantWorkspace() {
   const [user, setUser] = useState<any>(null);
   const [membership, setMembership] = useState<any>(null);
   const [merchant, setMerchant] = useState<any>(null);
+  const [subscription, setSubscription] = useState<any>(null);
   const [merchantCategories, setMerchantCategories] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
@@ -268,20 +270,26 @@ function MerchantWorkspace() {
         setMembership(member);
         if (!member) {
           setMerchant(null);
+          setSubscription(null);
           setDocuments([]);
           return;
         }
 
-        const [merchantRes, docsRes] = await Promise.all([
+        const [merchantRes, docsRes, subscriptionRes] = await Promise.all([
           from("merchants").select("*").eq("id", member.merchant_id).maybeSingle(),
           from("merchant_documents")
             .select("*")
             .eq("merchant_id", member.merchant_id)
             .order("created_at"),
+          from("merchant_subscriptions")
+            .select("*")
+            .eq("merchant_id", member.merchant_id)
+            .maybeSingle(),
         ]);
         if (merchantRes.error || !merchantRes.data)
           throw merchantRes.error ?? new Error("Estabelecimento não encontrado.");
         setMerchant(merchantRes.data);
+        setSubscription(subscriptionRes.data ?? null);
         setDocuments(docsRes.data ?? []);
         setSettingsDraft({
           name: String(merchantRes.data.name ?? ""),
@@ -297,7 +305,15 @@ function MerchantWorkspace() {
           temporarilyClosed: Boolean(merchantRes.data.temporarily_closed),
         });
 
-        if (merchantRes.data.approval_status === "approved" && merchantRes.data.is_active) {
+        const periodEnd = subscriptionRes.data?.current_period_end;
+        const subscriptionAllowed = Boolean(
+          periodEnd && new Date(periodEnd).getTime() > Date.now(),
+        );
+        if (
+          merchantRes.data.approval_status === "approved" &&
+          merchantRes.data.is_active &&
+          subscriptionAllowed
+        ) {
           await loadOperations(merchantRes.data.id);
         }
       } catch (error: any) {
@@ -310,12 +326,28 @@ function MerchantWorkspace() {
     [loadOperations],
   );
 
+  const subscriptionAccessAllowed = Boolean(
+    subscription?.current_period_end &&
+    new Date(subscription.current_period_end).getTime() > Date.now(),
+  );
+
   useEffect(() => {
     void loadAll();
   }, [loadAll]);
 
   useEffect(() => {
-    if (!merchant?.id || merchant.approval_status !== "approved") return;
+    if (!subscriptionAccessAllowed || !subscription?.current_period_end) return;
+    const timer = window.setInterval(() => {
+      if (new Date(subscription.current_period_end).getTime() <= Date.now()) {
+        void loadAll(true);
+      }
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [subscriptionAccessAllowed, subscription?.current_period_end, loadAll]);
+
+  useEffect(() => {
+    if (!merchant?.id || merchant.approval_status !== "approved" || !subscriptionAccessAllowed)
+      return;
     const channel = supabase
       .channel(`merchant_orders_${merchant.id}`)
       .on(
@@ -327,7 +359,7 @@ function MerchantWorkspace() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [merchant?.id, merchant?.approval_status, loadOperations]);
+  }, [merchant?.id, merchant?.approval_status, subscriptionAccessAllowed, loadOperations]);
 
   const logout = async () => {
     await supabase.auth.signOut();
@@ -789,6 +821,17 @@ function MerchantWorkspace() {
         onCaptureLocation={captureMerchantLocation}
         onRefresh={() => void loadAll(true)}
         refreshing={refreshing}
+        onLogout={logout}
+      />
+    );
+  }
+
+  if (!subscriptionAccessAllowed) {
+    return (
+      <MerchantSubscriptionGate
+        merchant={merchant}
+        subscription={subscription}
+        onRefresh={() => loadAll(true)}
         onLogout={logout}
       />
     );

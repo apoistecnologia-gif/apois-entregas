@@ -53,7 +53,11 @@ function constantTimeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-async function validSignature(request: Request, dataId: string, secrets: string[]): Promise<boolean> {
+async function validSignature(
+  request: Request,
+  dataId: string,
+  secrets: string[],
+): Promise<boolean> {
   const signature = request.headers.get("x-signature")?.trim();
   if (!signature) return false;
   const { ts, v1 } = parseSignature(signature);
@@ -109,9 +113,7 @@ Deno.serve(async (request: Request) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const environment = (Deno.env.get("MERCADO_PAGO_ENVIRONMENT") ?? "test")
-    .trim()
-    .toLowerCase();
+  const environment = (Deno.env.get("MERCADO_PAGO_ENVIRONMENT") ?? "test").trim().toLowerCase();
   const accessTokenTest =
     Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_TEST")?.trim() ||
     Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN")?.trim() ||
@@ -122,9 +124,10 @@ Deno.serve(async (request: Request) => {
   const webhookSecretProduction =
     Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET_PRODUCTION")?.trim() || null;
   const webhookSecretLegacy = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET")?.trim() || null;
-  const apiBase = (
-    Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com"
-  ).replace(/\/$/, "");
+  const apiBase = (Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com").replace(
+    /\/$/,
+    "",
+  );
   const accessToken = environment === "production" ? accessTokenProduction : accessTokenTest;
   const signatureSecrets = Array.from(
     new Set(
@@ -175,10 +178,9 @@ Deno.serve(async (request: Request) => {
   });
 
   if (notificationType === "subscription_preapproval") {
-    const providerResponse = await fetch(
-      `${apiBase}/preapproval/${encodeURIComponent(dataId)}`,
-      { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } },
-    );
+    const providerResponse = await fetch(`${apiBase}/preapproval/${encodeURIComponent(dataId)}`, {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+    });
     const providerRaw: unknown = await providerResponse.json().catch(() => null);
     if (!providerResponse.ok || !isRecord(providerRaw)) {
       return signatureValid
@@ -324,8 +326,7 @@ Deno.serve(async (request: Request) => {
       { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } },
     );
     const preapprovalRaw: unknown = await preapprovalResponse.json().catch(() => null);
-    const preapproval =
-      preapprovalResponse.ok && isRecord(preapprovalRaw) ? preapprovalRaw : null;
+    const preapproval = preapprovalResponse.ok && isRecord(preapprovalRaw) ? preapprovalRaw : null;
     const providerStatus = text(preapproval?.status) ?? "authorized";
     const nextPaymentAt = text(preapproval?.next_payment_date);
 
@@ -364,8 +365,7 @@ Deno.serve(async (request: Request) => {
   }
 
   const sandboxOrder = isSandboxOrderId(dataId);
-  const sandboxVerifiedByProvider =
-    !signatureValid && environment !== "production" && sandboxOrder;
+  const sandboxVerifiedByProvider = !signatureValid && environment !== "production" && sandboxOrder;
   const providerResponse = await fetch(`${apiBase}/v1/orders/${encodeURIComponent(dataId)}`, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
   });
@@ -402,10 +402,10 @@ Deno.serve(async (request: Request) => {
   const providerStatus = text(providerOrder.status) ?? "unknown";
   const providerStatusDetail = text(providerOrder.status_detail) ?? "unknown";
   const eventType = signatureValid
-    ? text(payload.action) ?? text(payload.type) ?? "order.updated"
+    ? (text(payload.action) ?? text(payload.type) ?? "order.updated")
     : "order.reconciled";
   const providerNotificationId = signatureValid
-    ? identifier(payload.id) ?? `${eventType}:${dataId}:${providerStatus}:${providerStatusDetail}`
+    ? (identifier(payload.id) ?? `${eventType}:${dataId}:${providerStatus}:${providerStatusDetail}`)
     : `provider-reconcile:${dataId}:${providerStatus}:${providerStatusDetail}`;
 
   const { data: internalOrder } = await admin
@@ -514,10 +514,7 @@ Deno.serve(async (request: Request) => {
       .select("id")
       .maybeSingle();
     if (!transitionedOrder) {
-      await admin
-        .from("orders")
-        .update({ payment_status: "refunded" })
-        .eq("id", internalOrder.id);
+      await admin.from("orders").update({ payment_status: "refunded" }).eq("id", internalOrder.id);
     } else {
       await admin.from("order_status_history").insert({
         order_id: internalOrder.id,
@@ -546,10 +543,7 @@ Deno.serve(async (request: Request) => {
       .eq("id", payment.id)
       .in("status", ["pending", "processing"]);
     if (internalOrder.payment_status !== "paid")
-      await admin
-        .from("orders")
-        .update({ payment_status: "failed" })
-        .eq("id", internalOrder.id);
+      await admin.from("orders").update({ payment_status: "failed" }).eq("id", internalOrder.id);
   } else if (processing) {
     await admin
       .from("payments")

@@ -87,9 +87,10 @@ Deno.serve(async (request: Request) => {
       ? Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION")?.trim()
       : Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_TEST")?.trim() ||
         Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN")?.trim();
-  const apiBase = (
-    Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com"
-  ).replace(/\/$/, "");
+  const apiBase = (Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com").replace(
+    /\/$/,
+    "",
+  );
 
   if (!supabaseUrl || !serviceRoleKey || !accessToken) {
     console.error("merchant-subscription environment incomplete", { environment });
@@ -181,7 +182,9 @@ Deno.serve(async (request: Request) => {
 
     const externalReference = text(rawPreapproval.external_reference);
     const expectedReference = `apois-merchant-${merchant.id}`;
-    const recurring = isRecord(rawPreapproval.auto_recurring) ? rawPreapproval.auto_recurring : null;
+    const recurring = isRecord(rawPreapproval.auto_recurring)
+      ? rawPreapproval.auto_recurring
+      : null;
     const amount = numberValue(recurring?.transaction_amount);
     const currency = text(recurring?.currency_id);
     if (
@@ -279,7 +282,8 @@ Deno.serve(async (request: Request) => {
   if (subscription.provider_preapproval_id) await syncProvider();
 
   const accessAllowed = Boolean(
-    subscription.current_period_end && new Date(subscription.current_period_end).getTime() > Date.now(),
+    subscription.current_period_end &&
+    new Date(subscription.current_period_end).getTime() > Date.now(),
   );
 
   if (action === "sync" || accessAllowed) {
@@ -314,7 +318,7 @@ Deno.serve(async (request: Request) => {
   const returnUrl = safeReturnUrl(request, body.returnUrl);
   const payerEmail =
     environment === "production"
-      ? user.email ?? merchant.contact_email
+      ? (user.email ?? merchant.contact_email)
       : Deno.env.get("MERCADO_PAGO_TEST_PAYER_EMAIL")?.trim() ||
         user.email ||
         merchant.contact_email;
