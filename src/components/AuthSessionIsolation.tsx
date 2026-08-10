@@ -2,6 +2,7 @@ import { Fragment, type ReactNode, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const BOUND_USER_KEY = "apois_bound_user_id";
+const CART_OWNER_KEY = "apois_cart_owner_id";
 const SENSITIVE_SESSION_KEYS = ["apois_active_pix", "apois_checkout_attempt"] as const;
 const CART_STORAGE_KEYS = ["apois_cart", "apois_merchant"] as const;
 
@@ -11,12 +12,17 @@ function clearSensitiveCheckoutState() {
 
 function clearUserCartState() {
   for (const key of CART_STORAGE_KEYS) localStorage.removeItem(key);
+  localStorage.removeItem(CART_OWNER_KEY);
+}
+
+function hasPersistedCart() {
+  return Boolean(localStorage.getItem("apois_cart") || localStorage.getItem("apois_merchant"));
 }
 
 /**
  * Keeps browser-persisted operational state scoped to the authenticated account.
  *
- * A tab can be reused after logout/login by another person. Without this boundary,
+ * A tab or device browser can be reused by another person. Without this boundary,
  * sessionStorage could still contain the previous customer's PIX QR code and checkout
  * attempt, while localStorage could contain their cart. The application waits for the
  * current Supabase session before mounting route content, clears stale state when the
@@ -30,22 +36,30 @@ export function AuthSessionIsolation({ children }: { children: ReactNode }) {
     let disposed = false;
 
     const bindIdentity = (nextUserId: string | null) => {
-      const previousUserId = sessionStorage.getItem(BOUND_USER_KEY);
+      const previousTabUserId = sessionStorage.getItem(BOUND_USER_KEY);
+      const persistedCartOwnerId = localStorage.getItem(CART_OWNER_KEY);
 
       if (!nextUserId) {
         clearSensitiveCheckoutState();
-        if (previousUserId) clearUserCartState();
+
+        // This also protects a fresh browser session: sessionStorage may already have
+        // expired, while an authenticated user's cart can still exist in localStorage.
+        if (previousTabUserId || persistedCartOwnerId) clearUserCartState();
         sessionStorage.removeItem(BOUND_USER_KEY);
       } else {
-        if (!previousUserId) {
-          // Protect tabs created before this isolation marker existed. The active PIX
-          // can be regenerated safely, while a guest cart may continue into login.
+        if (!previousTabUserId || previousTabUserId !== nextUserId) {
           clearSensitiveCheckoutState();
-        } else if (previousUserId !== nextUserId) {
-          clearSensitiveCheckoutState();
+        }
+
+        if (persistedCartOwnerId && persistedCartOwnerId !== nextUserId) {
           clearUserCartState();
         }
+
         sessionStorage.setItem(BOUND_USER_KEY, nextUserId);
+
+        // A cart with no owner marker is treated as a genuine guest cart and may follow
+        // the guest through login. From this point onward it is bound to this account.
+        if (hasPersistedCart()) localStorage.setItem(CART_OWNER_KEY, nextUserId);
       }
 
       if (!disposed) {
