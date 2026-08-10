@@ -87,16 +87,18 @@ Antes de aplicar em produção, confira sempre o project ref e o ambiente alvo.
 - Saques com reserva de saldo e proteção contra repetição.
 - Estornos, webhooks e conciliação protegidos contra processamento duplicado.
 - PIN de confirmação de entrega armazenado fora das leituras públicas do pedido.
+- Acesso operacional do estabelecimento condicionado à mensalidade vigente.
 
 ## Edge Functions
 
-As funções versionadas ficam em `supabase/functions/`. Entre os fluxos principais estão criação do pedido, criação/reconciliação do PIX, webhook do Mercado Pago, estorno e APIs autenticadas do cliente/suporte.
+As funções versionadas ficam em `supabase/functions/`. Entre os fluxos principais estão criação do pedido, criação/reconciliação do PIX, cobrança da mensalidade do estabelecimento, webhook do Mercado Pago, estorno e APIs autenticadas do cliente/suporte.
 
 Exemplo de deploy:
 
 ```sh
 supabase functions deploy create-order
 supabase functions deploy create-pix-charge
+supabase functions deploy merchant-subscription
 supabase functions deploy sync-payment-status
 supabase functions deploy process-refund
 supabase functions deploy customer-support
@@ -110,6 +112,8 @@ O webhook do Mercado Pago não usa JWT do usuário porque recebe chamadas extern
 Em homologação, `MERCADO_PAGO_ENVIRONMENT=test` seleciona as credenciais de teste. Em produção, configure separadamente as credenciais de produção e altere explicitamente o ambiente para `production` somente depois do webhook e dos secrets de produção estarem prontos.
 
 O frontend nunca confirma pagamento por conta própria. A fonte de verdade é o gateway consultado pelo backend/webhook, com persistência idempotente no banco.
+
+A mensalidade do estabelecimento é de **R$ 69,90 por mês**, sem comissão sobre pedidos e sem taxa de serviço para o cliente. O fluxo atual gera um PIX mensal de R$ 69,90 pelo Mercado Pago. O pagamento aprovado abre um período operacional de um mês; quando o período termina sem nova mensalidade paga, os helpers de autorização e a criação de novos pedidos bloqueiam automaticamente o estabelecimento até a regularização. O painel também reconcilia a cobrança com o provedor ao abrir, ao voltar ao foco e enquanto um PIX pendente está na tela.
 
 As regras financeiras podem ser configuradas pelo admin por cidade/estabelecimento. O checkout consulta a taxa de serviço real do backend. A liquidação de pedido entregue calcula e credita as carteiras de estabelecimento, entregador e plataforma sem criar saldo artificial.
 
@@ -130,6 +134,10 @@ Chamados de suporte possuem conversa em tempo real e anexos privados. O bucket `
 ## Relatórios
 
 O painel do estabelecimento possui relatórios operacionais e exportação CSV do período permitido. O painel administrativo possui filtros por período e exportação de dados operacionais para auditoria/análise.
+
+## Aplicativos móveis
+
+As experiências de Cliente e Entregador já existem como interfaces mobile-first dentro do projeto e compartilham o backend real. O empacotamento nativo Android/iOS, assinatura, ícones/splash, permissões finais e publicação nas lojas são uma etapa separada de release. Não trate a aplicação web responsiva como APK/AAB/IPA concluído.
 
 ## Verificação local
 
@@ -172,11 +180,12 @@ Antes do go-live, ative **Leaked Password Protection** no painel do Supabase Aut
 Estas pendências não devem ser resolvidas com valores inventados no código:
 
 1. Credenciais reais do Mercado Pago (`MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION`) e webhook secret de produção.
-2. Alteração explícita para `MERCADO_PAGO_ENVIRONMENT=production` e smoke test PIX real de baixo valor.
+2. Alteração explícita para `MERCADO_PAGO_ENVIRONMENT=production` e smoke test PIX real de baixo valor, incluindo a mensalidade do estabelecimento.
 3. Provedor/credencial de payout para automatizar a transferência externa dos saques; o ledger e o fluxo interno já estão protegidos.
 4. Ativação manual de Leaked Password Protection no Supabase Auth.
-5. Captura física da localização dos estabelecimentos reais que ainda estiverem sem latitude/longitude.
-6. Caso seja exigido push fora da aplicação, configurar o provedor/credenciais de push antes de habilitar entrega externa; o sistema não inventa um provedor.
+5. Caso seja exigido push fora da aplicação, configurar o provedor/credenciais de push antes de habilitar entrega externa; o sistema não inventa um provedor.
+6. Homologação física ponta a ponta em aparelhos reais: cliente → pagamento → estabelecimento → entregador → PIN → entrega → liquidação.
+7. Empacotamento e assinatura dos aplicativos Cliente e Entregador para Android/iOS, seguido da publicação nas lojas.
 
 ## Deploy de produção
 
@@ -188,4 +197,4 @@ Estas pendências não devem ser resolvidas com valores inventados no código:
 6. Ative Leaked Password Protection no Supabase Auth.
 7. Defina `MERCADO_PAGO_ENVIRONMENT=production` somente depois das credenciais e webhook estarem prontos.
 8. Gere o build do mesmo commit aprovado e publique no host escolhido.
-9. Execute smoke test de autenticação, pedido, pagamento, estabelecimento, despacho, coleta, PIN, entrega, liquidação, avaliação, suporte e administração.
+9. Execute smoke test de autenticação, pedido, pagamento, mensalidade, estabelecimento, despacho, coleta, PIN, entrega, liquidação, avaliação, suporte e administração.
