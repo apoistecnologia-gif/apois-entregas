@@ -187,23 +187,46 @@ Deno.serve(async (request: Request) => {
         ? response(200, { accepted: true, ignored: true })
         : response(401, { error: "sandbox_resource_not_verified" });
     }
-    if (identifier(providerRaw.id) !== dataId)
+    if (identifier(providerRaw.id) !== dataId) {
       return response(409, { error: "provider_resource_mismatch" });
+    }
 
-    const merchantId = merchantIdFromReference(text(providerRaw.external_reference));
     const recurring = isRecord(providerRaw.auto_recurring) ? providerRaw.auto_recurring : null;
     const amount = numberValue(recurring?.transaction_amount);
     const currency = text(recurring?.currency_id);
-    if (!merchantId || amount === null || Math.round(amount * 100) !== 6990 || currency !== "BRL") {
+    if (amount === null || Math.round(amount * 100) !== 6990 || currency !== "BRL") {
       return response(200, { accepted: true, ignored: true });
     }
 
-    const { data: subscription } = await admin
-      .from("merchant_subscriptions")
-      .select("id,merchant_id")
-      .eq("merchant_id", merchantId)
-      .maybeSingle();
+    const merchantId = merchantIdFromReference(text(providerRaw.external_reference));
+    const providerPlanId = identifier(providerRaw.preapproval_plan_id);
+    let subscription: { id: string; merchant_id: string; provider_plan_id: string | null } | null =
+      null;
+
+    if (merchantId) {
+      const result = await admin
+        .from("merchant_subscriptions")
+        .select("id,merchant_id,provider_plan_id")
+        .eq("merchant_id", merchantId)
+        .maybeSingle();
+      subscription = result.data ?? null;
+    } else if (providerPlanId) {
+      const result = await admin
+        .from("merchant_subscriptions")
+        .select("id,merchant_id,provider_plan_id")
+        .eq("provider_plan_id", providerPlanId)
+        .maybeSingle();
+      subscription = result.data ?? null;
+    }
+
     if (!subscription) return response(200, { accepted: true, ignored: true });
+    if (
+      subscription.provider_plan_id &&
+      providerPlanId &&
+      subscription.provider_plan_id !== providerPlanId
+    ) {
+      return response(409, { error: "provider_plan_mismatch" });
+    }
 
     const providerStatus = text(providerRaw.status) ?? "unknown";
     const eventId = `${notificationType}:${identifier(payload.id) ?? dataId}:${providerStatus}`;
@@ -230,19 +253,20 @@ Deno.serve(async (request: Request) => {
     await admin
       .from("merchant_subscriptions")
       .update({
+        provider_plan_id: providerPlanId ?? subscription.provider_plan_id,
         provider_preapproval_id: dataId,
         provider_status: providerStatus,
-        checkout_url: text(providerRaw.init_point),
         next_payment_at: text(providerRaw.next_payment_date),
-        metadata: { environment },
+        metadata: { environment, billingModel: "provider_plan_checkout" },
         updated_at: now,
       })
       .eq("id", subscription.id);
-    if (eventRow)
+    if (eventRow) {
       await admin
         .from("merchant_subscription_events")
         .update({ processed_at: now })
         .eq("id", eventRow.id);
+    }
 
     return response(200, {
       accepted: true,
@@ -262,8 +286,9 @@ Deno.serve(async (request: Request) => {
         ? response(200, { accepted: true, ignored: true })
         : response(401, { error: "sandbox_resource_not_verified" });
     }
-    if (identifier(invoiceRaw.id) !== dataId)
+    if (identifier(invoiceRaw.id) !== dataId) {
       return response(409, { error: "provider_resource_mismatch" });
+    }
 
     const preapprovalId = identifier(invoiceRaw.preapproval_id);
     if (!preapprovalId) return response(200, { accepted: true, ignored: true });
@@ -276,8 +301,9 @@ Deno.serve(async (request: Request) => {
 
     const amount = numberValue(invoiceRaw.transaction_amount);
     const currency = text(invoiceRaw.currency_id);
-    if (amount === null || Math.round(amount * 100) !== 6990 || currency !== "BRL")
+    if (amount === null || Math.round(amount * 100) !== 6990 || currency !== "BRL") {
       return response(409, { error: "amount_mismatch" });
+    }
 
     const payment = isRecord(invoiceRaw.payment) ? invoiceRaw.payment : null;
     const paymentStatus = text(payment?.status) ?? text(invoiceRaw.status) ?? "unknown";
@@ -335,7 +361,7 @@ Deno.serve(async (request: Request) => {
       next_payment_at: nextPaymentAt,
       last_payment_status: paymentStatus,
       updated_at: now,
-      metadata: { environment },
+      metadata: { environment, billingModel: "provider_plan_checkout" },
     };
     if (approved) {
       const periodEnd =
@@ -347,11 +373,12 @@ Deno.serve(async (request: Request) => {
       update.last_payment_at = debitDate;
     }
     await admin.from("merchant_subscriptions").update(update).eq("id", subscription.id);
-    if (eventRow)
+    if (eventRow) {
       await admin
         .from("merchant_subscription_events")
         .update({ processed_at: now })
         .eq("id", eventRow.id);
+    }
 
     return response(200, {
       accepted: true,
@@ -389,15 +416,17 @@ Deno.serve(async (request: Request) => {
     });
     return response(503, { error: "provider_lookup_failed" });
   }
-  if (text(providerOrder.id) !== dataId)
+  if (text(providerOrder.id) !== dataId) {
     return response(409, { error: "provider_resource_mismatch" });
+  }
 
   const externalReference = text(providerOrder.external_reference);
   const internalOrderId = externalReference?.startsWith("apois-order-")
     ? externalReference.slice("apois-order-".length)
     : null;
-  if (!internalOrderId || !/^[0-9a-f-]{36}$/i.test(internalOrderId))
+  if (!internalOrderId || !/^[0-9a-f-]{36}$/i.test(internalOrderId)) {
     return response(200, { accepted: true, ignored: true });
+  }
 
   const providerStatus = text(providerOrder.status) ?? "unknown";
   const providerStatusDetail = text(providerOrder.status_detail) ?? "unknown";
@@ -502,8 +531,9 @@ Deno.serve(async (request: Request) => {
         .eq("id", eventRow.id);
       return response(500, { error: "payment_update_failed" });
     }
-    if (!["cancelled", "refunded"].includes(internalOrder.status))
+    if (!["cancelled", "refunded"].includes(internalOrder.status)) {
       await admin.from("orders").update({ payment_status: "paid" }).eq("id", internalOrder.id);
+    }
   } else if (refunded) {
     await admin.from("payments").update({ status: "refunded" }).eq("id", payment.id);
     const { data: transitionedOrder } = await admin
@@ -542,8 +572,9 @@ Deno.serve(async (request: Request) => {
       })
       .eq("id", payment.id)
       .in("status", ["pending", "processing"]);
-    if (internalOrder.payment_status !== "paid")
+    if (internalOrder.payment_status !== "paid") {
       await admin.from("orders").update({ payment_status: "failed" }).eq("id", internalOrder.id);
+    }
   } else if (processing) {
     await admin
       .from("payments")
