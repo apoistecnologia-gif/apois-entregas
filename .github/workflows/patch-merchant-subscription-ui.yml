@@ -1,0 +1,121 @@
+name: Patch merchant subscription UI
+
+on:
+  push:
+    paths:
+      - .github/workflows/patch-merchant-subscription-ui.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Patch merchant workspace
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/routes/merchant.tsx')
+          text = path.read_text()
+
+          def replace_once(old, new, label):
+              global text
+              if old not in text:
+                  raise SystemExit(f'anchor not found: {label}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              'import { MerchantCouponsPanel } from "@/components/MerchantCouponsPanel";\n',
+              'import { MerchantCouponsPanel } from "@/components/MerchantCouponsPanel";\nimport { MerchantSubscriptionGate } from "@/components/MerchantSubscriptionGate";\n',
+              'subscription import',
+          )
+
+          replace_once(
+              '  const [merchant, setMerchant] = useState<any>(null);\n',
+              '  const [merchant, setMerchant] = useState<any>(null);\n  const [subscription, setSubscription] = useState<any>(null);\n',
+              'subscription state',
+          )
+
+          replace_once(
+              '        if (!member) {\n          setMerchant(null);\n          setDocuments([]);\n          return;\n        }\n',
+              '        if (!member) {\n          setMerchant(null);\n          setSubscription(null);\n          setDocuments([]);\n          return;\n        }\n',
+              'clear subscription',
+          )
+
+          replace_once(
+              '''        const [merchantRes, docsRes] = await Promise.all([\n          from("merchants").select("*").eq("id", member.merchant_id).maybeSingle(),\n          from("merchant_documents")\n            .select("*")\n            .eq("merchant_id", member.merchant_id)\n            .order("created_at"),\n        ]);\n''',
+              '''        const [merchantRes, docsRes, subscriptionRes] = await Promise.all([\n          from("merchants").select("*").eq("id", member.merchant_id).maybeSingle(),\n          from("merchant_documents")\n            .select("*")\n            .eq("merchant_id", member.merchant_id)\n            .order("created_at"),\n          from("merchant_subscriptions")\n            .select("*")\n            .eq("merchant_id", member.merchant_id)\n            .maybeSingle(),\n        ]);\n''',
+              'load subscription',
+          )
+
+          replace_once(
+              '        setMerchant(merchantRes.data);\n        setDocuments(docsRes.data ?? []);\n',
+              '        setMerchant(merchantRes.data);\n        setSubscription(subscriptionRes.data ?? null);\n        setDocuments(docsRes.data ?? []);\n',
+              'set subscription',
+          )
+
+          replace_once(
+              '''        if (merchantRes.data.approval_status === "approved" && merchantRes.data.is_active) {\n          await loadOperations(merchantRes.data.id);\n        }\n''',
+              '''        const periodEnd = subscriptionRes.data?.current_period_end;\n        const subscriptionAllowed = Boolean(\n          periodEnd && new Date(periodEnd).getTime() > Date.now(),\n        );\n        if (\n          merchantRes.data.approval_status === "approved" &&\n          merchantRes.data.is_active &&\n          subscriptionAllowed\n        ) {\n          await loadOperations(merchantRes.data.id);\n        }\n''',
+              'gate operation load',
+          )
+
+          replace_once(
+              '''  useEffect(() => {\n    void loadAll();\n  }, [loadAll]);\n\n  useEffect(() => {\n    if (!merchant?.id || merchant.approval_status !== "approved") return;\n''',
+              '''  const subscriptionAccessAllowed = Boolean(\n    subscription?.current_period_end &&\n      new Date(subscription.current_period_end).getTime() > Date.now(),\n  );\n\n  useEffect(() => {\n    void loadAll();\n  }, [loadAll]);\n\n  useEffect(() => {\n    if (!subscriptionAccessAllowed || !subscription?.current_period_end) return;\n    const timer = window.setInterval(() => {\n      if (new Date(subscription.current_period_end).getTime() <= Date.now()) {\n        void loadAll(true);\n      }\n    }, 60_000);\n    return () => window.clearInterval(timer);\n  }, [subscriptionAccessAllowed, subscription?.current_period_end, loadAll]);\n\n  useEffect(() => {\n    if (\n      !merchant?.id ||\n      merchant.approval_status !== "approved" ||\n      !subscriptionAccessAllowed\n    )\n      return;\n''',
+              'subscription access timer and realtime gate',
+          )
+
+          replace_once(
+              '  }, [merchant?.id, merchant?.approval_status, loadOperations]);\n',
+              '  }, [merchant?.id, merchant?.approval_status, subscriptionAccessAllowed, loadOperations]);\n',
+              'realtime dependencies',
+          )
+
+          replace_once(
+              '''  const tabs = [\n''',
+              '''  if (!subscriptionAccessAllowed) {\n    return (\n      <MerchantSubscriptionGate\n        merchant={merchant}\n        subscription={subscription}\n        onRefresh={() => loadAll(true)}\n        onLogout={logout}\n      />\n    );\n  }\n\n  const tabs = [\n''',
+              'subscription gate render',
+          )
+
+          path.write_text(text)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Format changed files
+        run: npx prettier --write src/routes/merchant.tsx src/components/MerchantSubscriptionGate.tsx supabase/functions/merchant-subscription/index.ts supabase/functions/mercadopago-webhook/index.ts supabase/migrations/20260810014000_merchant_monthly_subscriptions.sql
+
+      - name: Verify
+        run: |
+          npm run build
+          npm run typecheck
+          npm test -- --run
+          npm run format:check
+          npm run lint
+
+      - name: Commit patch and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/patch-merchant-subscription-ui.yml
+          git add src/routes/merchant.tsx src/components/MerchantSubscriptionGate.tsx supabase/functions/merchant-subscription/index.ts supabase/functions/mercadopago-webhook/index.ts supabase/migrations/20260810014000_merchant_monthly_subscriptions.sql
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "feat(billing): enforce merchant monthly subscription"
+          git push origin HEAD:main
