@@ -1,5 +1,7 @@
 import { LogOut, Menu, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export type WorkspaceTab = {
   id: string;
@@ -30,6 +32,100 @@ export function WorkspaceShell({
   children,
 }: WorkspaceShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const merchantAudioContextRef = useRef<AudioContext | null>(null);
+
+  const ensureMerchantAudioContext = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextCtor) return null;
+    if (!merchantAudioContextRef.current) merchantAudioContextRef.current = new AudioContextCtor();
+    if (merchantAudioContextRef.current.state === "suspended") {
+      void merchantAudioContextRef.current.resume().catch(() => undefined);
+    }
+    return merchantAudioContextRef.current;
+  }, []);
+
+  const playMerchantOrderAlert = useCallback(() => {
+    const context = ensureMerchantAudioContext();
+    if (context) {
+      const now = context.currentTime;
+      [0, 0.22, 0.44, 0.82].forEach((offset, index) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = index === 3 ? "sine" : "square";
+        oscillator.frequency.setValueAtTime(index === 1 ? 1180 : index === 3 ? 1320 : 980, now + offset);
+        gain.gain.setValueAtTime(0.0001, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.2, now + offset + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.18);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(now + offset);
+        oscillator.stop(now + offset + 0.2);
+      });
+    }
+    if (navigator.vibrate) navigator.vibrate([300, 120, 300, 120, 500]);
+  }, [ensureMerchantAudioContext]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.location.pathname.startsWith("/merchant")) return;
+
+    let disposed = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const primeAudio = () => {
+      const context = ensureMerchantAudioContext();
+      if (context?.state === "suspended") void context.resume().catch(() => undefined);
+    };
+
+    window.addEventListener("pointerdown", primeAudio, { once: true, capture: true });
+    window.addEventListener("keydown", primeAudio, { once: true, capture: true });
+
+    const subscribe = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user || disposed) return;
+
+      const { data: membership } = await (supabase.from as any)("merchant_members")
+        .select("merchant_id")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!membership?.merchant_id || disposed) return;
+
+      channel = supabase
+        .channel(`merchant_new_order_alert_${membership.merchant_id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "orders",
+            filter: `merchant_id=eq.${membership.merchant_id}`,
+          },
+          (payload) => {
+            playMerchantOrderAlert();
+            const orderNumber = (payload.new as any)?.order_number;
+            toast.success(orderNumber ? `Novo pedido #${orderNumber} recebido!` : "Novo pedido recebido!");
+          },
+        )
+        .subscribe();
+    };
+
+    void subscribe();
+
+    return () => {
+      disposed = true;
+      window.removeEventListener("pointerdown", primeAudio, true);
+      window.removeEventListener("keydown", primeAudio, true);
+      if (channel) void supabase.removeChannel(channel);
+      if (navigator.vibrate) navigator.vibrate(0);
+      if (merchantAudioContextRef.current) void merchantAudioContextRef.current.close();
+      merchantAudioContextRef.current = null;
+    };
+  }, [ensureMerchantAudioContext, playMerchantOrderAlert]);
 
   const chooseTab = (tab: string) => {
     onTabChange(tab);
