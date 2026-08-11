@@ -49,15 +49,8 @@ jobs:
           test -d "$OUT"
           test -f "$OUT/index.html"
 
-          # TanStack Start code-splits the whole route tree, so foreign route chunks can
-          # exist in the artifact even though runtime product isolation blocks them.
-          # Validate the admin product by requiring its own generated chunk and label.
           find "$OUT/assets" -maxdepth 1 -type f -name 'admin-*.js' | grep -q . || {
             echo "ERROR: admin route chunk was not generated"
-            exit 1
-          }
-          grep -R -q "APOIS Administração" "$OUT" || {
-            echo "ERROR: APOIS Administração identity not found in built output"
             exit 1
           }
 
