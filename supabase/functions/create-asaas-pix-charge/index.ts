@@ -150,7 +150,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const dueDate = new Date().toISOString().slice(0, 10);
-  const split =
+  const splits =
     merchantNet > 0 && merchantNet <= amount
       ? [{ walletId: merchantAccount.asaas_wallet_id, fixedValue: Number(merchantNet.toFixed(2)) }]
       : undefined;
@@ -164,7 +164,7 @@ Deno.serve(async (req: Request) => {
       dueDate,
       description: `APOIS Entrega - pedido #${order.order_number}`,
       externalReference: `apois-order-${order.id}`,
-      split,
+      splits,
     }),
   });
   const paymentProvider = await paymentResponse.json().catch(() => null);
