@@ -1,0 +1,64 @@
+name: Merchant Web Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/merchant-web-build.yml"
+      - "src/**"
+      - "scripts/build-product.mjs"
+      - "vite.config.ts"
+      - "package.json"
+      - "bun.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  merchant:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_APOIS_PRODUCT_MODE: merchant
+      VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_tmNxPNALqBcWiEdD7_eWOw_mk0qRkJa
+      VITE_GOOGLE_MAPS_BROWSER_KEY: ${{ secrets.VITE_GOOGLE_MAPS_BROWSER_KEY || 'ci-placeholder' }}
+      VITE_GOOGLE_MAPS_MAP_ID: ${{ secrets.VITE_GOOGLE_MAPS_MAP_ID || 'ci-placeholder' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build isolated merchant product
+        run: bun run build:merchant
+
+      - name: Validate merchant Nitro build
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d .output/public/assets
+          test -f .output/server/index.mjs
+          MERCHANT_CHUNK="$(find .output/public/assets -maxdepth 1 -type f -name 'merchant-*.js' -print -quit)"
+          if [ -z "$MERCHANT_CHUNK" ]; then
+            echo "ERROR: merchant route chunk was not generated"
+            exit 1
+          fi
+          echo "Merchant chunk: $MERCHANT_CHUNK"
+          echo "APOIS_ENTREGAS_MERCHANT_BUILD_OK"
+
+      - name: Upload merchant Nitro prebuilt bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: apois-entregas-merchant-prebuilt
+          path: .output
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: true
