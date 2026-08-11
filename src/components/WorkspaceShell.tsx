@@ -53,7 +53,10 @@ export function WorkspaceShell({
         const oscillator = context.createOscillator();
         const gain = context.createGain();
         oscillator.type = index === 3 ? "sine" : "square";
-        oscillator.frequency.setValueAtTime(index === 1 ? 1180 : index === 3 ? 1320 : 980, now + offset);
+        oscillator.frequency.setValueAtTime(
+          index === 1 ? 1180 : index === 3 ? 1320 : 980,
+          now + offset,
+        );
         gain.gain.setValueAtTime(0.0001, now + offset);
         gain.gain.exponentialRampToValueAtTime(0.2, now + offset + 0.015);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.18);
@@ -108,7 +111,9 @@ export function WorkspaceShell({
           (payload) => {
             playMerchantOrderAlert();
             const orderNumber = (payload.new as any)?.order_number;
-            toast.success(orderNumber ? `Novo pedido #${orderNumber} recebido!` : "Novo pedido recebido!");
+            toast.success(
+              orderNumber ? `Novo pedido #${orderNumber} recebido!` : "Novo pedido recebido!",
+            );
           },
         )
         .subscribe();
