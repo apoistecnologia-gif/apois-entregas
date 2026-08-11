@@ -2,6 +2,11 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import {
+  getApoisProductMode,
+  getProductLandingRoute,
+  isPathAllowedForProduct,
+} from "./lib/product-routing";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -16,6 +21,20 @@ async function getServerEntry(): Promise<ServerEntry> {
     );
   }
   return serverEntryPromise;
+}
+
+function enforceProductRouteBoundary(request: Request): Response | null {
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+
+  const url = new URL(request.url);
+  const product = getApoisProductMode();
+  if (isPathAllowedForProduct(url.pathname, product)) return null;
+
+  url.pathname = getProductLandingRoute(product);
+  url.search = "";
+  url.hash = "";
+
+  return Response.redirect(url, 307);
 }
 
 // h3 swallows in-handler throws into a normal 500 Response with body
@@ -47,6 +66,9 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const boundaryResponse = enforceProductRouteBoundary(request);
+      if (boundaryResponse) return boundaryResponse;
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
