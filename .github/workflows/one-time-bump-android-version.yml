@@ -1,0 +1,39 @@
+name: One-time bump Android version
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/one-time-bump-android-version.yml
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bump Android version
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('.github/workflows/mobile-android.yml')
+          s = p.read_text()
+          s = s.replace('versionCode 1", gradle_text, count=1)', 'versionCode 2", gradle_text, count=1)')
+          s = s.replace('versionName "1.0.0"', 'versionName "1.0.1"')
+          s = s.replace('echo "version_code=1"', 'echo "version_code=2"')
+          s = s.replace('echo "version_name=1.0.0"', 'echo "version_name=1.0.1"')
+          p.write_text(s)
+          PY
+          grep -q 'versionCode 2' .github/workflows/mobile-android.yml
+          grep -q 'version_name=1.0.1' .github/workflows/mobile-android.yml
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/mobile-android.yml
+          git commit -m "fix(android): bump installable app version to 1.0.1"
+          git push origin HEAD:main
