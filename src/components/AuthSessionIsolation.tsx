@@ -1,7 +1,11 @@
 import { Fragment, type ReactNode, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  getApoisProductMode,
+  getProductLandingRoute,
+  isPathAllowedForProduct,
+} from "@/lib/product-routing";
 
-const BOUND_USER_KEY = "apois_bound_user_id";
 const CART_OWNER_KEY = "apois_cart_owner_id";
 const SENSITIVE_SESSION_KEYS = ["apois_active_pix", "apois_checkout_attempt"] as const;
 const CART_STORAGE_KEYS = ["apois_cart", "apois_merchant"] as const;
@@ -20,13 +24,12 @@ function hasPersistedCart() {
 }
 
 /**
- * Keeps browser-persisted operational state scoped to the authenticated account.
+ * Keeps browser-persisted operational state scoped to both the authenticated account
+ * and the independently shipped APOIS product.
  *
- * A tab or device browser can be reused by another person. Without this boundary,
- * sessionStorage could still contain the previous customer's PIX QR code and checkout
- * attempt, while localStorage could contain their cart. The application waits for the
- * current Supabase session before mounting route content, clears stale state when the
- * account changes, and remounts the route tree under the new identity.
+ * This is intentionally defensive for native WebViews: an upgraded APK can inherit
+ * storage and the last URL from an older build. A courier build must never mount a
+ * customer route or reuse customer checkout/cart state, even before auth finishes.
  */
 export function AuthSessionIsolation({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -34,32 +37,54 @@ export function AuthSessionIsolation({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let disposed = false;
+    const product = getApoisProductMode();
+    const boundUserKey = `apois:${product}:bound_user_id`;
+    const currentPath = window.location.pathname || "/";
+
+    if (!isPathAllowedForProduct(currentPath, product)) {
+      window.location.replace(getProductLandingRoute(product));
+      return () => {
+        disposed = true;
+      };
+    }
+
+    // Customer cart/checkout state has no meaning in the courier, merchant or admin
+    // products. Clear legacy unscoped keys on startup so an APK upgrade cannot leak
+    // a previously rendered customer experience into another product.
+    if (product !== "customer") {
+      clearSensitiveCheckoutState();
+      clearUserCartState();
+    }
 
     const bindIdentity = (nextUserId: string | null) => {
-      const previousTabUserId = sessionStorage.getItem(BOUND_USER_KEY);
+      const previousTabUserId = sessionStorage.getItem(boundUserKey);
       const persistedCartOwnerId = localStorage.getItem(CART_OWNER_KEY);
 
       if (!nextUserId) {
         clearSensitiveCheckoutState();
 
-        // This also protects a fresh browser session: sessionStorage may already have
-        // expired, while an authenticated user's cart can still exist in localStorage.
-        if (previousTabUserId || persistedCartOwnerId) clearUserCartState();
-        sessionStorage.removeItem(BOUND_USER_KEY);
+        if (product === "customer" && (previousTabUserId || persistedCartOwnerId)) {
+          clearUserCartState();
+        }
+        sessionStorage.removeItem(boundUserKey);
       } else {
         if (!previousTabUserId || previousTabUserId !== nextUserId) {
           clearSensitiveCheckoutState();
         }
 
-        if (persistedCartOwnerId && persistedCartOwnerId !== nextUserId) {
+        if (
+          product === "customer" &&
+          persistedCartOwnerId &&
+          persistedCartOwnerId !== nextUserId
+        ) {
           clearUserCartState();
         }
 
-        sessionStorage.setItem(BOUND_USER_KEY, nextUserId);
+        sessionStorage.setItem(boundUserKey, nextUserId);
 
-        // A cart with no owner marker is treated as a genuine guest cart and may follow
-        // the guest through login. From this point onward it is bound to this account.
-        if (hasPersistedCart()) localStorage.setItem(CART_OWNER_KEY, nextUserId);
+        if (product === "customer" && hasPersistedCart()) {
+          localStorage.setItem(CART_OWNER_KEY, nextUserId);
+        }
       }
 
       if (!disposed) {
