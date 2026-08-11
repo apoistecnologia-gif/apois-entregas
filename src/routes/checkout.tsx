@@ -500,14 +500,9 @@ function CheckoutPage() {
       const orderId = orderResponse?.orderId;
       if (!orderId) throw new Error("O backend não retornou o identificador do pedido.");
 
-      const { data: providerSetting } = await (supabase.from as any)("platform_settings")
-        .select("value")
-        .eq("key", "order_payment_provider")
-        .maybeSingle();
+      const { data: providerSetting } = await (supabase.rpc as any)("get_order_payment_provider");
       const configuredProvider =
-        typeof providerSetting?.value === "string"
-          ? providerSetting.value.trim().toLowerCase()
-          : "mercadopago";
+        typeof providerSetting === "string" ? providerSetting.trim().toLowerCase() : "mercadopago";
       const pixFunction =
         configuredProvider === "asaas" ? "create-asaas-pix-charge" : "create-pix-charge";
       const { data: pixResponse, error: pixError } = await supabase.functions.invoke(pixFunction, {
