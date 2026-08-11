@@ -753,7 +753,7 @@ function CourierApp() {
               type="button"
               disabled={busy === "online" || Boolean(activeJob && availability?.is_online)}
               onClick={toggleOnline}
-              className={`grid h-14 w-14 place-items-center rounded-full ${availability?.is_online ? "bg-emerald-500 text-black" : "bg-primary text-black"}`}
+              className={`relative grid h-14 w-14 place-items-center rounded-full transition active:scale-95 ${availability?.is_online ? "bg-emerald-500 text-black shadow-[0_0_28px_rgba(16,185,129,0.22)]" : "bg-primary text-black shadow-[0_0_30px_rgba(250,204,21,0.28)]"}`}
             >
               {busy === "online" ? (
                 <Loader2 className="h-6 w-6 animate-spin" />
@@ -852,13 +852,60 @@ function CourierApp() {
         ) : null}
 
         {!activeJob && !availability?.is_online ? (
-          <div className="rounded-3xl border border-zinc-900 bg-zinc-950 p-8 text-center">
-            <Bike className="mx-auto h-10 w-10 text-zinc-700" />
-            <p className="mt-3 font-black">Fique online para receber entregas</p>
-            <p className="mt-1 text-sm text-zinc-500">
-              Ao ativar, sua localização será usada para encontrar pedidos próximos.
+          <section className="relative overflow-hidden rounded-[2rem] border border-primary/20 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.14),transparent_38%),linear-gradient(145deg,#111111,#070707)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.5)]">
+            <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full border border-primary/10" />
+            <div className="pointer-events-none absolute -right-3 top-5 h-24 w-24 rounded-full border border-primary/10" />
+
+            <div className="relative flex items-start gap-4">
+              <div className="relative grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-primary/30 bg-primary/10">
+                <Bike className="h-8 w-8 text-primary" />
+                <span className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full bg-primary shadow-[0_0_18px_rgba(250,204,21,0.9)]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">
+                  Pronto para começar?
+                </p>
+                <h2 className="mt-1 text-xl font-black leading-tight">Você está offline</h2>
+                <p className="mt-2 text-sm leading-5 text-zinc-400">
+                  Ative quando quiser receber entregas. Sua localização só será utilizada enquanto
+                  você estiver online.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={toggleOnline}
+              disabled={busy === "online"}
+              className="mt-5 flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-primary px-5 text-sm font-black uppercase tracking-[0.08em] text-black shadow-[0_12px_35px_rgba(250,204,21,0.22)] transition active:scale-[0.98] disabled:opacity-60"
+            >
+              {busy === "online" ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Power className="h-5 w-5" />
+              )}
+              {busy === "online" ? "Ativando..." : "Ficar online agora"}
+            </button>
+
+            <div className="mt-5 grid grid-cols-3 gap-2">
+              <div className="rounded-2xl border border-zinc-800/80 bg-black/45 px-3 py-3 text-center">
+                <LocateFixed className="mx-auto h-4 w-4 text-primary" />
+                <p className="mt-2 text-[10px] font-bold text-zinc-300">GPS ao ativar</p>
+              </div>
+              <div className="rounded-2xl border border-zinc-800/80 bg-black/45 px-3 py-3 text-center">
+                <MapPin className="mx-auto h-4 w-4 text-primary" />
+                <p className="mt-2 text-[10px] font-bold text-zinc-300">Parceiros perto</p>
+              </div>
+              <div className="rounded-2xl border border-zinc-800/80 bg-black/45 px-3 py-3 text-center">
+                <CircleDollarSign className="mx-auto h-4 w-4 text-primary" />
+                <p className="mt-2 text-[10px] font-bold text-zinc-300">Ganhos em tempo real</p>
+              </div>
+            </div>
+
+            <p className="mt-4 text-center text-[10px] leading-4 text-zinc-600">
+              Você controla quando começa e quando encerra sua jornada.
             </p>
-          </div>
+          </section>
         ) : null}
 
         {offers.length > 0 ? (
