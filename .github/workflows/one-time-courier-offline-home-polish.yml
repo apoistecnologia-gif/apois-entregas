@@ -43,3 +43,4 @@ jobs:
           git add src/routes/courier.tsx
           git commit -m "feat(courier): polish offline home experience"
           git push origin HEAD:main
+# retry after splash formatting fix
