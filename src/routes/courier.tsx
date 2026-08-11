@@ -1206,7 +1206,7 @@ function CourierFinance({
         <h1 className="font-black">Carteira</h1>
         <CircleDollarSign className="text-primary" />
       </header>
-      <main className="space-y-4 p-4 pb-16">
+      <main className="space-y-4 p-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
         <div className="rounded-3xl bg-primary p-6 text-black">
           <p className="text-xs font-black uppercase">Disponível para saque</p>
           <p className="mt-2 text-4xl font-black">{money(wallet?.available_balance)}</p>
