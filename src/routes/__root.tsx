@@ -19,7 +19,7 @@ import {
   getApoisProductMode,
   getProductLabel,
   getProductLandingRoute,
-  type ApoisProductMode,
+  isPathAllowedForProduct,
 } from "../lib/product-routing";
 
 function getDocumentProductLabel() {
@@ -27,49 +27,11 @@ function getDocumentProductLabel() {
   return product === "customer" ? "APOIS Cliente" : getProductLabel(product);
 }
 
-function isForeignWorkspace(pathname: string, product: ApoisProductMode) {
-  if (product === "customer") {
-    return (
-      pathname === "/courier" ||
-      pathname.startsWith("/courier/") ||
-      pathname === "/merchant" ||
-      pathname.startsWith("/merchant/") ||
-      pathname === "/admin" ||
-      pathname.startsWith("/admin/")
-    );
-  }
-
-  if (product === "courier") {
-    return (
-      pathname === "/merchant" ||
-      pathname.startsWith("/merchant/") ||
-      pathname === "/admin" ||
-      pathname.startsWith("/admin/")
-    );
-  }
-
-  if (product === "merchant") {
-    return (
-      pathname === "/courier" ||
-      pathname.startsWith("/courier/") ||
-      pathname === "/admin" ||
-      pathname.startsWith("/admin/")
-    );
-  }
-
-  return (
-    pathname === "/courier" ||
-    pathname.startsWith("/courier/") ||
-    pathname === "/merchant" ||
-    pathname.startsWith("/merchant/")
-  );
-}
-
 function ProductRouteIsolation({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const product = getApoisProductMode();
-  const blocked = isForeignWorkspace(pathname, product);
+  const blocked = !isPathAllowedForProduct(pathname, product);
 
   useEffect(() => {
     if (!blocked) return;
