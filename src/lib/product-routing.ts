@@ -23,6 +23,20 @@ const PRODUCT_LABELS: Record<ApoisProductMode, string> = {
   admin: "APOIS Administração",
 };
 
+const SHARED_PUBLIC_PATHS = new Set([
+  "/",
+  "/login",
+  "/register",
+  "/redefinir-senha",
+  "/auth/callback",
+  "/termos",
+  "/privacidade",
+]);
+
+function isWithin(pathname: string, root: string) {
+  return pathname === root || pathname.startsWith(`${root}/`);
+}
+
 export function getApoisProductMode(): ApoisProductMode {
   const { VITE_APOIS_PRODUCT_MODE, VITE_APOIS_APP_MODE } = import.meta.env;
   const raw = String(VITE_APOIS_PRODUCT_MODE ?? VITE_APOIS_APP_MODE ?? "customer")
@@ -48,4 +62,39 @@ export function getProductLabel(product = getApoisProductMode()) {
 
 export function productAllowsPublicSignup(product = getApoisProductMode()) {
   return product !== "admin";
+}
+
+/**
+ * Runtime route boundary for the four independently shipped APOIS products.
+ *
+ * The generated TanStack route tree still knows about every route in the monorepo,
+ * so a product build must reject routes that belong to another product even when a
+ * stale WebView URL, deep link, auth callback or persisted browser history points to it.
+ */
+export function isPathAllowedForProduct(pathname: string, product = getApoisProductMode()) {
+  if (!pathname.startsWith("/") || pathname.startsWith("//")) return false;
+  if (SHARED_PUBLIC_PATHS.has(pathname)) return true;
+
+  if (product === "courier") return isWithin(pathname, "/courier");
+  if (product === "merchant") {
+    return isWithin(pathname, "/merchant") || isWithin(pathname, "/configuracoes-estabelecimento");
+  }
+  if (product === "admin") return isWithin(pathname, "/admin");
+
+  return !(
+    isWithin(pathname, "/courier") ||
+    isWithin(pathname, "/merchant") ||
+    isWithin(pathname, "/configuracoes-estabelecimento") ||
+    isWithin(pathname, "/admin")
+  );
+}
+
+export function getSafeProductRoute(
+  candidate: string | null | undefined,
+  product = getApoisProductMode(),
+  fallback: ApoisProductHomeRoute | ApoisProductLandingRoute = getProductHomeRoute(product),
+) {
+  if (!candidate || !candidate.startsWith("/") || candidate.startsWith("//")) return fallback;
+  const pathname = candidate.split(/[?#]/, 1)[0] || "/";
+  return isPathAllowedForProduct(pathname, product) ? candidate : fallback;
 }
