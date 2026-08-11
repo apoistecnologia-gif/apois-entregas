@@ -49,10 +49,12 @@ jobs:
           test -d "$OUT"
           test -f "$OUT/index.html"
 
-          find "$OUT/assets" -maxdepth 1 -type f -name 'admin-*.js' | grep -q . || {
+          ADMIN_CHUNK="$(find "$OUT/assets" -maxdepth 1 -type f -name 'admin-*.js' -print -quit)"
+          if [ -z "$ADMIN_CHUNK" ]; then
             echo "ERROR: admin route chunk was not generated"
             exit 1
-          }
+          fi
+          echo "Admin chunk: $ADMIN_CHUNK"
 
           echo "ADMIN_BUILD_DIR=$OUT" >> "$GITHUB_ENV"
           echo "APOIS_ENTREGAS_ADMIN_BUILD_OK"
