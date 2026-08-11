@@ -19,7 +19,10 @@ export function ApoisLaunchSplash() {
 
   useEffect(() => {
     if (!isMobileProduct) return;
-    const timeout = window.setTimeout(() => setVisible(false), prefersReducedMotion ? 450 : SPLASH_MS);
+    const timeout = window.setTimeout(
+      () => setVisible(false),
+      prefersReducedMotion ? 450 : SPLASH_MS,
+    );
     return () => window.clearTimeout(timeout);
   }, [isMobileProduct, prefersReducedMotion]);
 
@@ -43,8 +46,12 @@ export function ApoisLaunchSplash() {
         </div>
 
         <div className="mt-8 text-center">
-          <p className="apois-launch-brand text-[2.05rem] font-black tracking-[0.26em] text-primary">APOIS</p>
-          <p className="apois-launch-label mt-2 text-[0.68rem] font-black tracking-[0.48em] text-zinc-300">{label}</p>
+          <p className="apois-launch-brand text-[2.05rem] font-black tracking-[0.26em] text-primary">
+            APOIS
+          </p>
+          <p className="apois-launch-label mt-2 text-[0.68rem] font-black tracking-[0.48em] text-zinc-300">
+            {label}
+          </p>
         </div>
 
         <div className="mt-10 h-[2px] w-36 overflow-hidden rounded-full bg-zinc-900">
