@@ -1,0 +1,153 @@
+name: Mobile iOS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/mobile-ios.yml"
+      - "capacitor.config.ts"
+      - "vite.config.ts"
+      - "public/favicon.png"
+      - "src/**"
+      - "scripts/**"
+      - "package.json"
+      - "bun.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        product: [courier, customer]
+    env:
+      APOIS_MOBILE_PRODUCT: ${{ matrix.product }}
+      APOIS_MOBILE_BUILD: "1"
+      VITE_APOIS_PRODUCT_MODE: ${{ matrix.product }}
+      VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_tmNxPNALqBcWiEdD7_eWOw_mk0qRkJa
+      VITE_GOOGLE_MAPS_BROWSER_KEY: ${{ secrets.VITE_GOOGLE_MAPS_BROWSER_KEY || 'ci-placeholder' }}
+      VITE_GOOGLE_MAPS_MAP_ID: ${{ secrets.VITE_GOOGLE_MAPS_MAP_ID || 'ci-placeholder' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install web dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build product web bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+            bun run build:courier
+          else
+            bun run build:customer
+          fi
+
+      - name: Render Capacitor entry from built app
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+            PRODUCT_PATH="/courier"
+            EXPECTED_TITLE="APOIS Entregador"
+          else
+            PRODUCT_PATH="/"
+            EXPECTED_TITLE="APOIS Cliente"
+          fi
+
+          HOST=127.0.0.1 PORT=4173 node .output/server/index.mjs > /tmp/apois-ios-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --location "http://127.0.0.1:4173${PRODUCT_PATH}" -o .output/public/index.html; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              cat /tmp/apois-ios-server.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          test -s .output/public/index.html
+          grep -qi '<html' .output/public/index.html
+          grep -Fq "$EXPECTED_TITLE" .output/public/index.html
+
+      - name: Install Capacitor iOS runtime
+        run: npm install --no-save @capacitor/core@8.4.2 @capacitor/cli@8.4.2 @capacitor/ios@8.4.2
+
+      - name: Create and sync iOS project
+        run: |
+          npx cap add ios
+          npx cap sync ios
+
+      - name: Validate iOS identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+            EXPECTED_ID="br.com.apois.entregador"
+            EXPECTED_NAME="APOIS Entregador"
+          else
+            EXPECTED_ID="br.com.apois.cliente"
+            EXPECTED_NAME="APOIS Cliente"
+          fi
+          grep -R -Fq "$EXPECTED_ID" ios/App
+          grep -R -Fq "$EXPECTED_NAME" ios/App
+
+      - name: Compile iOS simulator app
+        working-directory: ios/App
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath "$RUNNER_TEMP/apois-derived" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package iOS project and simulator build
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ios-artifact
+          cp -R ios/App ios-artifact/App
+          APP_PATH="$(find "$RUNNER_TEMP/apois-derived/Build/Products" -type d -name 'App.app' -print -quit)"
+          test -n "$APP_PATH"
+          cp -R "$APP_PATH" "ios-artifact/APOIS-${APOIS_MOBILE_PRODUCT}.app"
+          {
+            echo "product=$APOIS_MOBILE_PRODUCT"
+            echo "head_sha=$GITHUB_SHA"
+            if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+              echo "package_id=br.com.apois.entregador"
+            else
+              echo "package_id=br.com.apois.cliente"
+            fi
+            echo "signed=false"
+            echo "build_kind=ios_simulator_validation"
+          } > "ios-artifact/artifact-manifest-${APOIS_MOBILE_PRODUCT}.txt"
+
+      - name: Upload iOS validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apois-${{ matrix.product }}-ios-validation
+          path: ios-artifact
+          if-no-files-found: error
+          retention-days: 7
