@@ -77,3 +77,21 @@ jobs:
             "https://api.vercel.com/v9/projects/${MERCHANT_PROJECT_ID}/domains/${MERCHANT_DOMAIN}?teamId=${VERCEL_TEAM_ID}" \
             -H "Authorization: Bearer ${VERCEL_TOKEN}" \
             | jq '{name,apexName,projectId,verified,verification}'
+
+      - name: Inspect Admin DNS configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS \
+            "https://api.vercel.com/v6/domains/${ADMIN_DOMAIN}/config?projectIdOrName=${ADMIN_PROJECT_ID}&teamId=${VERCEL_TEAM_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            | jq '{configuredBy,misconfigured,recommendedIPv4,recommendedCNAME,acceptedChallenges}'
+
+      - name: Inspect Merchant DNS configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS \
+            "https://api.vercel.com/v6/domains/${MERCHANT_DOMAIN}/config?projectIdOrName=${MERCHANT_PROJECT_ID}&teamId=${VERCEL_TEAM_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            | jq '{configuredBy,misconfigured,recommendedIPv4,recommendedCNAME,acceptedChallenges}'
