@@ -11,6 +11,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { ApoisLaunchSplash } from "../components/ApoisLaunchSplash";
 import { AuthSessionIsolation } from "../components/AuthSessionIsolation";
 import { CartProvider } from "../contexts/CartContext";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -214,6 +215,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ApoisLaunchSplash />
       <ProductRouteIsolation>
         <AuthSessionIsolation>
           <CartProvider>
