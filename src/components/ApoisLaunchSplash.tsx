@@ -32,6 +32,7 @@ export function ApoisLaunchSplash() {
     <div
       className="apois-launch fixed inset-0 z-[9999] grid place-items-center overflow-hidden bg-black text-white"
       aria-label={`Abrindo APOIS ${label.toLowerCase()}`}
+      aria-live="polite"
       role="status"
     >
       <div className="apois-launch-glow absolute h-72 w-72 rounded-full bg-primary/20 blur-3xl" />
