@@ -2,17 +2,13 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getSafeProductRoute } from "@/lib/product-routing";
 
 export const Route = createFileRoute("/auth/callback")({
   ssr: false,
   component: AuthCallbackPage,
   head: () => ({ meta: [{ title: "Confirmando acesso | APOIS ENTREGA" }] }),
 });
-
-function safeNext(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/inicio";
-  return value;
-}
 
 function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -50,7 +46,7 @@ function AuthCallbackPage() {
       }
 
       if (!cancelled) {
-        navigate({ to: safeNext(params.get("next")) });
+        navigate({ to: getSafeProductRoute(params.get("next")) });
       }
     };
 
