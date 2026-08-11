@@ -180,7 +180,6 @@ jobs:
           gradle_text = re.sub(r'versionName\s+"[^"]+"', 'versionName "1.0.0"', gradle_text, count=1)
           gradle.write_text(gradle_text, encoding="utf-8")
 
-          # Use the repository APOIS icon as launcher/splash artwork. No binary secrets are committed.
           res = Path("android/app/src/main/res")
           drawable = res / "drawable"
           drawable.mkdir(parents=True, exist_ok=True)
@@ -210,7 +209,6 @@ jobs:
           (anydpi / "ic_launcher.xml").write_text(adaptive, encoding="utf-8")
           (anydpi / "ic_launcher_round.xml").write_text(adaptive, encoding="utf-8")
 
-          # Cap add must have honored capacitor.config.ts; fail hard if it did not.
           java_root = Path("android/app/src/main/java")
           package_path = java_root.joinpath(*expected_package.split("."))
           if not package_path.exists():
@@ -262,7 +260,7 @@ jobs:
             echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build signed release AAB
+      - name: Build signed release APK and AAB
         if: steps.signing.outputs.signed == 'true'
         working-directory: android
         shell: bash
@@ -277,11 +275,12 @@ jobs:
             KEY_ALIAS="$ANDROID_CUSTOMER_KEY_ALIAS"
             KEY_PASSWORD="$ANDROID_CUSTOMER_KEY_PASSWORD"
           fi
-          ./gradlew bundleRelease \
+          ./gradlew assembleRelease bundleRelease \
             -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/android/apois-release.keystore" \
             -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
             -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/app-release-signed.apk
           mv app/build/outputs/bundle/release/app-release.aab app/build/outputs/bundle/release/app-release-signed.aab
 
       - name: Build unsigned release AAB when signing secrets are absent
@@ -297,8 +296,12 @@ jobs:
           set -euo pipefail
           test -s android/app/build/outputs/apk/debug/app-debug.apk
           if [ "${{ steps.signing.outputs.signed }}" = "true" ]; then
+            test -s android/app/build/outputs/apk/release/app-release-signed.apk
             test -s android/app/build/outputs/bundle/release/app-release-signed.aab
-            jarsigner -verify -strict android/app/build/outputs/bundle/release/app-release-signed.aab >/tmp/apois-jarsigner.txt 2>&1
+            APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+            test -n "$APKSIGNER"
+            "$APKSIGNER" verify --verbose android/app/build/outputs/apk/release/app-release-signed.apk
+            jarsigner -verify android/app/build/outputs/bundle/release/app-release-signed.aab >/tmp/apois-jarsigner.txt 2>&1
             grep -qi 'jar verified' /tmp/apois-jarsigner.txt
           else
             test -s android/app/build/outputs/bundle/release/app-release-unsigned.aab
@@ -324,6 +327,7 @@ jobs:
             echo "signed=${{ steps.signing.outputs.signed }}"
             for FILE in \
               android/app/build/outputs/apk/debug/app-debug.apk \
+              android/app/build/outputs/apk/release/app-release-signed.apk \
               android/app/build/outputs/bundle/release/app-release-signed.aab \
               android/app/build/outputs/bundle/release/app-release-unsigned.aab; do
               if [ -f "$FILE" ]; then
@@ -346,6 +350,7 @@ jobs:
           if-no-files-found: error
           path: |
             android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/release/app-release-signed.apk
             android/app/build/outputs/bundle/release/app-release-signed.aab
             android/app/build/outputs/bundle/release/app-release-unsigned.aab
             android/artifact-manifest-${{ matrix.product }}.txt
