@@ -8,6 +8,7 @@ on:
       - "src/**"
       - "scripts/build-product.mjs"
       - "vite.config.ts"
+      - "vercel.json"
       - "package.json"
       - "bun.lock"
   workflow_dispatch:
@@ -79,6 +80,8 @@ jobs:
         run: bunx vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
 
       - name: Build Vercel production bundle
+        env:
+          APOIS_VERCEL_BUILD: "1"
         run: bunx vercel build --prod --token "$VERCEL_TOKEN"
 
       - name: Deploy admin to Vercel production
