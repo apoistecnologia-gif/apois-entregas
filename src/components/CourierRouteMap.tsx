@@ -38,9 +38,10 @@ function RouteMapContent({
   target: LatLng;
 }) {
   const map = useMap();
-  const rendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const polylinesRef = useRef<google.maps.Polyline[]>([]);
+  const fallbackLineRef = useRef<google.maps.Polyline | null>(null);
   const lastRouteRef = useRef<{ origin: LatLng; target: LatLng; at: number } | null>(null);
-  const [routeState, setRouteState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [routeState, setRouteState] = useState<"idle" | "loading" | "ready" | "fallback">("idle");
 
   useEffect(() => {
     if (!map || !currentPosition || !window.google?.maps) {
@@ -55,47 +56,64 @@ function RouteMapContent({
     const elapsed = previous ? Date.now() - previous.at : Number.POSITIVE_INFINITY;
     if (!targetChanged && moved < 80 && elapsed < 45_000) return;
 
-    if (!rendererRef.current) {
-      rendererRef.current = new google.maps.DirectionsRenderer({
-        map,
-        suppressMarkers: true,
-        preserveViewport: false,
-        polylineOptions: {
-          strokeColor: "#FFD700",
-          strokeOpacity: 0.95,
-          strokeWeight: 5,
-        },
-      });
-    } else {
-      rendererRef.current.setMap(map);
-    }
-
     let disposed = false;
     setRouteState("loading");
-    const service = new google.maps.DirectionsService();
-    service.route(
-      {
-        origin,
-        destination: target,
-        travelMode: google.maps.TravelMode.DRIVING,
-      },
-      (result, status) => {
-        if (disposed) return;
-        if (status === google.maps.DirectionsStatus.OK && result) {
-          rendererRef.current?.setDirections(result);
-          lastRouteRef.current = { origin, target, at: Date.now() };
-          setRouteState("ready");
-          return;
-        }
 
-        console.warn("Não foi possível traçar a rota do entregador:", status);
-        rendererRef.current?.setMap(null);
-        rendererRef.current = null;
-        lastRouteRef.current = null;
-        map.panTo(target);
-        setRouteState("error");
-      },
-    );
+    const clearRoute = () => {
+      polylinesRef.current.forEach((polyline) => polyline.setMap(null));
+      polylinesRef.current = [];
+      fallbackLineRef.current?.setMap(null);
+      fallbackLineRef.current = null;
+    };
+
+    void (async () => {
+      try {
+        const routesLibrary = (await google.maps.importLibrary("routes")) as any;
+        const { routes } = await routesLibrary.Route.computeRoutes({
+          origin,
+          destination: target,
+          travelMode: "DRIVING",
+          fields: ["path"],
+        });
+        if (disposed) return;
+        if (!routes?.length) throw new Error("no route returned");
+
+        clearRoute();
+        polylinesRef.current = routes[0].createPolylines({
+          polylineOptions: {
+            strokeColor: "#FFD54A",
+            strokeOpacity: 0.96,
+            strokeWeight: 6,
+          },
+        });
+        polylinesRef.current.forEach((polyline) => polyline.setMap(map));
+        lastRouteRef.current = { origin, target, at: Date.now() };
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend(origin);
+        bounds.extend(target);
+        routes[0].path?.forEach((point: google.maps.LatLngLiteral) => bounds.extend(point));
+        map.fitBounds(bounds, 48);
+        setRouteState("ready");
+      } catch (error) {
+        if (disposed) return;
+        console.warn("Não foi possível calcular a rota interna do entregador:", error);
+        clearRoute();
+        fallbackLineRef.current = new google.maps.Polyline({
+          map,
+          path: [origin, target],
+          geodesic: true,
+          strokeColor: "#FFD54A",
+          strokeOpacity: 0.75,
+          strokeWeight: 4,
+        });
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend(origin);
+        bounds.extend(target);
+        map.fitBounds(bounds, 48);
+        lastRouteRef.current = { origin, target, at: Date.now() };
+        setRouteState("fallback");
+      }
+    })();
 
     return () => {
       disposed = true;
@@ -104,8 +122,10 @@ function RouteMapContent({
 
   useEffect(
     () => () => {
-      rendererRef.current?.setMap(null);
-      rendererRef.current = null;
+      polylinesRef.current.forEach((polyline) => polyline.setMap(null));
+      polylinesRef.current = [];
+      fallbackLineRef.current?.setMap(null);
+      fallbackLineRef.current = null;
     },
     [],
   );
@@ -124,9 +144,9 @@ function RouteMapContent({
           <MapPin className="h-5 w-5 fill-black/10" />
         </div>
       </AdvancedMarker>
-      {routeState === "error" ? (
+      {routeState === "fallback" ? (
         <div className="absolute bottom-2 left-2 right-2 z-20 rounded-lg bg-black/80 px-3 py-2 text-center text-[10px] font-bold text-amber-300 backdrop-blur">
-          A rota não pôde ser desenhada agora. Use “Abrir navegação” para seguir até o destino.
+          Trajeto aproximado exibido. Use “Abrir navegação” para orientação curva a curva.
         </div>
       ) : null}
     </>
