@@ -60,4 +60,5 @@ jobs:
           name: apois-entregas-admin-prebuilt
           path: .output
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 7
