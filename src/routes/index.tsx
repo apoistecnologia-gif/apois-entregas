@@ -43,20 +43,21 @@ function Index() {
                   event.currentTarget.style.display = "none";
                 }}
               />
-              <span className="absolute text-lg font-black text-[#FFD700]" aria-hidden="true">
-                A
-              </span>
             </div>
             <div className="text-left leading-none">
               <div className="text-[19px] font-black tracking-[0.08em]">APOIS</div>
-              <div className="mt-1 text-[12px] font-semibold tracking-[0.24em] text-zinc-400">ENTREGA</div>
+              <div className="mt-1 text-[12px] font-semibold tracking-[0.24em] text-zinc-400">
+                ENTREGA
+              </div>
             </div>
           </div>
 
           <h1 className="text-[27px] font-black leading-tight tracking-[-0.04em] sm:text-[30px]">
             Seu delivery <span className="text-[#FFD700]">do seu jeito</span>
           </h1>
-          <p className="mt-2 text-[14px] font-medium text-zinc-500">Pediu, chegou. Apois, vamo comer?</p>
+          <p className="mt-2 text-[14px] font-medium text-zinc-500">
+            Pediu, chegou. Apois, vamo comer?
+          </p>
         </header>
 
         <main className="flex flex-1 flex-col justify-center py-5">
@@ -108,7 +109,9 @@ function Index() {
 
               <div className="absolute bottom-1 left-3 flex items-center gap-2 rounded-full border border-white/[0.06] bg-black/80 px-3 py-2 backdrop-blur">
                 <MapPin className="h-4 w-4 text-[#FFD700]" fill="#FFD700" strokeWidth={1.5} />
-                <span className="text-[11px] font-semibold text-zinc-300">Entrega acompanhada em tempo real</span>
+                <span className="text-[11px] font-semibold text-zinc-300">
+                  Entrega acompanhada em tempo real
+                </span>
               </div>
             </div>
           </div>
