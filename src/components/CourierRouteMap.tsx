@@ -1,5 +1,5 @@
 /// <reference types="@types/google.maps" />
-import { APIProvider, AdvancedMarker, Map, useMap } from "@vis.gl/react-google-maps";
+import { APIProvider, AdvancedMarker, ColorScheme, Map, useMap } from "@vis.gl/react-google-maps";
 import { ExternalLink, MapPin, Navigation, PackageCheck, Store } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -231,6 +231,10 @@ export function CourierLiveMap({
               gestureHandling="greedy"
               disableDefaultUI
               mapId={mapId}
+              colorScheme={ColorScheme.DARK}
+              mapTypeControl={false}
+              streetViewControl={false}
+              fullscreenControl={false}
             >
               {nearbyMerchants.map((merchant) => (
                 <AdvancedMarker
@@ -379,6 +383,10 @@ export function CourierRouteMap({
               gestureHandling="greedy"
               disableDefaultUI
               mapId={mapId}
+              colorScheme={ColorScheme.DARK}
+              mapTypeControl={false}
+              streetViewControl={false}
+              fullscreenControl={false}
             >
               <RouteMapContent currentPosition={currentPosition} target={target} />
             </Map>
