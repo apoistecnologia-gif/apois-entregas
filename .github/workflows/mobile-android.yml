@@ -33,9 +33,9 @@ jobs:
       APOIS_MOBILE_BUILD: "1"
       VITE_APOIS_PRODUCT_MODE: ${{ matrix.product }}
       VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
-      VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
-      VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
-      VITE_GOOGLE_MAPS_MAP_ID: ci-placeholder
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_tmNxPNALqBcWiEdD7_eWOw_mk0qRkJa
+      VITE_GOOGLE_MAPS_BROWSER_KEY: ${{ secrets.VITE_GOOGLE_MAPS_BROWSER_KEY || 'ci-placeholder' }}
+      VITE_GOOGLE_MAPS_MAP_ID: ${{ secrets.VITE_GOOGLE_MAPS_MAP_ID || 'ci-placeholder' }}
       ANDROID_COURIER_KEYSTORE_BASE64: ${{ secrets.ANDROID_COURIER_KEYSTORE_BASE64 }}
       ANDROID_COURIER_STORE_PASSWORD: ${{ secrets.ANDROID_COURIER_STORE_PASSWORD }}
       ANDROID_COURIER_KEY_ALIAS: ${{ secrets.ANDROID_COURIER_KEY_ALIAS }}
@@ -65,6 +65,36 @@ jobs:
 
       - name: Install web dependencies
         run: bun install --frozen-lockfile
+
+      - name: Validate production runtime configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+            KS_B64="$ANDROID_COURIER_KEYSTORE_BASE64"
+            STORE_PASS="$ANDROID_COURIER_STORE_PASSWORD"
+            KEY_ALIAS="$ANDROID_COURIER_KEY_ALIAS"
+            KEY_PASS="$ANDROID_COURIER_KEY_PASSWORD"
+          else
+            KS_B64="$ANDROID_CUSTOMER_KEYSTORE_BASE64"
+            STORE_PASS="$ANDROID_CUSTOMER_STORE_PASSWORD"
+            KEY_ALIAS="$ANDROID_CUSTOMER_KEY_ALIAS"
+            KEY_PASS="$ANDROID_CUSTOMER_KEY_PASSWORD"
+          fi
+
+          SIGNING_CONFIGURED=false
+          if [ -n "$KS_B64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASS" ]; then
+            SIGNING_CONFIGURED=true
+          fi
+
+          if [ "$SIGNING_CONFIGURED" = "true" ]; then
+            test -n "$VITE_SUPABASE_PUBLISHABLE_KEY"
+            test "$VITE_SUPABASE_PUBLISHABLE_KEY" != "ci-placeholder"
+            test -n "$VITE_GOOGLE_MAPS_BROWSER_KEY"
+            test "$VITE_GOOGLE_MAPS_BROWSER_KEY" != "ci-placeholder"
+            test -n "$VITE_GOOGLE_MAPS_MAP_ID"
+            test "$VITE_GOOGLE_MAPS_MAP_ID" != "ci-placeholder"
+          fi
 
       - name: Build product web bundle
         shell: bash
@@ -228,9 +258,6 @@ jobs:
             printf '%s' "$KS_B64" | base64 --decode > android/apois-release.keystore
             keytool -list -keystore android/apois-release.keystore -storepass "$STORE_PASS" -alias "$KEY_ALIAS" >/dev/null
             echo "signed=true" >> "$GITHUB_OUTPUT"
-            echo "store_password=$STORE_PASS" >> "$GITHUB_OUTPUT"
-            echo "key_alias=$KEY_ALIAS" >> "$GITHUB_OUTPUT"
-            echo "key_password=$KEY_PASS" >> "$GITHUB_OUTPUT"
           else
             echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
@@ -238,11 +265,18 @@ jobs:
       - name: Build signed release AAB
         if: steps.signing.outputs.signed == 'true'
         working-directory: android
-        env:
-          STORE_PASSWORD: ${{ steps.signing.outputs.store_password }}
-          KEY_ALIAS: ${{ steps.signing.outputs.key_alias }}
-          KEY_PASSWORD: ${{ steps.signing.outputs.key_password }}
+        shell: bash
         run: |
+          set -euo pipefail
+          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+            STORE_PASSWORD="$ANDROID_COURIER_STORE_PASSWORD"
+            KEY_ALIAS="$ANDROID_COURIER_KEY_ALIAS"
+            KEY_PASSWORD="$ANDROID_COURIER_KEY_PASSWORD"
+          else
+            STORE_PASSWORD="$ANDROID_CUSTOMER_STORE_PASSWORD"
+            KEY_ALIAS="$ANDROID_CUSTOMER_KEY_ALIAS"
+            KEY_PASSWORD="$ANDROID_CUSTOMER_KEY_PASSWORD"
+          fi
           ./gradlew bundleRelease \
             -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/android/apois-release.keystore" \
             -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
@@ -264,10 +298,42 @@ jobs:
           test -s android/app/build/outputs/apk/debug/app-debug.apk
           if [ "${{ steps.signing.outputs.signed }}" = "true" ]; then
             test -s android/app/build/outputs/bundle/release/app-release-signed.aab
-            jarsigner -verify android/app/build/outputs/bundle/release/app-release-signed.aab >/dev/null
+            jarsigner -verify -strict android/app/build/outputs/bundle/release/app-release-signed.aab >/tmp/apois-jarsigner.txt 2>&1
+            grep -qi 'jar verified' /tmp/apois-jarsigner.txt
           else
             test -s android/app/build/outputs/bundle/release/app-release-unsigned.aab
+            jarsigner -verify android/app/build/outputs/bundle/release/app-release-unsigned.aab >/tmp/apois-jarsigner.txt 2>&1 || true
+            grep -qi 'jar is unsigned' /tmp/apois-jarsigner.txt
           fi
+
+      - name: Write artifact manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST="android/artifact-manifest-${APOIS_MOBILE_PRODUCT}.txt"
+          {
+            echo "product=${APOIS_MOBILE_PRODUCT}"
+            echo "head_sha=${GITHUB_SHA}"
+            echo "version_code=1"
+            echo "version_name=1.0.0"
+            if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+              echo "package_id=br.com.apois.entregador"
+            else
+              echo "package_id=br.com.apois.cliente"
+            fi
+            echo "signed=${{ steps.signing.outputs.signed }}"
+            for FILE in \
+              android/app/build/outputs/apk/debug/app-debug.apk \
+              android/app/build/outputs/bundle/release/app-release-signed.aab \
+              android/app/build/outputs/bundle/release/app-release-unsigned.aab; do
+              if [ -f "$FILE" ]; then
+                echo "file=$FILE"
+                echo "bytes=$(stat -c %s "$FILE")"
+                echo "sha256=$(sha256sum "$FILE" | awk '{print $1}')"
+              fi
+            done
+          } > "$MANIFEST"
+          cat "$MANIFEST"
 
       - name: Remove decoded keystore
         if: always()
@@ -282,3 +348,4 @@ jobs:
             android/app/build/outputs/apk/debug/app-debug.apk
             android/app/build/outputs/bundle/release/app-release-signed.aab
             android/app/build/outputs/bundle/release/app-release-unsigned.aab
+            android/artifact-manifest-${{ matrix.product }}.txt
