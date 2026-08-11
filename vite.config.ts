@@ -7,12 +7,17 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 const isMobileBuild = process.env["APOIS_MOBILE_BUILD"] === "1";
+const isVercelBuild =
+  process.env["APOIS_VERCEL_BUILD"] === "1" || process.env["VERCEL"] === "1";
 
 export default defineConfig({
   // Mobile packaging renders the built app once in CI to produce Capacitor's index.html.
-  // Use a Node-compatible Nitro server for that build-only render while normal web
-  // deployments retain the package's Cloudflare default.
-  ...(isMobileBuild ? { nitro: { preset: "node" } } : {}),
+  // Use a Node-compatible Nitro server for that build-only render.
+  ...(isMobileBuild
+    ? { nitro: { preset: "node" } }
+    : isVercelBuild
+      ? { nitro: { preset: "vercel" } }
+      : {}),
   tanstackStart: {
     server: { entry: "server" },
   },
