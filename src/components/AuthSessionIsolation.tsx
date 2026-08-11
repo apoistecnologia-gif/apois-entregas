@@ -72,11 +72,7 @@ export function AuthSessionIsolation({ children }: { children: ReactNode }) {
           clearSensitiveCheckoutState();
         }
 
-        if (
-          product === "customer" &&
-          persistedCartOwnerId &&
-          persistedCartOwnerId !== nextUserId
-        ) {
+        if (product === "customer" && persistedCartOwnerId && persistedCartOwnerId !== nextUserId) {
           clearUserCartState();
         }
 
