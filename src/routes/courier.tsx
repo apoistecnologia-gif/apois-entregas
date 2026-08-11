@@ -85,6 +85,57 @@ function CourierApp() {
   });
   const [currentPosition, setCurrentPosition] = useState<CourierPosition | null>(null);
   const startupAvailabilityHandledRef = useRef(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const offerAlertIntervalRef = useRef<number | null>(null);
+  const offerAlertActiveRef = useRef(false);
+
+  const ensureOfferAudioContext = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextCtor) return null;
+    if (!audioContextRef.current) audioContextRef.current = new AudioContextCtor();
+    if (audioContextRef.current.state === "suspended") void audioContextRef.current.resume();
+    return audioContextRef.current;
+  }, []);
+
+  const stopOfferAlert = useCallback(() => {
+    offerAlertActiveRef.current = false;
+    if (offerAlertIntervalRef.current !== null) {
+      window.clearInterval(offerAlertIntervalRef.current);
+      offerAlertIntervalRef.current = null;
+    }
+    if (navigator.vibrate) navigator.vibrate(0);
+  }, []);
+
+  const playOfferAlertPulse = useCallback(() => {
+    const context = ensureOfferAudioContext();
+    if (context) {
+      const now = context.currentTime;
+      [0, 0.18, 0.36].forEach((offset, index) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = "square";
+        oscillator.frequency.setValueAtTime(index === 1 ? 1040 : 880, now + offset);
+        gain.gain.setValueAtTime(0.0001, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.22, now + offset + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.14);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(now + offset);
+        oscillator.stop(now + offset + 0.16);
+      });
+    }
+    if (navigator.vibrate) navigator.vibrate([280, 120, 280, 120, 420]);
+  }, [ensureOfferAudioContext]);
+
+  const startOfferAlert = useCallback(() => {
+    if (offerAlertActiveRef.current) return;
+    offerAlertActiveRef.current = true;
+    playOfferAlertPulse();
+    offerAlertIntervalRef.current = window.setInterval(() => {
+      if (offerAlertActiveRef.current) playOfferAlertPulse();
+    }, 2200);
+  }, [playOfferAlertPulse]);
 
   const loadCourierOperations = useCallback(async (courierId: string) => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
@@ -238,6 +289,24 @@ function CourierApp() {
   }, [loadAll]);
 
   useEffect(() => {
+    const shouldAlert = Boolean(availability?.is_online && !activeJob && offers.length > 0);
+    if (shouldAlert) startOfferAlert();
+    else stopOfferAlert();
+    return () => {
+      if (!shouldAlert) stopOfferAlert();
+    };
+  }, [availability?.is_online, activeJob, offers.length, startOfferAlert, stopOfferAlert]);
+
+  useEffect(
+    () => () => {
+      stopOfferAlert();
+      if (audioContextRef.current) void audioContextRef.current.close();
+      audioContextRef.current = null;
+    },
+    [stopOfferAlert],
+  );
+
+  useEffect(() => {
     if (!courier?.id || courier.status !== "approved") return;
     const refresh = () => void loadCourierOperations(courier.id);
     const offersChannel = supabase
@@ -344,6 +413,7 @@ function CourierApp() {
     const target = !availability?.is_online;
 
     if (target) {
+      ensureOfferAudioContext();
       if (!navigator.geolocation) {
         toast.error(
           "Este dispositivo não disponibiliza localização. Ative o GPS para ficar online.",
@@ -406,6 +476,7 @@ function CourierApp() {
 
   const acceptOffer = async (offerId: string) => {
     if (!courier?.id) return;
+    stopOfferAlert();
     setBusy(`offer:${offerId}`);
     const { error } = await rpc("accept_delivery_offer", { _offer_id: offerId });
     setBusy(null);
@@ -416,6 +487,7 @@ function CourierApp() {
 
   const rejectOffer = async (offerId: string) => {
     if (!courier?.id) return;
+    stopOfferAlert();
     setBusy(`offer:${offerId}`);
     const { error } = await rpc("reject_delivery_offer", { _offer_id: offerId });
     setBusy(null);
