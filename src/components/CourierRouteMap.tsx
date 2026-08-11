@@ -181,13 +181,19 @@ export function CourierLiveMap({
       .sort((a, b) => a.distanceMeters - b.distanceMeters)
       .slice(0, 30);
   }, [activeOfferSet, currentPosition, merchants]);
-  const selectedMerchant = nearbyMerchants.find((merchant) => merchant.id === selectedMerchantId) ?? null;
+  const selectedMerchant =
+    nearbyMerchants.find((merchant) => merchant.id === selectedMerchantId) ?? null;
   const activeOfferCount = nearbyMerchants.filter((merchant) => merchant.hasActiveOffer).length;
   const distanceLabel = (meters: number) =>
-    meters < 1000 ? `${Math.max(1, Math.round(meters))} m` : `${(meters / 1000).toFixed(1).replace(".", ",")} km`;
+    meters < 1000
+      ? `${Math.max(1, Math.round(meters))} m`
+      : `${(meters / 1000).toFixed(1).replace(".", ",")} km`;
 
   useEffect(() => {
-    if (selectedMerchantId && !nearbyMerchants.some((merchant) => merchant.id === selectedMerchantId)) {
+    if (
+      selectedMerchantId &&
+      !nearbyMerchants.some((merchant) => merchant.id === selectedMerchantId)
+    ) {
       setSelectedMerchantId(null);
     }
   }, [nearbyMerchants, selectedMerchantId]);
@@ -197,7 +203,9 @@ export function CourierLiveMap({
       <div className="border-b border-zinc-900 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-wider text-primary">Mapa em tempo real</p>
+            <p className="text-[10px] font-black uppercase tracking-wider text-primary">
+              Mapa em tempo real
+            </p>
             <p className="mt-1 text-xs text-zinc-500">
               {currentPosition
                 ? `${nearbyMerchants.length} parceiro${nearbyMerchants.length === 1 ? "" : "s"} APOIS em até 8 km.`
@@ -257,7 +265,10 @@ export function CourierLiveMap({
                   )}
                 </AdvancedMarker>
               ))}
-              <AdvancedMarker position={{ lat: currentPosition.lat, lng: currentPosition.lng }} title="Sua posição">
+              <AdvancedMarker
+                position={{ lat: currentPosition.lat, lng: currentPosition.lng }}
+                title="Sua posição"
+              >
                 <div className="grid h-11 w-11 place-items-center rounded-full border-4 border-white bg-primary text-black shadow-2xl ring-4 ring-primary/20">
                   <Navigation className="h-5 w-5 fill-black text-black" />
                 </div>
@@ -280,7 +291,9 @@ export function CourierLiveMap({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-black text-white">{selectedMerchant.name}</p>
+                    <p className="truncate text-sm font-black text-white">
+                      {selectedMerchant.name}
+                    </p>
                     <p className="mt-0.5 text-xs text-zinc-400">
                       A aproximadamente {distanceLabel(selectedMerchant.distanceMeters)} de você
                     </p>

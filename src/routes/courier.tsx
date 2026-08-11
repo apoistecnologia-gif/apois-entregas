@@ -87,38 +87,39 @@ function CourierApp() {
 
   const loadCourierOperations = useCallback(async (courierId: string) => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
-    const [availabilityRes, offersRes, jobsRes, walletRes, metricsRes, merchantsRes] = await Promise.all([
-      from("courier_availability").select("*").eq("courier_id", courierId).maybeSingle(),
-      from("delivery_offers")
-        .select("*, delivery_jobs(*, orders(order_number,total,status))")
-        .eq("courier_id", courierId)
-        .eq("status", "offered")
-        .gt("expires_at", new Date().toISOString())
-        .order("offered_at"),
-      from("delivery_jobs")
-        .select("*, orders(order_number,total,status,observation)")
-        .eq("courier_id", courierId)
-        .in("status", [
-          "accepted",
-          "arriving_pickup",
-          "at_pickup",
-          "picked_up",
-          "on_the_way",
-          "arrived_destination",
-        ])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      from("wallets").select("*").eq("courier_id", courierId).maybeSingle(),
-      rpc("get_courier_metrics", { _timezone: timezone }),
-      from("merchants")
-        .select("id,name,latitude,longitude,is_open")
-        .eq("approval_status", "approved")
-        .eq("is_active", true)
-        .not("latitude", "is", null)
-        .not("longitude", "is", null)
-        .limit(100),
-    ]);
+    const [availabilityRes, offersRes, jobsRes, walletRes, metricsRes, merchantsRes] =
+      await Promise.all([
+        from("courier_availability").select("*").eq("courier_id", courierId).maybeSingle(),
+        from("delivery_offers")
+          .select("*, delivery_jobs(*, orders(order_number,total,status))")
+          .eq("courier_id", courierId)
+          .eq("status", "offered")
+          .gt("expires_at", new Date().toISOString())
+          .order("offered_at"),
+        from("delivery_jobs")
+          .select("*, orders(order_number,total,status,observation)")
+          .eq("courier_id", courierId)
+          .in("status", [
+            "accepted",
+            "arriving_pickup",
+            "at_pickup",
+            "picked_up",
+            "on_the_way",
+            "arrived_destination",
+          ])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        from("wallets").select("*").eq("courier_id", courierId).maybeSingle(),
+        rpc("get_courier_metrics", { _timezone: timezone }),
+        from("merchants")
+          .select("id,name,latitude,longitude,is_open")
+          .eq("approval_status", "approved")
+          .eq("is_active", true)
+          .not("latitude", "is", null)
+          .not("longitude", "is", null)
+          .limit(100),
+      ]);
     setAvailability(availabilityRes.data ?? null);
     setOffers(offersRes.data ?? []);
     setNearbyMerchants(merchantsRes.data ?? []);
@@ -300,7 +301,9 @@ function CourierApp() {
             status: "pending",
           });
       if (write.error) throw write.error;
-      toast.success("Documento enviado com sucesso. Seu cadastro ficará em análise até a aprovação.");
+      toast.success(
+        "Documento enviado com sucesso. Seu cadastro ficará em análise até a aprovação.",
+      );
       await loadAll(true);
     } catch (error: any) {
       toast.error(error?.message || "Falha ao enviar documento.");
@@ -937,8 +940,8 @@ function CourierReviewState({
               </div>
               {doc?.status === "pending" ? (
                 <p className="mt-2 rounded-xl bg-primary/5 px-3 py-2 text-xs leading-relaxed text-zinc-400">
-                  Arquivo enviado com sucesso e aguardando análise. Se precisar corrigir o documento,
-                  você pode selecionar outro arquivo abaixo para substituí-lo.
+                  Arquivo enviado com sucesso e aguardando análise. Se precisar corrigir o
+                  documento, você pode selecionar outro arquivo abaixo para substituí-lo.
                 </p>
               ) : null}
               {doc?.rejection_reason ? (

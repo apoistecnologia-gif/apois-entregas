@@ -210,7 +210,9 @@ export function CourierProfilePanel({
               <UserRound className="h-8 w-8" />
             </div>
             <div className="min-w-0">
-              <p className="break-all pr-1 text-base font-black leading-snug sm:text-lg">{user?.email || "Entregador APOIS"}</p>
+              <p className="break-all pr-1 text-base font-black leading-snug sm:text-lg">
+                {user?.email || "Entregador APOIS"}
+              </p>
               <p className="mt-1 text-xs font-bold uppercase text-emerald-400">Cadastro aprovado</p>
               <div className="mt-2 flex items-center gap-1 text-sm text-zinc-400">
                 <Star className="h-4 w-4 fill-primary text-primary" />
