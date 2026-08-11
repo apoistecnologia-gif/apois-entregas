@@ -7,6 +7,7 @@ import logoAsset from "@/assets/logo.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
+  getApoisProductMode,
   getProductHomeRoute,
   getProductLabel,
   productAllowsPublicSignup,
@@ -27,6 +28,31 @@ export const Route = createFileRoute("/login")({
     meta: [{ name: "description", content: `Entre na sua conta do ${getProductLabel()}` }],
   }),
 });
+
+function isRedirectAllowedForCurrentProduct(pathname: string) {
+  const product = getApoisProductMode();
+  if (!pathname.startsWith("/") || pathname.startsWith("//")) return false;
+
+  if (product === "courier") return pathname === "/courier" || pathname.startsWith("/courier/");
+  if (product === "merchant") {
+    return (
+      pathname === "/merchant" ||
+      pathname.startsWith("/merchant/") ||
+      pathname === "/configuracoes-estabelecimento" ||
+      pathname.startsWith("/configuracoes-estabelecimento/")
+    );
+  }
+  if (product === "admin") return pathname === "/admin" || pathname.startsWith("/admin/");
+
+  return !(
+    pathname === "/courier" ||
+    pathname.startsWith("/courier/") ||
+    pathname === "/merchant" ||
+    pathname.startsWith("/merchant/") ||
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/")
+  );
+}
 
 function Login() {
   const navigate = useNavigate();
@@ -107,7 +133,7 @@ function Login() {
         const searchParams = new URLSearchParams(window.location.search);
         const redirectPath = searchParams.get("redirect");
         const safeRedirectPath =
-          redirectPath?.startsWith("/") && !redirectPath.startsWith("//") ? redirectPath : null;
+          redirectPath && isRedirectAllowedForCurrentProduct(redirectPath) ? redirectPath : null;
 
         if (safeRedirectPath) {
           navigate({ to: safeRedirectPath });
@@ -124,7 +150,6 @@ function Login() {
 
   return (
     <div className="flex flex-col h-full bg-black text-white overflow-hidden w-full">
-      {/* Header with Back Button */}
       <header className="flex items-center px-3 py-2 shrink-0 bg-black">
         <button
           onClick={() => navigate({ to: "/" })}
@@ -136,9 +161,7 @@ function Login() {
       </header>
 
       <main className="flex-1 flex flex-col px-6 justify-between pb-4 min-h-0">
-        {/* Top Section: Logo, Greeting, Forms */}
         <div className="flex flex-col">
-          {/* Logo and Greeting */}
           <div className="flex flex-col items-center mb-4 text-center">
             <img
               src={logoAsset.url}
@@ -209,7 +232,6 @@ function Login() {
           </div>
         </div>
 
-        {/* Bottom Section: Register Link and Copyright */}
         <div className="flex flex-col space-y-4">
           <div className="text-center">
             {allowsSignup ? (
