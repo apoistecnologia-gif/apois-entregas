@@ -75,7 +75,9 @@ function EnderecosLayout() {
       setAddresses(nextAddresses);
       setSelectedAddressId((current) => {
         if (current && nextAddresses.some((address) => address.id === current)) return current;
-        return nextAddresses.find((address) => address.is_default)?.id ?? nextAddresses[0]?.id ?? null;
+        return (
+          nextAddresses.find((address) => address.is_default)?.id ?? nextAddresses[0]?.id ?? null
+        );
       });
     }
     setIsLoading(false);
