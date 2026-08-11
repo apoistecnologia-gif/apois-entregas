@@ -84,5 +84,9 @@ jobs:
           APOIS_VERCEL_BUILD: "1"
         run: bunx vercel build --prod --token "$VERCEL_TOKEN"
 
+      - name: Detach Git metadata for Hobby CLI deployment
+        shell: bash
+        run: rm -rf .git
+
       - name: Deploy merchant panel to Vercel production
         run: bunx vercel deploy --prebuilt --prod --yes --token "$VERCEL_TOKEN"
