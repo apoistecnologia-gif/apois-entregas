@@ -500,19 +500,26 @@ function CheckoutPage() {
       const orderId = orderResponse?.orderId;
       if (!orderId) throw new Error("O backend não retornou o identificador do pedido.");
 
-      const { data: pixResponse, error: pixError } = await supabase.functions.invoke(
-        "create-pix-charge",
-        {
-          body: { orderId },
-        },
-      );
+      const { data: providerSetting } = await (supabase.from as any)("platform_settings")
+        .select("value")
+        .eq("key", "order_payment_provider")
+        .maybeSingle();
+      const configuredProvider =
+        typeof providerSetting?.value === "string"
+          ? providerSetting.value.trim().toLowerCase()
+          : "mercadopago";
+      const pixFunction =
+        configuredProvider === "asaas" ? "create-asaas-pix-charge" : "create-pix-charge";
+      const { data: pixResponse, error: pixError } = await supabase.functions.invoke(pixFunction, {
+        body: { orderId },
+      });
       if (pixError) {
         throw new Error(await getFunctionErrorMessage(pixError, "Não foi possível gerar o PIX."));
       }
 
       const payment = pixResponse?.payment;
       if (!payment?.qrCodeText || !payment?.qrCodeImageUrl) {
-        throw new Error("O Mercado Pago não retornou os dados completos do PIX.");
+        throw new Error("O provedor de pagamento não retornou os dados completos do PIX.");
       }
 
       const nextPixData: PixData = {

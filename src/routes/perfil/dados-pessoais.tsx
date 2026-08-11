@@ -37,6 +37,7 @@ export const Route = createFileRoute("/perfil/dados-pessoais")({
 type ProfileDraft = {
   full_name: string;
   phone: string;
+  cpf: string;
   email: string;
   birth_date: string;
   avatar_url: string;
@@ -57,6 +58,7 @@ function DadosPessoaisPage() {
   const [profile, setProfile] = useState<ProfileDraft>({
     full_name: "",
     phone: "",
+    cpf: "",
     email: "",
     birth_date: "",
     avatar_url: "",
@@ -75,7 +77,7 @@ function DadosPessoaisPage() {
 
         const { data, error } = await supabase
           .from("profiles")
-          .select("full_name,phone,birth_date,avatar_url")
+          .select("full_name,phone,cpf,birth_date,avatar_url")
           .eq("id", user.id)
           .single();
 
@@ -84,6 +86,7 @@ function DadosPessoaisPage() {
           setProfile({
             full_name: data?.full_name || "",
             phone: data?.phone || "",
+            cpf: data?.cpf || "",
             email: user.email || "",
             birth_date: data?.birth_date || "",
             avatar_url: data?.avatar_url || "",
@@ -112,6 +115,12 @@ function DadosPessoaisPage() {
       return;
     }
 
+    const normalizedCpf = profile.cpf.replace(/\D/g, "");
+    if (normalizedCpf.length !== 11) {
+      toast.error("Informe um CPF válido com 11 dígitos.");
+      return;
+    }
+
     const requestedEmail = profile.email.trim().toLowerCase();
     if (!emailPattern.test(requestedEmail)) {
       toast.error("Informe um e-mail válido.");
@@ -131,6 +140,7 @@ function DadosPessoaisPage() {
         .update({
           full_name: profile.full_name.trim(),
           phone: profile.phone.trim() || null,
+          cpf: normalizedCpf,
           birth_date: profile.birth_date || null,
         })
         .eq("id", user.id);
@@ -324,6 +334,22 @@ function DadosPessoaisPage() {
                     className="profile-input"
                     placeholder="(00) 00000-0000"
                     autoComplete="tel"
+                  />
+                </Field>
+
+                <Field label="CPF" icon={User}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={profile.cpf}
+                    onChange={(event) =>
+                      setProfile((current) => ({ ...current, cpf: event.target.value }))
+                    }
+                    className="profile-input"
+                    placeholder="000.000.000-00"
+                    autoComplete="off"
+                    maxLength={14}
+                    required
                   />
                 </Field>
 
