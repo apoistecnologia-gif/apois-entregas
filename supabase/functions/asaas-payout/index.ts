@@ -6,7 +6,8 @@ const cors = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const headers = { ...cors, "Content-Type": "application/json; charset=utf-8" };
-const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers });
+const reply = (status: number, body: unknown) =>
+  new Response(JSON.stringify(body), { status, headers });
 
 function base64ToBytes(value: string) {
   const binary = atob(value);
@@ -38,13 +39,18 @@ Deno.serve(async (req: Request) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const environment = (Deno.env.get("ASAAS_ENVIRONMENT") ?? "sandbox").toLowerCase();
   const encryptionKey = Deno.env.get("ASAAS_SUBACCOUNT_ENCRYPTION_KEY");
-  const apiBase = environment === "production" ? "https://api.asaas.com/v3" : "https://api-sandbox.asaas.com/v3";
-  if (!supabaseUrl || !anonKey || !serviceKey || !encryptionKey) return reply(503, { error: "Integração Asaas ainda não configurada." });
+  const apiBase =
+    environment === "production" ? "https://api.asaas.com/v3" : "https://api-sandbox.asaas.com/v3";
+  if (!supabaseUrl || !anonKey || !serviceKey || !encryptionKey)
+    return reply(503, { error: "Integração Asaas ainda não configurada." });
 
   const authorization = req.headers.get("Authorization");
-  if (!authorization?.startsWith("Bearer ")) return reply(401, { error: "Autenticação obrigatória." });
+  if (!authorization?.startsWith("Bearer "))
+    return reply(401, { error: "Autenticação obrigatória." });
   const jwt = authorization.slice(7);
-  const auth = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const auth = createClient(supabaseUrl, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
   const { data: authData, error: authError } = await auth.auth.getUser(jwt);
   if (authError || !authData.user) return reply(401, { error: "Sessão inválida." });
 
@@ -52,35 +58,71 @@ Deno.serve(async (req: Request) => {
   const payoutId = typeof body?.payoutId === "string" ? body.payoutId : null;
   if (!payoutId) return reply(400, { error: "Saque inválido." });
 
-  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data: payout } = await admin.from("payouts")
+  const admin = createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: payout } = await admin
+    .from("payouts")
     .select("id,wallet_id,payout_account_id,amount,status,provider_payout_id")
-    .eq("id", payoutId).maybeSingle();
+    .eq("id", payoutId)
+    .maybeSingle();
   if (!payout) return reply(404, { error: "Saque não encontrado." });
   if (payout.status === "paid") return reply(200, { payoutId, status: "paid", reused: true });
-  if (!["pending", "processing"].includes(payout.status)) return reply(409, { error: "Este saque não pode ser processado." });
+  if (!["pending", "processing"].includes(payout.status))
+    return reply(409, { error: "Este saque não pode ser processado." });
 
-  const { data: wallet } = await admin.from("wallets").select("id,merchant_id").eq("id", payout.wallet_id).maybeSingle();
-  if (!wallet?.merchant_id) return reply(409, { error: "Este fluxo automático é exclusivo da carteira do estabelecimento." });
-  const { data: membership } = await admin.from("merchant_members").select("merchant_id").eq("merchant_id", wallet.merchant_id).eq("user_id", authData.user.id).eq("status", "active").maybeSingle();
-  const { data: isAdmin } = await admin.rpc("has_role", { _user_id: authData.user.id, _role: "admin" });
+  const { data: wallet } = await admin
+    .from("wallets")
+    .select("id,merchant_id")
+    .eq("id", payout.wallet_id)
+    .maybeSingle();
+  if (!wallet?.merchant_id)
+    return reply(409, {
+      error: "Este fluxo automático é exclusivo da carteira do estabelecimento.",
+    });
+  const { data: membership } = await admin
+    .from("merchant_members")
+    .select("merchant_id")
+    .eq("merchant_id", wallet.merchant_id)
+    .eq("user_id", authData.user.id)
+    .eq("status", "active")
+    .maybeSingle();
+  const { data: isAdmin } = await admin.rpc("has_role", {
+    _user_id: authData.user.id,
+    _role: "admin",
+  });
   if (!membership && !isAdmin) return reply(403, { error: "Acesso negado." });
 
-  const { data: destination } = await admin.from("payout_accounts")
+  const { data: destination } = await admin
+    .from("payout_accounts")
     .select("pix_key,pix_key_type,is_active")
-    .eq("id", payout.payout_account_id).maybeSingle();
+    .eq("id", payout.payout_account_id)
+    .maybeSingle();
   if (!destination?.is_active || !destination.pix_key || !destination.pix_key_type) {
-    return reply(409, { error: "Cadastre uma chave PIX e o tipo da chave antes de solicitar o saque.", code: "PIX_KEY_TYPE_REQUIRED" });
+    return reply(409, {
+      error: "Cadastre uma chave PIX e o tipo da chave antes de solicitar o saque.",
+      code: "PIX_KEY_TYPE_REQUIRED",
+    });
   }
 
-  const { data: asaasAccount } = await admin.from("merchant_asaas_accounts")
+  const { data: asaasAccount } = await admin
+    .from("merchant_asaas_accounts")
     .select("encrypted_api_key,api_key_iv,status")
-    .eq("merchant_id", wallet.merchant_id).maybeSingle();
-  if (!asaasAccount?.encrypted_api_key || !asaasAccount.api_key_iv || asaasAccount.status !== "active") {
+    .eq("merchant_id", wallet.merchant_id)
+    .maybeSingle();
+  if (
+    !asaasAccount?.encrypted_api_key ||
+    !asaasAccount.api_key_iv ||
+    asaasAccount.status !== "active"
+  ) {
     return reply(409, { error: "A subconta Asaas do estabelecimento não está ativa." });
   }
 
-  const subaccountApiKey = await decryptSecret(asaasAccount.encrypted_api_key, asaasAccount.api_key_iv, encryptionKey);
+  const subaccountApiKey = await decryptSecret(
+    asaasAccount.encrypted_api_key,
+    asaasAccount.api_key_iv,
+    encryptionKey,
+  );
   const transferResponse = await fetch(`${apiBase}/transfers`, {
     method: "POST",
     headers: { "Content-Type": "application/json", access_token: subaccountApiKey },
@@ -94,16 +136,49 @@ Deno.serve(async (req: Request) => {
   });
   const transfer = await transferResponse.json().catch(() => null);
   if (!transferResponse.ok || !transfer?.id) {
-    await admin.rpc("settle_payout", { _payout_id: payout.id, _new_status: "failed", _provider: "asaas", _provider_payout_id: null, _failure_reason: JSON.stringify(transfer)?.slice(0, 1000) || `HTTP ${transferResponse.status}` });
-    return reply(502, { error: "O Asaas recusou a transferência PIX.", providerStatus: transferResponse.status, provider: transfer });
+    await admin.rpc("settle_payout", {
+      _payout_id: payout.id,
+      _new_status: "failed",
+      _provider: "asaas",
+      _provider_payout_id: null,
+      _failure_reason:
+        JSON.stringify(transfer)?.slice(0, 1000) || `HTTP ${transferResponse.status}`,
+    });
+    return reply(502, {
+      error: "O Asaas recusou a transferência PIX.",
+      providerStatus: transferResponse.status,
+      provider: transfer,
+    });
   }
 
   const providerStatus = String(transfer.status || "PENDING").toUpperCase();
   if (providerStatus === "DONE") {
-    await admin.rpc("settle_payout", { _payout_id: payout.id, _new_status: "paid", _provider: "asaas", _provider_payout_id: transfer.id, _failure_reason: null });
-    return reply(200, { payoutId: payout.id, providerPayoutId: transfer.id, status: "paid", reused: false });
+    await admin.rpc("settle_payout", {
+      _payout_id: payout.id,
+      _new_status: "paid",
+      _provider: "asaas",
+      _provider_payout_id: transfer.id,
+      _failure_reason: null,
+    });
+    return reply(200, {
+      payoutId: payout.id,
+      providerPayoutId: transfer.id,
+      status: "paid",
+      reused: false,
+    });
   }
 
-  await admin.rpc("settle_payout", { _payout_id: payout.id, _new_status: "processing", _provider: "asaas", _provider_payout_id: transfer.id, _failure_reason: null });
-  return reply(200, { payoutId: payout.id, providerPayoutId: transfer.id, status: "processing", reused: false });
+  await admin.rpc("settle_payout", {
+    _payout_id: payout.id,
+    _new_status: "processing",
+    _provider: "asaas",
+    _provider_payout_id: transfer.id,
+    _failure_reason: null,
+  });
+  return reply(200, {
+    payoutId: payout.id,
+    providerPayoutId: transfer.id,
+    status: "processing",
+    reused: false,
+  });
 });

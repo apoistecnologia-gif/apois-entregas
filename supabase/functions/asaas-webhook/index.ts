@@ -1,17 +1,20 @@
 import { createClient } from "npm:@supabase/supabase-js@2.112.1";
 
 const headers = { "Content-Type": "application/json; charset=utf-8" };
-const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers });
+const reply = (status: number, body: unknown) =>
+  new Response(JSON.stringify(body), { status, headers });
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return reply(405, { error: "method_not_allowed" });
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const webhookToken = Deno.env.get("ASAAS_WEBHOOK_TOKEN")?.trim();
-  if (!supabaseUrl || !serviceKey || !webhookToken) return reply(500, { error: "server_configuration" });
+  if (!supabaseUrl || !serviceKey || !webhookToken)
+    return reply(500, { error: "server_configuration" });
 
   const receivedToken = req.headers.get("asaas-access-token")?.trim();
-  if (!receivedToken || receivedToken !== webhookToken) return reply(401, { error: "invalid_token" });
+  if (!receivedToken || receivedToken !== webhookToken)
+    return reply(401, { error: "invalid_token" });
 
   const payload = await req.json().catch(() => null);
   const eventId = typeof payload?.id === "string" ? payload.id : null;
@@ -19,51 +22,88 @@ Deno.serve(async (req: Request) => {
   const providerPaymentId = typeof payload?.payment?.id === "string" ? payload.payment.id : null;
   if (!eventId || !eventType) return reply(400, { error: "invalid_payload" });
 
-  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data: existing } = await admin.from("asaas_webhook_events").select("id,processed_at").eq("event_id", eventId).maybeSingle();
+  const admin = createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: existing } = await admin
+    .from("asaas_webhook_events")
+    .select("id,processed_at")
+    .eq("event_id", eventId)
+    .maybeSingle();
   if (existing?.processed_at) return reply(200, { accepted: true, duplicate: true });
 
   let eventRowId = existing?.id ?? null;
   if (!eventRowId) {
-    const { data: inserted, error } = await admin.from("asaas_webhook_events").insert({
-      event_id: eventId,
-      event_type: eventType,
-      resource_type: providerPaymentId ? "payment" : eventType.startsWith("TRANSFER_") ? "transfer" : null,
-      resource_id: providerPaymentId ?? payload?.transfer?.id ?? null,
-      payload,
-    }).select("id").single();
+    const { data: inserted, error } = await admin
+      .from("asaas_webhook_events")
+      .insert({
+        event_id: eventId,
+        event_type: eventType,
+        resource_type: providerPaymentId
+          ? "payment"
+          : eventType.startsWith("TRANSFER_")
+            ? "transfer"
+            : null,
+        resource_id: providerPaymentId ?? payload?.transfer?.id ?? null,
+        payload,
+      })
+      .select("id")
+      .single();
     if (error?.code === "23505") return reply(200, { accepted: true, duplicate: true });
     if (error || !inserted) return reply(500, { error: "event_persistence_failed" });
     eventRowId = inserted.id;
   }
 
   if (!providerPaymentId) {
-    await admin.from("asaas_webhook_events").update({ processed_at: new Date().toISOString() }).eq("id", eventRowId);
+    await admin
+      .from("asaas_webhook_events")
+      .update({ processed_at: new Date().toISOString() })
+      .eq("id", eventRowId);
     return reply(200, { accepted: true, ignored: true });
   }
 
-  const { data: payment, error: lookupError } = await admin.from("payments")
+  const { data: payment, error: lookupError } = await admin
+    .from("payments")
     .select("id,order_id,status,amount")
-    .eq("provider", "asaas").eq("provider_charge_id", providerPaymentId).maybeSingle();
+    .eq("provider", "asaas")
+    .eq("provider_charge_id", providerPaymentId)
+    .maybeSingle();
   if (lookupError) return reply(500, { error: "payment_lookup_failed" });
   if (!payment) {
-    await admin.from("asaas_webhook_events").update({ processing_error: "payment_not_ready" }).eq("id", eventRowId);
+    await admin
+      .from("asaas_webhook_events")
+      .update({ processing_error: "payment_not_ready" })
+      .eq("id", eventRowId);
     return reply(503, { error: "payment_not_ready" });
   }
 
   const providerValue = Number(payload?.payment?.value);
-  if (Number.isFinite(providerValue) && Math.round(providerValue * 100) !== Math.round(Number(payment.amount) * 100)) {
-    await admin.from("asaas_webhook_events").update({ processing_error: "amount_mismatch" }).eq("id", eventRowId);
+  if (
+    Number.isFinite(providerValue) &&
+    Math.round(providerValue * 100) !== Math.round(Number(payment.amount) * 100)
+  ) {
+    await admin
+      .from("asaas_webhook_events")
+      .update({ processing_error: "amount_mismatch" })
+      .eq("id", eventRowId);
     return reply(409, { error: "amount_mismatch" });
   }
 
   const now = new Date().toISOString();
   const paidEvents = new Set(["PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"]);
-  const failedEvents = new Set(["PAYMENT_OVERDUE", "PAYMENT_DELETED", "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED"]);
+  const failedEvents = new Set([
+    "PAYMENT_OVERDUE",
+    "PAYMENT_DELETED",
+    "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED",
+  ]);
   const refundedEvents = new Set(["PAYMENT_REFUNDED", "PAYMENT_PARTIALLY_REFUNDED"]);
 
-  const { data: existingPaymentEvent } = await admin.from("payment_events")
-    .select("id").eq("provider", "asaas").eq("provider_event_id", eventId).maybeSingle();
+  const { data: existingPaymentEvent } = await admin
+    .from("payment_events")
+    .select("id")
+    .eq("provider", "asaas")
+    .eq("provider_event_id", eventId)
+    .maybeSingle();
   if (!existingPaymentEvent) {
     await admin.from("payment_events").insert({
       provider: "asaas",
@@ -76,8 +116,16 @@ Deno.serve(async (req: Request) => {
   }
 
   if (paidEvents.has(eventType)) {
-    await admin.from("payments").update({ status: "paid", paid_at: now, failed_at: null, failure_reason: null }).eq("id", payment.id).neq("status", "refunded");
-    const { data: order } = await admin.from("orders").select("status").eq("id", payment.order_id).maybeSingle();
+    await admin
+      .from("payments")
+      .update({ status: "paid", paid_at: now, failed_at: null, failure_reason: null })
+      .eq("id", payment.id)
+      .neq("status", "refunded");
+    const { data: order } = await admin
+      .from("orders")
+      .select("status")
+      .eq("id", payment.order_id)
+      .maybeSingle();
     if (order && !["cancelled", "refunded"].includes(order.status)) {
       await admin.from("orders").update({ payment_status: "paid" }).eq("id", payment.order_id);
     }
@@ -85,11 +133,26 @@ Deno.serve(async (req: Request) => {
     await admin.from("payments").update({ status: "refunded" }).eq("id", payment.id);
     await admin.from("orders").update({ payment_status: "refunded" }).eq("id", payment.order_id);
   } else if (failedEvents.has(eventType) && payment.status !== "paid") {
-    await admin.from("payments").update({ status: "failed", failed_at: now, failure_reason: eventType }).eq("id", payment.id).in("status", ["pending", "processing"]);
-    await admin.from("orders").update({ payment_status: "failed" }).eq("id", payment.order_id).neq("payment_status", "paid");
+    await admin
+      .from("payments")
+      .update({ status: "failed", failed_at: now, failure_reason: eventType })
+      .eq("id", payment.id)
+      .in("status", ["pending", "processing"]);
+    await admin
+      .from("orders")
+      .update({ payment_status: "failed" })
+      .eq("id", payment.order_id)
+      .neq("payment_status", "paid");
   }
 
-  await admin.from("payment_events").update({ status: "processed", processed_at: now }).eq("provider", "asaas").eq("provider_event_id", eventId);
-  await admin.from("asaas_webhook_events").update({ processed_at: now, processing_error: null }).eq("id", eventRowId);
+  await admin
+    .from("payment_events")
+    .update({ status: "processed", processed_at: now })
+    .eq("provider", "asaas")
+    .eq("provider_event_id", eventId);
+  await admin
+    .from("asaas_webhook_events")
+    .update({ processed_at: now, processing_error: null })
+    .eq("id", eventRowId);
   return reply(200, { accepted: true, processed: eventType });
 });
