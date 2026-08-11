@@ -7,8 +7,7 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 const isMobileBuild = process.env["APOIS_MOBILE_BUILD"] === "1";
-const isVercelBuild =
-  process.env["APOIS_VERCEL_BUILD"] === "1" || process.env["VERCEL"] === "1";
+const isVercelBuild = process.env["APOIS_VERCEL_BUILD"] === "1" || process.env["VERCEL"] === "1";
 
 export default defineConfig({
   // Mobile packaging renders the built app once in CI to produce Capacitor's index.html.
