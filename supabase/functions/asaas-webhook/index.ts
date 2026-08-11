@@ -40,11 +40,7 @@ Deno.serve(async (req: Request) => {
       .insert({
         event_id: eventId,
         event_type: eventType,
-        resource_type: providerPaymentId
-          ? "payment"
-          : providerTransferId
-            ? "transfer"
-            : null,
+        resource_type: providerPaymentId ? "payment" : providerTransferId ? "transfer" : null,
         resource_id: providerPaymentId ?? providerTransferId ?? null,
         payload,
       })
@@ -128,10 +124,7 @@ Deno.serve(async (req: Request) => {
   }
 
   if (!providerPaymentId) {
-    await admin
-      .from("asaas_webhook_events")
-      .update({ processed_at: now })
-      .eq("id", eventRowId);
+    await admin.from("asaas_webhook_events").update({ processed_at: now }).eq("id", eventRowId);
     return reply(200, { accepted: true, ignored: true });
   }
 
