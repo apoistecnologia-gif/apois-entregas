@@ -1,8 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import logoAsset from "@/assets/logo.png.asset.json";
-import { ArrowRight } from "lucide-react";
-import heroImage from "@/assets/delivery-hero.png.asset.json";
+import { ArrowRight, Bike, MapPin, PackageCheck, Store } from "lucide-react";
 import { getProductLandingRoute } from "@/lib/product-routing";
 
 export const Route = createFileRoute("/")({
@@ -26,101 +24,136 @@ function Index() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-col bg-black text-white min-h-full overflow-hidden w-full relative font-sans">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[10%] -left-[20%] w-[60%] h-[40%] bg-[#FFD700]/5 blur-[120px] rounded-full" />
-        <div className="absolute top-[20%] -right-[10%] w-[40%] h-[30%] bg-[#FFD700]/10 blur-[100px] rounded-full" />
+    <div className="relative min-h-[100dvh] w-full overflow-hidden bg-black text-white font-sans">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-24 -top-28 h-72 w-72 rounded-full bg-[#FFD700]/8 blur-[110px]" />
+        <div className="absolute -right-20 top-[28%] h-64 w-64 rounded-full bg-[#FFD700]/10 blur-[110px]" />
+        <div className="absolute bottom-0 left-1/2 h-48 w-[90%] -translate-x-1/2 rounded-full bg-[#FFD700]/5 blur-[120px]" />
       </div>
 
-      <header className="flex flex-col items-center pt-6 pb-1 px-6 shrink-0 z-20">
-        <img src={logoAsset.url} alt="APOIS ENTREGA" className="w-24 h-auto object-contain mb-3" />
+      <div className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-[480px] flex-col px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]">
+        <header className="flex shrink-0 flex-col items-center text-center">
+          <div className="mb-5 flex items-center gap-3" aria-label="APOIS ENTREGA">
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-[14px] border border-[#FFD700]/30 bg-[#0b0b0b] shadow-[0_0_30px_rgba(255,215,0,0.12)]">
+              <img
+                src="/favicon.png"
+                alt=""
+                className="h-9 w-9 object-contain"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+              <span className="absolute text-lg font-black text-[#FFD700]" aria-hidden="true">
+                A
+              </span>
+            </div>
+            <div className="text-left leading-none">
+              <div className="text-[19px] font-black tracking-[0.08em]">APOIS</div>
+              <div className="mt-1 text-[12px] font-semibold tracking-[0.24em] text-zinc-400">ENTREGA</div>
+            </div>
+          </div>
 
-        <div className="text-center space-y-0.5">
-          <h1 className="text-[18px] font-bold tracking-tight">
+          <h1 className="text-[27px] font-black leading-tight tracking-[-0.04em] sm:text-[30px]">
             Seu delivery <span className="text-[#FFD700]">do seu jeito</span>
           </h1>
-          <p className="text-zinc-400 text-[11px] font-light leading-relaxed max-w-[240px] mx-auto opacity-80">
-            Pediu, chegou. Apois, vamo comer?
-          </p>
-        </div>
-      </header>
+          <p className="mt-2 text-[14px] font-medium text-zinc-500">Pediu, chegou. Apois, vamo comer?</p>
+        </header>
 
-      <div className="relative flex-1 min-h-0 flex items-center justify-center px-4 overflow-hidden z-10 py-1">
-        <div className="relative w-full h-full max-h-[230px] flex items-center justify-center origin-center">
-          <div className="relative w-full h-full flex items-center justify-center">
-            <img
-              src={heroImage.url}
-              alt=""
-              className="w-full h-full object-contain opacity-60 scale-110"
+        <main className="flex flex-1 flex-col justify-center py-5">
+          <div className="relative mx-auto w-full max-w-[390px] overflow-hidden rounded-[30px] border border-white/[0.06] bg-gradient-to-b from-zinc-950 to-black px-5 py-6 shadow-[0_26px_70px_rgba(0,0,0,0.5)]">
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.14]"
               style={{
-                maskImage: "radial-gradient(circle at center, black 60%, transparent 100%)",
-                WebkitMaskImage: "radial-gradient(circle at center, black 60%, transparent 100%)",
+                backgroundImage:
+                  "linear-gradient(rgba(255,215,0,.28) 1px, transparent 1px), linear-gradient(90deg, rgba(255,215,0,.28) 1px, transparent 1px)",
+                backgroundSize: "34px 34px",
+                maskImage: "radial-gradient(circle at center, black 20%, transparent 78%)",
+                WebkitMaskImage: "radial-gradient(circle at center, black 20%, transparent 78%)",
               }}
             />
 
-            <div className="absolute top-[22%] right-[28%] w-12 h-12 pointer-events-none">
-              <div className="absolute inset-0 bg-[#FFD700]/20 rounded-full animate-ping" />
-              <div className="absolute inset-0 bg-[#FFD700]/10 rounded-full animate-pulse scale-150" />
-            </div>
+            <div className="relative h-[210px] w-full">
+              <div className="absolute left-4 top-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-zinc-900 shadow-xl">
+                <Store className="h-6 w-6 text-white" strokeWidth={1.8} />
+              </div>
 
-            <div className="absolute top-[22%] right-[28%] w-8 h-8 text-[#FFD700] drop-shadow-[0_0_15px_rgba(255,215,0,0.8)] animate-[bounce_2s_infinite]">
-              <div className="relative">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="w-full h-full"
-                  aria-hidden="true"
-                >
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                </svg>
-                <div className="absolute inset-0 bg-[#FFD700]/30 blur-md rounded-full -z-10 animate-pulse" />
+              <div className="absolute right-3 top-[45%] flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FFD700] text-black shadow-[0_0_35px_rgba(255,215,0,0.28)]">
+                <PackageCheck className="h-7 w-7" strokeWidth={2.2} />
+              </div>
+
+              <svg
+                className="absolute inset-0 h-full w-full"
+                viewBox="0 0 340 210"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M54 43 C 104 38, 86 118, 148 118 S 222 70, 278 110"
+                  stroke="rgba(255,215,0,.25)"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M54 43 C 104 38, 86 118, 148 118 S 222 70, 278 110"
+                  stroke="#FFD700"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray="8 11"
+                />
+              </svg>
+
+              <div className="absolute left-[40%] top-[47%] flex h-11 w-11 items-center justify-center rounded-full border border-[#FFD700]/25 bg-black shadow-[0_0_22px_rgba(255,215,0,0.15)]">
+                <Bike className="h-5 w-5 text-[#FFD700]" strokeWidth={2} />
+              </div>
+
+              <div className="absolute bottom-1 left-3 flex items-center gap-2 rounded-full border border-white/[0.06] bg-black/80 px-3 py-2 backdrop-blur">
+                <MapPin className="h-4 w-4 text-[#FFD700]" fill="#FFD700" strokeWidth={1.5} />
+                <span className="text-[11px] font-semibold text-zinc-300">Entrega acompanhada em tempo real</span>
               </div>
             </div>
-
-            <div className="absolute bottom-[20%] left-[10%] w-[80%] h-[1px] bg-gradient-to-r from-transparent via-[#FFD700]/20 to-transparent blur-sm" />
           </div>
+        </main>
+
+        <div className="w-full shrink-0 space-y-3">
+          <Button
+            type="button"
+            onClick={() => navigate({ to: "/register" })}
+            className="group relative flex h-[58px] w-full items-center justify-between overflow-hidden rounded-[20px] bg-[#FFD700] px-6 text-[16px] font-black text-black shadow-[0_10px_35px_rgba(255,215,0,0.22)] transition-all hover:bg-[#FFC800] active:scale-[0.985]"
+          >
+            <div className="absolute inset-0 -translate-x-full skew-x-[-20deg] bg-white/15 transition-transform duration-700 ease-out group-hover:translate-x-full" />
+            <span className="relative z-10">Criar minha conta</span>
+            <ArrowRight className="relative z-10 h-5 w-5" />
+          </Button>
+
+          <Button
+            type="button"
+            onClick={() => navigate({ to: "/login" })}
+            variant="outline"
+            className="h-[58px] w-full rounded-[20px] border-zinc-800 bg-zinc-950/80 text-[16px] font-bold text-white backdrop-blur transition-all hover:bg-zinc-900 active:scale-[0.985]"
+          >
+            Entrar
+          </Button>
+
+          <p className="px-4 pt-1 text-center text-[10px] leading-relaxed text-zinc-600">
+            Ao continuar, você concorda com nossos{" "}
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/termos" })}
+              className="font-medium text-zinc-500 underline underline-offset-2"
+            >
+              Termos de Uso
+            </button>{" "}
+            e{" "}
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/privacidade" })}
+              className="font-medium text-zinc-500 underline underline-offset-2"
+            >
+              Privacidade
+            </button>
+            .
+          </p>
         </div>
-      </div>
-
-      <div className="px-7 space-y-3 pb-7 w-full shrink-0 relative z-20">
-        <Button
-          type="button"
-          onClick={() => navigate({ to: "/register" })}
-          className="w-full bg-[#FFD700] hover:bg-[#FFC000] text-black font-extrabold h-[50px] text-[14px] rounded-[16px] flex items-center justify-between px-6 transition-all active:scale-[0.98] shadow-[0_8px_25px_rgba(255,215,0,0.25)] relative overflow-hidden group"
-        >
-          <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out skew-x-[-20deg]" />
-          <span className="relative z-10">Criar minha conta</span>
-          <ArrowRight className="w-5 h-5 relative z-10" />
-        </Button>
-
-        <Button
-          type="button"
-          onClick={() => navigate({ to: "/login" })}
-          variant="outline"
-          className="w-full border-zinc-800 bg-zinc-900/50 text-white hover:bg-white/5 font-bold h-[50px] text-[14px] rounded-[16px] transition-all active:scale-[0.98] backdrop-blur-sm"
-        >
-          Entrar
-        </Button>
-
-        <p className="text-[9px] text-zinc-600 text-center px-4 leading-relaxed mt-0.5 opacity-70">
-          Ao continuar, você concorda com nossos <br />
-          <button
-            type="button"
-            onClick={() => navigate({ to: "/termos" })}
-            className="text-zinc-500 font-medium underline underline-offset-2"
-          >
-            Termos de Uso
-          </button>{" "}
-          e{" "}
-          <button
-            type="button"
-            onClick={() => navigate({ to: "/privacidade" })}
-            className="text-zinc-500 font-medium underline underline-offset-2"
-          >
-            Privacidade
-          </button>
-          .
-        </p>
       </div>
     </div>
   );
