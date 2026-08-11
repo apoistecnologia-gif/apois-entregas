@@ -30,6 +30,20 @@ function normalizePixKey(type: string, value: string) {
   return value.trim();
 }
 
+function inferPixKeyType(value: string, document: string | null) {
+  const trimmed = value.trim();
+  const normalized = trimmed.replace(/\D/g, "");
+  const normalizedDocument = String(document ?? "").replace(/\D/g, "");
+  if (trimmed.includes("@")) return "EMAIL";
+  if (normalized.length === 14) return "CNPJ";
+  if (normalized.length === 11 && normalized === normalizedDocument) return "CPF";
+  if ([10, 11, 12, 13].includes(normalized.length)) return "PHONE";
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(trimmed)) {
+    return "EVP";
+  }
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return reply(405, { error: "Método não permitido." });
@@ -95,14 +109,25 @@ Deno.serve(async (req: Request) => {
 
   const { data: destination } = await admin
     .from("payout_accounts")
-    .select("pix_key,pix_key_type,is_active")
+    .select("pix_key,pix_key_type,document,is_active")
     .eq("id", payout.payout_account_id)
     .maybeSingle();
-  if (!destination?.is_active || !destination.pix_key || !destination.pix_key_type) {
+  if (!destination?.is_active || !destination.pix_key) {
     return reply(409, {
-      error: "Cadastre uma chave PIX e o tipo da chave antes de solicitar o saque.",
+      error: "Cadastre uma chave PIX antes de solicitar o saque.",
+      code: "PIX_KEY_REQUIRED",
+    });
+  }
+  const pixKeyType =
+    destination.pix_key_type || inferPixKeyType(destination.pix_key, destination.document);
+  if (!pixKeyType) {
+    return reply(409, {
+      error: "Não foi possível identificar automaticamente o tipo da chave PIX.",
       code: "PIX_KEY_TYPE_REQUIRED",
     });
+  }
+  if (!destination.pix_key_type) {
+    await admin.from("payout_accounts").update({ pix_key_type: pixKeyType }).eq("id", payout.payout_account_id);
   }
 
   const { data: asaasAccount } = await admin
@@ -128,8 +153,8 @@ Deno.serve(async (req: Request) => {
     headers: { "Content-Type": "application/json", access_token: subaccountApiKey },
     body: JSON.stringify({
       value: Number(payout.amount),
-      pixAddressKey: normalizePixKey(destination.pix_key_type, destination.pix_key),
-      pixAddressKeyType: destination.pix_key_type,
+      pixAddressKey: normalizePixKey(pixKeyType, destination.pix_key),
+      pixAddressKeyType: pixKeyType,
       description: `Saque APOIS ${payout.id}`,
       externalReference: `apois-payout-${payout.id}`,
     }),
