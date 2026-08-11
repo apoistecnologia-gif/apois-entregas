@@ -291,7 +291,7 @@ function CourierApp() {
             status: "pending",
           });
       if (write.error) throw write.error;
-      toast.success("Documento enviado.");
+      toast.success("Documento enviado com sucesso. Seu cadastro ficará em análise até a aprovação.");
       await loadAll(true);
     } catch (error: any) {
       toast.error(error?.message || "Falha ao enviar documento.");
@@ -825,8 +825,18 @@ function CourierReviewState({
         <FileCheck2 className="h-9 w-9 text-primary" />
         <p className="mt-4 text-xs font-black uppercase text-zinc-500">Situação</p>
         <h1 className="mt-1 text-2xl font-black uppercase text-primary">
-          {courier.status.replaceAll("_", " ")}
+          {courier.status === "under_review"
+            ? "EM ANÁLISE"
+            : courier.status === "rejected"
+              ? "CADASTRO RECUSADO"
+              : courier.status === "approved"
+                ? "APROVADO"
+                : courier.status.replaceAll("_", " ")}
         </h1>
+        <p className="mt-3 text-sm leading-relaxed text-zinc-500">
+          Os documentos são enviados automaticamente assim que você seleciona o arquivo. Depois do
+          envio, seu cadastro permanece em análise até a aprovação da APOIS.
+        </p>
         {courier.rejection_reason ? (
           <p className="mt-3 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">
             {courier.rejection_reason}
@@ -853,25 +863,55 @@ function CourierReviewState({
                 <span
                   className={`text-[10px] font-black uppercase ${doc?.status === "approved" ? "text-emerald-400" : doc?.status === "rejected" ? "text-red-400" : "text-primary"}`}
                 >
-                  {doc?.status ?? "Não enviado"}
+                  {doc?.status === "approved"
+                    ? "APROVADO"
+                    : doc?.status === "rejected"
+                      ? "RECUSADO"
+                      : doc?.status === "pending"
+                        ? "ENVIADO"
+                        : "NÃO ENVIADO"}
                 </span>
               </div>
+              {doc?.status === "pending" ? (
+                <p className="mt-2 rounded-xl bg-primary/5 px-3 py-2 text-xs leading-relaxed text-zinc-400">
+                  Arquivo enviado com sucesso e aguardando análise. Se precisar corrigir o documento,
+                  você pode selecionar outro arquivo abaixo para substituí-lo.
+                </p>
+              ) : null}
               {doc?.rejection_reason ? (
                 <p className="mt-2 text-xs text-red-300">{doc.rejection_reason}</p>
               ) : null}
-              <div className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
-                <Upload className="h-4 w-4" /> Selecionar arquivo
-              </div>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
-                className="mt-2 w-full text-xs text-zinc-600"
-                disabled={busy === `doc:${item.type}`}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void onUpload(item.type, file);
-                }}
-              />
+              {doc?.status !== "approved" ? (
+                <>
+                  <div className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
+                    <Upload className="h-4 w-4" />
+                    {busy === `doc:${item.type}`
+                      ? "Enviando arquivo..."
+                      : doc
+                        ? "Substituir arquivo"
+                        : "Selecionar arquivo para envio automático"}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    className="mt-2 w-full text-xs text-zinc-600"
+                    disabled={busy === `doc:${item.type}`}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      const input = e.currentTarget;
+                      if (file) {
+                        void onUpload(item.type, file).finally(() => {
+                          input.value = "";
+                        });
+                      }
+                    }}
+                  />
+                </>
+              ) : (
+                <p className="mt-3 text-xs font-bold text-emerald-400">
+                  Documento aprovado. Nenhuma ação necessária.
+                </p>
+              )}
             </label>
           );
         })}
