@@ -25,6 +25,9 @@ jobs:
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_tmNxPNALqBcWiEdD7_eWOw_mk0qRkJa
       VITE_GOOGLE_MAPS_BROWSER_KEY: ${{ secrets.VITE_GOOGLE_MAPS_BROWSER_KEY || 'ci-placeholder' }}
       VITE_GOOGLE_MAPS_MAP_ID: ${{ secrets.VITE_GOOGLE_MAPS_MAP_ID || 'ci-placeholder' }}
+      VERCEL_ORG_ID: team_shDkxHdc4ARgsiLdRaLSz0zA
+      VERCEL_PROJECT_ID: prj_MxPK6zSoXIjac5egZRYmBXVhKTs6
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,3 +65,21 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           include-hidden-files: true
+
+      - name: Verify Vercel deployment credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "ERROR: GitHub secret VERCEL_TOKEN is not configured"
+            exit 1
+          fi
+
+      - name: Pull Vercel production configuration
+        run: bunx vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+
+      - name: Build Vercel production bundle
+        run: bunx vercel build --prod --token "$VERCEL_TOKEN"
+
+      - name: Deploy merchant panel to Vercel production
+        run: bunx vercel deploy --prebuilt --prod --yes --token "$VERCEL_TOKEN"
