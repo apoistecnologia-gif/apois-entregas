@@ -20,6 +20,7 @@ Deno.serve(async (req: Request) => {
   const eventId = typeof payload?.id === "string" ? payload.id : null;
   const eventType = typeof payload?.event === "string" ? payload.event : null;
   const providerPaymentId = typeof payload?.payment?.id === "string" ? payload.payment.id : null;
+  const providerTransferId = typeof payload?.transfer?.id === "string" ? payload.transfer.id : null;
   if (!eventId || !eventType) return reply(400, { error: "invalid_payload" });
 
   const admin = createClient(supabaseUrl, serviceKey, {
@@ -41,10 +42,10 @@ Deno.serve(async (req: Request) => {
         event_type: eventType,
         resource_type: providerPaymentId
           ? "payment"
-          : eventType.startsWith("TRANSFER_")
+          : providerTransferId
             ? "transfer"
             : null,
-        resource_id: providerPaymentId ?? payload?.transfer?.id ?? null,
+        resource_id: providerPaymentId ?? providerTransferId ?? null,
         payload,
       })
       .select("id")
@@ -54,10 +55,82 @@ Deno.serve(async (req: Request) => {
     eventRowId = inserted.id;
   }
 
+  const now = new Date().toISOString();
+
+  if (providerTransferId && eventType.startsWith("TRANSFER_")) {
+    let payoutId: string | null = null;
+    const { data: payoutByProvider } = await admin
+      .from("payouts")
+      .select("id,status")
+      .eq("provider", "asaas")
+      .eq("provider_payout_id", providerTransferId)
+      .maybeSingle();
+    payoutId = payoutByProvider?.id ?? null;
+
+    if (!payoutId) {
+      const externalReference =
+        typeof payload?.transfer?.externalReference === "string"
+          ? payload.transfer.externalReference
+          : typeof payload?.transfer?.external_reference === "string"
+            ? payload.transfer.external_reference
+            : null;
+      const match = externalReference?.match(/^apois-payout-([0-9a-f-]{36})$/i);
+      payoutId = match?.[1] ?? null;
+    }
+
+    if (!payoutId) {
+      await admin
+        .from("asaas_webhook_events")
+        .update({ processing_error: "payout_not_ready" })
+        .eq("id", eventRowId);
+      return reply(503, { error: "payout_not_ready" });
+    }
+
+    if (eventType === "TRANSFER_DONE") {
+      await admin.rpc("settle_payout", {
+        _payout_id: payoutId,
+        _new_status: "paid",
+        _provider: "asaas",
+        _provider_payout_id: providerTransferId,
+        _failure_reason: null,
+      });
+    } else if (eventType === "TRANSFER_FAILED") {
+      await admin.rpc("settle_payout", {
+        _payout_id: payoutId,
+        _new_status: "failed",
+        _provider: "asaas",
+        _provider_payout_id: providerTransferId,
+        _failure_reason: String(payload?.transfer?.failReason || eventType),
+      });
+    } else if (eventType === "TRANSFER_CANCELLED") {
+      await admin.rpc("settle_payout", {
+        _payout_id: payoutId,
+        _new_status: "cancelled",
+        _provider: "asaas",
+        _provider_payout_id: providerTransferId,
+        _failure_reason: eventType,
+      });
+    } else {
+      await admin.rpc("settle_payout", {
+        _payout_id: payoutId,
+        _new_status: "processing",
+        _provider: "asaas",
+        _provider_payout_id: providerTransferId,
+        _failure_reason: eventType === "TRANSFER_BLOCKED" ? eventType : null,
+      });
+    }
+
+    await admin
+      .from("asaas_webhook_events")
+      .update({ processed_at: now, processing_error: null })
+      .eq("id", eventRowId);
+    return reply(200, { accepted: true, processed: eventType, payoutId });
+  }
+
   if (!providerPaymentId) {
     await admin
       .from("asaas_webhook_events")
-      .update({ processed_at: new Date().toISOString() })
+      .update({ processed_at: now })
       .eq("id", eventRowId);
     return reply(200, { accepted: true, ignored: true });
   }
@@ -89,7 +162,6 @@ Deno.serve(async (req: Request) => {
     return reply(409, { error: "amount_mismatch" });
   }
 
-  const now = new Date().toISOString();
   const paidEvents = new Set(["PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"]);
   const failedEvents = new Set([
     "PAYMENT_OVERDUE",
