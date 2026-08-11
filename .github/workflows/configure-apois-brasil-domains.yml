@@ -21,6 +21,7 @@ jobs:
       MERCHANT_PROJECT_ID: prj_MxPK6zSoXIjac5egZRYmBXVhKTs6
       ADMIN_DOMAIN: admin.apoisbrasil.com.br
       MERCHANT_DOMAIN: parceiros.apoisbrasil.com.br
+      LEGACY_ADMIN_DOMAIN: admin.apoismobilidade.com.br
     steps:
       - name: Verify Vercel token
         shell: bash
@@ -95,3 +96,36 @@ jobs:
             "https://api.vercel.com/v6/domains/${MERCHANT_DOMAIN}/config?projectIdOrName=${MERCHANT_PROJECT_ID}&teamId=${VERCEL_TEAM_ID}" \
             -H "Authorization: Bearer ${VERCEL_TOKEN}" \
             | jq '{configuredBy,misconfigured,recommendedIPv4,recommendedCNAME,acceptedChallenges}'
+
+      - name: Detach legacy Admin domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          response=$(curl -sS -w '\n%{http_code}' \
+            -X DELETE "https://api.vercel.com/v9/projects/${ADMIN_PROJECT_ID}/domains/${LEGACY_ADMIN_DOMAIN}?teamId=${VERCEL_TEAM_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}")
+          body=$(printf '%s' "$response" | sed '$d')
+          code=$(printf '%s' "$response" | tail -n1)
+          echo "$body" | jq '.' 2>/dev/null || printf '%s\n' "$body"
+          if [[ "$code" =~ ^2 ]]; then exit 0; fi
+          if [[ "$code" == "404" ]]; then
+            echo "Legacy Admin domain is already detached"
+            exit 0
+          fi
+          echo "ERROR: failed to detach legacy Admin domain (HTTP $code)"
+          exit 1
+
+      - name: Verify legacy Admin domain is detached
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/legacy-domain.json -w '%{http_code}' \
+            "https://api.vercel.com/v9/projects/${ADMIN_PROJECT_ID}/domains/${LEGACY_ADMIN_DOMAIN}?teamId=${VERCEL_TEAM_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}")
+          cat /tmp/legacy-domain.json | jq '.' 2>/dev/null || cat /tmp/legacy-domain.json
+          if [[ "$code" == "404" ]]; then
+            echo "LEGACY_ADMIN_DOMAIN_DETACHED_OK"
+            exit 0
+          fi
+          echo "ERROR: legacy Admin domain is still attached (HTTP $code)"
+          exit 1
