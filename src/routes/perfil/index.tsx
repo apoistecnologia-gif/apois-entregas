@@ -37,7 +37,11 @@ function PerfilIndexPage() {
       if (authError) throw authError;
       setUser(authUser);
       if (authUser) {
-        const profileResult = await supabase.from("profiles").select("*").eq("id", authUser.id).single();
+        const profileResult = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", authUser.id)
+          .single();
         if (profileResult.error) throw profileResult.error;
         setProfile(profileResult.data);
       }
