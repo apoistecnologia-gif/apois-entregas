@@ -30,7 +30,7 @@ import {
   CourierProfilePanel,
 } from "@/components/CourierPanels";
 import { CourierLocationTracker, type CourierPosition } from "@/components/CourierLocationTracker";
-import { CourierRouteMap } from "@/components/CourierRouteMap";
+import { CourierLiveMap, CourierRouteMap } from "@/components/CourierRouteMap";
 
 export const Route = createFileRoute("/courier")({
   ssr: false,
@@ -514,43 +514,87 @@ function CourierApp() {
     );
 
   if (historyOpen) {
-    return <CourierHistoryPanel jobs={deliveryHistory} onClose={() => setHistoryOpen(false)} />;
+    return (
+      <>
+        <CourierHistoryPanel jobs={deliveryHistory} onClose={() => setHistoryOpen(false)} />
+        <CourierBottomNav
+          onHome={() => setHistoryOpen(false)}
+          onHistory={() => undefined}
+          onFinance={() => {
+            setHistoryOpen(false);
+            setFinanceOpen(true);
+          }}
+          onProfile={() => {
+            setHistoryOpen(false);
+            setProfileOpen(true);
+          }}
+        />
+      </>
+    );
   }
 
   if (profileOpen) {
     return (
-      <CourierProfilePanel
-        courier={courier}
-        user={user}
-        documents={documents}
-        availability={availability}
-        wallet={wallet}
-        onFinance={() => {
-          setProfileOpen(false);
-          setFinanceOpen(true);
-        }}
-        onLogout={() => void logout()}
-        onClose={() => setProfileOpen(false)}
-      />
+      <>
+        <CourierProfilePanel
+          courier={courier}
+          user={user}
+          documents={documents}
+          availability={availability}
+          wallet={wallet}
+          onFinance={() => {
+            setProfileOpen(false);
+            setFinanceOpen(true);
+          }}
+          onLogout={() => void logout()}
+          onClose={() => setProfileOpen(false)}
+        />
+        <CourierBottomNav
+          onHome={() => setProfileOpen(false)}
+          onHistory={() => {
+            setProfileOpen(false);
+            setHistoryOpen(true);
+          }}
+          onFinance={() => {
+            setProfileOpen(false);
+            setFinanceOpen(true);
+          }}
+          onProfile={() => undefined}
+        />
+      </>
     );
   }
 
   if (financeOpen) {
     return (
-      <CourierFinance
-        courier={courier}
-        wallet={wallet}
-        metrics={metrics}
-        transactions={transactions}
-        payoutAccount={payoutAccount}
-        payouts={payouts}
-        draft={payoutDraft}
-        setDraft={setPayoutDraft}
-        busy={busy}
-        onSaveAccount={savePayoutAccount}
-        onRequestPayout={requestPayout}
-        onClose={() => setFinanceOpen(false)}
-      />
+      <>
+        <CourierFinance
+          courier={courier}
+          wallet={wallet}
+          metrics={metrics}
+          transactions={transactions}
+          payoutAccount={payoutAccount}
+          payouts={payouts}
+          draft={payoutDraft}
+          setDraft={setPayoutDraft}
+          busy={busy}
+          onSaveAccount={savePayoutAccount}
+          onRequestPayout={requestPayout}
+          onClose={() => setFinanceOpen(false)}
+        />
+        <CourierBottomNav
+          onHome={() => setFinanceOpen(false)}
+          onHistory={() => {
+            setFinanceOpen(false);
+            setHistoryOpen(true);
+          }}
+          onFinance={() => undefined}
+          onProfile={() => {
+            setFinanceOpen(false);
+            setProfileOpen(true);
+          }}
+        />
+      </>
     );
   }
 
@@ -618,6 +662,10 @@ function CourierApp() {
           enabled={Boolean(availability?.is_online)}
           onPosition={setCurrentPosition}
         />
+
+        {availability?.is_online && !activeJob ? (
+          <CourierLiveMap currentPosition={currentPosition} />
+        ) : null}
 
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">

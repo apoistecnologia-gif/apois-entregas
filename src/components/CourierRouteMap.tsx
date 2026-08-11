@@ -133,6 +133,49 @@ function RouteMapContent({
   );
 }
 
+export function CourierLiveMap({ currentPosition }: { currentPosition: CourierPosition | null }) {
+  const browserKey = (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+  const mapId = (import.meta as any).env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined;
+
+  return (
+    <section className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950">
+      <div className="border-b border-zinc-900 p-4">
+        <p className="text-[10px] font-black uppercase tracking-wider text-primary">Mapa em tempo real</p>
+        <p className="mt-1 text-xs text-zinc-500">
+          {currentPosition
+            ? "Sua posição está sendo atualizada enquanto você estiver online."
+            : "Obtendo sua localização para exibir o mapa..."}
+        </p>
+      </div>
+      {browserKey && mapId && currentPosition ? (
+        <APIProvider apiKey={browserKey}>
+          <div className="h-64 w-full bg-zinc-900">
+            <Map
+              center={{ lat: currentPosition.lat, lng: currentPosition.lng }}
+              zoom={15}
+              gestureHandling="greedy"
+              disableDefaultUI
+              mapId={mapId}
+            >
+              <AdvancedMarker position={{ lat: currentPosition.lat, lng: currentPosition.lng }}>
+                <div className="grid h-9 w-9 place-items-center rounded-full border-4 border-white bg-primary shadow-xl">
+                  <Navigation className="h-4 w-4 fill-black text-black" />
+                </div>
+              </AdvancedMarker>
+            </Map>
+          </div>
+        </APIProvider>
+      ) : (
+        <div className="grid h-48 place-items-center px-6 text-center text-sm text-zinc-500">
+          {browserKey && mapId
+            ? "Aguardando o GPS retornar sua posição atual."
+            : "Mapa indisponível: configuração do Google Maps não foi carregada."}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function CourierRouteMap({
   job,
   currentPosition,

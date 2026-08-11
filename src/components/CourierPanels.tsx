@@ -86,7 +86,7 @@ export function CourierHistoryPanel({ jobs, onClose }: { jobs: any[]; onClose: (
         </div>
       </header>
 
-      <main className="space-y-3 p-4 pb-20">
+      <main className="space-y-3 p-4 pb-28">
         {jobs.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-zinc-800 bg-zinc-950 p-8 text-center">
             <Bike className="mx-auto h-9 w-9 text-zinc-700" />
@@ -203,7 +203,7 @@ export function CourierProfilePanel({
         </div>
       </header>
 
-      <main className="space-y-4 p-4 pb-20">
+      <main className="space-y-4 p-4 pb-28">
         <section className="rounded-3xl border border-zinc-900 bg-zinc-950 p-5">
           <div className="flex items-center gap-4">
             <div className="grid h-16 w-16 place-items-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
