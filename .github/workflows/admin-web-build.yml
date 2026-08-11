@@ -40,29 +40,24 @@ jobs:
       - name: Build isolated admin product
         run: bun run build:admin
 
-      - name: Validate admin build identity
+      - name: Validate admin Nitro build
         shell: bash
         run: |
           set -euo pipefail
-          OUT=".output/public"
-          if [ ! -d "$OUT" ]; then OUT="dist"; fi
-          test -d "$OUT"
-          test -f "$OUT/index.html"
-
-          ADMIN_CHUNK="$(find "$OUT/assets" -maxdepth 1 -type f -name 'admin-*.js' -print -quit)"
+          test -d .output/public/assets
+          test -f .output/server/index.mjs
+          ADMIN_CHUNK="$(find .output/public/assets -maxdepth 1 -type f -name 'admin-*.js' -print -quit)"
           if [ -z "$ADMIN_CHUNK" ]; then
             echo "ERROR: admin route chunk was not generated"
             exit 1
           fi
           echo "Admin chunk: $ADMIN_CHUNK"
-
-          echo "ADMIN_BUILD_DIR=$OUT" >> "$GITHUB_ENV"
           echo "APOIS_ENTREGAS_ADMIN_BUILD_OK"
 
-      - name: Upload admin web bundle
+      - name: Upload admin Nitro prebuilt bundle
         uses: actions/upload-artifact@v4
         with:
-          name: apois-entregas-admin-web
-          path: ${{ env.ADMIN_BUILD_DIR }}
+          name: apois-entregas-admin-prebuilt
+          path: .output
           if-no-files-found: error
           retention-days: 7
