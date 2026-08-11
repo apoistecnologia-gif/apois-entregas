@@ -1,0 +1,79 @@
+name: Configure APOIS Brasil Panel Domains
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/configure-apois-brasil-domains.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  configure-domains:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_TEAM_ID: team_shDkxHdc4ARgsiLdRaLSz0zA
+      ADMIN_PROJECT_ID: prj_KjPKn2tXBIqxqCNzRxInuVXLLxNO
+      MERCHANT_PROJECT_ID: prj_MxPK6zSoXIjac5egZRYmBXVhKTs6
+      ADMIN_DOMAIN: admin.apoisbrasil.com.br
+      MERCHANT_DOMAIN: parceiros.apoisbrasil.com.br
+    steps:
+      - name: Verify Vercel token
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}" || { echo "ERROR: VERCEL_TOKEN is missing"; exit 1; }
+
+      - name: Attach Admin domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          response=$(curl -sS -w '\n%{http_code}' \
+            -X POST "https://api.vercel.com/v10/projects/${ADMIN_PROJECT_ID}/domains?teamId=${VERCEL_TEAM_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            --data "{\"name\":\"${ADMIN_DOMAIN}\"}")
+          body=$(printf '%s' "$response" | sed '$d')
+          code=$(printf '%s' "$response" | tail -n1)
+          echo "$body" | jq '{name,apexName,projectId,verified,verification,error}'
+          if [[ "$code" =~ ^2 ]]; then exit 0; fi
+          if echo "$body" | jq -e '.error.code == "domain_already_in_use" or .error.code == "domain_already_exists"' >/dev/null 2>&1; then exit 0; fi
+          exit 1
+
+      - name: Attach Merchant domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          response=$(curl -sS -w '\n%{http_code}' \
+            -X POST "https://api.vercel.com/v10/projects/${MERCHANT_PROJECT_ID}/domains?teamId=${VERCEL_TEAM_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            --data "{\"name\":\"${MERCHANT_DOMAIN}\"}")
+          body=$(printf '%s' "$response" | sed '$d')
+          code=$(printf '%s' "$response" | tail -n1)
+          echo "$body" | jq '{name,apexName,projectId,verified,verification,error}'
+          if [[ "$code" =~ ^2 ]]; then exit 0; fi
+          if echo "$body" | jq -e '.error.code == "domain_already_in_use" or .error.code == "domain_already_exists"' >/dev/null 2>&1; then exit 0; fi
+          exit 1
+
+      - name: Inspect Admin domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS \
+            "https://api.vercel.com/v9/projects/${ADMIN_PROJECT_ID}/domains/${ADMIN_DOMAIN}?teamId=${VERCEL_TEAM_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            | jq '{name,apexName,projectId,verified,verification}'
+
+      - name: Inspect Merchant domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS \
+            "https://api.vercel.com/v9/projects/${MERCHANT_PROJECT_ID}/domains/${MERCHANT_DOMAIN}?teamId=${VERCEL_TEAM_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            | jq '{name,apexName,projectId,verified,verification}'
