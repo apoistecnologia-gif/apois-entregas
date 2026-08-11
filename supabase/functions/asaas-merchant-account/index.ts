@@ -130,17 +130,15 @@ Deno.serve(async (req: Request) => {
   });
   const provider = await response.json().catch(() => null);
   if (!response.ok || !provider?.id || !provider?.walletId || !provider?.apiKey) {
-    await admin
-      .from("merchant_asaas_accounts")
-      .upsert(
-        {
-          merchant_id: merchantId,
-          holder_type: profile.holder_type,
-          status: "error",
-          last_error: JSON.stringify(provider)?.slice(0, 1500),
-        },
-        { onConflict: "merchant_id" },
-      );
+    await admin.from("merchant_asaas_accounts").upsert(
+      {
+        merchant_id: merchantId,
+        holder_type: profile.holder_type,
+        status: "error",
+        last_error: JSON.stringify(provider)?.slice(0, 1500),
+      },
+      { onConflict: "merchant_id" },
+    );
     return reply(502, {
       error: "O Asaas recusou a criação da subconta.",
       providerStatus: response.status,

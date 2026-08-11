@@ -127,7 +127,10 @@ Deno.serve(async (req: Request) => {
     });
   }
   if (!destination.pix_key_type) {
-    await admin.from("payout_accounts").update({ pix_key_type: pixKeyType }).eq("id", payout.payout_account_id);
+    await admin
+      .from("payout_accounts")
+      .update({ pix_key_type: pixKeyType })
+      .eq("id", payout.payout_account_id);
   }
 
   const { data: asaasAccount } = await admin
