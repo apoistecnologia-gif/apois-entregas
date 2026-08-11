@@ -183,11 +183,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const product = getApoisProductMode();
-  const desktopWorkspace =
-    (product === "admin" && pathname.startsWith("/admin")) ||
-    (product === "merchant" && pathname.startsWith("/merchant"));
+  const isBackofficeProduct = product === "admin" || product === "merchant";
 
   return (
     <html lang="pt-BR" className="dark">
@@ -195,7 +192,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body className="bg-black antialiased">
-        {desktopWorkspace ? (
+        {isBackofficeProduct ? (
           <div className="min-h-dvh w-full bg-black">{children}</div>
         ) : (
           <div className="flex min-h-dvh w-full items-start justify-center overflow-x-hidden md:py-8 lg:py-12">
