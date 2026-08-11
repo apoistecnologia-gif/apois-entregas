@@ -128,11 +128,7 @@ export function MerchantAsaasOnboarding({ merchant }: MerchantAsaasOnboardingPro
         cpf_cnpj: draft.cpfCnpj.replace(/\D/g, ""),
         birth_date: draft.holderType === "individual" ? draft.birthDate : null,
         company_type:
-          draft.holderType === "mei"
-            ? "MEI"
-            : draft.holderType === "company"
-              ? "LIMITED"
-              : null,
+          draft.holderType === "mei" ? "MEI" : draft.holderType === "company" ? "LIMITED" : null,
         email: draft.email.trim(),
         mobile_phone: draft.mobilePhone.replace(/\D/g, ""),
         income_value: income,
@@ -166,7 +162,9 @@ export function MerchantAsaasOnboarding({ merchant }: MerchantAsaasOnboardingPro
       await load();
       return;
     }
-    toast.success(data?.reused ? "Conta Asaas já estava ativa." : "Conta Asaas criada com sucesso.");
+    toast.success(
+      data?.reused ? "Conta Asaas já estava ativa." : "Conta Asaas criada com sucesso.",
+    );
     await load();
   };
 
@@ -233,19 +231,65 @@ export function MerchantAsaasOnboarding({ merchant }: MerchantAsaasOnboardingPro
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Input value={draft.legalName} onChange={(e) => update("legalName", e.target.value)} placeholder="Nome/Razão social" />
-        <Input value={draft.cpfCnpj} onChange={(e) => update("cpfCnpj", e.target.value)} placeholder={draft.holderType === "individual" ? "CPF" : "CNPJ"} />
+        <Input
+          value={draft.legalName}
+          onChange={(e) => update("legalName", e.target.value)}
+          placeholder="Nome/Razão social"
+        />
+        <Input
+          value={draft.cpfCnpj}
+          onChange={(e) => update("cpfCnpj", e.target.value)}
+          placeholder={draft.holderType === "individual" ? "CPF" : "CNPJ"}
+        />
         {draft.holderType === "individual" ? (
-          <Input type="date" value={draft.birthDate} onChange={(e) => update("birthDate", e.target.value)} />
+          <Input
+            type="date"
+            value={draft.birthDate}
+            onChange={(e) => update("birthDate", e.target.value)}
+          />
         ) : null}
-        <Input type="email" value={draft.email} onChange={(e) => update("email", e.target.value)} placeholder="E-mail" />
-        <Input value={draft.mobilePhone} onChange={(e) => update("mobilePhone", e.target.value)} placeholder="Celular" />
-        <Input type="number" value={draft.incomeValue} onChange={(e) => update("incomeValue", e.target.value)} placeholder="Renda/Faturamento mensal" />
-        <Input value={draft.address} onChange={(e) => update("address", e.target.value)} placeholder="Endereço" />
-        <Input value={draft.addressNumber} onChange={(e) => update("addressNumber", e.target.value)} placeholder="Número" />
-        <Input value={draft.complement} onChange={(e) => update("complement", e.target.value)} placeholder="Complemento" />
-        <Input value={draft.province} onChange={(e) => update("province", e.target.value)} placeholder="Bairro" />
-        <Input value={draft.postalCode} onChange={(e) => update("postalCode", e.target.value)} placeholder="CEP" />
+        <Input
+          type="email"
+          value={draft.email}
+          onChange={(e) => update("email", e.target.value)}
+          placeholder="E-mail"
+        />
+        <Input
+          value={draft.mobilePhone}
+          onChange={(e) => update("mobilePhone", e.target.value)}
+          placeholder="Celular"
+        />
+        <Input
+          type="number"
+          value={draft.incomeValue}
+          onChange={(e) => update("incomeValue", e.target.value)}
+          placeholder="Renda/Faturamento mensal"
+        />
+        <Input
+          value={draft.address}
+          onChange={(e) => update("address", e.target.value)}
+          placeholder="Endereço"
+        />
+        <Input
+          value={draft.addressNumber}
+          onChange={(e) => update("addressNumber", e.target.value)}
+          placeholder="Número"
+        />
+        <Input
+          value={draft.complement}
+          onChange={(e) => update("complement", e.target.value)}
+          placeholder="Complemento"
+        />
+        <Input
+          value={draft.province}
+          onChange={(e) => update("province", e.target.value)}
+          placeholder="Bairro"
+        />
+        <Input
+          value={draft.postalCode}
+          onChange={(e) => update("postalCode", e.target.value)}
+          placeholder="CEP"
+        />
       </div>
 
       {account?.status === "error" && account.last_error ? (
@@ -255,7 +299,13 @@ export function MerchantAsaasOnboarding({ merchant }: MerchantAsaasOnboardingPro
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Button type="button" variant="outline" onClick={() => void save()} disabled={busy !== null} className="border-zinc-800 bg-black">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void save()}
+          disabled={busy !== null}
+          className="border-zinc-800 bg-black"
+        >
           {busy === "save" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           Salvar dados
         </Button>

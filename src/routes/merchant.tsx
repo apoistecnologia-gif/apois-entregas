@@ -35,6 +35,7 @@ import {
 } from "@/components/MerchantGrowthPanels";
 import { MerchantCouponsPanel } from "@/components/MerchantCouponsPanel";
 import { MerchantSubscriptionGate } from "@/components/MerchantSubscriptionGate";
+import { MerchantAsaasOnboarding } from "@/components/MerchantAsaasOnboarding";
 
 export const Route = createFileRoute("/merchant")({
   ssr: false,
@@ -752,16 +753,36 @@ function MerchantWorkspace() {
       return toast.error("Informe um valor de saque válido.");
     const attemptKey = getPayoutAttemptKey("merchant", wallet.id, amount);
     setBusyAction("payout");
-    const { error } = await rpc("request_payout", {
+    const { data: payoutId, error } = await rpc("request_payout", {
       _wallet_id: wallet.id,
       _amount: amount,
       _idempotency_key: attemptKey,
     });
+    if (error || !payoutId) {
+      setBusyAction(null);
+      return toast.error(error?.message || "Não foi possível solicitar o saque.");
+    }
+    const { data: transferData, error: transferError } = await supabase.functions.invoke(
+      "asaas-payout",
+      { body: { payoutId } },
+    );
     setBusyAction(null);
-    if (error) return toast.error(error.message || "Não foi possível solicitar o saque.");
+    if (transferError || transferData?.error) {
+      toast.error(
+        transferData?.error ||
+          transferError?.message ||
+          "O saque foi reservado, mas o PIX ainda não pôde ser enviado.",
+      );
+      if (merchant?.id) await loadOperations(merchant.id);
+      return;
+    }
     clearPayoutAttemptKey("merchant", wallet.id, attemptKey);
     setPayoutDraft((current) => ({ ...current, amount: "" }));
-    toast.success("Saque solicitado.");
+    toast.success(
+      transferData?.status === "paid"
+        ? "Saque enviado por PIX com sucesso."
+        : "Saque enviado ao Asaas e em processamento.",
+    );
     if (merchant?.id) await loadOperations(merchant.id);
   };
 
@@ -1612,6 +1633,7 @@ function MerchantWorkspace() {
 
       {activeTab === "finance" && (
         <div className="space-y-6">
+          <MerchantAsaasOnboarding merchant={merchant} />
           <div className="grid gap-4 sm:grid-cols-3">
             <MetricCard label="Saldo total" value={money(wallet?.balance)} />
             <MetricCard label="Disponível" value={money(wallet?.available_balance)} />
