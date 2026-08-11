@@ -131,3 +131,4 @@ type CourierMapMerchant'''
 if not pattern.search(s):
     raise SystemExit('RouteMapContent block not found')
 p.write_text(pattern.sub(replacement, s, count=1), encoding='utf-8')
+# trigger
