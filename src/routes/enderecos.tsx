@@ -54,6 +54,8 @@ function EnderecosLayout() {
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   const fetchAddresses = useCallback(async () => {
     setIsLoading(true);
@@ -69,7 +71,12 @@ function EnderecosLayout() {
       setLoadError("Não foi possível carregar seus endereços.");
       toast.error("Erro ao carregar endereços");
     } else {
-      setAddresses((data ?? []) as CustomerAddress[]);
+      const nextAddresses = (data ?? []) as CustomerAddress[];
+      setAddresses(nextAddresses);
+      setSelectedAddressId((current) => {
+        if (current && nextAddresses.some((address) => address.id === current)) return current;
+        return nextAddresses.find((address) => address.is_default)?.id ?? nextAddresses[0]?.id ?? null;
+      });
     }
     setIsLoading(false);
   }, []);
@@ -92,21 +99,33 @@ function EnderecosLayout() {
     };
   }, [fetchAddresses, router]);
 
-  const handleSetDefault = async (id: string) => {
-    setIsLoading(true);
-    const { error } = await (supabase.rpc as any)("set_default_customer_address", {
-      _address_id: id,
-    });
+  const handleConfirmAddress = async () => {
+    if (!selectedAddressId || isConfirming) return;
+    setIsConfirming(true);
 
-    if (error) {
-      console.error("Error setting default address:", error);
-      toast.error("Erro ao definir endereço padrão");
-      await fetchAddresses();
+    const selectedAddress = addresses.find((address) => address.id === selectedAddressId);
+    if (!selectedAddress) {
+      setIsConfirming(false);
+      toast.error("Selecione um endereço para continuar");
       return;
     }
 
-    toast.success("Endereço padrão atualizado");
-    navigate({ to: "/inicio" });
+    if (!selectedAddress.is_default) {
+      const { error } = await (supabase.rpc as any)("set_default_customer_address", {
+        _address_id: selectedAddressId,
+      });
+
+      if (error) {
+        console.error("Error setting default address:", error);
+        setIsConfirming(false);
+        toast.error("Não foi possível confirmar este endereço");
+        return;
+      }
+    }
+
+    toast.success("Endereço confirmado");
+    await navigate({ to: "/sacola" });
+    setIsConfirming(false);
   };
 
   const handleDelete = async (id: string, isDefault: boolean) => {
@@ -199,20 +218,20 @@ function EnderecosLayout() {
               return (
                 <div
                   key={addr.id}
-                  onClick={() => !addr.is_default && void handleSetDefault(addr.id)}
+                  onClick={() => setSelectedAddressId(addr.id)}
                   className={`relative cursor-pointer rounded-3xl border p-4 pr-12 transition-all ${
-                    addr.is_default
+                    selectedAddressId === addr.id
                       ? "border-primary/70 bg-zinc-950 shadow-[0_0_20px_-8px_hsl(var(--primary)/0.5)]"
                       : "border-zinc-800 bg-zinc-950 hover:border-zinc-700"
                   }`}
                 >
                   <span
                     className={`absolute right-4 top-4 flex h-6 w-6 items-center justify-center rounded-full border-2 ${
-                      addr.is_default ? "border-primary" : "border-zinc-600"
+                      selectedAddressId === addr.id ? "border-primary" : "border-zinc-600"
                     }`}
                     aria-hidden="true"
                   >
-                    {addr.is_default ? (
+                    {selectedAddressId === addr.id ? (
                       <span className="block h-3 w-3 rounded-full bg-primary" />
                     ) : null}
                   </span>
@@ -277,7 +296,30 @@ function EnderecosLayout() {
           </div>
         )}
 
-        <div className="mt-8">
+        {addresses.length > 0 ? (
+          <div className="mt-8">
+            <Button
+              type="button"
+              disabled={!selectedAddressId || isConfirming}
+              onClick={() => void handleConfirmAddress()}
+              className="flex h-14 w-full items-center justify-center rounded-2xl bg-primary text-base font-extrabold text-black shadow-[0_8px_30px_-10px_hsl(var(--primary)/0.8)] hover:bg-primary/90 disabled:opacity-50"
+            >
+              {isConfirming ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Confirmando...
+                </>
+              ) : (
+                "Confirmar endereço"
+              )}
+            </Button>
+            <p className="mt-2 text-center text-xs text-zinc-500">
+              Ao confirmar, você volta para a sacola com este endereço selecionado.
+            </p>
+          </div>
+        ) : null}
+
+        <div className="mt-4">
           <Button
             type="button"
             onClick={() => navigate({ to: "/enderecos/novo" })}

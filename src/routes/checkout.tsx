@@ -812,7 +812,7 @@ function CheckoutPage() {
                       : deliveryQuote?.reason === "merchant_location_required"
                         ? "O estabelecimento precisa confirmar a localização da loja antes de liberar entregas."
                         : deliveryQuote?.reason === "coordinates_required"
-                          ? "Atualize este endereço pelo mapa para validar a área de entrega."
+                          ? "Precisamos localizar este endereço com precisão para calcular a entrega. Toque em Alterar, edite o endereço e marque o ponto no mapa."
                           : "Não foi possível validar a área de entrega agora."}
             </div>
           ) : null}
