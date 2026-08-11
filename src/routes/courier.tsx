@@ -19,7 +19,7 @@ import {
   WalletCards,
   XCircle,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -84,6 +84,7 @@ function CourierApp() {
     amount: "",
   });
   const [currentPosition, setCurrentPosition] = useState<CourierPosition | null>(null);
+  const startupAvailabilityHandledRef = useRef(false);
 
   const loadCourierOperations = useCallback(async (courierId: string) => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
@@ -194,8 +195,34 @@ function CourierApp() {
           .eq("courier_id", courierRow.id)
           .order("created_at");
         setDocuments(docsRes.data ?? []);
-        if (courierRow.status === "approved" && courierRow.is_active)
+        if (courierRow.status === "approved" && courierRow.is_active) {
+          if (!startupAvailabilityHandledRef.current) {
+            startupAvailabilityHandledRef.current = true;
+            const activeDeliveryRes = await from("delivery_jobs")
+              .select("id")
+              .eq("courier_id", courierRow.id)
+              .in("status", [
+                "accepted",
+                "arriving_pickup",
+                "at_pickup",
+                "picked_up",
+                "on_the_way",
+                "arrived_destination",
+              ])
+              .limit(1)
+              .maybeSingle();
+
+            if (!activeDeliveryRes.data) {
+              const { error: offlineError } = await rpc("set_courier_online", {
+                _is_online: false,
+              });
+              if (offlineError)
+                console.warn("courier startup offline reset failed", offlineError.message);
+              setCurrentPosition(null);
+            }
+          }
           await loadCourierOperations(courierRow.id);
+        }
       } catch (error: any) {
         toast.error(error?.message || "Não foi possível carregar o app do entregador.");
       } finally {
