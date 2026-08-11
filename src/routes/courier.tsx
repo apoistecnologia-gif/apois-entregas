@@ -64,6 +64,7 @@ function CourierApp() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [availability, setAvailability] = useState<any>(null);
   const [offers, setOffers] = useState<any[]>([]);
+  const [nearbyMerchants, setNearbyMerchants] = useState<any[]>([]);
   const [deliveryHistory, setDeliveryHistory] = useState<any[]>([]);
   const [activeJob, setActiveJob] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
@@ -86,7 +87,7 @@ function CourierApp() {
 
   const loadCourierOperations = useCallback(async (courierId: string) => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
-    const [availabilityRes, offersRes, jobsRes, walletRes, metricsRes] = await Promise.all([
+    const [availabilityRes, offersRes, jobsRes, walletRes, metricsRes, merchantsRes] = await Promise.all([
       from("courier_availability").select("*").eq("courier_id", courierId).maybeSingle(),
       from("delivery_offers")
         .select("*, delivery_jobs(*, orders(order_number,total,status))")
@@ -110,9 +111,17 @@ function CourierApp() {
         .maybeSingle(),
       from("wallets").select("*").eq("courier_id", courierId).maybeSingle(),
       rpc("get_courier_metrics", { _timezone: timezone }),
+      from("merchants")
+        .select("id,name,latitude,longitude,is_open")
+        .eq("approval_status", "approved")
+        .eq("is_active", true)
+        .not("latitude", "is", null)
+        .not("longitude", "is", null)
+        .limit(100),
     ]);
     setAvailability(availabilityRes.data ?? null);
     setOffers(offersRes.data ?? []);
+    setNearbyMerchants(merchantsRes.data ?? []);
     setActiveJob(jobsRes.data ?? null);
     setWallet(walletRes.data ?? null);
     if (metricsRes.error) {
@@ -664,7 +673,13 @@ function CourierApp() {
         />
 
         {availability?.is_online && !activeJob ? (
-          <CourierLiveMap currentPosition={currentPosition} />
+          <CourierLiveMap
+            currentPosition={currentPosition}
+            merchants={nearbyMerchants}
+            activeOfferMerchantIds={offers
+              .map((offer) => offer.delivery_jobs?.merchant_id)
+              .filter(Boolean)}
+          />
         ) : null}
 
         <div className="grid grid-cols-2 gap-3">
