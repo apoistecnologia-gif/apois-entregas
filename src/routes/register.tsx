@@ -3,19 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronLeft, Eye, EyeOff, Loader2 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import logoAsset from "@/assets/logo.png.asset.json";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/register")({
   beforeLoad: async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session) {
-      throw redirect({ to: "/inicio" });
-    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) throw redirect({ to: "/inicio" });
   },
   component: Register,
   head: () => ({
@@ -24,122 +20,120 @@ export const Route = createFileRoute("/register")({
   }),
 });
 
+const onlyDigits = (value: string) => value.replace(/\D/g, "");
+
+const maskPhone = (value: string) => {
+  const numbers = onlyDigits(value).slice(0, 11);
+  if (numbers.length <= 2) return numbers;
+  if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+  return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+};
+
+const maskCpf = (value: string) => {
+  const digits = onlyDigits(value).slice(0, 11);
+  return digits
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+};
+
+const isValidCpf = (value: string) => {
+  const cpf = onlyDigits(value);
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+  const calc = (length: number) => {
+    let sum = 0;
+    for (let i = 0; i < length; i += 1) sum += Number(cpf[i]) * (length + 1 - i);
+    const mod = (sum * 10) % 11;
+    return mod === 10 ? 0 : mod;
+  };
+  return calc(9) === Number(cpf[9]) && calc(10) === Number(cpf[10]);
+};
+
+const maskBirthDate = (value: string) => {
+  const digits = onlyDigits(value).slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+};
+
+const birthDateToIso = (value: string) => {
+  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+  const [, dd, mm, yyyy] = match;
+  const date = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+  if (
+    date.getFullYear() !== Number(yyyy) ||
+    date.getMonth() !== Number(mm) - 1 ||
+    date.getDate() !== Number(dd) ||
+    date > new Date()
+  ) return null;
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 function Register() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
+    cpf: "",
+    birthDate: "",
     email: "",
     password: "",
     confirmPassword: "",
     acceptTerms: false,
   });
-
-  const [submitted, setSubmitted] = useState(false);
   const [touched, setTouched] = useState({
     fullName: false,
     phone: false,
+    cpf: false,
+    birthDate: false,
     email: false,
     password: false,
     confirmPassword: false,
   });
 
-  // Brazilian Phone Mask: (00) 00000-0000
-  const maskPhone = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
-    if (numbers.length <= 2) return numbers;
-    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
-    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const maskedValue = maskPhone(e.target.value);
-    setFormData({ ...formData, phone: maskedValue });
-  };
-
-  // Validations
   const errors = useMemo(() => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.fullName.trim()) {
-      newErrors["fullName"] = "Campo obrigatório";
-    } else if (formData.fullName.trim().split(" ").length < 2) {
-      newErrors["fullName"] = "Digite seu nome completo (nome e sobrenome)";
-    }
-
-    if (!formData.phone.replace(/\D/g, "")) {
-      newErrors["phone"] = "Campo obrigatório";
-    } else if (formData.phone.replace(/\D/g, "").length < 10) {
-      newErrors["phone"] = "Telefone incompleto";
-    }
-
+    const next: Record<string, string> = {};
+    if (formData.fullName.trim().split(/\s+/).length < 2) next.fullName = "Digite seu nome completo";
+    if (onlyDigits(formData.phone).length < 10) next.phone = "Telefone incompleto";
+    if (!isValidCpf(formData.cpf)) next.cpf = "Informe um CPF válido";
+    if (!birthDateToIso(formData.birthDate)) next.birthDate = "Informe a data no formato DD/MM/AAAA";
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!formData.email) {
-      newErrors["email"] = "Campo obrigatório";
-    } else if (!emailRegex.test(formData.email)) {
-      newErrors["email"] = "E-mail inválido";
-    }
-
-    if (!formData.password) {
-      newErrors["password"] = "Campo obrigatório";
-    } else if (formData.password.length < 8) {
-      newErrors["password"] = "A senha deve ter no mínimo 8 caracteres";
-    }
-
-    if (!formData.confirmPassword) {
-      newErrors["confirmPassword"] = "Campo obrigatório";
-    } else if (formData.confirmPassword !== formData.password) {
-      newErrors["confirmPassword"] = "As senhas não coincidem";
-    }
-
-    return newErrors;
+    if (!emailRegex.test(formData.email)) next.email = "E-mail inválido";
+    if (formData.password.length < 8) next.password = "A senha deve ter no mínimo 8 caracteres";
+    if (formData.confirmPassword !== formData.password) next.confirmPassword = "As senhas não coincidem";
+    return next;
   }, [formData]);
 
-  const missingFields = useMemo(() => {
-    const missing: string[] = [];
-    if (formData.fullName.trim().split(" ").length < 2) missing.push("Nome completo");
-    if (formData.phone.replace(/\D/g, "").length < 10) missing.push("Telefone");
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) missing.push("E-mail válido");
-    if (formData.password.length < 8) missing.push("Senha (mín. 8 chars)");
-    if (formData.password !== formData.confirmPassword) missing.push("Confirmação de senha");
-    if (!formData.acceptTerms) missing.push("Aceite dos termos");
-    return missing;
-  }, [formData]);
-
-  const isFormValid = missingFields.length === 0;
+  const isFormValid = Object.keys(errors).length === 0 && formData.acceptTerms;
+  const showErr = (field: keyof typeof touched) => (touched[field] || submitted) && errors[field];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    if (!isFormValid) {
-      setTouched({
-        fullName: true,
-        phone: true,
-        email: true,
-        password: true,
-        confirmPassword: true,
-      });
+    if (!isFormValid || isLoading) {
+      setTouched({ fullName: true, phone: true, cpf: true, birthDate: true, email: true, password: true, confirmPassword: true });
       return;
     }
 
-    if (isLoading) return;
+    const birthDateIso = birthDateToIso(formData.birthDate);
+    if (!birthDateIso) return;
 
     setIsLoading(true);
-
     try {
-      const redirectTo = `${window.location.origin}/auth/callback`;
-
       const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
         options: {
-          emailRedirectTo: redirectTo,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
-            full_name: formData.fullName,
+            full_name: formData.fullName.trim(),
             phone: formData.phone,
+            cpf: onlyDigits(formData.cpf),
+            birth_date: birthDateIso,
             terms_accepted_at: new Date().toISOString(),
             privacy_accepted_at: new Date().toISOString(),
             legal_version: "2026-08-09",
@@ -148,188 +142,101 @@ function Register() {
       });
 
       if (error) {
-        if (error.message.includes("User already registered")) {
-          toast.error("Este e-mail já está cadastrado.");
-        } else {
-          toast.error(`Erro ao criar conta: ${error.message}`);
-        }
+        toast.error(error.message.includes("User already registered") ? "Este e-mail já está cadastrado." : `Erro ao criar conta: ${error.message}`);
         return;
       }
 
       if (data.session) {
-        toast.success("Conta criada e autenticada com sucesso!");
+        toast.success("Conta criada com sucesso!");
         navigate({ to: "/inicio" });
       } else if (data.user) {
-        toast.error(
-          "Sua conta foi criada, mas não foi possível iniciar a sessão automaticamente. Por favor, tente fazer login.",
-        );
+        toast.success("Conta criada. Faça login para continuar.");
         navigate({ to: "/login" });
       }
-    } catch (err: any) {
+    } catch {
       toast.error("Ocorreu um erro inesperado ao realizar seu cadastro.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const showErr = (field: keyof typeof touched) => (touched[field] || submitted) && errors[field];
+  const fieldClass = (hasError: unknown) => `bg-zinc-900/50 border-zinc-800 h-11 rounded-xl text-white text-sm placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${hasError ? "border-red-500/50" : ""}`;
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-black text-white overflow-hidden w-full">
-      {/* Header with Back Button */}
-      <header className="flex items-center px-4 py-2 shrink-0 bg-black">
-        <button
-          onClick={() => navigate({ to: "/" })}
-          className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors"
-          aria-label="Voltar"
-        >
-          <ChevronLeft className="w-5 h-5 text-white" />
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-black text-white">
+      <header className="flex shrink-0 items-center bg-black px-4 py-2 pt-[max(env(safe-area-inset-top),0.5rem)]">
+        <button type="button" onClick={() => navigate({ to: "/" })} className="-ml-2 rounded-full p-2 hover:bg-white/10" aria-label="Voltar">
+          <ChevronLeft className="h-5 w-5" />
         </button>
       </header>
 
-      <main className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
-        {/* Logo and Title */}
-        <div className="flex flex-col items-center mb-4 text-center">
-          <img
-            src={logoAsset.url}
-            alt="APOIS ENTREGA"
-            className="h-12 w-auto object-contain mb-2"
-          />
-          <h1 className="text-[20px] font-black text-white leading-tight">Crie sua conta</h1>
+      <main className="min-h-0 flex-1 overflow-y-auto px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
+        <div className="mb-4 flex flex-col items-center text-center">
+          <img src={logoAsset.url} alt="APOIS ENTREGA" className="mb-2 h-12 w-auto object-contain" />
+          <h1 className="text-[20px] font-black">Crie sua conta</h1>
+          <p className="mt-1 text-xs text-zinc-500">Seus dados já ficam prontos para pagamentos por PIX.</p>
         </div>
 
-        {/* Register Form */}
         <form onSubmit={handleSubmit} className="space-y-3" noValidate>
-          <div className="space-y-1">
-            <label className="text-[11px] font-medium text-zinc-400 ml-1">Nome completo</label>
-            <Input
-              type="text"
-              placeholder="Digite seu nome completo"
-              value={formData.fullName}
-              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              onBlur={() => setTouched({ ...touched, fullName: true })}
-              className={`bg-zinc-900/50 border-zinc-800 h-11 rounded-xl text-white text-sm placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${showErr("fullName") ? "border-red-500/50" : ""}`}
-            />
-            {showErr("fullName") && (
-              <p className="text-[10px] text-red-500 ml-1">{errors["fullName"]}</p>
-            )}
-          </div>
+          <Field label="Nome completo" error={showErr("fullName") && errors.fullName}>
+            <Input value={formData.fullName} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} onBlur={() => setTouched({ ...touched, fullName: true })} placeholder="Digite seu nome completo" className={fieldClass(showErr("fullName"))} />
+          </Field>
 
-          <div className="space-y-1">
-            <label className="text-[11px] font-medium text-zinc-400 ml-1">Telefone celular</label>
-            <Input
-              type="tel"
-              placeholder="(00) 00000-0000"
-              value={formData.phone}
-              onChange={handlePhoneChange}
-              onBlur={() => setTouched({ ...touched, phone: true })}
-              className={`bg-zinc-900/50 border-zinc-800 h-11 rounded-xl text-white text-sm placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${showErr("phone") ? "border-red-500/50" : ""}`}
-            />
-            {showErr("phone") && <p className="text-[10px] text-red-500 ml-1">{errors["phone"]}</p>}
-          </div>
+          <Field label="Telefone celular" error={showErr("phone") && errors.phone}>
+            <Input type="tel" inputMode="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: maskPhone(e.target.value) })} onBlur={() => setTouched({ ...touched, phone: true })} placeholder="(00) 00000-0000" className={fieldClass(showErr("phone"))} />
+          </Field>
 
-          <div className="space-y-1">
-            <label className="text-[11px] font-medium text-zinc-400 ml-1">E-mail</label>
-            <Input
-              type="email"
-              placeholder="seu@email.com"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              onBlur={() => setTouched({ ...touched, email: true })}
-              className={`bg-zinc-900/50 border-zinc-800 h-11 rounded-xl text-white text-sm placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${showErr("email") ? "border-red-500/50" : ""}`}
-            />
-            {showErr("email") && <p className="text-[10px] text-red-500 ml-1">{errors["email"]}</p>}
-          </div>
+          <Field label="CPF" error={showErr("cpf") && errors.cpf}>
+            <Input inputMode="numeric" value={formData.cpf} onChange={(e) => setFormData({ ...formData, cpf: maskCpf(e.target.value) })} onBlur={() => setTouched({ ...touched, cpf: true })} placeholder="000.000.000-00" maxLength={14} className={fieldClass(showErr("cpf"))} />
+          </Field>
 
-          <div className="space-y-1">
-            <label className="text-[11px] font-medium text-zinc-400 ml-1">Senha</label>
+          <Field label="Data de nascimento" error={showErr("birthDate") && errors.birthDate}>
+            <Input inputMode="numeric" value={formData.birthDate} onChange={(e) => setFormData({ ...formData, birthDate: maskBirthDate(e.target.value) })} onBlur={() => setTouched({ ...touched, birthDate: true })} placeholder="DD/MM/AAAA" maxLength={10} className={fieldClass(showErr("birthDate"))} />
+          </Field>
+
+          <Field label="E-mail" error={showErr("email") && errors.email}>
+            <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} onBlur={() => setTouched({ ...touched, email: true })} placeholder="seu@email.com" className={fieldClass(showErr("email"))} />
+          </Field>
+
+          <Field label="Senha" error={showErr("password") && errors.password}>
             <div className="relative">
-              <Input
-                type={showPassword ? "text" : "password"}
-                placeholder="Mínimo 8 caracteres"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                onBlur={() => setTouched({ ...touched, password: true })}
-                className={`bg-zinc-900/50 border-zinc-800 h-11 rounded-xl text-white text-sm placeholder:text-zinc-600 pr-12 focus:ring-primary focus:border-primary ${showErr("password") ? "border-red-500/50" : ""}`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              <Input type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} onBlur={() => setTouched({ ...touched, password: true })} placeholder="Mínimo 8 caracteres" className={`${fieldClass(showErr("password"))} pr-12`} />
+              <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500" aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}>
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
-            {showErr("password") && (
-              <p className="text-[10px] text-red-500 ml-1">{errors["password"]}</p>
-            )}
-          </div>
+          </Field>
 
-          <div className="space-y-1">
-            <label className="text-[11px] font-medium text-zinc-400 ml-1">Confirme a senha</label>
-            <div className="relative">
-              <Input
-                type={showPassword ? "text" : "password"}
-                placeholder="Repita sua senha"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                onBlur={() => setTouched({ ...touched, confirmPassword: true })}
-                className={`bg-zinc-900/50 border-zinc-800 h-11 rounded-xl text-white text-sm placeholder:text-zinc-600 pr-12 focus:ring-primary focus:border-primary ${showErr("confirmPassword") ? "border-red-500/50" : ""}`}
-              />
-            </div>
-            {showErr("confirmPassword") && (
-              <p className="text-[10px] text-red-500 ml-1">{errors["confirmPassword"]}</p>
-            )}
-          </div>
+          <Field label="Confirme a senha" error={showErr("confirmPassword") && errors.confirmPassword}>
+            <Input type={showPassword ? "text" : "password"} value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} onBlur={() => setTouched({ ...touched, confirmPassword: true })} placeholder="Repita sua senha" className={fieldClass(showErr("confirmPassword"))} />
+          </Field>
 
           <div className="flex items-start gap-3 pt-1">
-            <Checkbox
-              id="terms"
-              checked={formData.acceptTerms}
-              onCheckedChange={(checked) =>
-                setFormData({ ...formData, acceptTerms: checked === true })
-              }
-              className="mt-0.5 border-zinc-700 data-[state=checked]:bg-primary data-[state=checked]:text-black"
-            />
-            <label htmlFor="terms" className="text-[11px] text-zinc-400 leading-snug">
-              Aceito os{" "}
-              <Link to="/termos" target="_blank" className="text-primary font-bold hover:underline">
-                Termos de Uso
-              </Link>{" "}
-              e a{" "}
-              <Link
-                to="/privacidade"
-                target="_blank"
-                className="text-primary font-bold hover:underline"
-              >
-                Política de Privacidade
-              </Link>
-              .
+            <Checkbox id="terms" checked={formData.acceptTerms} onCheckedChange={(checked) => setFormData({ ...formData, acceptTerms: checked === true })} className="mt-0.5 border-zinc-700 data-[state=checked]:bg-primary data-[state=checked]:text-black" />
+            <label htmlFor="terms" className="text-[11px] leading-snug text-zinc-400">
+              Aceito os <Link to="/termos" target="_blank" className="font-bold text-primary">Termos de Uso</Link> e a <Link to="/privacidade" target="_blank" className="font-bold text-primary">Política de Privacidade</Link>.
             </label>
           </div>
 
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className={`w-full font-bold h-12 text-base rounded-xl transition-all shadow-lg ${
-              !isFormValid
-                ? "bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed opacity-80"
-                : "bg-primary text-black hover:bg-primary/90 active:scale-[0.98]"
-            }`}
-          >
-            {isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Criar minha conta"}
+          {submitted && !formData.acceptTerms ? <p className="text-[10px] text-red-500">Aceite os termos para continuar.</p> : null}
+
+          <Button type="submit" disabled={isLoading || !isFormValid} className="h-12 w-full rounded-xl bg-primary text-base font-bold text-black disabled:bg-zinc-800 disabled:text-zinc-500">
+            {isLoading ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : "Criar minha conta"}
           </Button>
 
-          <div className="text-center pt-1">
-            <p className="text-zinc-500 text-xs">
-              Já possui uma conta?{" "}
-              <Link to="/login" className="text-primary font-bold hover:underline">
-                Entrar
-              </Link>
-            </p>
-          </div>
+          <p className="pt-1 text-center text-xs text-zinc-500">Já possui uma conta? <Link to="/login" className="font-bold text-primary">Entrar</Link></p>
         </form>
       </main>
+    </div>
+  );
+}
+
+function Field({ label, error, children }: { label: string; error?: string | false; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <label className="ml-1 text-[11px] font-medium text-zinc-400">{label}</label>
+      {children}
+      {error ? <p className="ml-1 text-[10px] text-red-500">{error}</p> : null}
     </div>
   );
 }
