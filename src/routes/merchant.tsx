@@ -36,6 +36,7 @@ import {
 import { MerchantCouponsPanel } from "@/components/MerchantCouponsPanel";
 import { MerchantSubscriptionGate } from "@/components/MerchantSubscriptionGate";
 import { MerchantAsaasOnboarding } from "@/components/MerchantAsaasOnboarding";
+import { GoogleMapsAddressSelector } from "@/components/GoogleMapsAddressSelector";
 
 export const Route = createFileRoute("/merchant")({
   ssr: false,
@@ -639,6 +640,41 @@ function MerchantWorkspace() {
       await loadAll(true);
     } catch (error: any) {
       toast.error(error?.message || "Não foi possível obter a localização da loja.");
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const saveMerchantMappedLocation = async (address: {
+    street: string;
+    number: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    postal_code: string;
+    latitude?: number | null;
+    longitude?: number | null;
+  }) => {
+    if (!merchant?.id || address.latitude == null || address.longitude == null) return;
+    const mappedAddressLine = [address.street, address.number].filter(Boolean).join(", ");
+    setBusyAction("merchant-map-location");
+    try {
+      const { error } = await from("merchants")
+        .update({
+          latitude: address.latitude,
+          longitude: address.longitude,
+          address_line: mappedAddressLine || merchant.address_line,
+          neighborhood: address.neighborhood || merchant.neighborhood,
+          city: address.city || merchant.city,
+          state: address.state || merchant.state,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", merchant.id);
+      if (error) throw error;
+      toast.success("Ponto exato da loja atualizado no mapa.");
+      await loadAll(true);
+    } catch (error: any) {
+      toast.error(error?.message || "Não foi possível salvar o ponto da loja.");
     } finally {
       setBusyAction(null);
     }
@@ -1842,6 +1878,20 @@ function MerchantWorkspace() {
                   </p>
                 </>
               )}
+            </div>
+            <div className="rounded-2xl border border-zinc-900 bg-black p-3">
+              <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+                Pesquise o endereço da loja ou marque o ponto exato no mapa. Isso evita que um GPS
+                capturado fora do estabelecimento deixe o cálculo de entrega incorreto.
+              </p>
+              <GoogleMapsAddressSelector
+                initialCenter={
+                  merchant.latitude != null && merchant.longitude != null
+                    ? { lat: Number(merchant.latitude), lng: Number(merchant.longitude) }
+                    : undefined
+                }
+                onAddressSelected={(address) => void saveMerchantMappedLocation(address)}
+              />
             </div>
             <Button
               type="button"
