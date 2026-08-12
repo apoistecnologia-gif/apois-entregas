@@ -117,7 +117,7 @@ function FavoritosPage() {
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
-      <header className="sticky top-0 z-50 flex items-center justify-between border-b border-zinc-900 bg-black/85 p-4 backdrop-blur-lg">
+      <header className="sticky top-0 z-50 flex items-center justify-between border-b border-zinc-900 bg-black/85 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur-lg">
         <button
           type="button"
           onClick={() => navigate({ to: "/inicio" })}
@@ -142,7 +142,7 @@ function FavoritosPage() {
         </button>
       </header>
 
-      <main className="scrollbar-none flex-1 overflow-y-auto p-4 pb-24">
+      <main className="scrollbar-none flex-1 overflow-y-auto p-4 pb-32">
         {loading ? (
           <div className="flex h-full flex-col items-center justify-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
