@@ -161,9 +161,6 @@ Deno.serve(async (req: Request) => {
   const paymentExternalReference = `apois-order-${order.id}`;
   let paymentProvider: any = null;
   let reusedRemoteCharge = false;
-
-  // First recover any charge that Asaas already created for this order. This closes the
-  // duplication gap when a prior QR-Code request failed after POST /payments succeeded.
   const listPaymentResponse = await fetch(
     `${apiBase}/payments?externalReference=${encodeURIComponent(paymentExternalReference)}&limit=20`,
     { headers: { access_token: apiKey } },
@@ -184,7 +181,12 @@ Deno.serve(async (req: Request) => {
     const dueDate = new Date().toISOString().slice(0, 10);
     const splits =
       merchantNet > 0 && merchantNet <= amount
-        ? [{ walletId: merchantAccount.asaas_wallet_id, fixedValue: Number(merchantNet.toFixed(2)) }]
+        ? [
+            {
+              walletId: merchantAccount.asaas_wallet_id,
+              fixedValue: Number(merchantNet.toFixed(2)),
+            },
+          ]
         : undefined;
     const paymentResponse = await fetch(`${apiBase}/payments`, {
       method: "POST",
@@ -210,9 +212,6 @@ Deno.serve(async (req: Request) => {
 
   const providerChargeId = String(paymentProvider.id);
   const idempotencyKey = `asaas:order:${order.id}:pix:${environment}`;
-
-  // Persist the provider payment ID before requesting the QR Code so the webhook can
-  // reconcile PAYMENT_CREATED immediately and retries can reuse the same charge.
   let localPayment = existing ?? null;
   if (!localPayment) {
     const { data: inserted, error: insertError } = await admin
@@ -297,7 +296,6 @@ Deno.serve(async (req: Request) => {
         failure_reason: `QR_CODE_FETCH_${qrResponse.status}`,
       })
       .eq("id", localPayment.id);
-
     return reply(502, {
       error: "A cobrança foi criada, mas o Asaas não retornou o QR Code PIX.",
       code: "ASAAS_PIX_QR_NOT_RETURNED",
