@@ -128,13 +128,68 @@ Deno.serve(async (req: Request) => {
     return reply(200, { accepted: true, ignored: true });
   }
 
-  const { data: payment, error: lookupError } = await admin
-    .from("payments")
-    .select("id,order_id,status,amount")
-    .eq("provider", "asaas")
-    .eq("provider_charge_id", providerPaymentId)
-    .maybeSingle();
+  const findPayment = async () => {
+    const { data, error } = await admin
+      .from("payments")
+      .select("id,order_id,status,amount")
+      .eq("provider", "asaas")
+      .eq("provider_charge_id", providerPaymentId)
+      .maybeSingle();
+    return { data, error };
+  };
+
+  let { data: payment, error: lookupError } = await findPayment();
   if (lookupError) return reply(500, { error: "payment_lookup_failed" });
+
+  // Asaas can emit PAYMENT_CREATED immediately after POST /payments, before the
+  // checkout request has persisted its local payment row. Recover that race from the
+  // externalReference instead of forcing the webhook queue into repeated 503s.
+  if (!payment) {
+    const externalReference =
+      typeof payload?.payment?.externalReference === "string"
+        ? payload.payment.externalReference
+        : typeof payload?.payment?.external_reference === "string"
+          ? payload.payment.external_reference
+          : null;
+    const match = externalReference?.match(/^apois-order-([0-9a-f-]{36})$/i);
+    const orderId = match?.[1] ?? null;
+
+    if (orderId) {
+      const { data: order } = await admin
+        .from("orders")
+        .select("id,total,payment_method")
+        .eq("id", orderId)
+        .maybeSingle();
+
+      if (order?.payment_method === "pix") {
+        const providerValue = Number(payload?.payment?.value);
+        const amount = Number.isFinite(providerValue) ? providerValue : Number(order.total);
+        const { error: insertError } = await admin.from("payments").insert({
+          order_id: order.id,
+          provider: "asaas",
+          provider_charge_id: providerPaymentId,
+          method: "pix",
+          status: "processing",
+          amount,
+          currency: "BRL",
+          idempotency_key: `asaas:webhook:${providerPaymentId}`,
+        });
+        if (insertError && insertError.code !== "23505") {
+          await admin
+            .from("asaas_webhook_events")
+            .update({ processing_error: "payment_recovery_failed" })
+            .eq("id", eventRowId);
+          return reply(500, { error: "payment_recovery_failed" });
+        }
+
+        const recovered = await findPayment();
+        payment = recovered.data;
+        lookupError = recovered.error;
+        if (lookupError) return reply(500, { error: "payment_lookup_failed" });
+      }
+    }
+  }
+
   if (!payment) {
     await admin
       .from("asaas_webhook_events")
