@@ -1,7 +1,7 @@
 import { createFileRoute, redirect, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, Loader2, Save } from "lucide-react";
+import { ChevronLeft, Loader2, MapPin, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -103,6 +103,10 @@ function EditarEndereco() {
       toast.error("O estado (UF) deve ter exatamente 2 letras");
       return;
     }
+    if (formData.latitude === null || formData.longitude === null) {
+      toast.error("Confirme a localização no mapa antes de salvar o endereço.");
+      return;
+    }
 
     setIsSaving(true);
 
@@ -118,7 +122,7 @@ function EditarEndereco() {
 
       if (error) throw error;
 
-      toast.success("Endereço atualizado!");
+      toast.success("Endereço localizado e atualizado!");
       await navigate({ to: "/enderecos" });
     } catch (error: any) {
       toast.error(`Erro ao salvar: ${error.message}`);
@@ -137,6 +141,7 @@ function EditarEndereco() {
   }
 
   const labelOptions = ["Casa", "Trabalho", "Outro"];
+  const hasPreciseLocation = formData.latitude !== null && formData.longitude !== null;
 
   return (
     <div className="absolute inset-0 z-[160] bg-black overflow-y-auto overflow-x-hidden flex flex-col w-full shadow-2xl">
@@ -154,6 +159,23 @@ function EditarEndereco() {
 
       <main className="flex-1 overflow-y-auto">
         <div className="px-6 py-4 border-b border-white/5 bg-zinc-950/50">
+          {!hasPreciseLocation ? (
+            <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-amber-200">
+              <MapPin className="mt-0.5 h-5 w-5 shrink-0" />
+              <div>
+                <p className="text-sm font-black">Confirme o ponto exato da entrega</p>
+                <p className="mt-1 text-xs leading-relaxed text-amber-100/80">
+                  Este endereço ainda não possui coordenadas. Use sua localização atual, pesquise o endereço ou mova o marcador no mapa. O endereço só poderá ser salvo depois disso.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-bold text-emerald-300">
+              <MapPin className="h-4 w-4" />
+              Localização precisa confirmada no mapa.
+            </div>
+          )}
+
           <GoogleMapsAddressSelector
             initialCenter={
               formData.latitude !== null && formData.longitude !== null
@@ -291,15 +313,15 @@ function EditarEndereco() {
           <div className="sticky bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black to-transparent pt-10">
             <Button
               type="submit"
-              disabled={isSaving}
-              className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl shadow-xl flex items-center justify-center gap-2"
+              disabled={isSaving || !hasPreciseLocation}
+              className="w-full bg-primary text-black hover:bg-primary/90 font-bold h-14 text-lg rounded-2xl shadow-xl flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {isSaving ? (
                 <Loader2 className="w-6 h-6 animate-spin" />
               ) : (
                 <>
                   <Save className="w-5 h-5" />
-                  Atualizar endereço
+                  {hasPreciseLocation ? "Atualizar endereço" : "Confirme a localização no mapa"}
                 </>
               )}
             </Button>
