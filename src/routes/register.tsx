@@ -24,7 +24,14 @@ export const Route = createFileRoute("/register")({
 
 const onlyDigits = (value: string) => value.replace(/\D/g, "");
 
-type FieldName = "fullName" | "phone" | "cpf" | "birthDate" | "email" | "password" | "confirmPassword";
+type FieldName =
+  | "fullName"
+  | "phone"
+  | "cpf"
+  | "birthDate"
+  | "email"
+  | "password"
+  | "confirmPassword";
 
 type FormErrors = Partial<Record<FieldName, string>>;
 
