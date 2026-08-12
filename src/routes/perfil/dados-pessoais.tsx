@@ -235,13 +235,11 @@ function DadosPessoaisPage() {
       } = await supabase.auth.getUser();
       if (userError || !user) throw userError ?? new Error("Usuário não encontrado");
       const path = `${user.id}/avatar`;
-      const upload = await supabase.storage
-        .from("avatars")
-        .upload(path, file, {
-          upsert: true,
-          contentType: file.type,
-          cacheControl: "3600",
-        });
+      const upload = await supabase.storage.from("avatars").upload(path, file, {
+        upsert: true,
+        contentType: file.type,
+        cacheControl: "3600",
+      });
       if (upload.error) throw upload.error;
       const { data: publicData } = supabase.storage.from("avatars").getPublicUrl(path);
       const avatarUrl = publicData.publicUrl;
