@@ -165,7 +165,8 @@ function EditarEndereco() {
               <div>
                 <p className="text-sm font-black">Confirme o ponto exato da entrega</p>
                 <p className="mt-1 text-xs leading-relaxed text-amber-100/80">
-                  Este endereço ainda não possui coordenadas. Use sua localização atual, pesquise o endereço ou mova o marcador no mapa. O endereço só poderá ser salvo depois disso.
+                  Este endereço ainda não possui coordenadas. Use sua localização atual, pesquise o
+                  endereço ou mova o marcador no mapa. O endereço só poderá ser salvo depois disso.
                 </p>
               </div>
             </div>

@@ -146,7 +146,9 @@ export function GoogleMapsAddressSelector({
       },
       () => {
         setIsLocating(false);
-        toast.error("Não foi possível obter sua localização. Verifique a permissão de localização.");
+        toast.error(
+          "Não foi possível obter sua localização. Verifique a permissão de localização.",
+        );
       },
       { enableHighAccuracy: true, timeout: 15_000, maximumAge: 30_000 },
     );
@@ -243,7 +245,11 @@ export function GoogleMapsAddressSelector({
         disabled={isLocating || isConfirming}
         className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFD700] font-bold text-black shadow-lg active:scale-[0.98]"
       >
-        {isLocating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Navigation className="h-5 w-5 fill-current" />}
+        {isLocating ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : (
+          <Navigation className="h-5 w-5 fill-current" />
+        )}
         {isLocating ? "Localizando..." : "Usar minha localização atual"}
       </Button>
 
@@ -278,7 +284,11 @@ export function GoogleMapsAddressSelector({
               className="absolute bottom-4 right-4 z-[150] flex h-12 w-12 items-center justify-center rounded-full border-2 border-black bg-[#FFD700] text-black shadow-lg active:scale-90"
               aria-label="Usar minha localização atual"
             >
-              {isLocating ? <Loader2 className="h-6 w-6 animate-spin" /> : <Navigation className="h-6 w-6 fill-current" />}
+              {isLocating ? (
+                <Loader2 className="h-6 w-6 animate-spin" />
+              ) : (
+                <Navigation className="h-6 w-6 fill-current" />
+              )}
             </button>
 
             {!isMapLoaded ? (
@@ -291,7 +301,9 @@ export function GoogleMapsAddressSelector({
           <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-400">
             <div className="flex items-start gap-2">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <p>Toque no mapa ou arraste o marcador até o ponto exato da entrega e confirme abaixo.</p>
+              <p>
+                Toque no mapa ou arraste o marcador até o ponto exato da entrega e confirme abaixo.
+              </p>
             </div>
           </div>
 
@@ -317,7 +329,8 @@ export function GoogleMapsAddressSelector({
         </APIProvider>
       ) : (
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-200">
-          O mapa e a busca automática de endereços estão indisponíveis neste ambiente. Ative a localização do aparelho para confirmar o ponto de entrega.
+          O mapa e a busca automática de endereços estão indisponíveis neste ambiente. Ative a
+          localização do aparelho para confirmar o ponto de entrega.
         </div>
       )}
     </div>

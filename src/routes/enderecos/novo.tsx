@@ -19,7 +19,14 @@ export const Route = createFileRoute("/enderecos/novo")({
   head: () => ({ meta: [{ title: "Novo Endereço | APOIS ENTREGA" }] }),
 });
 
-const locationFields = new Set(["postal_code", "street", "number", "neighborhood", "city", "state"]);
+const locationFields = new Set([
+  "postal_code",
+  "street",
+  "number",
+  "neighborhood",
+  "city",
+  "state",
+]);
 
 function NovoEndereco() {
   const navigate = useNavigate();
@@ -137,7 +144,12 @@ function NovoEndereco() {
   return (
     <div className="absolute inset-0 z-[160] flex w-full flex-col overflow-x-hidden overflow-y-auto bg-black text-white">
       <header className="sticky top-0 z-50 flex items-center border-b border-white/10 bg-black/90 p-4 backdrop-blur-xl">
-        <button type="button" onClick={() => navigate({ to: "/enderecos" })} className="-ml-1 grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-primary" aria-label="Voltar">
+        <button
+          type="button"
+          onClick={() => navigate({ to: "/enderecos" })}
+          className="-ml-1 grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-primary"
+          aria-label="Voltar"
+        >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <h1 className="ml-3 text-[17px] font-extrabold">Novo Endereço</h1>
@@ -145,11 +157,25 @@ function NovoEndereco() {
 
       <main className="flex-1 overflow-y-auto pb-36">
         <div className="border-b border-white/5 bg-gradient-to-b from-zinc-950 to-black px-5 py-5">
-          <div className={`mb-4 flex items-start gap-3 rounded-2xl border p-4 ${hasPreciseLocation ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300" : "border-amber-500/20 bg-amber-500/10 text-amber-200"}`}>
-            {hasPreciseLocation ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /> : <MapPin className="mt-0.5 h-5 w-5 shrink-0" />}
+          <div
+            className={`mb-4 flex items-start gap-3 rounded-2xl border p-4 ${hasPreciseLocation ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300" : "border-amber-500/20 bg-amber-500/10 text-amber-200"}`}
+          >
+            {hasPreciseLocation ? (
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+            ) : (
+              <MapPin className="mt-0.5 h-5 w-5 shrink-0" />
+            )}
             <div>
-              <p className="text-sm font-black">{hasPreciseLocation ? "Ponto de entrega confirmado" : "Confirme o ponto exato da entrega"}</p>
-              <p className="mt-1 text-xs leading-relaxed opacity-80">{hasPreciseLocation ? "Se alterar rua, número, bairro, cidade, UF ou CEP, confirme novamente o ponto no mapa." : "Pesquise o endereço, use sua localização ou toque/arraste o marcador e confirme o ponto no mapa."}</p>
+              <p className="text-sm font-black">
+                {hasPreciseLocation
+                  ? "Ponto de entrega confirmado"
+                  : "Confirme o ponto exato da entrega"}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed opacity-80">
+                {hasPreciseLocation
+                  ? "Se alterar rua, número, bairro, cidade, UF ou CEP, confirme novamente o ponto no mapa."
+                  : "Pesquise o endereço, use sua localização ou toque/arraste o marcador e confirme o ponto no mapa."}
+              </p>
             </div>
           </div>
           <GoogleMapsAddressSelector
@@ -171,10 +197,17 @@ function NovoEndereco() {
 
         <form onSubmit={handleSubmit} className="space-y-5 px-5 py-5">
           <div className="space-y-3">
-            <label className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">Tipo do endereço</label>
+            <label className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">
+              Tipo do endereço
+            </label>
             <div className="flex gap-2">
               {labelOptions.map(({ value, Icon }) => (
-                <button key={value} type="button" onClick={() => setFormData((previous) => ({ ...previous, label: value }))} className={`flex flex-1 flex-col items-center gap-1.5 rounded-2xl border py-3 text-sm font-bold ${formData.label === value ? "border-primary bg-primary text-black" : "border-zinc-800 bg-zinc-900 text-zinc-400"}`}>
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFormData((previous) => ({ ...previous, label: value }))}
+                  className={`flex flex-1 flex-col items-center gap-1.5 rounded-2xl border py-3 text-sm font-bold ${formData.label === value ? "border-primary bg-primary text-black" : "border-zinc-800 bg-zinc-900 text-zinc-400"}`}
+                >
                   <Icon className="h-5 w-5" /> {value}
                 </button>
               ))}
@@ -182,32 +215,81 @@ function NovoEndereco() {
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <Field label="CEP*" name="postal_code" value={formData.postal_code} onChange={handleChange} onBlur={handleCEPBlur} inputMode="numeric" />
-            <div className="col-span-2"><Field label="Rua*" name="street" value={formData.street} onChange={handleChange} /></div>
+            <Field
+              label="CEP*"
+              name="postal_code"
+              value={formData.postal_code}
+              onChange={handleChange}
+              onBlur={handleCEPBlur}
+              inputMode="numeric"
+            />
+            <div className="col-span-2">
+              <Field label="Rua*" name="street" value={formData.street} onChange={handleChange} />
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Field label="Número*" name="number" value={formData.number} onChange={handleChange} />
-            <div className="col-span-2"><Field label="Complemento" name="complement" value={formData.complement} onChange={handleChange} /></div>
+            <div className="col-span-2">
+              <Field
+                label="Complemento"
+                name="complement"
+                value={formData.complement}
+                onChange={handleChange}
+              />
+            </div>
           </div>
-          <Field label="Bairro*" name="neighborhood" value={formData.neighborhood} onChange={handleChange} />
+          <Field
+            label="Bairro*"
+            name="neighborhood"
+            value={formData.neighborhood}
+            onChange={handleChange}
+          />
           <div className="grid grid-cols-4 gap-3">
-            <div className="col-span-3"><Field label="Cidade*" name="city" value={formData.city} onChange={handleChange} /></div>
-            <Field label="UF*" name="state" value={formData.state} onChange={handleChange} maxLength={2} />
+            <div className="col-span-3">
+              <Field label="Cidade*" name="city" value={formData.city} onChange={handleChange} />
+            </div>
+            <Field
+              label="UF*"
+              name="state"
+              value={formData.state}
+              onChange={handleChange}
+              maxLength={2}
+            />
           </div>
-          <Field label="Ponto de referência" name="reference" value={formData.reference} onChange={handleChange} />
+          <Field
+            label="Ponto de referência"
+            name="reference"
+            value={formData.reference}
+            onChange={handleChange}
+          />
         </form>
       </main>
 
       <div className="sticky bottom-0 z-50 bg-gradient-to-t from-black via-black to-transparent px-5 pb-5 pt-8">
-        <Button type="button" onClick={handleSubmit} disabled={isLoading || !hasPreciseLocation} className="h-14 w-full rounded-2xl bg-primary text-[17px] font-extrabold text-black disabled:opacity-40">
-          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><Save className="mr-2 h-5 w-5" />{hasPreciseLocation ? "Salvar endereço" : "Confirme o ponto no mapa"}</>}
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={isLoading || !hasPreciseLocation}
+          className="h-14 w-full rounded-2xl bg-primary text-[17px] font-extrabold text-black disabled:opacity-40"
+        >
+          {isLoading ? (
+            <Loader2 className="h-6 w-6 animate-spin" />
+          ) : (
+            <>
+              <Save className="mr-2 h-5 w-5" />
+              {hasPreciseLocation ? "Salvar endereço" : "Confirme o ponto no mapa"}
+            </>
+          )}
         </Button>
       </div>
     </div>
   );
 }
 
-function Field({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+function Field({
+  label,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
     <div className="space-y-2">
       <label className="ml-1 text-xs font-medium text-zinc-500">{label}</label>

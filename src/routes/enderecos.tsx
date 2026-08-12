@@ -49,7 +49,14 @@ type CustomerAddress = {
 const hasCoordinates = (address: CustomerAddress) => {
   const lat = Number(address.latitude);
   const lng = Number(address.longitude);
-  return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
 };
 
 function EnderecosLayout() {
@@ -66,7 +73,9 @@ function EnderecosLayout() {
     setLoadError(null);
     const { data, error } = await supabase
       .from("customer_addresses")
-      .select("id,label,street,number,complement,neighborhood,city,state,postal_code,latitude,longitude,is_default")
+      .select(
+        "id,label,street,number,complement,neighborhood,city,state,postal_code,latitude,longitude,is_default",
+      )
       .order("is_default", { ascending: false })
       .order("created_at", { ascending: false });
 
@@ -176,7 +185,11 @@ function EnderecosLayout() {
         ) : loadError ? (
           <div className="space-y-4 rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-center">
             <p className="text-sm text-red-300">{loadError}</p>
-            <Button variant="outline" onClick={() => void fetchAddresses()} className="border-zinc-800">
+            <Button
+              variant="outline"
+              onClick={() => void fetchAddresses()}
+              className="border-zinc-800"
+            >
               <RefreshCw className="mr-2 h-4 w-4" /> Tentar novamente
             </Button>
           </div>
@@ -184,7 +197,9 @@ function EnderecosLayout() {
           <div className="rounded-3xl border border-dashed border-zinc-800 p-10 text-center">
             <MapPin className="mx-auto h-10 w-10 text-zinc-700" />
             <h2 className="mt-4 font-bold">Nenhum endereço salvo</h2>
-            <p className="mt-1 text-sm text-zinc-500">Cadastre um endereço e confirme o ponto exato no mapa.</p>
+            <p className="mt-1 text-sm text-zinc-500">
+              Cadastre um endereço e confirme o ponto exato no mapa.
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -199,7 +214,8 @@ function EnderecosLayout() {
                   tabIndex={0}
                   onClick={() => setSelectedAddressId(address.id)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") setSelectedAddressId(address.id);
+                    if (event.key === "Enter" || event.key === " ")
+                      setSelectedAddressId(address.id);
                   }}
                   className={`rounded-3xl border p-4 ${selected ? "border-primary bg-primary/5" : "border-zinc-800 bg-zinc-950"}`}
                 >
@@ -215,12 +231,18 @@ function EnderecosLayout() {
                             <Star className="h-3 w-3 fill-black" /> Padrão
                           </span>
                         ) : null}
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${located ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-black ${located ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}
+                        >
                           {located ? "Mapa confirmado" : "Localização pendente"}
                         </span>
                       </div>
-                      <p className="mt-2 truncate text-sm font-semibold">{address.street}, {address.number}</p>
-                      <p className="truncate text-xs text-zinc-500">{address.neighborhood} · {address.city}/{address.state}</p>
+                      <p className="mt-2 truncate text-sm font-semibold">
+                        {address.street}, {address.number}
+                      </p>
+                      <p className="truncate text-xs text-zinc-500">
+                        {address.neighborhood} · {address.city}/{address.state}
+                      </p>
                     </div>
                   </div>
 
@@ -277,7 +299,9 @@ function EnderecosLayout() {
               {selectedLocated ? "Confirmar endereço" : "Corrigir endereço selecionado"}
             </Button>
             {!selectedLocated && selectedAddress ? (
-              <p className="text-center text-xs text-amber-300">Este endereço não pode ser usado para entrega até o ponto no mapa ser confirmado.</p>
+              <p className="text-center text-xs text-amber-300">
+                Este endereço não pode ser usado para entrega até o ponto no mapa ser confirmado.
+              </p>
             ) : null}
           </div>
         ) : null}
