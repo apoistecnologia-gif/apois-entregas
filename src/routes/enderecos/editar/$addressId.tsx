@@ -145,7 +145,7 @@ function EditarEndereco() {
 
   return (
     <div className="absolute inset-0 z-[160] bg-black overflow-y-auto overflow-x-hidden flex flex-col w-full shadow-2xl">
-      <header className="flex items-center p-4 sticky top-0 z-50 bg-black/80 backdrop-blur-lg border-b border-white/10">
+      <header className="sticky top-0 z-50 flex items-center border-b border-white/10 bg-black/80 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur-lg">
         <button
           type="button"
           onClick={() => navigate({ to: "/enderecos" })}
@@ -311,7 +311,7 @@ function EditarEndereco() {
             />
           </div>
 
-          <div className="sticky bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black to-transparent pt-10">
+          <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black to-transparent px-6 pt-10 pb-[max(env(safe-area-inset-bottom),2.75rem)]">
             <Button
               type="submit"
               disabled={isSaving || !hasPreciseLocation}

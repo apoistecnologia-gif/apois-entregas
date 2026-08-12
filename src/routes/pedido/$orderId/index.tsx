@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate, useParams } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Bike,
@@ -19,6 +19,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/pedido/$orderId/")({
+  ssr: false,
+  beforeLoad: async ({ location }) => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      throw redirect({
+        to: "/login",
+        search: { redirect: location.href },
+      });
+    }
+    return { session };
+  },
   component: OrderDetailsPage,
   head: () => ({ meta: [{ title: "Detalhes do Pedido | APOIS ENTREGA" }] }),
 });

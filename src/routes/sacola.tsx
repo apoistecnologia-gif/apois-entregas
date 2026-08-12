@@ -71,10 +71,10 @@ function SacolaPage() {
 
   return (
     <div className="flex min-h-screen w-full flex-col overflow-x-hidden bg-black text-white selection:bg-primary selection:text-black">
-      <header className="sticky top-0 z-50 flex items-center gap-4 bg-black/80 p-4 backdrop-blur-lg">
+      <header className="sticky top-0 z-50 flex items-center gap-4 bg-black/80 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur-lg">
         <button
           type="button"
-          onClick={() => window.history.back()}
+          onClick={() => navigate({ to: "/inicio" })}
           className="grid h-10 w-10 place-items-center rounded-full bg-zinc-900 ring-1 ring-white/10"
           aria-label="Voltar"
         >
@@ -311,7 +311,7 @@ function SacolaPage() {
         )}
       </main>
 
-      <footer className="sticky bottom-0 z-[60] flex w-full justify-center border-t border-zinc-900 bg-black/90 p-4 pb-8 backdrop-blur-xl">
+      <footer className="sticky bottom-0 z-[60] flex w-full justify-center border-t border-zinc-900 bg-black/90 px-4 pt-4 pb-[max(env(safe-area-inset-bottom),2.75rem)] backdrop-blur-xl">
         <div className="w-full max-w-[500px]">
           <button
             type="button"

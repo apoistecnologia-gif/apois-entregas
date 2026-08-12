@@ -577,7 +577,7 @@ function CheckoutPage() {
 
   return (
     <div className="flex h-screen w-full flex-col bg-black text-white">
-      <header className="sticky top-0 z-50 flex items-center gap-4 bg-black/80 p-4 backdrop-blur-lg">
+      <header className="sticky top-0 z-50 flex items-center gap-4 bg-black/80 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur-lg">
         <button
           type="button"
           onClick={() => navigate({ to: "/sacola" })}
@@ -818,6 +818,18 @@ function CheckoutPage() {
                           : "Não foi possível validar a área de entrega agora."}
             </div>
           ) : null}
+          {fulfillmentType === "delivery" &&
+          address &&
+          deliveryQuote?.reason === "coordinates_required" ? (
+            <button
+              type="button"
+              onClick={() => navigate({ to: `/enderecos/editar/${address.id}` })}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs font-black text-amber-200 active:scale-[0.99]"
+            >
+              <MapPin className="h-4 w-4" />
+              Corrigir localização deste endereço agora
+            </button>
+          ) : null}
           {discount > 0 ? (
             <div className="flex justify-between text-emerald-400">
               <span>Desconto</span>
@@ -840,7 +852,7 @@ function CheckoutPage() {
         </section>
       </main>
 
-      <footer className="border-t border-zinc-900 bg-black p-4">
+      <footer className="border-t border-zinc-900 bg-black px-4 pt-4 pb-[max(env(safe-area-inset-bottom),2.75rem)]">
         {checkoutError && (
           <div
             role="alert"

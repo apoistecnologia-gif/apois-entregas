@@ -143,7 +143,7 @@ function NovoEndereco() {
 
   return (
     <div className="absolute inset-0 z-[160] flex w-full flex-col overflow-x-hidden overflow-y-auto bg-black text-white">
-      <header className="sticky top-0 z-50 flex items-center border-b border-white/10 bg-black/90 p-4 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 flex items-center border-b border-white/10 bg-black/90 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur-xl">
         <button
           type="button"
           onClick={() => navigate({ to: "/enderecos" })}
@@ -265,7 +265,7 @@ function NovoEndereco() {
         </form>
       </main>
 
-      <div className="sticky bottom-0 z-50 bg-gradient-to-t from-black via-black to-transparent px-5 pb-5 pt-8">
+      <div className="sticky bottom-0 z-50 bg-gradient-to-t from-black via-black to-transparent px-5 pt-8 pb-[max(env(safe-area-inset-bottom),2.75rem)]">
         <Button
           type="button"
           onClick={handleSubmit}
