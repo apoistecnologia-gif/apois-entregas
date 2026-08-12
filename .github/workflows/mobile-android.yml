@@ -11,6 +11,9 @@ on:
       - "public/favicon.png"
       - "src/**"
       - "scripts/**"
+      - "supabase/functions/create-asaas-pix-charge/**"
+      - "supabase/functions/asaas-webhook/**"
+      - "supabase/functions/sync-payment-status/**"
       - "package.json"
       - "bun.lock"
   workflow_dispatch:
