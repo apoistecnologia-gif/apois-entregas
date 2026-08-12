@@ -1,0 +1,125 @@
+name: Customer audit patch
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: "${{ !startsWith(github.event.head_commit.message, 'fix(customer): finalize mobile audit patch') }}"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: main
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - name: Apply audited fixes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              if old not in text:
+                  raise SystemExit(f'Expected text not found in {path}: {old[:80]}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          replace(
+              'src/routes/sacola.tsx',
+              'onClick={() => window.history.back()}',
+              'onClick={() => navigate({ to: "/inicio" })}',
+          )
+          replace(
+              'src/routes/sacola.tsx',
+              'className="sticky top-0 z-50 flex items-center gap-4 bg-black/80 p-4 backdrop-blur-lg"',
+              'className="sticky top-0 z-50 flex items-center gap-4 bg-black/80 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur-lg"',
+          )
+          replace(
+              'src/routes/sacola.tsx',
+              'className="sticky bottom-0 z-[60] flex w-full justify-center border-t border-zinc-900 bg-black/90 p-4 pb-8 backdrop-blur-xl"',
+              'className="sticky bottom-0 z-[60] flex w-full justify-center border-t border-zinc-900 bg-black/90 px-4 pt-4 pb-[max(env(safe-area-inset-bottom),2.75rem)] backdrop-blur-xl"',
+          )
+
+          replace(
+              'src/routes/checkout.tsx',
+              'className="sticky top-0 z-50 flex items-center gap-4 bg-black/80 p-4 backdrop-blur-lg"',
+              'className="sticky top-0 z-50 flex items-center gap-4 bg-black/80 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur-lg"',
+          )
+          replace(
+              'src/routes/checkout.tsx',
+              'className="border-t border-zinc-900 bg-black p-4"',
+              'className="border-t border-zinc-900 bg-black px-4 pt-4 pb-[max(env(safe-area-inset-bottom),2.75rem)]"',
+          )
+          replace(
+              'src/routes/checkout.tsx',
+              '          ) : null}\n          {discount > 0 ? (',
+              '''          ) : null}\n          {fulfillmentType === "delivery" &&\n          address &&\n          deliveryQuote?.reason === "coordinates_required" ? (\n            <button\n              type="button"\n              onClick={() => navigate({ to: `/enderecos/editar/${address.id}` })}\n              className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs font-black text-amber-200 active:scale-[0.99]"\n            >\n              <MapPin className="h-4 w-4" />\n              Corrigir localização deste endereço agora\n            </button>\n          ) : null}\n          {discount > 0 ? (''',
+          )
+
+          replace(
+              'src/routes/enderecos/novo.tsx',
+              'className="sticky top-0 z-50 flex items-center border-b border-white/10 bg-black/90 p-4 backdrop-blur-xl"',
+              'className="sticky top-0 z-50 flex items-center border-b border-white/10 bg-black/90 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur-xl"',
+          )
+          replace(
+              'src/routes/enderecos/novo.tsx',
+              'className="sticky bottom-0 z-50 bg-gradient-to-t from-black via-black to-transparent px-5 pb-5 pt-8"',
+              'className="sticky bottom-0 z-50 bg-gradient-to-t from-black via-black to-transparent px-5 pt-8 pb-[max(env(safe-area-inset-bottom),2.75rem)]"',
+          )
+
+          replace(
+              'src/routes/enderecos/editar/$addressId.tsx',
+              'className="flex items-center p-4 sticky top-0 z-50 bg-black/80 backdrop-blur-lg border-b border-white/10"',
+              'className="sticky top-0 z-50 flex items-center border-b border-white/10 bg-black/80 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur-lg"',
+          )
+          replace(
+              'src/routes/enderecos/editar/$addressId.tsx',
+              'className="sticky bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black to-transparent pt-10"',
+              'className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black to-transparent px-6 pt-10 pb-[max(env(safe-area-inset-bottom),2.75rem)]"',
+          )
+
+          order_path = 'src/routes/pedido/$orderId/index.tsx'
+          p = Path(order_path)
+          text = p.read_text(encoding='utf-8')
+          text = text.replace(
+              'import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";',
+              'import { createFileRoute, redirect, useNavigate, useParams } from "@tanstack/react-router";',
+              1,
+          )
+          marker = 'export const Route = createFileRoute("/pedido/$orderId/")({\n  component: OrderDetailsPage,'
+          replacement = '''export const Route = createFileRoute("/pedido/$orderId/")({\n  ssr: false,\n  beforeLoad: async ({ location }) => {\n    const {\n      data: { session },\n    } = await supabase.auth.getSession();\n    if (!session) {\n      throw redirect({\n        to: "/login",\n        search: { redirect: location.href },\n      });\n    }\n    return { session };\n  },\n  component: OrderDetailsPage,'''
+          if marker not in text:
+              raise SystemExit('Order detail route marker not found')
+          p.write_text(text.replace(marker, replacement, 1), encoding='utf-8')
+
+      - name: Format and validate
+        run: |
+          bunx prettier --write \
+            src/routes/sacola.tsx \
+            src/routes/checkout.tsx \
+            src/routes/enderecos/novo.tsx \
+            'src/routes/enderecos/editar/$addressId.tsx' \
+            'src/routes/pedido/$orderId/index.tsx'
+          bun run typecheck
+          bun run test
+          bun run lint
+          bun run format:check
+      - name: Commit audited fixes
+        run: |
+          if git diff --quiet; then
+            echo "Nothing to patch"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/sacola.tsx src/routes/checkout.tsx src/routes/enderecos/novo.tsx 'src/routes/enderecos/editar/$addressId.tsx' 'src/routes/pedido/$orderId/index.tsx'
+          git commit -m "fix(customer): finalize mobile audit patch"
+          git push origin HEAD:main
