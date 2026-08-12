@@ -47,6 +47,28 @@ const allowedAvatarTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const maxAvatarBytes = 5 * 1024 * 1024;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function formatCpf(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  return digits
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1-$2");
+}
+
+function isValidCpf(value: string) {
+  const cpf = value.replace(/\D/g, "");
+  if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
+  const calculate = (length: number) => {
+    let sum = 0;
+    for (let index = 0; index < length; index += 1) {
+      sum += Number(cpf[index]) * (length + 1 - index);
+    }
+    const remainder = (sum * 10) % 11;
+    return remainder === 10 ? 0 : remainder;
+  };
+  return calculate(9) === Number(cpf[9]) && calculate(10) === Number(cpf[10]);
+}
+
 function DadosPessoaisPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -86,7 +108,7 @@ function DadosPessoaisPage() {
           setProfile({
             full_name: data?.full_name || "",
             phone: data?.phone || "",
-            cpf: data?.cpf || "",
+            cpf: formatCpf(data?.cpf || ""),
             email: user.email || "",
             birth_date: data?.birth_date || "",
             avatar_url: data?.avatar_url || "",
@@ -116,8 +138,8 @@ function DadosPessoaisPage() {
     }
 
     const normalizedCpf = profile.cpf.replace(/\D/g, "");
-    if (normalizedCpf.length !== 11) {
-      toast.error("Informe um CPF válido com 11 dígitos.");
+    if (!isValidCpf(normalizedCpf)) {
+      toast.error("Informe um CPF válido.");
       return;
     }
 
@@ -135,7 +157,7 @@ function DadosPessoaisPage() {
       } = await supabase.auth.getUser();
       if (userError || !user) throw userError ?? new Error("Usuário não encontrado");
 
-      const { error } = await supabase
+      const { data: savedProfile, error } = await supabase
         .from("profiles")
         .update({
           full_name: profile.full_name.trim(),
@@ -143,9 +165,23 @@ function DadosPessoaisPage() {
           cpf: normalizedCpf,
           birth_date: profile.birth_date || null,
         })
-        .eq("id", user.id);
+        .eq("id", user.id)
+        .select("full_name,phone,cpf,birth_date,avatar_url")
+        .single();
 
       if (error) throw error;
+      if (!savedProfile?.cpf || savedProfile.cpf.replace(/\D/g, "") !== normalizedCpf) {
+        throw new Error("O CPF não foi persistido no perfil.");
+      }
+
+      setProfile((current) => ({
+        ...current,
+        full_name: savedProfile.full_name || current.full_name,
+        phone: savedProfile.phone || "",
+        cpf: formatCpf(savedProfile.cpf || normalizedCpf),
+        birth_date: savedProfile.birth_date || "",
+        avatar_url: savedProfile.avatar_url || current.avatar_url,
+      }));
 
       const currentEmail = (user.email || "").trim().toLowerCase();
       if (requestedEmail !== currentEmail) {
@@ -163,9 +199,9 @@ function DadosPessoaisPage() {
       }
 
       toast.success("Perfil atualizado com sucesso.");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao salvar dados pessoais:", error);
-      toast.error("Não foi possível salvar as alterações.");
+      toast.error(error?.message || "Não foi possível salvar as alterações.");
     } finally {
       setSaving(false);
     }
@@ -248,7 +284,7 @@ function DadosPessoaisPage() {
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
-      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 p-4 backdrop-blur-lg">
+      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur-lg">
         <button
           type="button"
           onClick={() => navigate({ to: "/perfil" })}
@@ -261,7 +297,7 @@ function DadosPessoaisPage() {
         <div className="w-9" />
       </header>
 
-      <main className="scrollbar-none flex-1 overflow-y-auto p-6">
+      <main className="scrollbar-none flex-1 overflow-y-auto p-6 pb-[calc(env(safe-area-inset-bottom)+7rem)]">
         {loading ? (
           <div className="flex h-full items-center justify-center" role="status">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -272,11 +308,7 @@ function DadosPessoaisPage() {
               <div className="relative">
                 <div className="grid h-24 w-24 place-items-center overflow-hidden rounded-full border-2 border-primary bg-zinc-900 shadow-[0_0_20px_rgba(255,215,0,0.2)]">
                   {avatarSrc ? (
-                    <img
-                      src={avatarSrc}
-                      alt="Foto de perfil"
-                      className="h-full w-full object-cover"
-                    />
+                    <img src={avatarSrc} alt="Foto de perfil" className="h-full w-full object-cover" />
                   ) : (
                     <User className="h-12 w-12 text-primary" />
                   )}
@@ -288,11 +320,7 @@ function DadosPessoaisPage() {
                   className="absolute -bottom-1 -right-1 grid h-10 w-10 place-items-center rounded-full border-4 border-black bg-primary text-black disabled:opacity-60"
                   aria-label="Alterar foto de perfil"
                 >
-                  {uploadingAvatar ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Camera className="h-4 w-4" />
-                  )}
+                  {uploadingAvatar ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                 </button>
                 <input
                   ref={fileInputRef}
@@ -311,113 +339,38 @@ function DadosPessoaisPage() {
             <form onSubmit={handleSave} className="space-y-6">
               <div className="space-y-4">
                 <Field label="Nome completo" icon={User}>
-                  <input
-                    type="text"
-                    value={profile.full_name}
-                    onChange={(event) =>
-                      setProfile((current) => ({ ...current, full_name: event.target.value }))
-                    }
-                    className="profile-input"
-                    placeholder="Seu nome completo"
-                    autoComplete="name"
-                    required
-                  />
+                  <input type="text" value={profile.full_name} onChange={(event) => setProfile((current) => ({ ...current, full_name: event.target.value }))} className="profile-input" placeholder="Seu nome completo" autoComplete="name" required />
                 </Field>
-
                 <Field label="Telefone" icon={Phone}>
-                  <input
-                    type="tel"
-                    value={profile.phone}
-                    onChange={(event) =>
-                      setProfile((current) => ({ ...current, phone: event.target.value }))
-                    }
-                    className="profile-input"
-                    placeholder="(00) 00000-0000"
-                    autoComplete="tel"
-                  />
+                  <input type="tel" value={profile.phone} onChange={(event) => setProfile((current) => ({ ...current, phone: event.target.value }))} className="profile-input" placeholder="(00) 00000-0000" autoComplete="tel" />
                 </Field>
-
                 <Field label="CPF" icon={User}>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={profile.cpf}
-                    onChange={(event) =>
-                      setProfile((current) => ({ ...current, cpf: event.target.value }))
-                    }
-                    className="profile-input"
-                    placeholder="000.000.000-00"
-                    autoComplete="off"
-                    maxLength={14}
-                    required
-                  />
+                  <input type="text" inputMode="numeric" value={profile.cpf} onChange={(event) => setProfile((current) => ({ ...current, cpf: formatCpf(event.target.value) }))} className="profile-input" placeholder="000.000.000-00" autoComplete="off" maxLength={14} required />
                 </Field>
-
                 <Field label="Data de nascimento" icon={CalendarDays}>
-                  <input
-                    type="date"
-                    value={profile.birth_date}
-                    max={new Date().toISOString().slice(0, 10)}
-                    onChange={(event) =>
-                      setProfile((current) => ({ ...current, birth_date: event.target.value }))
-                    }
-                    className="profile-input"
-                  />
+                  <input type="date" value={profile.birth_date} max={new Date().toISOString().slice(0, 10)} onChange={(event) => setProfile((current) => ({ ...current, birth_date: event.target.value }))} className="profile-input" />
                 </Field>
-
                 <Field label="E-mail" icon={Mail}>
-                  <input
-                    type="email"
-                    value={profile.email}
-                    onChange={(event) =>
-                      setProfile((current) => ({ ...current, email: event.target.value }))
-                    }
-                    className="profile-input"
-                    placeholder="voce@exemplo.com"
-                    autoComplete="email"
-                    required
-                  />
+                  <input type="email" value={profile.email} onChange={(event) => setProfile((current) => ({ ...current, email: event.target.value }))} className="profile-input" placeholder="voce@exemplo.com" autoComplete="email" required />
                 </Field>
-                <p className="-mt-2 px-1 text-xs leading-relaxed text-zinc-600">
-                  Se você trocar o e-mail, o Supabase Auth enviará a confirmação de segurança antes
-                  de concluir a alteração.
-                </p>
+                <p className="-mt-2 px-1 text-xs leading-relaxed text-zinc-600">Se você trocar o e-mail, o Supabase Auth enviará a confirmação de segurança antes de concluir a alteração.</p>
               </div>
 
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 font-bold text-black transition-all active:scale-[0.98] disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Save className="h-5 w-5" />
-                )}
+              <button type="submit" disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 font-bold text-black transition-all active:scale-[0.98] disabled:opacity-50">
+                {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
                 {saving ? "Salvando..." : "Salvar alterações"}
               </button>
             </form>
 
             <section className="rounded-3xl border border-red-500/20 bg-red-500/5 p-5">
               <div className="flex items-start gap-3">
-                <div className="rounded-2xl bg-red-500/10 p-2.5 text-red-400">
-                  <UserX className="h-5 w-5" />
-                </div>
+                <div className="rounded-2xl bg-red-500/10 p-2.5 text-red-400"><UserX className="h-5 w-5" /></div>
                 <div className="min-w-0 flex-1">
                   <h2 className="font-black text-red-300">Desativar minha conta</h2>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-                    Seu acesso será bloqueado e a sessão será encerrada. Dados operacionais que
-                    precisem ser preservados por segurança, suporte ou obrigações legais não são
-                    apagados automaticamente.
-                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-zinc-500">Seu acesso será bloqueado e a sessão será encerrada. Dados operacionais que precisem ser preservados por segurança, suporte ou obrigações legais não são apagados automaticamente.</p>
                 </div>
               </div>
-              <button
-                type="button"
-                disabled={deactivating}
-                onClick={() => void deactivateAccount()}
-                className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 text-sm font-black text-red-300 disabled:opacity-50"
-              >
+              <button type="button" disabled={deactivating} onClick={() => void deactivateAccount()} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 text-sm font-black text-red-300 disabled:opacity-50">
                 {deactivating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {deactivating ? "Desativando..." : "Desativar conta"}
               </button>
@@ -429,25 +382,13 @@ function DadosPessoaisPage() {
   );
 }
 
-function Field({
-  label,
-  icon: Icon,
-  children,
-}: {
-  label: string;
-  icon: typeof User;
-  children: React.ReactNode;
-}) {
+function Field({ label, icon: Icon, children }: { label: string; icon: typeof User; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <label className="ml-1 text-xs font-bold uppercase tracking-widest text-primary">
-        {label}
-      </label>
+      <label className="ml-1 text-xs font-bold uppercase tracking-widest text-primary">{label}</label>
       <div className="relative">
         <Icon className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
-        <div className="[&_.profile-input]:w-full [&_.profile-input]:rounded-2xl [&_.profile-input]:border [&_.profile-input]:border-zinc-800 [&_.profile-input]:bg-zinc-900 [&_.profile-input]:py-4 [&_.profile-input]:pl-12 [&_.profile-input]:pr-4 [&_.profile-input]:text-white [&_.profile-input]:outline-none [&_.profile-input]:transition-colors [&_.profile-input]:focus:border-primary">
-          {children}
-        </div>
+        <div className="[&_.profile-input]:w-full [&_.profile-input]:rounded-2xl [&_.profile-input]:border [&_.profile-input]:border-zinc-800 [&_.profile-input]:bg-zinc-900 [&_.profile-input]:py-4 [&_.profile-input]:pl-12 [&_.profile-input]:pr-4 [&_.profile-input]:text-white [&_.profile-input]:outline-none [&_.profile-input]:transition-colors [&_.profile-input]:focus:border-primary">{children}</div>
       </div>
     </div>
   );
