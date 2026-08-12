@@ -24,14 +24,7 @@ export const Route = createFileRoute("/register")({
 
 const onlyDigits = (value: string) => value.replace(/\D/g, "");
 
-type FieldName =
-  | "fullName"
-  | "phone"
-  | "cpf"
-  | "birthDate"
-  | "email"
-  | "password"
-  | "confirmPassword";
+type FieldName = "fullName" | "phone" | "cpf" | "birthDate" | "email" | "password" | "confirmPassword";
 
 type FormErrors = Partial<Record<FieldName, string>>;
 
@@ -222,9 +215,15 @@ function Register() {
 
       <main className="min-h-0 flex-1 overflow-y-auto px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
         <div className="mb-4 flex flex-col items-center text-center">
-          <img src={logoAsset.url} alt="APOIS ENTREGA" className="mb-2 h-12 w-auto object-contain" />
+          <img
+            src={logoAsset.url}
+            alt="APOIS ENTREGA"
+            className="mb-2 h-12 w-auto object-contain"
+          />
           <h1 className="text-[20px] font-black">Crie sua conta</h1>
-          <p className="mt-1 text-xs text-zinc-500">Seus dados já ficam prontos para pagamentos por PIX.</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Seus dados já ficam prontos para pagamentos por PIX.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3" noValidate>
@@ -266,7 +265,9 @@ function Register() {
             <Input
               inputMode="numeric"
               value={formData.birthDate}
-              onChange={(e) => setFormData({ ...formData, birthDate: maskBirthDate(e.target.value) })}
+              onChange={(e) =>
+                setFormData({ ...formData, birthDate: maskBirthDate(e.target.value) })
+              }
               onBlur={() => setTouched({ ...touched, birthDate: true })}
               placeholder="DD/MM/AAAA"
               maxLength={10}
