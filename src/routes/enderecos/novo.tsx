@@ -1,7 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, Loader2, Save, MapPin, Home, Briefcase } from "lucide-react";
+import { Briefcase, CheckCircle2, ChevronLeft, Home, Loader2, MapPin, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -12,25 +12,14 @@ export const Route = createFileRoute("/enderecos/novo")({
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    if (!session) {
-      throw redirect({ to: "/login" });
-    }
+    if (!session) throw redirect({ to: "/login" });
     return { session };
   },
   component: NovoEndereco,
-  head: () => ({
-    meta: [{ title: "Novo Endereço | APOIS ENTREGA" }],
-  }),
+  head: () => ({ meta: [{ title: "Novo Endereço | APOIS ENTREGA" }] }),
 });
 
-const locationFields = new Set([
-  "postal_code",
-  "street",
-  "number",
-  "neighborhood",
-  "city",
-  "state",
-]);
+const locationFields = new Set(["postal_code", "street", "number", "neighborhood", "city", "state"]);
 
 function NovoEndereco() {
   const navigate = useNavigate();
@@ -49,14 +38,14 @@ function NovoEndereco() {
     longitude: null as number | null,
   });
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
+  useEffect(() => window.scrollTo(0, 0), []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
+  const hasPreciseLocation = formData.latitude !== null && formData.longitude !== null;
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    setFormData((previous) => ({
+      ...previous,
       [name]: value,
       ...(locationFields.has(name) ? { latitude: null, longitude: null } : {}),
     }));
@@ -65,19 +54,17 @@ function NovoEndereco() {
   const handleCEPBlur = async () => {
     const cep = formData.postal_code.replace(/\D/g, "");
     if (cep.length !== 8) return;
-
     try {
       const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
       if (!response.ok) return;
       const data = await response.json();
-
       if (!data.erro) {
-        setFormData((prev) => ({
-          ...prev,
-          street: data.logradouro || prev.street,
-          neighborhood: data.bairro || prev.neighborhood,
-          city: data.localidade || prev.city,
-          state: data.uf || prev.state,
+        setFormData((previous) => ({
+          ...previous,
+          street: data.logradouro || previous.street,
+          neighborhood: data.bairro || previous.neighborhood,
+          city: data.localidade || previous.city,
+          state: data.uf || previous.state,
           latitude: null,
           longitude: null,
         }));
@@ -87,29 +74,29 @@ function NovoEndereco() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     const required = ["postal_code", "street", "number", "neighborhood", "city", "state"];
     for (const field of required) {
       if (!formData[field as keyof typeof formData]) {
-        toast.error(`O campo ${field} é obrigatório`);
+        toast.error("Preencha todos os campos obrigatórios do endereço.");
         return;
       }
     }
-
     if (formData.postal_code.replace(/\D/g, "").length !== 8) {
       toast.error("Informe um CEP válido com 8 dígitos");
       return;
     }
-
-    if (formData.state.length !== 2) {
+    if (formData.state.trim().length !== 2) {
       toast.error("O estado (UF) deve ter exatamente 2 letras");
+      return;
+    }
+    if (!hasPreciseLocation) {
+      toast.error("Confirme o ponto exato da entrega no mapa antes de salvar.");
       return;
     }
 
     setIsLoading(true);
-
     try {
       const {
         data: { user },
@@ -122,19 +109,17 @@ function NovoEndereco() {
         .eq("user_id", user.id);
       if (countError) throw countError;
 
-      const isFirst = count === 0;
-
       const { error } = await (supabase as any).from("customer_addresses").insert({
         ...formData,
         postal_code: formData.postal_code.replace(/\D/g, ""),
         state: formData.state.toUpperCase(),
         user_id: user.id,
-        is_default: isFirst,
+        is_default: count === 0,
       });
-
       if (error) throw error;
 
-      toast.success("Endereço salvo com sucesso!");
+      sessionStorage.setItem("apois_checkout_address_changed", "1");
+      toast.success("Endereço salvo com localização confirmada!");
       await navigate({ to: "/enderecos" });
     } catch (error: any) {
       toast.error(`Erro ao salvar: ${error.message}`);
@@ -150,181 +135,83 @@ function NovoEndereco() {
   ];
 
   return (
-    <div className="absolute inset-0 z-[160] bg-black overflow-y-auto overflow-x-hidden flex flex-col w-full shadow-2xl">
-      <header className="flex items-center p-4 sticky top-0 z-50 bg-black/90 backdrop-blur-xl border-b border-white/10">
-        <button
-          type="button"
-          onClick={() => navigate({ to: "/enderecos" })}
-          className="w-10 h-10 flex items-center justify-center -ml-1 rounded-full bg-white/5 border border-white/10 text-primary hover:bg-white/10 transition-colors active:scale-95"
-          aria-label="Voltar"
-        >
-          <ChevronLeft className="w-5 h-5" />
+    <div className="absolute inset-0 z-[160] flex w-full flex-col overflow-x-hidden overflow-y-auto bg-black text-white">
+      <header className="sticky top-0 z-50 flex items-center border-b border-white/10 bg-black/90 p-4 backdrop-blur-xl">
+        <button type="button" onClick={() => navigate({ to: "/enderecos" })} className="-ml-1 grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-primary" aria-label="Voltar">
+          <ChevronLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-[17px] font-extrabold ml-3 tracking-tight">Novo Endereço</h1>
+        <h1 className="ml-3 text-[17px] font-extrabold">Novo Endereço</h1>
       </header>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="px-5 py-5 border-b border-white/5 bg-gradient-to-b from-zinc-950 to-black">
+      <main className="flex-1 overflow-y-auto pb-36">
+        <div className="border-b border-white/5 bg-gradient-to-b from-zinc-950 to-black px-5 py-5">
+          <div className={`mb-4 flex items-start gap-3 rounded-2xl border p-4 ${hasPreciseLocation ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300" : "border-amber-500/20 bg-amber-500/10 text-amber-200"}`}>
+            {hasPreciseLocation ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /> : <MapPin className="mt-0.5 h-5 w-5 shrink-0" />}
+            <div>
+              <p className="text-sm font-black">{hasPreciseLocation ? "Ponto de entrega confirmado" : "Confirme o ponto exato da entrega"}</p>
+              <p className="mt-1 text-xs leading-relaxed opacity-80">{hasPreciseLocation ? "Se alterar rua, número, bairro, cidade, UF ou CEP, confirme novamente o ponto no mapa." : "Pesquise o endereço, use sua localização ou toque/arraste o marcador e confirme o ponto no mapa."}</p>
+            </div>
+          </div>
           <GoogleMapsAddressSelector
-            onAddressSelected={(addr) => {
-              setFormData((prev) => ({
-                ...prev,
-                street: addr.street || prev.street,
-                neighborhood: addr.neighborhood || prev.neighborhood,
-                city: addr.city || prev.city,
-                state: addr.state || prev.state,
-                postal_code: addr.postal_code || prev.postal_code,
-                number: addr.number || prev.number,
-                latitude: addr.latitude ?? prev.latitude,
-                longitude: addr.longitude ?? prev.longitude,
+            onAddressSelected={(address) => {
+              setFormData((previous) => ({
+                ...previous,
+                street: address.street || previous.street,
+                neighborhood: address.neighborhood || previous.neighborhood,
+                city: address.city || previous.city,
+                state: address.state || previous.state,
+                postal_code: address.postal_code || previous.postal_code,
+                number: address.number || previous.number,
+                latitude: address.latitude ?? previous.latitude,
+                longitude: address.longitude ?? previous.longitude,
               }));
             }}
           />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 px-5 py-5 pb-40">
+        <form onSubmit={handleSubmit} className="space-y-5 px-5 py-5">
           <div className="space-y-3">
-            <label className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">
-              Tipo do endereço
-            </label>
+            <label className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">Tipo do endereço</label>
             <div className="flex gap-2">
               {labelOptions.map(({ value, Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, label: value }))}
-                  className={`flex-1 py-3 rounded-2xl font-bold text-sm transition-all border flex flex-col items-center gap-1.5 active:scale-[0.97] ${
-                    formData.label === value
-                      ? "bg-primary text-black border-primary shadow-[0_6px_20px_-6px_hsl(var(--primary))]"
-                      : "bg-zinc-900 text-zinc-400 border-zinc-800"
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  {value}
+                <button key={value} type="button" onClick={() => setFormData((previous) => ({ ...previous, label: value }))} className={`flex flex-1 flex-col items-center gap-1.5 rounded-2xl border py-3 text-sm font-bold ${formData.label === value ? "border-primary bg-primary text-black" : "border-zinc-800 bg-zinc-900 text-zinc-400"}`}>
+                  <Icon className="h-5 w-5" /> {value}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-1 space-y-2">
-              <label className="text-xs font-medium text-zinc-500 ml-1">CEP*</label>
-              <Input
-                name="postal_code"
-                placeholder="00000-000"
-                value={formData.postal_code}
-                onChange={handleChange}
-                onBlur={handleCEPBlur}
-                inputMode="numeric"
-                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
-                required
-              />
-            </div>
-            <div className="col-span-2 space-y-2">
-              <label className="text-xs font-medium text-zinc-500 ml-1">Rua*</label>
-              <Input
-                name="street"
-                placeholder="Nome da rua"
-                value={formData.street}
-                onChange={handleChange}
-                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
-                required
-              />
-            </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="CEP*" name="postal_code" value={formData.postal_code} onChange={handleChange} onBlur={handleCEPBlur} inputMode="numeric" />
+            <div className="col-span-2"><Field label="Rua*" name="street" value={formData.street} onChange={handleChange} /></div>
           </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-1 space-y-2">
-              <label className="text-xs font-medium text-zinc-500 ml-1">Número*</label>
-              <Input
-                name="number"
-                placeholder="123"
-                value={formData.number}
-                onChange={handleChange}
-                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
-                required
-              />
-            </div>
-            <div className="col-span-2 space-y-2">
-              <label className="text-xs font-medium text-zinc-500 ml-1">Complemento</label>
-              <Input
-                name="complement"
-                placeholder="Apto, Bloco, etc."
-                value={formData.complement}
-                onChange={handleChange}
-                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
-              />
-            </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Número*" name="number" value={formData.number} onChange={handleChange} />
+            <div className="col-span-2"><Field label="Complemento" name="complement" value={formData.complement} onChange={handleChange} /></div>
           </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-zinc-500 ml-1">Bairro*</label>
-            <Input
-              name="neighborhood"
-              placeholder="Nome do bairro"
-              value={formData.neighborhood}
-              onChange={handleChange}
-              className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
-              required
-            />
+          <Field label="Bairro*" name="neighborhood" value={formData.neighborhood} onChange={handleChange} />
+          <div className="grid grid-cols-4 gap-3">
+            <div className="col-span-3"><Field label="Cidade*" name="city" value={formData.city} onChange={handleChange} /></div>
+            <Field label="UF*" name="state" value={formData.state} onChange={handleChange} maxLength={2} />
           </div>
-
-          <div className="grid grid-cols-4 gap-4">
-            <div className="col-span-3 space-y-2">
-              <label className="text-xs font-medium text-zinc-500 ml-1">Cidade*</label>
-              <Input
-                name="city"
-                placeholder="Sua cidade"
-                value={formData.city}
-                onChange={handleChange}
-                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
-                required
-              />
-            </div>
-            <div className="col-span-1 space-y-2">
-              <label className="text-xs font-medium text-zinc-500 ml-1">UF*</label>
-              <Input
-                name="state"
-                placeholder="PE"
-                maxLength={2}
-                value={formData.state}
-                onChange={handleChange}
-                className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary uppercase text-center text-white"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-zinc-500 ml-1">Ponto de referência</label>
-            <Input
-              name="reference"
-              placeholder="Próximo ao..."
-              value={formData.reference}
-              onChange={handleChange}
-              className="bg-zinc-900 border-zinc-800 h-12 rounded-xl focus:ring-primary text-white"
-            />
-          </div>
+          <Field label="Ponto de referência" name="reference" value={formData.reference} onChange={handleChange} />
         </form>
       </main>
 
-      <div className="sticky bottom-0 left-0 right-0 px-5 pb-5 pt-10 bg-gradient-to-t from-black via-black to-transparent">
-        <Button
-          type="button"
-          onClick={handleSubmit}
-          disabled={isLoading}
-          className="w-full bg-gradient-to-b from-primary to-amber-500 text-black hover:opacity-90 font-extrabold h-14 text-[17px] rounded-2xl shadow-[0_10px_30px_-10px_hsl(var(--primary))] flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
-        >
-          {isLoading ? (
-            <Loader2 className="w-6 h-6 animate-spin" />
-          ) : (
-            <>
-              <Save className="w-5 h-5" />
-              Salvar endereço
-            </>
-          )}
+      <div className="sticky bottom-0 z-50 bg-gradient-to-t from-black via-black to-transparent px-5 pb-5 pt-8">
+        <Button type="button" onClick={handleSubmit} disabled={isLoading || !hasPreciseLocation} className="h-14 w-full rounded-2xl bg-primary text-[17px] font-extrabold text-black disabled:opacity-40">
+          {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><Save className="mr-2 h-5 w-5" />{hasPreciseLocation ? "Salvar endereço" : "Confirme o ponto no mapa"}</>}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function Field({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+  return (
+    <div className="space-y-2">
+      <label className="ml-1 text-xs font-medium text-zinc-500">{label}</label>
+      <Input {...props} className="h-12 rounded-xl border-zinc-800 bg-zinc-900 text-white" />
     </div>
   );
 }
