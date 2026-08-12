@@ -2,14 +2,15 @@ name: Format customer audit fixes
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   format:
-    if: ${{ !startsWith(github.event.head_commit.message, 'style: format customer audit fixes') }}
+    if: "${{ !startsWith(github.event.head_commit.message, 'style: format customer audit fixes') }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
