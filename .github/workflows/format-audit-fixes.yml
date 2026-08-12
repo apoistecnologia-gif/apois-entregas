@@ -1,0 +1,40 @@
+name: Format customer audit fixes
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: ${{ !startsWith(github.event.head_commit.message, 'style: format customer audit fixes') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: main
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - name: Format audited files
+        run: |
+          bunx prettier --write \
+            src/components/GoogleMapsAddressSelector.tsx \
+            src/routes/enderecos.tsx \
+            src/routes/enderecos/novo.tsx \
+            'src/routes/enderecos/editar/$addressId.tsx' \
+            supabase/functions/sync-payment-status/index.ts
+      - name: Commit formatting
+        run: |
+          if git diff --quiet; then
+            echo "Nothing to format"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/GoogleMapsAddressSelector.tsx src/routes/enderecos.tsx src/routes/enderecos/novo.tsx 'src/routes/enderecos/editar/$addressId.tsx' supabase/functions/sync-payment-status/index.ts
+          git commit -m "style: format customer audit fixes"
+          git push origin HEAD:main
