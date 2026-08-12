@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { ApoisLaunchSplash } from "../components/ApoisLaunchSplash";
 import { AuthSessionIsolation } from "../components/AuthSessionIsolation";
+import { MerchantOrderSoundWatcher } from "../components/MerchantOrderSoundWatcher";
 import { CartProvider } from "../contexts/CartContext";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import {
@@ -175,6 +176,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ApoisLaunchSplash />
+      <MerchantOrderSoundWatcher />
       <ProductRouteIsolation>
         <AuthSessionIsolation>
           <CartProvider>
