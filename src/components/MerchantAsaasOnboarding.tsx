@@ -198,7 +198,7 @@ export function MerchantAsaasOnboarding({ merchant }: MerchantAsaasOnboardingPro
       <div className="flex items-start gap-3">
         <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
         <div>
-          <h2 className="font-black">Conta financeira Asaas</h2>
+          <h2 className="font-black">Conta financeira Asaas do estabelecimento</h2>
           <p className="mt-1 text-sm text-zinc-500">
             Cadastre o titular como pessoa física, MEI ou empresa. Após a abertura, o repasse dos
             pedidos e os saques PIX ficam vinculados à subconta do estabelecimento.
