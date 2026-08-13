@@ -159,6 +159,16 @@ function MerchantOrderControlCenter() {
     () => orders.filter((order) => order.status === "confirmed").length,
     [orders],
   );
+  const readyDeliveryOrder = useMemo(
+    () =>
+      orders.find(
+        (order) =>
+          order.status === "ready" &&
+          order.fulfillment_type === "delivery" &&
+          (order.payment_method !== "pix" || order.payment_status === "paid"),
+      ) ?? null,
+    [orders],
+  );
 
   const transition = async (orderId: string, status: string) => {
     if (!merchantId || busyOrderId) return;
@@ -323,7 +333,7 @@ function MerchantOrderControlCenter() {
                         type="button"
                         disabled={busy || !paymentReady}
                         onClick={() => void requestCourier(order.id)}
-                        className="w-full font-black"
+                        className="w-full bg-[#FFD700] font-black text-black hover:bg-[#FFD700]/90"
                       >
                         {busy ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -371,6 +381,22 @@ function MerchantOrderControlCenter() {
             ) : null}
           </div>
         </section>
+      ) : null}
+
+      {readyDeliveryOrder ? (
+        <button
+          type="button"
+          disabled={busyOrderId === readyDeliveryOrder.id}
+          onClick={() => void requestCourier(readyDeliveryOrder.id)}
+          className="mb-3 flex w-[min(420px,calc(100vw-2.5rem))] items-center justify-center gap-3 rounded-2xl border border-[#FFD700] bg-[#FFD700] px-5 py-4 text-sm font-black uppercase text-black shadow-2xl disabled:opacity-60"
+        >
+          {busyOrderId === readyDeliveryOrder.id ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <Truck className="h-5 w-5" />
+          )}
+          Solicitar entregador · Pedido #{readyDeliveryOrder.order_number}
+        </button>
       ) : null}
 
       <button
