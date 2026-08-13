@@ -165,7 +165,6 @@ function MerchantOrderSoundWatcher() {
         oscillator.stop(context.currentTime + 0.01);
         audioUnlockedRef.current = true;
         setAudioUnlocked(true);
-        void flushPendingRef.current?.();
         return true;
       } catch {
         audioUnlockedRef.current = false;
@@ -182,6 +181,21 @@ function MerchantOrderSoundWatcher() {
       unlockAudioRef.current = null;
       window.removeEventListener("pointerdown", onGesture, { capture: true });
       window.removeEventListener("keydown", onGesture, { capture: true });
+    };
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const flushWhenVisible = () => {
+      if (document.visibilityState === "visible" && audioUnlockedRef.current) {
+        void flushPendingRef.current?.();
+      }
+    };
+    document.addEventListener("visibilitychange", flushWhenVisible);
+    window.addEventListener("focus", flushWhenVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", flushWhenVisible);
+      window.removeEventListener("focus", flushWhenVisible);
     };
   }, [enabled]);
 
