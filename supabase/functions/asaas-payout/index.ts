@@ -113,8 +113,7 @@ Deno.serve(async (req: Request) => {
   const encryptionKey = Deno.env.get("ASAAS_SUBACCOUNT_ENCRYPTION_KEY");
   const apiBase =
     environment === "production" ? "https://api.asaas.com/v3" : "https://api-sandbox.asaas.com/v3";
-  if (!encryptionKey)
-    return reply(503, { error: "Integração Asaas ainda não configurada." });
+  if (!encryptionKey) return reply(503, { error: "Integração Asaas ainda não configurada." });
 
   const { data: payout } = await admin
     .from("payouts")
