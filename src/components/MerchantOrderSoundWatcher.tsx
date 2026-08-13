@@ -41,11 +41,10 @@ function MerchantOrderSoundWatcher() {
   const unlockAudioRef = useRef<(() => Promise<boolean>) | null>(null);
   const alertedOrdersRef = useRef<Set<string>>(loadAlertedOrders());
   const pendingAlertsRef = useRef<Map<string, PendingAlert>>(new Map());
-  const flushPendingRef = useRef<(() => Promise<void>) | null>(null);
 
   const playOrderAlert = async () => {
     const context = audioContextRef.current;
-    if (!context || !audioUnlockedRef.current) return false;
+    if (!context || !audioUnlockedRef.current || document.visibilityState !== "visible") return false;
     try {
       if (context.state === "suspended") await context.resume();
       if (context.state !== "running") return false;
@@ -117,7 +116,7 @@ function MerchantOrderSoundWatcher() {
   };
 
   const flushPending = async () => {
-    if (!audioUnlockedRef.current) return;
+    if (!audioUnlockedRef.current || document.visibilityState !== "visible") return;
     for (const [orderId] of Array.from(pendingAlertsRef.current.entries())) {
       if (alertedOrdersRef.current.has(orderId)) {
         pendingAlertsRef.current.delete(orderId);
@@ -130,7 +129,14 @@ function MerchantOrderSoundWatcher() {
       persistAlertedOrders(alertedOrdersRef.current);
     }
   };
-  flushPendingRef.current = flushPending;
+
+  const discardDeferredAlerts = () => {
+    for (const orderId of pendingAlertsRef.current.keys()) {
+      alertedOrdersRef.current.add(orderId);
+    }
+    pendingAlertsRef.current.clear();
+    persistAlertedOrders(alertedOrdersRef.current);
+  };
 
   const queuePaidOrder = (orderId: string, orderNumber: string) => {
     if (alertedOrdersRef.current.has(orderId) || pendingAlertsRef.current.has(orderId)) return;
@@ -174,28 +180,19 @@ function MerchantOrderSoundWatcher() {
     };
 
     unlockAudioRef.current = unlockAudio;
-    const onGesture = () => void unlockAudio();
-    window.addEventListener("pointerdown", onGesture, { capture: true });
-    window.addEventListener("keydown", onGesture, { capture: true });
+    const onBackgroundGesture = (event: PointerEvent | KeyboardEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("button,a,input,select,textarea,[role='button']")) {
+        return;
+      }
+      void unlockAudio();
+    };
+    window.addEventListener("pointerdown", onBackgroundGesture, { capture: true });
+    window.addEventListener("keydown", onBackgroundGesture, { capture: true });
     return () => {
       unlockAudioRef.current = null;
-      window.removeEventListener("pointerdown", onGesture, { capture: true });
-      window.removeEventListener("keydown", onGesture, { capture: true });
-    };
-  }, [enabled]);
-
-  useEffect(() => {
-    if (!enabled) return;
-    const flushWhenVisible = () => {
-      if (document.visibilityState === "visible" && audioUnlockedRef.current) {
-        void flushPendingRef.current?.();
-      }
-    };
-    document.addEventListener("visibilitychange", flushWhenVisible);
-    window.addEventListener("focus", flushWhenVisible);
-    return () => {
-      document.removeEventListener("visibilitychange", flushWhenVisible);
-      window.removeEventListener("focus", flushWhenVisible);
+      window.removeEventListener("pointerdown", onBackgroundGesture, { capture: true });
+      window.removeEventListener("keydown", onBackgroundGesture, { capture: true });
     };
   }, [enabled]);
 
@@ -250,7 +247,14 @@ function MerchantOrderSoundWatcher() {
           const orderId = typeof next?.["id"] === "string" ? next["id"] : null;
           const paymentStatus = String(next?.["payment_status"] ?? "").toLowerCase();
           const previousPaymentStatus = String(previous?.["payment_status"] ?? "").toLowerCase();
-          if (!orderId || paymentStatus !== "paid" || previousPaymentStatus === "paid") return;
+          const status = String(next?.["status"] ?? "").toLowerCase();
+          if (
+            !orderId ||
+            paymentStatus !== "paid" ||
+            previousPaymentStatus === "paid" ||
+            status !== "confirmed"
+          )
+            return;
           queuePaidOrder(orderId, next?.["order_number"] ? String(next["order_number"]) : "");
         },
       )
@@ -259,9 +263,10 @@ function MerchantOrderSoundWatcher() {
     const reconcile = async () => {
       const { data, error } = await supabase
         .from("orders" as any)
-        .select("id,order_number,payment_status,created_at")
+        .select("id,order_number,payment_status,status,created_at")
         .eq("merchant_id", merchantId)
         .eq("payment_status", "paid")
+        .eq("status", "confirmed")
         .gte("created_at", startedAt)
         .order("created_at", { ascending: true })
         .limit(30);
@@ -307,6 +312,7 @@ function MerchantOrderSoundWatcher() {
               toast.error("O navegador bloqueou o áudio. Verifique o volume e a permissão de som.");
               return;
             }
+            discardDeferredAlerts();
             const played = await playOrderAlert();
             if (played) toast.success("Som do novo pedido funcionando.");
             else toast.error("Não foi possível reproduzir o som neste dispositivo.");
