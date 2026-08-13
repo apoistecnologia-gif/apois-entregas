@@ -50,19 +50,19 @@ function MerchantOrderSoundWatcher() {
       if (context.state !== "running") return false;
 
       const now = context.currentTime + 0.03;
-      const frequencies = [740, 980, 740, 980, 740, 980, 740, 980, 740, 980];
+      const frequencies = Array.from({ length: 14 }, () => 1650);
 
       frequencies.forEach((frequency, index) => {
-        const start = now + index * 0.34;
-        const stop = start + 0.27;
+        const start = now + index * 0.18;
+        const stop = start + 0.12;
         const oscillator = context.createOscillator();
         const gain = context.createGain();
 
         oscillator.type = "square";
         oscillator.frequency.setValueAtTime(frequency, start);
         gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(0.76, start + 0.015);
-        gain.gain.setValueAtTime(0.76, stop - 0.035);
+        gain.gain.exponentialRampToValueAtTime(0.68, start + 0.008);
+        gain.gain.setValueAtTime(0.68, stop - 0.018);
         gain.gain.exponentialRampToValueAtTime(0.0001, stop);
 
         oscillator.connect(gain);
