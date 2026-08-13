@@ -49,27 +49,65 @@ function MerchantOrderSoundWatcher() {
       if (context.state === "suspended") await context.resume();
       if (context.state !== "running") return false;
 
+      // Mechanical twin-bell alarm clock: rapid metallic hammer strikes with no pitch sweep.
       const now = context.currentTime + 0.03;
-      const frequencies = Array.from({ length: 14 }, () => 1650);
+      const master = context.createGain();
+      master.gain.setValueAtTime(0.9, now);
+      master.connect(context.destination);
 
-      frequencies.forEach((frequency, index) => {
-        const start = now + index * 0.18;
-        const stop = start + 0.12;
-        const oscillator = context.createOscillator();
-        const gain = context.createGain();
+      const strikeCount = 42;
+      const strikeInterval = 0.078;
 
-        oscillator.type = "square";
-        oscillator.frequency.setValueAtTime(frequency, start);
-        gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(0.68, start + 0.008);
-        gain.gain.setValueAtTime(0.68, stop - 0.018);
-        gain.gain.exponentialRampToValueAtTime(0.0001, stop);
+      for (let index = 0; index < strikeCount; index += 1) {
+        const start = now + index * strikeInterval;
+        const stop = start + 0.064;
 
-        oscillator.connect(gain);
-        gain.connect(context.destination);
-        oscillator.start(start);
-        oscillator.stop(stop + 0.01);
-      });
+        const bellA = context.createOscillator();
+        const bellB = context.createOscillator();
+        const hammer = context.createOscillator();
+        const bellAGain = context.createGain();
+        const bellBGain = context.createGain();
+        const hammerGain = context.createGain();
+
+        bellA.type = "square";
+        bellB.type = "triangle";
+        hammer.type = "square";
+        bellA.frequency.setValueAtTime(1760, start);
+        bellB.frequency.setValueAtTime(2260, start);
+        hammer.frequency.setValueAtTime(980, start);
+
+        bellAGain.gain.setValueAtTime(0.0001, start);
+        bellAGain.gain.exponentialRampToValueAtTime(0.32, start + 0.004);
+        bellAGain.gain.exponentialRampToValueAtTime(0.0001, stop);
+
+        bellBGain.gain.setValueAtTime(0.0001, start);
+        bellBGain.gain.exponentialRampToValueAtTime(0.24, start + 0.003);
+        bellBGain.gain.exponentialRampToValueAtTime(0.0001, stop);
+
+        hammerGain.gain.setValueAtTime(0.0001, start);
+        hammerGain.gain.exponentialRampToValueAtTime(0.2, start + 0.002);
+        hammerGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.026);
+
+        bellA.connect(bellAGain);
+        bellB.connect(bellBGain);
+        hammer.connect(hammerGain);
+        bellAGain.connect(master);
+        bellBGain.connect(master);
+        hammerGain.connect(master);
+
+        bellA.start(start);
+        bellB.start(start);
+        hammer.start(start);
+        bellA.stop(stop + 0.01);
+        bellB.stop(stop + 0.01);
+        hammer.stop(start + 0.03);
+      }
+
+      master.gain.setValueAtTime(0.9, now + strikeCount * strikeInterval);
+      master.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + strikeCount * strikeInterval + 0.08,
+      );
       return true;
     } catch {
       audioUnlockedRef.current = false;
