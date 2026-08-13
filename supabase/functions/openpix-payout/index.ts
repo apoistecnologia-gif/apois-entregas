@@ -61,7 +61,8 @@ async function readJson(providerResponse: Response): Promise<unknown> {
 }
 
 Deno.serve(async (request: Request) => {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (request.method === "OPTIONS")
+    return new Response(null, { status: 204, headers: corsHeaders });
   if (request.method !== "POST") {
     return response(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
   }
@@ -75,7 +76,10 @@ Deno.serve(async (request: Request) => {
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-    return response(500, { error: "Serviço temporariamente indisponível.", code: "SERVER_CONFIGURATION" });
+    return response(500, {
+      error: "Serviço temporariamente indisponível.",
+      code: "SERVER_CONFIGURATION",
+    });
   }
 
   const token = authorization.slice("Bearer ".length);
@@ -120,9 +124,14 @@ Deno.serve(async (request: Request) => {
     .eq("key", "openpix_environment")
     .maybeSingle();
   const environment =
-    typeof environmentSetting?.value === "string" ? environmentSetting.value.trim().toLowerCase() : "sandbox";
+    typeof environmentSetting?.value === "string"
+      ? environmentSetting.value.trim().toLowerCase()
+      : "sandbox";
   if (!["sandbox", "production"].includes(environment)) {
-    return response(503, { error: "Ambiente OpenPix inválido.", code: "PAYMENT_ENVIRONMENT_INVALID" });
+    return response(503, {
+      error: "Ambiente OpenPix inválido.",
+      code: "PAYMENT_ENVIRONMENT_INVALID",
+    });
   }
   const production = environment === "production";
   const appId = production
@@ -138,11 +147,16 @@ Deno.serve(async (request: Request) => {
 
   const { data: payout, error: payoutError } = await admin
     .from("payouts")
-    .select("id,wallet_id,payout_account_id,amount,status,provider,provider_payout_id,idempotency_key")
+    .select(
+      "id,wallet_id,payout_account_id,amount,status,provider,provider_payout_id,idempotency_key",
+    )
     .eq("id", payoutId)
     .maybeSingle();
   if (payoutError) {
-    return response(500, { error: "Não foi possível consultar o saque.", code: "PAYOUT_LOOKUP_FAILED" });
+    return response(500, {
+      error: "Não foi possível consultar o saque.",
+      code: "PAYOUT_LOOKUP_FAILED",
+    });
   }
   if (!payout) return response(404, { error: "Saque não encontrado.", code: "PAYOUT_NOT_FOUND" });
   if (payout.status === "paid") {
@@ -154,7 +168,10 @@ Deno.serve(async (request: Request) => {
     });
   }
   if (!["pending", "processing"].includes(payout.status)) {
-    return response(409, { error: "Este saque não pode ser processado.", code: "PAYOUT_FINALIZED" });
+    return response(409, {
+      error: "Este saque não pode ser processado.",
+      code: "PAYOUT_FINALIZED",
+    });
   }
 
   const { data: wallet } = await admin
@@ -204,22 +221,31 @@ Deno.serve(async (request: Request) => {
     });
   }
   if (!destination.pix_key_type) {
-    await admin.from("payout_accounts").update({ pix_key_type: pixKeyType }).eq("id", payout.payout_account_id);
+    await admin
+      .from("payout_accounts")
+      .update({ pix_key_type: pixKeyType })
+      .eq("id", payout.payout_account_id);
   }
 
   const amount = Number(payout.amount);
   const amountCents = Math.round(amount * 100);
   if (!Number.isFinite(amount) || amount <= 0 || amountCents <= 0) {
-    return response(409, { error: "Valor do saque inválido.", code: "INVALID_PAYOUT_AMOUNT" });
+    return response(409, {
+      error: "Valor do saque inválido.",
+      code: "INVALID_PAYOUT_AMOUNT",
+    });
   }
 
   const correlationID = `apois-entrega-payout-${payout.id}`;
   const providerHeaders = { Authorization: appId, Accept: "application/json" };
 
   const lookupPayment = async () => {
-    const providerResponse = await fetch(`${apiBase}/api/v1/payment/${encodeURIComponent(correlationID)}`, {
-      headers: providerHeaders,
-    });
+    const providerResponse = await fetch(
+      `${apiBase}/api/v1/payment/${encodeURIComponent(correlationID)}`,
+      {
+        headers: providerHeaders,
+      },
+    );
     return { providerResponse, providerPayload: await readJson(providerResponse) };
   };
 
@@ -275,22 +301,30 @@ Deno.serve(async (request: Request) => {
     });
   }
 
-  const providerPayment = isRecord(providerPayload) && isRecord(providerPayload.payment)
-    ? providerPayload.payment
-    : null;
+  const providerPayment =
+    isRecord(providerPayload) && isRecord(providerPayload.payment)
+      ? providerPayload.payment
+      : null;
   if (!providerPayment) {
-    return response(502, { error: "Resposta inválida da OpenPix.", code: "INVALID_PROVIDER_RESPONSE" });
+    return response(502, {
+      error: "Resposta inválida da OpenPix.",
+      code: "INVALID_PROVIDER_RESPONSE",
+    });
   }
 
   const providerValue = typeof providerPayment.value === "number" ? providerPayment.value : null;
   if (providerValue !== null && Math.round(providerValue) !== amountCents) {
-    return response(409, { error: "Valor do saque divergente na OpenPix.", code: "PAYOUT_AMOUNT_MISMATCH" });
+    return response(409, {
+      error: "Valor do saque divergente na OpenPix.",
+      code: "PAYOUT_AMOUNT_MISMATCH",
+    });
   }
 
   const providerStatus = (text(providerPayment.status) ?? "CREATED").toUpperCase();
-  const transaction = isRecord(providerPayload) && isRecord(providerPayload.transaction)
-    ? providerPayload.transaction
-    : null;
+  const transaction =
+    isRecord(providerPayload) && isRecord(providerPayload.transaction)
+      ? providerPayload.transaction
+      : null;
   const providerPayoutId = text(transaction?.endToEndId) ?? correlationID;
 
   if (providerStatus === "CONFIRMED") {
@@ -302,7 +336,10 @@ Deno.serve(async (request: Request) => {
       _failure_reason: null,
     });
     if (settleError) {
-      return response(500, { error: "Saque confirmado; conciliação pendente.", code: "PAYOUT_SETTLEMENT_FAILED" });
+      return response(500, {
+        error: "Saque confirmado; conciliação pendente.",
+        code: "PAYOUT_SETTLEMENT_FAILED",
+      });
     }
     return response(200, {
       payoutId: payout.id,
@@ -337,7 +374,10 @@ Deno.serve(async (request: Request) => {
     _failure_reason: null,
   });
   if (processingError) {
-    return response(500, { error: "Não foi possível atualizar o saque.", code: "PAYOUT_SETTLEMENT_FAILED" });
+    return response(500, {
+      error: "Não foi possível atualizar o saque.",
+      code: "PAYOUT_SETTLEMENT_FAILED",
+    });
   }
 
   return response(200, {
