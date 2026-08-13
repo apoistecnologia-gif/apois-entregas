@@ -36,6 +36,7 @@ function MerchantOrderSoundWatcher() {
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioUnlockedRef = useRef(false);
+  const unlockAudioRef = useRef<(() => Promise<boolean>) | null>(null);
   const alertedOrdersRef = useRef<Set<string>>(loadAlertedOrders());
   const pendingAlertsRef = useRef<Map<string, PendingAlert>>(new Map());
   const flushPendingRef = useRef<(() => Promise<void>) | null>(null);
@@ -103,12 +104,12 @@ function MerchantOrderSoundWatcher() {
     const unlockAudio = async () => {
       const AudioContextCtor =
         window.AudioContext ?? (window as AudioWindow).webkitAudioContext ?? null;
-      if (!AudioContextCtor) return;
+      if (!AudioContextCtor) return false;
       try {
         const context = audioContextRef.current ?? new AudioContextCtor();
         audioContextRef.current = context;
         if (context.state === "suspended") await context.resume();
-        if (context.state !== "running") return;
+        if (context.state !== "running") return false;
 
         const oscillator = context.createOscillator();
         const gain = context.createGain();
@@ -120,16 +121,20 @@ function MerchantOrderSoundWatcher() {
         audioUnlockedRef.current = true;
         setAudioUnlocked(true);
         void flushPendingRef.current?.();
+        return true;
       } catch {
         audioUnlockedRef.current = false;
         setAudioUnlocked(false);
+        return false;
       }
     };
 
+    unlockAudioRef.current = unlockAudio;
     const onGesture = () => void unlockAudio();
     window.addEventListener("pointerdown", onGesture, { capture: true });
     window.addEventListener("keydown", onGesture, { capture: true });
     return () => {
+      unlockAudioRef.current = null;
       window.removeEventListener("pointerdown", onGesture, { capture: true });
       window.removeEventListener("keydown", onGesture, { capture: true });
     };
@@ -225,14 +230,29 @@ function MerchantOrderSoundWatcher() {
     [],
   );
 
-  if (!enabled || audioUnlocked) return null;
+  if (!enabled) return null;
   return (
     <button
       type="button"
-      onClick={() => toast.info("Som ativado. O próximo pedido pago emitirá o alerta.")}
+      onClick={() => {
+        const unlock = unlockAudioRef.current;
+        if (!unlock) {
+          toast.error("O controle de áudio ainda não está disponível.");
+          return;
+        }
+        void unlock().then(async (unlocked) => {
+          if (!unlocked) {
+            toast.error("O navegador bloqueou o áudio. Verifique o volume e a permissão de som.");
+            return;
+          }
+          const played = await playOrderAlert();
+          if (played) toast.success("Som do novo pedido funcionando.");
+          else toast.error("Não foi possível reproduzir o som neste dispositivo.");
+        });
+      }}
       className="fixed bottom-5 right-5 z-[1000] rounded-full bg-[#FFD700] px-4 py-3 text-sm font-black text-black shadow-2xl"
     >
-      Ativar som
+      {audioUnlocked ? "Testar som" : "Ativar som"}
     </button>
   );
 }
