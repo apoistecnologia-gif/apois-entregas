@@ -14,7 +14,9 @@ function loadAlertedOrders() {
   if (typeof window === "undefined") return new Set<string>();
   try {
     const parsed = JSON.parse(sessionStorage.getItem(ALERTED_STORAGE_KEY) ?? "[]");
-    return new Set<string>(Array.isArray(parsed) ? parsed.filter((id) => typeof id === "string") : []);
+    return new Set<string>(
+      Array.isArray(parsed) ? parsed.filter((id) => typeof id === "string") : [],
+    );
   } catch {
     return new Set<string>();
   }
