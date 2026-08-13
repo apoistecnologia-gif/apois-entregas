@@ -85,9 +85,7 @@ async function ensureOpenPixWebhooks(input: {
   if (!listResponse.ok || !isRecord(listPayload)) {
     throw new Error(`openpix_webhook_list_http_${listResponse.status}`);
   }
-  const webhooks = Array.isArray(listPayload.webhooks)
-    ? listPayload.webhooks.filter(isRecord)
-    : [];
+  const webhooks = Array.isArray(listPayload.webhooks) ? listPayload.webhooks.filter(isRecord) : [];
 
   for (const event of OPENPIX_WEBHOOK_EVENTS) {
     const exists = webhooks.some(
@@ -119,7 +117,8 @@ async function ensureOpenPixWebhooks(input: {
 }
 
 Deno.serve(async (request: Request) => {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (request.method === "OPTIONS")
+    return new Response(null, { status: 204, headers: corsHeaders });
   if (request.method !== "POST")
     return response(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
 
@@ -131,7 +130,10 @@ Deno.serve(async (request: Request) => {
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !anonKey || !serviceRoleKey)
-    return response(500, { error: "Serviço temporariamente indisponível.", code: "SERVER_CONFIGURATION" });
+    return response(500, {
+      error: "Serviço temporariamente indisponível.",
+      code: "SERVER_CONFIGURATION",
+    });
 
   const token = authorization.slice("Bearer ".length);
   const authClient = createClient(supabaseUrl, anonKey, {
@@ -167,9 +169,14 @@ Deno.serve(async (request: Request) => {
     .eq("key", "openpix_environment")
     .maybeSingle();
   const environment =
-    typeof environmentSetting?.value === "string" ? environmentSetting.value.trim().toLowerCase() : "sandbox";
+    typeof environmentSetting?.value === "string"
+      ? environmentSetting.value.trim().toLowerCase()
+      : "sandbox";
   if (!["sandbox", "production"].includes(environment))
-    return response(503, { error: "Ambiente OpenPix inválido.", code: "PAYMENT_ENVIRONMENT_INVALID" });
+    return response(503, {
+      error: "Ambiente OpenPix inválido.",
+      code: "PAYMENT_ENVIRONMENT_INVALID",
+    });
 
   const production = environment === "production";
   const appId = production
@@ -188,14 +195,23 @@ Deno.serve(async (request: Request) => {
     .eq("id", orderId)
     .maybeSingle();
   if (orderError)
-    return response(500, { error: "Não foi possível consultar o pedido.", code: "ORDER_LOOKUP_FAILED" });
+    return response(500, {
+      error: "Não foi possível consultar o pedido.",
+      code: "ORDER_LOOKUP_FAILED",
+    });
   if (!order) return response(404, { error: "Pedido não encontrado.", code: "ORDER_NOT_FOUND" });
   if (order.customer_user_id !== authData.user.id)
     return response(403, { error: "Este pedido não pertence à sua conta.", code: "FORBIDDEN" });
   if (order.payment_method !== "pix")
-    return response(409, { error: "O pedido não está configurado para PIX.", code: "PAYMENT_METHOD_MISMATCH" });
+    return response(409, {
+      error: "O pedido não está configurado para PIX.",
+      code: "PAYMENT_METHOD_MISMATCH",
+    });
   if (["cancelled", "refunded"].includes(order.status))
-    return response(409, { error: "Este pedido não aceita novas cobranças.", code: "ORDER_NOT_PAYABLE" });
+    return response(409, {
+      error: "Este pedido não aceita novas cobranças.",
+      code: "ORDER_NOT_PAYABLE",
+    });
 
   const amount = Number(order.total);
   const amountCents = Math.round(amount * 100);
@@ -223,18 +239,26 @@ Deno.serve(async (request: Request) => {
   const correlationID = `apois-entrega-order-${order.id}`;
   const { data: allOrderPayments, error: allPaymentsError } = await admin
     .from("payments")
-    .select("id,provider,provider_charge_id,status,amount,qr_code_text,qr_code_image_url,expires_at,paid_at,idempotency_key")
+    .select(
+      "id,provider,provider_charge_id,status,amount,qr_code_text,qr_code_image_url,expires_at,paid_at,idempotency_key",
+    )
     .eq("order_id", order.id)
     .order("created_at", { ascending: false });
   if (allPaymentsError)
-    return response(500, { error: "Não foi possível consultar o pagamento.", code: "PAYMENT_LOOKUP_FAILED" });
+    return response(500, {
+      error: "Não foi possível consultar o pagamento.",
+      code: "PAYMENT_LOOKUP_FAILED",
+    });
 
   const payments = (allOrderPayments ?? []) as LocalPayment[];
   const alreadyPaid = payments.find((item) => item.status === "paid");
   if (order.payment_status === "paid" || alreadyPaid) {
     if (alreadyPaid?.provider === "openpix")
       return response(200, { payment: publicPayment(alreadyPaid), reused: true });
-    return response(409, { error: "Este pedido já foi pago por outro fluxo.", code: "ORDER_ALREADY_PAID" });
+    return response(409, {
+      error: "Este pedido já foi pago por outro fluxo.",
+      code: "ORDER_ALREADY_PAID",
+    });
   }
 
   const conflictingPending = payments.find(
@@ -259,14 +283,21 @@ Deno.serve(async (request: Request) => {
         currency: "BRL",
         idempotency_key: idempotencyKey,
       })
-      .select("id,provider,provider_charge_id,status,amount,qr_code_text,qr_code_image_url,expires_at,paid_at,idempotency_key")
+      .select(
+        "id,provider,provider_charge_id,status,amount,qr_code_text,qr_code_image_url,expires_at,paid_at,idempotency_key",
+      )
       .single();
     if (insertError) {
       if (insertError.code !== "23505")
-        return response(500, { error: "Não foi possível preparar a cobrança.", code: "PAYMENT_CREATE_FAILED" });
+        return response(500, {
+          error: "Não foi possível preparar a cobrança.",
+          code: "PAYMENT_CREATE_FAILED",
+        });
       const { data: racedPayment } = await admin
         .from("payments")
-        .select("id,provider,provider_charge_id,status,amount,qr_code_text,qr_code_image_url,expires_at,paid_at,idempotency_key")
+        .select(
+          "id,provider,provider_charge_id,status,amount,qr_code_text,qr_code_image_url,expires_at,paid_at,idempotency_key",
+        )
         .eq("idempotency_key", idempotencyKey)
         .maybeSingle();
       localPayment = racedPayment as LocalPayment | null;
@@ -275,11 +306,18 @@ Deno.serve(async (request: Request) => {
     }
   }
   if (!localPayment)
-    return response(500, { error: "Não foi possível preparar a cobrança.", code: "PAYMENT_CREATE_FAILED" });
+    return response(500, {
+      error: "Não foi possível preparar a cobrança.",
+      code: "PAYMENT_CREATE_FAILED",
+    });
 
   const providerResponse = await fetch(`${apiBase}/api/v1/charge?return_existing=true`, {
     method: "POST",
-    headers: { Authorization: appId, "Content-Type": "application/json", Accept: "application/json" },
+    headers: {
+      Authorization: appId,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
     body: JSON.stringify({
       correlationID,
       value: amountCents,
@@ -294,7 +332,10 @@ Deno.serve(async (request: Request) => {
       .update({ status: "failed", failure_reason: `openpix_http_${providerResponse.status}` })
       .eq("id", localPayment.id)
       .neq("status", "paid");
-    return response(502, { error: "A OpenPix não conseguiu gerar o PIX agora.", code: "PAYMENT_PROVIDER_ERROR" });
+    return response(502, {
+      error: "A OpenPix não conseguiu gerar o PIX agora.",
+      code: "PAYMENT_PROVIDER_ERROR",
+    });
   }
 
   const charge = providerPayload.charge;
@@ -305,7 +346,10 @@ Deno.serve(async (request: Request) => {
       .update({ status: "failed", failure_reason: "openpix_amount_mismatch" })
       .eq("id", localPayment.id)
       .neq("status", "paid");
-    return response(502, { error: "A cobrança retornou um valor divergente do pedido.", code: "PAYMENT_AMOUNT_MISMATCH" });
+    return response(502, {
+      error: "A cobrança retornou um valor divergente do pedido.",
+      code: "PAYMENT_AMOUNT_MISMATCH",
+    });
   }
 
   const providerChargeId = text(charge.globalID) ?? text(charge.id) ?? correlationID;
@@ -321,7 +365,10 @@ Deno.serve(async (request: Request) => {
       .update({ status: "failed", failure_reason: "openpix_missing_brcode" })
       .eq("id", localPayment.id)
       .neq("status", "paid");
-    return response(502, { error: "A OpenPix não retornou o código PIX da cobrança.", code: "INVALID_PROVIDER_RESPONSE" });
+    return response(502, {
+      error: "A OpenPix não retornou o código PIX da cobrança.",
+      code: "INVALID_PROVIDER_RESPONSE",
+    });
   }
 
   const { data: updatedPayment, error: updateError } = await admin
@@ -338,10 +385,15 @@ Deno.serve(async (request: Request) => {
     })
     .eq("id", localPayment.id)
     .neq("status", "refunded")
-    .select("id,provider,provider_charge_id,status,amount,qr_code_text,qr_code_image_url,expires_at,paid_at,idempotency_key")
+    .select(
+      "id,provider,provider_charge_id,status,amount,qr_code_text,qr_code_image_url,expires_at,paid_at,idempotency_key",
+    )
     .single();
   if (updateError || !updatedPayment)
-    return response(500, { error: "Não foi possível salvar a cobrança.", code: "PAYMENT_SAVE_FAILED" });
+    return response(500, {
+      error: "Não foi possível salvar a cobrança.",
+      code: "PAYMENT_SAVE_FAILED",
+    });
 
   if (paid) {
     const { error: orderUpdateError } = await admin
@@ -351,8 +403,13 @@ Deno.serve(async (request: Request) => {
       .neq("status", "cancelled")
       .neq("status", "refunded");
     if (orderUpdateError)
-      return response(500, { error: "Pagamento confirmado, aguardando conciliação.", code: "ORDER_SYNC_FAILED" });
-    const { error: reserveError } = await admin.rpc("reserve_paid_order_merchant_net", { _order_id: order.id });
+      return response(500, {
+        error: "Pagamento confirmado, aguardando conciliação.",
+        code: "ORDER_SYNC_FAILED",
+      });
+    const { error: reserveError } = await admin.rpc("reserve_paid_order_merchant_net", {
+      _order_id: order.id,
+    });
     if (reserveError)
       return response(500, {
         error: "Pagamento confirmado, aguardando conciliação financeira.",
