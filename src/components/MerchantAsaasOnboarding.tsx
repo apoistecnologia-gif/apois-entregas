@@ -44,12 +44,29 @@ const emptyDraft: FinancialDraft = {
 export function MerchantAsaasOnboarding({ merchant }: MerchantAsaasOnboardingProps) {
   const [draft, setDraft] = useState<FinancialDraft>(emptyDraft);
   const [account, setAccount] = useState<any>(null);
+  const [paymentProvider, setPaymentProvider] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<"save" | "create" | null>(null);
 
   const load = useCallback(async () => {
     if (!merchant?.id) return;
     setLoading(true);
+
+    const { data: providerSetting } = await (supabase.rpc as any)("get_order_payment_provider");
+    const provider =
+      typeof providerSetting === "string" ? providerSetting.trim().toLowerCase() : "mercadopago";
+    setPaymentProvider(provider);
+
+    // Asaas is now a legacy provider for APOIS Entregas. Keep the historical
+    // onboarding available only while Asaas is explicitly selected as the active
+    // order provider. When OpenPix is active this component disappears entirely,
+    // so merchants are not asked to create an obsolete Asaas subaccount.
+    if (provider !== "asaas") {
+      setAccount(null);
+      setLoading(false);
+      return;
+    }
+
     const [{ data: profile }, { data: asaasAccount }] = await Promise.all([
       (supabase.from as any)("merchant_financial_profiles")
         .select("*")
@@ -100,7 +117,7 @@ export function MerchantAsaasOnboarding({ merchant }: MerchantAsaasOnboardingPro
   };
 
   const save = async () => {
-    if (!merchant?.id) return false;
+    if (!merchant?.id || paymentProvider !== "asaas") return false;
     const income = Number(draft.incomeValue.replace(",", "."));
     if (
       !draft.legalName.trim() ||
@@ -150,6 +167,7 @@ export function MerchantAsaasOnboarding({ merchant }: MerchantAsaasOnboardingPro
   };
 
   const createAccount = async () => {
+    if (paymentProvider !== "asaas") return;
     const saved = await save();
     if (!saved) return;
     setBusy("create");
@@ -175,6 +193,8 @@ export function MerchantAsaasOnboarding({ merchant }: MerchantAsaasOnboardingPro
       </section>
     );
   }
+
+  if (paymentProvider !== "asaas") return null;
 
   if (account?.status === "active") {
     return (
