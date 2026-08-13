@@ -142,9 +142,9 @@ function MerchantOrderSoundWatcher() {
         (payload) => {
           const next = payload.new as Record<string, unknown> | null;
           const previous = payload.old as Record<string, unknown> | null;
-          const orderId = typeof next?.id === "string" ? next.id : null;
-          const paymentStatus = String(next?.payment_status ?? "").toLowerCase();
-          const previousPaymentStatus = String(previous?.payment_status ?? "").toLowerCase();
+          const orderId = typeof next?.["id"] === "string" ? next["id"] : null;
+          const paymentStatus = String(next?.["payment_status"] ?? "").toLowerCase();
+          const previousPaymentStatus = String(previous?.["payment_status"] ?? "").toLowerCase();
 
           if (!orderId || paymentStatus !== "paid" || previousPaymentStatus === "paid") return;
           if (alertedOrdersRef.current.has(orderId)) return;
@@ -152,7 +152,7 @@ function MerchantOrderSoundWatcher() {
           alertedOrdersRef.current.add(orderId);
           persistAlertedOrders(alertedOrdersRef.current);
 
-          const orderNumber = next?.order_number ? ` #${String(next.order_number)}` : "";
+          const orderNumber = next?.["order_number"] ? ` #${String(next["order_number"])}` : "";
           toast.success(`Novo pedido pago${orderNumber}!`, {
             description: "O pedido já pode ser atendido pelo estabelecimento.",
             duration: 12_000,
