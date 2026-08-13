@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getApoisProductMode } from "@/lib/product-routing";
 import { toast } from "sonner";
+import { MerchantOrderControlCenter } from "./MerchantOrderControlCenter";
 
 const ALERTED_STORAGE_KEY = "apois_merchant_alerted_paid_orders";
 const RECONCILE_INTERVAL_MS = 3500;
@@ -232,28 +233,31 @@ function MerchantOrderSoundWatcher() {
 
   if (!enabled) return null;
   return (
-    <button
-      type="button"
-      onClick={() => {
-        const unlock = unlockAudioRef.current;
-        if (!unlock) {
-          toast.error("O controle de áudio ainda não está disponível.");
-          return;
-        }
-        void unlock().then(async (unlocked) => {
-          if (!unlocked) {
-            toast.error("O navegador bloqueou o áudio. Verifique o volume e a permissão de som.");
+    <>
+      <MerchantOrderControlCenter />
+      <button
+        type="button"
+        onClick={() => {
+          const unlock = unlockAudioRef.current;
+          if (!unlock) {
+            toast.error("O controle de áudio ainda não está disponível.");
             return;
           }
-          const played = await playOrderAlert();
-          if (played) toast.success("Som do novo pedido funcionando.");
-          else toast.error("Não foi possível reproduzir o som neste dispositivo.");
-        });
-      }}
-      className="fixed bottom-5 right-5 z-[1000] rounded-full bg-[#FFD700] px-4 py-3 text-sm font-black text-black shadow-2xl"
-    >
-      {audioUnlocked ? "Testar som" : "Ativar som"}
-    </button>
+          void unlock().then(async (unlocked) => {
+            if (!unlocked) {
+              toast.error("O navegador bloqueou o áudio. Verifique o volume e a permissão de som.");
+              return;
+            }
+            const played = await playOrderAlert();
+            if (played) toast.success("Som do novo pedido funcionando.");
+            else toast.error("Não foi possível reproduzir o som neste dispositivo.");
+          });
+        }}
+        className="fixed bottom-5 right-5 z-[1000] rounded-full bg-[#FFD700] px-4 py-3 text-sm font-black text-black shadow-2xl"
+      >
+        {audioUnlocked ? "Testar som" : "Ativar som"}
+      </button>
+    </>
   );
 }
 
