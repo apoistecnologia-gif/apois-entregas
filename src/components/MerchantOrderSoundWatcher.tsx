@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getApoisProductMode } from "@/lib/product-routing";
 import { toast } from "sonner";
 import { MerchantOrderControlCenter } from "./MerchantOrderControlCenter";
+import { Toaster } from "./ui/sonner";
 
 const ALERTED_STORAGE_KEY = "apois_merchant_alerted_paid_orders";
 const RECONCILE_INTERVAL_MS = 3500;
@@ -49,7 +50,6 @@ function MerchantOrderSoundWatcher() {
       if (context.state === "suspended") await context.resume();
       if (context.state !== "running") return false;
 
-      // Mechanical twin-bell alarm clock: rapid metallic hammer strikes with no pitch sweep.
       const now = context.currentTime + 0.03;
       const master = context.createGain();
       master.gain.setValueAtTime(0.9, now);
@@ -292,6 +292,7 @@ function MerchantOrderSoundWatcher() {
   if (!enabled) return null;
   return (
     <>
+      <Toaster position="top-center" richColors closeButton />
       <MerchantOrderControlCenter />
       <button
         type="button"
