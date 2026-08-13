@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, PackageCheck, Truck, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -55,6 +55,7 @@ function MerchantOrderControlCenter() {
   const [orders, setOrders] = useState<MerchantOrder[]>([]);
   const [open, setOpen] = useState(false);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  const readyPromptedRef = useRef<Set<string>>(new Set());
 
   const loadOrders = useCallback(async (id: string) => {
     const { data, error } = await supabase
@@ -136,6 +137,24 @@ function MerchantOrderControlCenter() {
     };
   }, [enabled, loadOrders, merchantId]);
 
+  useEffect(() => {
+    if (!enabled) return;
+    const readyOrder = orders.find(
+      (order) =>
+        order.status === "ready" &&
+        order.fulfillment_type === "delivery" &&
+        !readyPromptedRef.current.has(order.id),
+    );
+    if (!readyOrder) return;
+
+    readyPromptedRef.current.add(readyOrder.id);
+    setOpen(true);
+    toast.success(`Pedido #${readyOrder.order_number} está pronto.`, {
+      description: "Agora solicite um entregador para iniciar a busca.",
+      duration: 12_000,
+    });
+  }, [enabled, orders]);
+
   const urgentCount = useMemo(
     () => orders.filter((order) => order.status === "confirmed").length,
     [orders],
@@ -153,7 +172,16 @@ function MerchantOrderControlCenter() {
       toast.error(error.message || "Não foi possível atualizar o pedido.");
       return;
     }
-    toast.success("Pedido atualizado.");
+
+    if (status === "accepted") toast.success("Pedido aceito.");
+    else if (status === "preparing") toast.success("Preparo iniciado.");
+    else if (status === "ready") {
+      toast.success("Pedido marcado como pronto.", {
+        description: "Agora solicite um entregador para iniciar a busca.",
+        duration: 12_000,
+      });
+    } else toast.success("Pedido atualizado.");
+
     await loadOrders(merchantId);
   };
 
@@ -168,7 +196,10 @@ function MerchantOrderControlCenter() {
       toast.error(error?.message || "Não foi possível solicitar o entregador.");
       return;
     }
-    toast.success("Entregador solicitado. A busca foi iniciada.");
+    toast.success("Entregador solicitado.", {
+      description: "A busca por entregadores próximos foi iniciada.",
+      duration: 12_000,
+    });
     await loadOrders(merchantId);
   };
 
