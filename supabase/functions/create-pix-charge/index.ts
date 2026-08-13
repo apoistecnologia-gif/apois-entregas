@@ -7,73 +7,67 @@ const corsHeaders = {
 };
 const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" };
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const TEST_PIX_AMOUNT = 50;
+const OPENPIX_SANDBOX_BASE = "https://api.woovi-sandbox.com";
+const OPENPIX_PRODUCTION_BASE = "https://api.openpix.com.br";
+
 type JsonRecord = Record<string, unknown>;
+
+type LocalPayment = {
+  id: string;
+  provider: string;
+  provider_charge_id: string | null;
+  status: string;
+  amount: number;
+  qr_code_text: string | null;
+  qr_code_image_url: string | null;
+  expires_at: string | null;
+  paid_at: string | null;
+  idempotency_key: string;
+};
 
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function response(status: number, body: JsonRecord) {
-  return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 }
 
 function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function safeProviderError(payload: unknown) {
-  if (!isRecord(payload)) return null;
-  const causes = Array.isArray(payload.cause)
-    ? payload.cause
-        .slice(0, 5)
-        .map((cause) => {
-          if (!isRecord(cause)) return null;
-          return {
-            code:
-              typeof cause.code === "string" || typeof cause.code === "number" ? cause.code : null,
-            description: text(cause.description),
-            data: text(cause.data),
-          };
-        })
-        .filter(Boolean)
-    : [];
+function numberValue(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function response(status: number, body: JsonRecord) {
+  return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
+}
+
+function publicPayment(payment: LocalPayment) {
   return {
-    message: text(payload.message),
-    error: text(payload.error),
-    status: text(payload.status),
-    status_detail: text(payload.status_detail),
-    code:
-      typeof payload.code === "string" || typeof payload.code === "number" ? payload.code : null,
-    causes,
+    id: payment.id,
+    status: payment.status,
+    amount: Number(payment.amount),
+    qrCodeText: payment.qr_code_text,
+    qrCodeImageUrl: payment.qr_code_image_url,
+    expiresAt: payment.expires_at,
+    providerChargeId: payment.provider_charge_id,
   };
 }
 
-function providerErrorReason(payload: ReturnType<typeof safeProviderError>, status: number) {
-  if (!payload) return `HTTP ${status}`;
-  const firstCause =
-    Array.isArray(payload.causes) && payload.causes.length > 0 ? payload.causes[0] : null;
-  return (
-    payload.message ||
-    payload.error ||
-    payload.status_detail ||
-    firstCause?.description ||
-    (payload.code !== null ? String(payload.code) : null) ||
-    `HTTP ${status}`
-  );
-}
-
-function activePayment(payment: any): boolean {
-  if (!["pending", "processing"].includes(payment.status)) return false;
-  if (!payment.expires_at) return true;
-  return new Date(payment.expires_at).getTime() > Date.now();
+async function readJson(providerResponse: Response): Promise<unknown> {
+  try {
+    return await providerResponse.json();
+  } catch {
+    return null;
+  }
 }
 
 Deno.serve(async (request: Request) => {
-  if (request.method === "OPTIONS")
+  if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
-  if (request.method !== "POST")
+  }
+  if (request.method !== "POST") {
     return response(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
+  }
 
   const authorization = request.headers.get("Authorization");
   if (!authorization?.startsWith("Bearer ")) {
@@ -83,26 +77,10 @@ Deno.serve(async (request: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const environment = (Deno.env.get("MERCADO_PAGO_ENVIRONMENT") ?? "test").trim().toLowerCase();
-  const testMode = environment !== "production";
-  const paymentMode = testMode ? "test" : "prod";
-  const accessToken = testMode
-    ? (Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_TEST") ?? Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN"))
-    : Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN_PRODUCTION");
-  const apiBase = (Deno.env.get("MERCADO_PAGO_API_URL") ?? "https://api.mercadopago.com").replace(
-    /\/$/,
-    "",
-  );
-
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-    return response(500, { error: "Serviço indisponível.", code: "SERVER_CONFIGURATION" });
-  }
-  if (!accessToken) {
-    return response(503, {
-      error: testMode
-        ? "Credencial de teste do PIX não configurada."
-        : "Credencial de produção do PIX não configurada.",
-      code: "PAYMENT_PROVIDER_NOT_CONFIGURED",
+    return response(500, {
+      error: "Serviço temporariamente indisponível.",
+      code: "SERVER_CONFIGURATION",
     });
   }
 
@@ -111,307 +89,284 @@ Deno.serve(async (request: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: authData, error: authError } = await authClient.auth.getUser(token);
-  if (authError || !authData.user)
+  if (authError || !authData.user) {
     return response(401, { error: "Sessão inválida ou expirada.", code: "UNAUTHORIZED" });
-  if (!authData.user.email)
-    return response(409, {
-      error: "Sua conta precisa ter um e-mail válido para pagar com PIX.",
-      code: "PAYER_EMAIL_REQUIRED",
-    });
+  }
 
-  let body: unknown;
+  let payload: unknown;
   try {
-    body = await request.json();
+    payload = await request.json();
   } catch {
     return response(400, { error: "Requisição inválida.", code: "INVALID_REQUEST" });
   }
-  if (!isRecord(body) || typeof body.orderId !== "string" || !UUID_RE.test(body.orderId)) {
+  const orderId = isRecord(payload) ? text(payload.orderId) : null;
+  if (!orderId || !UUID_RE.test(orderId)) {
     return response(400, { error: "Pedido inválido.", code: "INVALID_ORDER_ID" });
   }
 
-  const orderId = body.orderId;
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: environmentSetting, error: environmentSettingError } = await admin
+
+  const { data: providerSetting, error: providerSettingError } = await admin
     .from("platform_settings")
     .select("value")
-    .eq("key", "mercado_pago_environment")
+    .eq("key", "order_payment_provider")
     .maybeSingle();
-  const databaseEnvironment =
-    typeof environmentSetting?.value === "string"
-      ? environmentSetting.value.trim().toLowerCase()
-      : null;
-  if (
-    environmentSettingError ||
-    !["test", "production"].includes(databaseEnvironment ?? "") ||
-    databaseEnvironment !== environment
-  ) {
-    console.error("create-pix-charge payment environment mismatch", {
-      edgeEnvironment: environment,
-      databaseEnvironment,
-    });
-    return response(503, {
-      error: "Ambiente de pagamentos temporariamente inconsistente.",
-      code: "PAYMENT_ENVIRONMENT_MISMATCH",
+  if (providerSettingError || providerSetting?.value !== "openpix") {
+    return response(409, {
+      error: "OpenPix ainda não é o provedor ativo para novos pedidos.",
+      code: "PAYMENT_PROVIDER_INACTIVE",
     });
   }
+
+  const { data: environmentSetting } = await admin
+    .from("platform_settings")
+    .select("value")
+    .eq("key", "openpix_environment")
+    .maybeSingle();
+  const configuredEnvironment =
+    typeof environmentSetting?.value === "string" ? environmentSetting.value.trim().toLowerCase() : "sandbox";
+  if (!["sandbox", "production"].includes(configuredEnvironment)) {
+    return response(503, {
+      error: "Ambiente OpenPix inválido.",
+      code: "PAYMENT_ENVIRONMENT_INVALID",
+    });
+  }
+  const production = configuredEnvironment === "production";
+  const appId = production
+    ? Deno.env.get("OPENPIX_APP_ID_PRODUCTION")?.trim()
+    : Deno.env.get("OPENPIX_APP_ID_SANDBOX")?.trim();
+  if (!appId) {
+    return response(503, {
+      error: "OpenPix ainda não está configurada para este ambiente.",
+      code: "PAYMENT_PROVIDER_NOT_CONFIGURED",
+    });
+  }
+  const apiBase = production ? OPENPIX_PRODUCTION_BASE : OPENPIX_SANDBOX_BASE;
 
   const { data: order, error: orderError } = await admin
     .from("orders")
-    .select("id,order_number,customer_user_id,status,payment_method,payment_status,total")
+    .select("id,customer_user_id,total,payment_status,payment_method,status")
     .eq("id", orderId)
-    .eq("customer_user_id", authData.user.id)
-    .single();
+    .maybeSingle();
+  if (orderError) {
+    console.error("create-pix-charge order lookup failed", { code: orderError.code, orderId });
+    return response(500, { error: "Não foi possível consultar o pedido.", code: "ORDER_LOOKUP_FAILED" });
+  }
+  if (!order) return response(404, { error: "Pedido não encontrado.", code: "ORDER_NOT_FOUND" });
+  if (order.customer_user_id !== authData.user.id) {
+    return response(403, { error: "Este pedido não pertence à sua conta.", code: "FORBIDDEN" });
+  }
+  if (order.payment_method !== "pix") {
+    return response(409, { error: "O pedido não está configurado para PIX.", code: "PAYMENT_METHOD_MISMATCH" });
+  }
+  if (["cancelled", "refunded"].includes(order.status)) {
+    return response(409, { error: "Este pedido não aceita novas cobranças.", code: "ORDER_NOT_PAYABLE" });
+  }
 
-  if (orderError || !order)
-    return response(404, { error: "Pedido não encontrado.", code: "ORDER_NOT_FOUND" });
-  if (["cancelled", "refunded"].includes(order.status))
-    return response(409, {
-      error: "Este pedido não pode mais ser pago.",
-      code: "ORDER_NOT_PAYABLE",
-    });
-  if (order.payment_method !== "pix")
-    return response(409, {
-      error: "Este pedido não utiliza PIX.",
-      code: "PAYMENT_METHOD_MISMATCH",
-    });
-  if (order.payment_status === "paid")
-    return response(409, { error: "Este pedido já está pago.", code: "ORDER_ALREADY_PAID" });
+  const amount = Number(order.total);
+  const amountCents = Math.round(amount * 100);
+  if (!Number.isFinite(amount) || amount <= 0 || amountCents <= 0) {
+    return response(409, { error: "Valor do pedido inválido.", code: "INVALID_ORDER_AMOUNT" });
+  }
 
-  const orderAmount = Number(order.total);
-  if (!Number.isFinite(orderAmount) || orderAmount <= 0)
-    return response(409, { error: "Valor do pedido inválido.", code: "INVALID_AMOUNT" });
+  const environment = configuredEnvironment;
+  const idempotencyKey = `openpix:order:${order.id}:pix:${environment}`;
+  const correlationID = `apois-entrega-order-${order.id}`;
 
-  const chargeAmount = testMode ? TEST_PIX_AMOUNT : orderAmount;
-  const chargeAmountText = chargeAmount.toFixed(2);
-  const { data: attempts, error: attemptsError } = await admin
+  const { data: allOrderPayments, error: allPaymentsError } = await admin
     .from("payments")
     .select(
-      "id,status,amount,qr_code_text,qr_code_image_url,expires_at,provider_charge_id,idempotency_key,created_at",
+      "id,provider,provider_charge_id,status,amount,qr_code_text,qr_code_image_url,expires_at,paid_at,idempotency_key",
     )
     .eq("order_id", order.id)
-    .eq("provider", "mercadopago")
     .order("created_at", { ascending: false });
+  if (allPaymentsError) {
+    console.error("create-pix-charge payment lookup failed", { code: allPaymentsError.code, orderId });
+    return response(500, { error: "Não foi possível consultar o pagamento.", code: "PAYMENT_LOOKUP_FAILED" });
+  }
 
-  if (attemptsError)
-    return response(500, {
-      error: "Não foi possível consultar tentativas de pagamento.",
-      code: "PAYMENT_LOOKUP_FAILED",
-    });
-  const currentEnvironmentAttempts = (attempts ?? []).filter((attempt: any) =>
-    text(attempt.idempotency_key)?.includes(`:pix:${paymentMode}:attempt:`),
-  );
-  const latest = currentEnvironmentAttempts[0] ?? null;
-
-  if (latest?.status === "paid")
-    return response(409, { error: "Este pedido já está pago.", code: "ORDER_ALREADY_PAID" });
-  if (latest && activePayment(latest)) {
-    if (Math.round(Number(latest.amount) * 100) !== Math.round(chargeAmount * 100)) {
-      return response(409, {
-        error: "Pagamento ativo possui valor divergente.",
-        code: "PAYMENT_AMOUNT_CONFLICT",
-      });
+  const payments = (allOrderPayments ?? []) as LocalPayment[];
+  const alreadyPaid = payments.find((item) => item.status === "paid");
+  if (order.payment_status === "paid" || alreadyPaid) {
+    if (alreadyPaid?.provider === "openpix") {
+      return response(200, { payment: publicPayment(alreadyPaid), reused: true });
     }
-    return response(200, {
-      payment: {
-        id: latest.id,
-        status: latest.status,
-        amount: Number(latest.amount),
-        qrCodeText: latest.qr_code_text,
-        qrCodeImageUrl: latest.qr_code_image_url,
-        expiresAt: latest.expires_at,
-        providerChargeId: latest.provider_charge_id,
-      },
-      orderAmount,
-      testMode,
-      reused: true,
+    return response(409, {
+      error: "Este pedido já foi pago por outro fluxo.",
+      code: "ORDER_ALREADY_PAID",
     });
   }
 
-  if (latest && ["pending", "processing"].includes(latest.status) && !activePayment(latest)) {
-    await admin
-      .from("payments")
-      .update({ status: "failed", failed_at: new Date().toISOString(), failure_reason: "expired" })
-      .eq("id", latest.id);
+  const conflictingPending = payments.find(
+    (item) => item.provider !== "openpix" && ["pending", "processing"].includes(item.status),
+  );
+  if (conflictingPending) {
+    return response(409, {
+      error: "Existe uma cobrança anterior ainda pendente para este pedido.",
+      code: "PENDING_PAYMENT_PROVIDER_CONFLICT",
+    });
   }
 
-  const attemptNumber = currentEnvironmentAttempts.length + 1;
-  const idempotencyKey = `mercadopago:order:${order.id}:pix:${paymentMode}:attempt:${attemptNumber}`;
-  const externalReference = `apois-order-${order.id}`;
-  const providerBody = testMode
-    ? {
-        type: "online",
-        external_reference: externalReference,
-        total_amount: "50.00",
-        payer: { email: "test_user_br@testuser.com", first_name: "APRO" },
-        transactions: {
-          payments: [{ amount: "50.00", payment_method: { id: "pix", type: "bank_transfer" } }],
-        },
-      }
-    : {
-        type: "online",
-        processing_mode: "automatic",
-        external_reference: externalReference,
-        total_amount: chargeAmountText,
-        payer: { email: authData.user.email },
-        transactions: {
-          payments: [
-            {
-              amount: chargeAmountText,
-              payment_method: { id: "pix", type: "bank_transfer" },
-              expiration_time: "PT30M",
-            },
-          ],
-        },
-      };
+  let localPayment = payments.find((item) => item.idempotency_key === idempotencyKey) ?? null;
+  if (!localPayment) {
+    const { data: insertedPayment, error: insertError } = await admin
+      .from("payments")
+      .insert({
+        order_id: order.id,
+        provider: "openpix",
+        method: "pix",
+        status: "pending",
+        amount,
+        currency: "BRL",
+        idempotency_key: idempotencyKey,
+      })
+      .select(
+        "id,provider,provider_charge_id,status,amount,qr_code_text,qr_code_image_url,expires_at,paid_at,idempotency_key",
+      )
+      .single();
 
-  const providerResponse = await fetch(`${apiBase}/v1/orders`, {
+    if (insertError) {
+      if (insertError.code !== "23505") {
+        console.error("create-pix-charge payment insert failed", { code: insertError.code, orderId });
+        return response(500, { error: "Não foi possível preparar a cobrança.", code: "PAYMENT_CREATE_FAILED" });
+      }
+      const { data: racedPayment } = await admin
+        .from("payments")
+        .select(
+          "id,provider,provider_charge_id,status,amount,qr_code_text,qr_code_image_url,expires_at,paid_at,idempotency_key",
+        )
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+      localPayment = racedPayment as LocalPayment | null;
+    } else {
+      localPayment = insertedPayment as LocalPayment;
+    }
+  }
+
+  if (!localPayment) {
+    return response(500, { error: "Não foi possível preparar a cobrança.", code: "PAYMENT_CREATE_FAILED" });
+  }
+
+  const providerResponse = await fetch(`${apiBase}/api/v1/charge?return_existing=true`, {
     method: "POST",
     headers: {
-      Accept: "application/json",
+      Authorization: appId,
       "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-      "X-Idempotency-Key": idempotencyKey,
+      Accept: "application/json",
     },
-    body: JSON.stringify(providerBody),
+    body: JSON.stringify({
+      correlationID,
+      value: amountCents,
+      comment: `APOIS Entregas - pedido ${order.id}`,
+      expiresIn: 1800,
+    }),
   });
-
-  let providerPayload: unknown = null;
-  try {
-    providerPayload = await providerResponse.json();
-  } catch {
-    /* provider body can be empty */
-  }
-  if (!providerResponse.ok || !isRecord(providerPayload)) {
-    const safeError = safeProviderError(providerPayload);
-    const reason = providerErrorReason(safeError, providerResponse.status);
-    console.error("create-pix-charge Mercado Pago error", {
+  const providerPayload = await readJson(providerResponse);
+  if (!providerResponse.ok || !isRecord(providerPayload) || !isRecord(providerPayload.charge)) {
+    console.error("create-pix-charge OpenPix error", {
       status: providerResponse.status,
       orderId,
-      provider: safeError,
-      testMode,
+      environment,
     });
+    await admin
+      .from("payments")
+      .update({ status: "failed", failure_reason: `openpix_http_${providerResponse.status}` })
+      .eq("id", localPayment.id)
+      .neq("status", "paid");
     return response(502, {
-      error: `O Mercado Pago recusou a geração do PIX: ${reason}.`,
+      error: "A OpenPix não conseguiu gerar o PIX agora.",
       code: "PAYMENT_PROVIDER_ERROR",
-      providerStatus: providerResponse.status,
-      provider: safeError,
     });
   }
 
-  const providerOrderId = text(providerPayload.id);
-  const transactions = isRecord(providerPayload.transactions) ? providerPayload.transactions : null;
-  const providerPayments =
-    transactions && Array.isArray(transactions.payments) ? transactions.payments : [];
-  const providerPayment =
-    providerPayments.length > 0 && isRecord(providerPayments[0]) ? providerPayments[0] : null;
-  const paymentMethod =
-    providerPayment && isRecord(providerPayment.payment_method)
-      ? providerPayment.payment_method
-      : null;
-  const providerTransactionId = providerPayment ? text(providerPayment.id) : null;
-  const qrCodeText = paymentMethod ? text(paymentMethod.qr_code) : null;
-  const qrCodeBase64 = paymentMethod ? text(paymentMethod.qr_code_base64) : null;
-  const ticketUrl = paymentMethod ? text(paymentMethod.ticket_url) : null;
-  const qrCodeImageUrl = qrCodeBase64 ? `data:image/png;base64,${qrCodeBase64}` : ticketUrl;
-  const providerStatus =
-    text(providerPayload.status) ?? (providerPayment ? text(providerPayment.status) : null);
-  const providerStatusDetail =
-    text(providerPayload.status_detail) ??
-    (providerPayment ? text(providerPayment.status_detail) : null);
-  const paidImmediately = providerStatus === "processed" && providerStatusDetail === "accredited";
-
-  if (!providerOrderId || !qrCodeText) {
-    console.error("create-pix-charge invalid Mercado Pago response", {
+  const charge = providerPayload.charge;
+  const providerValue = numberValue(charge.value);
+  if (providerValue !== null && Math.round(providerValue) !== amountCents) {
+    console.error("create-pix-charge OpenPix amount mismatch", {
       orderId,
-      providerStatus,
-      providerStatusDetail,
+      expected: amountCents,
+      received: providerValue,
     });
+    await admin
+      .from("payments")
+      .update({ status: "failed", failure_reason: "openpix_amount_mismatch" })
+      .eq("id", localPayment.id)
+      .neq("status", "paid");
     return response(502, {
-      error: "O Mercado Pago não retornou um PIX válido.",
+      error: "A cobrança retornou um valor divergente do pedido.",
+      code: "PAYMENT_AMOUNT_MISMATCH",
+    });
+  }
+
+  const providerChargeId = text(charge.globalID) ?? text(charge.id) ?? correlationID;
+  const qrCodeText = text(charge.brCode);
+  const qrCodeImageUrl = text(charge.qrCodeImage);
+  const expiresAt = text(charge.expiresDate) ?? text(charge.expiresAt);
+  const providerStatus = (text(charge.status) ?? "ACTIVE").toUpperCase();
+  const paid = providerStatus === "COMPLETED";
+  const now = new Date().toISOString();
+
+  if (!qrCodeText && !paid) {
+    await admin
+      .from("payments")
+      .update({ status: "failed", failure_reason: "openpix_missing_brcode" })
+      .eq("id", localPayment.id)
+      .neq("status", "paid");
+    return response(502, {
+      error: "A OpenPix não retornou o código PIX da cobrança.",
       code: "INVALID_PROVIDER_RESPONSE",
     });
   }
 
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-  const { data: payment, error: insertError } = await admin
+  const { data: updatedPayment, error: updateError } = await admin
     .from("payments")
-    .insert({
-      order_id: order.id,
-      provider: "mercadopago",
-      provider_charge_id: providerOrderId,
-      method: "pix",
-      status: paidImmediately ? "paid" : "pending",
-      amount: chargeAmount,
-      currency: "BRL",
+    .update({
+      provider_charge_id: providerChargeId,
       qr_code_text: qrCodeText,
       qr_code_image_url: qrCodeImageUrl,
       expires_at: expiresAt,
-      paid_at: paidImmediately ? new Date().toISOString() : null,
-      idempotency_key: idempotencyKey,
+      status: paid ? "paid" : "pending",
+      paid_at: paid ? now : null,
+      failed_at: null,
+      failure_reason: null,
     })
-    .select("id,status,amount,qr_code_text,qr_code_image_url,expires_at,provider_charge_id")
+    .eq("id", localPayment.id)
+    .neq("status", "refunded")
+    .select(
+      "id,provider,provider_charge_id,status,amount,qr_code_text,qr_code_image_url,expires_at,paid_at,idempotency_key",
+    )
     .single();
+  if (updateError || !updatedPayment) {
+    console.error("create-pix-charge local update failed", { code: updateError?.code, orderId });
+    return response(500, { error: "Não foi possível salvar a cobrança.", code: "PAYMENT_SAVE_FAILED" });
+  }
 
-  if (insertError || !payment) {
-    const { data: concurrent } = await admin
-      .from("payments")
-      .select("id,status,amount,qr_code_text,qr_code_image_url,expires_at,provider_charge_id")
-      .eq("idempotency_key", idempotencyKey)
-      .maybeSingle();
-    if (concurrent) {
-      return response(200, {
-        payment: {
-          id: concurrent.id,
-          status: concurrent.status,
-          amount: Number(concurrent.amount),
-          qrCodeText: concurrent.qr_code_text,
-          qrCodeImageUrl: concurrent.qr_code_image_url,
-          expiresAt: concurrent.expires_at,
-          providerChargeId: concurrent.provider_charge_id,
-        },
-        orderAmount,
-        testMode,
-        reused: true,
+  if (paid) {
+    const { error: orderUpdateError } = await admin
+      .from("orders")
+      .update({ payment_status: "paid" })
+      .eq("id", order.id)
+      .not("status", "in", '("cancelled","refunded")');
+    if (orderUpdateError) {
+      console.error("create-pix-charge order paid update failed", { code: orderUpdateError.code, orderId });
+      return response(500, { error: "Pagamento confirmado, aguardando conciliação.", code: "ORDER_SYNC_FAILED" });
+    }
+    const { error: reserveError } = await admin.rpc("reserve_paid_order_merchant_net", {
+      _order_id: order.id,
+    });
+    if (reserveError) {
+      console.error("create-pix-charge merchant reserve failed", { code: reserveError.code, orderId });
+      return response(500, {
+        error: "Pagamento confirmado, aguardando conciliação financeira.",
+        code: "WALLET_SYNC_FAILED",
       });
     }
-    console.error("create-pix-charge persistence error", { code: insertError?.code, orderId });
-    return response(500, {
-      error: "PIX gerado, mas não foi possível registrar o pagamento.",
-      code: "PAYMENT_PERSISTENCE_ERROR",
-    });
   }
 
-  if (providerTransactionId) {
-    await admin.from("payment_transactions").upsert(
-      {
-        payment_id: payment.id,
-        provider_transaction_id: providerTransactionId,
-        transaction_type: "charge",
-        amount: chargeAmount,
-        status: paidImmediately ? "completed" : "pending",
-        processed_at: paidImmediately ? new Date().toISOString() : null,
-      },
-      { onConflict: "payment_id,provider_transaction_id,transaction_type", ignoreDuplicates: true },
-    );
-  }
-
-  if (paidImmediately)
-    await admin.from("orders").update({ payment_status: "paid" }).eq("id", order.id);
-
-  return response(201, {
-    payment: {
-      id: payment.id,
-      status: payment.status,
-      amount: Number(payment.amount),
-      qrCodeText: payment.qr_code_text,
-      qrCodeImageUrl: payment.qr_code_image_url,
-      expiresAt: payment.expires_at,
-      providerChargeId: payment.provider_charge_id,
-    },
-    orderAmount,
-    testMode,
-    reused: false,
+  return response(200, {
+    payment: publicPayment(updatedPayment as LocalPayment),
+    reused: Boolean((providerPayload as JsonRecord).reused),
   });
 });
