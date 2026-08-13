@@ -51,12 +51,8 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const environment = (Deno.env.get("ASAAS_ENVIRONMENT") ?? "sandbox").toLowerCase();
-  const encryptionKey = Deno.env.get("ASAAS_SUBACCOUNT_ENCRYPTION_KEY");
-  const apiBase =
-    environment === "production" ? "https://api.asaas.com/v3" : "https://api-sandbox.asaas.com/v3";
-  if (!supabaseUrl || !anonKey || !serviceKey || !encryptionKey)
-    return reply(503, { error: "Integração Asaas ainda não configurada." });
+  if (!supabaseUrl || !anonKey || !serviceKey)
+    return reply(503, { error: "Serviço financeiro temporariamente indisponível." });
 
   const authorization = req.headers.get("Authorization");
   if (!authorization?.startsWith("Bearer "))
@@ -75,6 +71,51 @@ Deno.serve(async (req: Request) => {
   const admin = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  const { data: providerSetting } = await admin
+    .from("platform_settings")
+    .select("value")
+    .eq("key", "order_payment_provider")
+    .maybeSingle();
+  const activeProvider =
+    typeof providerSetting?.value === "string"
+      ? providerSetting.value.trim().toLowerCase()
+      : "asaas";
+
+  // Compatibility endpoint: the merchant UI historically invokes `asaas-payout`.
+  // Keep that contract stable while routing new payouts to the currently active
+  // provider. This avoids forcing the large merchant workspace to know gateway names.
+  if (activeProvider === "openpix") {
+    const openPixResponse = await fetch(`${supabaseUrl}/functions/v1/openpix-payout`, {
+      method: "POST",
+      headers: {
+        Authorization: authorization,
+        apikey: anonKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ payoutId }),
+    });
+    const payload = await openPixResponse.text();
+    return new Response(payload, {
+      status: openPixResponse.status,
+      headers,
+    });
+  }
+
+  if (activeProvider !== "asaas") {
+    return reply(409, {
+      error: "O provedor ativo ainda não possui fluxo de saque configurado.",
+      code: "PAYOUT_PROVIDER_UNSUPPORTED",
+    });
+  }
+
+  const environment = (Deno.env.get("ASAAS_ENVIRONMENT") ?? "sandbox").toLowerCase();
+  const encryptionKey = Deno.env.get("ASAAS_SUBACCOUNT_ENCRYPTION_KEY");
+  const apiBase =
+    environment === "production" ? "https://api.asaas.com/v3" : "https://api-sandbox.asaas.com/v3";
+  if (!encryptionKey)
+    return reply(503, { error: "Integração Asaas ainda não configurada." });
+
   const { data: payout } = await admin
     .from("payouts")
     .select("id,wallet_id,payout_account_id,amount,status,provider_payout_id")
