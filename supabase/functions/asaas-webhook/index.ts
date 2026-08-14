@@ -4,6 +4,15 @@ const headers = { "Content-Type": "application/json; charset=utf-8" };
 const reply = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers });
 
+function safeEqual(left: string, right: string) {
+  if (left.length !== right.length) return false;
+  let diff = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    diff |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return diff === 0;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return reply(405, { error: "method_not_allowed" });
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -13,7 +22,7 @@ Deno.serve(async (req: Request) => {
     return reply(500, { error: "server_configuration" });
 
   const receivedToken = req.headers.get("asaas-access-token")?.trim();
-  if (!receivedToken || receivedToken !== webhookToken)
+  if (!receivedToken || !safeEqual(receivedToken, webhookToken))
     return reply(401, { error: "invalid_token" });
 
   const payload = await req.json().catch(() => null);
@@ -141,10 +150,25 @@ Deno.serve(async (req: Request) => {
   let { data: payment, error: lookupError } = await findPayment();
   if (lookupError) return reply(500, { error: "payment_lookup_failed" });
 
-  // Asaas can emit PAYMENT_CREATED immediately after POST /payments, before the
-  // checkout request has persisted its local payment row. Recover that race from the
-  // externalReference instead of forcing the webhook queue into repeated 503s.
+  // Existing Asaas payment rows remain reconcilable after a provider migration.
+  // Creating a missing Asaas payment from a webhook, however, is permitted only while
+  // Asaas is the active order provider; otherwise an unrelated legacy Asaas charge
+  // could be correlated to a current OpenPix order by externalReference alone.
   if (!payment) {
+    const { data: providerSetting, error: providerSettingError } = await admin
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "order_payment_provider")
+      .maybeSingle();
+    if (providerSettingError) return reply(500, { error: "provider_setting_lookup_failed" });
+    if (providerSetting?.value !== "asaas") {
+      await admin
+        .from("asaas_webhook_events")
+        .update({ processed_at: now, processing_error: "inactive_order_provider" })
+        .eq("id", eventRowId);
+      return reply(200, { accepted: true, ignored: true, reason: "inactive_order_provider" });
+    }
+
     const externalReference =
       typeof payload?.payment?.externalReference === "string"
         ? payload.payment.externalReference
@@ -163,14 +187,25 @@ Deno.serve(async (req: Request) => {
 
       if (order?.payment_method === "pix") {
         const providerValue = Number(payload?.payment?.value);
-        const amount = Number.isFinite(providerValue) ? providerValue : Number(order.total);
+        const authoritativeAmount = Number(order.total);
+        if (
+          !Number.isFinite(providerValue) ||
+          !Number.isFinite(authoritativeAmount) ||
+          Math.round(providerValue * 100) !== Math.round(authoritativeAmount * 100)
+        ) {
+          await admin
+            .from("asaas_webhook_events")
+            .update({ processing_error: "amount_mismatch" })
+            .eq("id", eventRowId);
+          return reply(409, { error: "amount_mismatch" });
+        }
         const { error: insertError } = await admin.from("payments").insert({
           order_id: order.id,
           provider: "asaas",
           provider_charge_id: providerPaymentId,
           method: "pix",
           status: "processing",
-          amount,
+          amount: authoritativeAmount,
           currency: "BRL",
           idempotency_key: `asaas:webhook:${providerPaymentId}`,
         });
