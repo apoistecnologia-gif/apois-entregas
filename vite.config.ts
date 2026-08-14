@@ -32,7 +32,13 @@ const productOnlyRouteRoots: Record<string, string[]> = {
   customer: ["admin", "courier", "merchant", "configuracoes-estabelecimento"],
   courier: ["admin", "merchant", "configuracoes-estabelecimento", ...customerOnlyRouteRoots],
   merchant: ["admin", "courier", ...customerOnlyRouteRoots],
-  admin: ["courier", "merchant", "configuracoes-estabelecimento", ...customerOnlyRouteRoots],
+  admin: [
+    "register",
+    "courier",
+    "merchant",
+    "configuracoes-estabelecimento",
+    ...customerOnlyRouteRoots,
+  ],
 };
 
 const ignoredRouteRoots = productOnlyRouteRoots[productMode];
