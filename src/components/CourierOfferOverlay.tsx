@@ -248,10 +248,7 @@ export function CourierOfferOverlay() {
   const destinationLabel = [destination.neighborhood, destination.city, destination.state]
     .filter(Boolean)
     .join(" · ");
-  const remaining = Math.max(
-    0,
-    Math.ceil((new Date(offer.expires_at).getTime() - now) / 1000),
-  );
+  const remaining = Math.max(0, Math.ceil((new Date(offer.expires_at).getTime() - now) / 1000));
   const itemCount = Math.max(0, Number(offer.item_count ?? 0));
 
   const respond = async (action: "accept" | "reject") => {
