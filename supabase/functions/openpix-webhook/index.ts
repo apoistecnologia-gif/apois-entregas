@@ -64,6 +64,14 @@ function payoutIdFromCorrelation(correlationID: string | null): string | null {
   return UUID_RE.test(value) ? value : null;
 }
 
+function isForeignOrderCorrelation(correlationID: string | null): boolean {
+  return Boolean(correlationID && !correlationID.startsWith("apois-entrega-order-"));
+}
+
+function isForeignPayoutCorrelation(correlationID: string | null): boolean {
+  return Boolean(correlationID && !correlationID.startsWith("apois-entrega-payout-"));
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method !== "POST") {
     return response(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
@@ -131,6 +139,9 @@ Deno.serve(async (request: Request) => {
   if (chargeCompleted && charge) {
     const nestedPixCharge = pix && isRecord(pix.charge) ? pix.charge : null;
     const correlationID = text(charge.correlationID) ?? text(nestedPixCharge?.correlationID);
+    if (isForeignOrderCorrelation(correlationID)) {
+      return response(200, { ok: true, ignored: true, reason: "foreign_order_correlation" });
+    }
     const orderId = orderIdFromCorrelation(correlationID);
     const correlationPaymentId = paymentIdFromCorrelation(correlationID);
     const providerChargeId = text(charge.globalID) ?? text(charge.id) ?? correlationID;
@@ -357,6 +368,9 @@ Deno.serve(async (request: Request) => {
 
   if (event === "OPENPIX:CHARGE_EXPIRED" && charge) {
     const correlationID = text(charge.correlationID);
+    if (isForeignOrderCorrelation(correlationID)) {
+      return response(200, { ok: true, ignored: true, reason: "foreign_order_correlation" });
+    }
     const orderId = orderIdFromCorrelation(correlationID);
     const correlationPaymentId = paymentIdFromCorrelation(correlationID);
     const providerChargeId = text(charge.globalID) ?? text(charge.id) ?? correlationID;
@@ -512,6 +526,9 @@ Deno.serve(async (request: Request) => {
   if (event === "OPENPIX:TRANSACTION_REFUND_RECEIVED" && charge && pix) {
     const nestedPixCharge = isRecord(pix.charge) ? pix.charge : null;
     const correlationID = text(charge.correlationID) ?? text(nestedPixCharge?.correlationID);
+    if (isForeignOrderCorrelation(correlationID)) {
+      return response(200, { ok: true, ignored: true, reason: "foreign_order_correlation" });
+    }
     const orderId = orderIdFromCorrelation(correlationID);
     const correlationPaymentId = paymentIdFromCorrelation(correlationID);
     const providerChargeId = text(charge.globalID) ?? text(charge.id) ?? correlationID;
@@ -788,6 +805,9 @@ Deno.serve(async (request: Request) => {
     )
   ) {
     const correlationID = text(outgoingPayment.correlationID);
+    if (isForeignPayoutCorrelation(correlationID)) {
+      return response(200, { ok: true, ignored: true, reason: "foreign_payout_correlation" });
+    }
     const payoutId = payoutIdFromCorrelation(correlationID);
     const transactionId = text(outgoingTransaction?.endToEndId) ?? correlationID;
     const eventId = `${event}:${transactionId ?? fallbackHash}`;
