@@ -48,13 +48,7 @@ async function recoverCancelledPaidOrder(input: {
   payment: { id: string; provider: string; status: string };
 }): Promise<CancelledPaymentRecovery> {
   const { admin, supabaseUrl, anonKey, authorization, order, payment } = input;
-
-  const { error: orderUpdateError } = await admin
-    .from("orders")
-    .update({ payment_status: "paid" })
-    .eq("id", order.id)
-    .eq("status", "cancelled");
-  if (orderUpdateError) throw new Error("cancelled_order_payment_sync_failed");
+  if (order.status !== "cancelled") throw new Error("cancelled_order_required");
 
   const { data: refundId, error: refundError } = await admin.rpc(
     "ensure_cancelled_paid_order_refund",
@@ -87,8 +81,10 @@ async function recoverCancelledPaidOrder(input: {
     );
   }
 
-  const refund = isRecord(refundPayload) && isRecord(refundPayload.refund) ? refundPayload.refund : null;
-  const refundStatus = text(refund?.status) ?? (refundResponse.status === 202 ? "processing" : "completed");
+  const refund =
+    isRecord(refundPayload) && isRecord(refundPayload.refund) ? refundPayload.refund : null;
+  const refundStatus =
+    text(refund?.status) ?? (refundResponse.status === 202 ? "processing" : "completed");
   return { refundId, refundStatus };
 }
 
@@ -154,7 +150,11 @@ Deno.serve(async (request: Request) => {
   if (!payment?.provider_charge_id)
     return reply(404, { error: "Pagamento não encontrado.", code: "PAYMENT_NOT_FOUND" });
 
-  if (payment.status === "refunded" || order.payment_status === "refunded" || order.status === "refunded") {
+  if (
+    payment.status === "refunded" ||
+    order.payment_status === "refunded" ||
+    order.status === "refunded"
+  ) {
     return reply(200, {
       paymentStatus: "refunded",
       providerStatus: "refunded",
@@ -175,7 +175,7 @@ Deno.serve(async (request: Request) => {
           payment,
         });
         return reply(recovery.refundStatus === "completed" ? 200 : 202, {
-          paymentStatus: recovery.refundStatus === "completed" ? "refunded" : "paid",
+          paymentStatus: recovery.refundStatus === "completed" ? "refunded" : "processing",
           providerStatus: "confirmed",
           refundStatus: recovery.refundStatus,
           refundId: recovery.refundId,
@@ -273,7 +273,7 @@ Deno.serve(async (request: Request) => {
           code: "REFUND_RECONCILIATION_FAILED",
         });
       }
-      paymentStatus = cancelledRecovery.refundStatus === "completed" ? "refunded" : "paid";
+      paymentStatus = cancelledRecovery.refundStatus === "completed" ? "refunded" : "processing";
     } else if (order.status !== "refunded") {
       const { error: orderUpdateError } = await admin
         .from("orders")
@@ -422,9 +422,12 @@ async function getAsaasState(order: any, payment: any): Promise<ProviderState> {
   return {
     status,
     paid: ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"].includes(status),
-    refunded: ["REFUNDED", "REFUND_REQUESTED", "REFUND_IN_PROGRESS", "PARTIALLY_REFUNDED"].includes(
-      status,
-    ),
+    refunded: [
+      "REFUNDED",
+      "REFUND_REQUESTED",
+      "REFUND_IN_PROGRESS",
+      "PARTIALLY_REFUNDED",
+    ].includes(status),
     failed: [
       "OVERDUE",
       "DELETED",
