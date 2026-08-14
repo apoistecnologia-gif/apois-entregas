@@ -16,7 +16,6 @@ const sharedRoutes = new Set([
   "__root",
   "index",
   "login",
-  "register",
   "redefinir-senha",
   "auth.callback",
   "termos",
@@ -44,6 +43,7 @@ function routeRoot(routePath) {
 
 function isAllowed(routePath) {
   if (sharedRoutes.has(routePath)) return true;
+  if (routePath === "register") return product !== "admin";
   const root = routeRoot(routePath);
   if (product === "customer") return customerRoots.has(root);
   if (product === "courier") return root === "courier";
