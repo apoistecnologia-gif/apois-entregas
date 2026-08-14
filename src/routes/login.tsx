@@ -13,14 +13,28 @@ import {
   productAllowsPublicSignup,
 } from "@/lib/product-routing";
 
+async function hasAdminRole(userId: string) {
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  return !error && Boolean(data);
+}
+
 export const Route = createFileRoute("/login")({
   beforeLoad: async () => {
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    if (session) {
-      throw redirect({ to: getProductHomeRoute() });
+    if (!session) return;
+
+    if (getApoisProductMode() === "admin" && !(await hasAdminRole(session.user.id))) {
+      await supabase.auth.signOut();
+      return;
     }
+    throw redirect({ to: getProductHomeRoute() });
   },
   component: Login,
   head: () => ({
@@ -138,6 +152,14 @@ function Login() {
         await supabase.auth.signOut();
         const message =
           profile.blocked_reason || "Sua conta está desativada. Entre em contato com o suporte.";
+        setLoginError(message);
+        toast.error(message);
+        return;
+      }
+
+      if (getApoisProductMode() === "admin" && !(await hasAdminRole(authData.user.id))) {
+        await supabase.auth.signOut();
+        const message = "Esta conta não possui autorização para acessar o painel administrativo.";
         setLoginError(message);
         toast.error(message);
         return;
