@@ -7,11 +7,53 @@ import {
 } from "@/lib/product-routing";
 
 const CART_OWNER_KEY = "apois_cart_owner_id";
+const CHECKOUT_OWNER_KEY = "apois_checkout_owner_id";
 const SENSITIVE_SESSION_KEYS = ["apois_active_pix", "apois_checkout_attempt"] as const;
 const CART_STORAGE_KEYS = ["apois_cart", "apois_merchant"] as const;
+const CHECKOUT_BACKUP_PREFIX = "apois_persisted_";
+
+function backupKey(key: (typeof SENSITIVE_SESSION_KEYS)[number]) {
+  return `${CHECKOUT_BACKUP_PREFIX}${key}`;
+}
+
+function clearCheckoutSessionOnly() {
+  for (const key of SENSITIVE_SESSION_KEYS) sessionStorage.removeItem(key);
+}
 
 function clearSensitiveCheckoutState() {
-  for (const key of SENSITIVE_SESSION_KEYS) sessionStorage.removeItem(key);
+  clearCheckoutSessionOnly();
+  for (const key of SENSITIVE_SESSION_KEYS) localStorage.removeItem(backupKey(key));
+  localStorage.removeItem(CHECKOUT_OWNER_KEY);
+}
+
+function restoreSensitiveCheckoutState(userId: string) {
+  const ownerId = localStorage.getItem(CHECKOUT_OWNER_KEY);
+  if (!ownerId) return;
+  if (ownerId !== userId) {
+    clearSensitiveCheckoutState();
+    return;
+  }
+
+  for (const key of SENSITIVE_SESSION_KEYS) {
+    const persisted = localStorage.getItem(backupKey(key));
+    if (persisted && !sessionStorage.getItem(key)) sessionStorage.setItem(key, persisted);
+  }
+}
+
+function persistSensitiveCheckoutState(userId: string) {
+  let hasState = false;
+  for (const key of SENSITIVE_SESSION_KEYS) {
+    const value = sessionStorage.getItem(key);
+    if (value) {
+      localStorage.setItem(backupKey(key), value);
+      hasState = true;
+    } else {
+      localStorage.removeItem(backupKey(key));
+    }
+  }
+
+  if (hasState) localStorage.setItem(CHECKOUT_OWNER_KEY, userId);
+  else localStorage.removeItem(CHECKOUT_OWNER_KEY);
 }
 
 function clearUserCartState() {
@@ -68,8 +110,10 @@ export function AuthSessionIsolation({ children }: { children: ReactNode }) {
         }
         sessionStorage.removeItem(boundUserKey);
       } else {
-        if (!previousTabUserId || previousTabUserId !== nextUserId) {
+        if (previousTabUserId && previousTabUserId !== nextUserId) {
           clearSensitiveCheckoutState();
+        } else if (product === "customer") {
+          restoreSensitiveCheckoutState(nextUserId);
         }
 
         if (product === "customer" && persistedCartOwnerId && persistedCartOwnerId !== nextUserId) {
@@ -105,6 +149,23 @@ export function AuthSessionIsolation({ children }: { children: ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (getApoisProductMode() !== "customer" || !userId) return;
+
+    const persist = () => persistSensitiveCheckoutState(userId);
+    persist();
+    const interval = window.setInterval(persist, 750);
+    window.addEventListener("pagehide", persist);
+    document.addEventListener("visibilitychange", persist);
+
+    return () => {
+      persist();
+      window.clearInterval(interval);
+      window.removeEventListener("pagehide", persist);
+      document.removeEventListener("visibilitychange", persist);
+    };
+  }, [userId]);
 
   if (!ready) {
     return (
