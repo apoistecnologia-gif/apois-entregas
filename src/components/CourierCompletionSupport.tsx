@@ -15,7 +15,11 @@ const money = (value: unknown) =>
 
 export function CourierCompletionSheet({ job, onDone }: { job: any; onDone: () => void }) {
   return (
-    <section className="relative -mt-8 overflow-hidden rounded-t-[2rem] rounded-b-[1.8rem] border border-primary/35 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.13),transparent_40%),linear-gradient(180deg,#10100d,#070707)] px-5 pb-5 pt-3 text-center shadow-[0_-18px_45px_rgba(0,0,0,0.65)]">
+    <section
+      role="status"
+      aria-live="polite"
+      className="relative -mt-8 overflow-hidden rounded-t-[2rem] rounded-b-[1.8rem] border border-primary/35 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.13),transparent_40%),linear-gradient(180deg,#10100d,#070707)] px-5 pb-5 pt-3 text-center shadow-[0_-18px_45px_rgba(0,0,0,0.65)]"
+    >
       <div className="mx-auto h-1.5 w-12 rounded-full bg-zinc-700" />
       <div className="mx-auto mt-6 grid h-16 w-16 place-items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_35px_rgba(34,197,94,0.1)]">
         <CheckCircle2 className="h-9 w-9" />
@@ -65,7 +69,12 @@ export function CourierSupportSheet({
 
   return (
     <div className="fixed inset-0 z-[1600] flex items-end justify-center bg-black/80 p-3 backdrop-blur-sm">
-      <section className="w-full max-w-lg rounded-[2rem] border border-primary/30 bg-[#090909] p-4 pb-[max(env(safe-area-inset-bottom),1rem)] text-white shadow-[0_-20px_70px_rgba(0,0,0,0.75)]">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="courier-support-title"
+        className="w-full max-w-lg rounded-[2rem] border border-primary/30 bg-[#090909] p-4 pb-[max(env(safe-area-inset-bottom),1rem)] text-white shadow-[0_-20px_70px_rgba(0,0,0,0.75)]"
+      >
         <div className="mx-auto h-1.5 w-12 rounded-full bg-zinc-700" />
         <div className="mt-4 flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
@@ -76,7 +85,9 @@ export function CourierSupportSheet({
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">
                 Ajuda durante a entrega
               </p>
-              <h2 className="mt-1 text-lg font-black">Relatar um problema</h2>
+              <h2 id="courier-support-title" className="mt-1 text-lg font-black">
+                Relatar um problema
+              </h2>
               <p className="mt-1 text-xs leading-5 text-zinc-500">
                 Explique o que aconteceu. O chamado ficará vinculado a esta entrega.
               </p>
