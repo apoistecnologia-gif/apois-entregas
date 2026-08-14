@@ -40,8 +40,21 @@ function safeEqual(left: string, right: string): boolean {
 }
 
 function orderIdFromCorrelation(correlationID: string | null): string | null {
+  const prefix = "apois-entrega-order-";
+  if (!correlationID?.startsWith(prefix)) return null;
+  const value = correlationID.slice(prefix.length, prefix.length + 36);
+  if (!UUID_RE.test(value)) return null;
+  const suffix = correlationID.slice(prefix.length + 36);
+  if (!suffix || /^-payment-[0-9a-f-]{36}$/i.test(suffix)) return value;
+  return null;
+}
+
+function paymentIdFromCorrelation(correlationID: string | null): string | null {
+  const marker = "-payment-";
   if (!correlationID?.startsWith("apois-entrega-order-")) return null;
-  const value = correlationID.slice("apois-entrega-order-".length);
+  const markerIndex = correlationID.indexOf(marker);
+  if (markerIndex < 0) return null;
+  const value = correlationID.slice(markerIndex + marker.length);
   return UUID_RE.test(value) ? value : null;
 }
 
@@ -119,6 +132,7 @@ Deno.serve(async (request: Request) => {
     const nestedPixCharge = pix && isRecord(pix.charge) ? pix.charge : null;
     const correlationID = text(charge.correlationID) ?? text(nestedPixCharge?.correlationID);
     const orderId = orderIdFromCorrelation(correlationID);
+    const correlationPaymentId = paymentIdFromCorrelation(correlationID);
     const providerChargeId = text(charge.globalID) ?? text(charge.id) ?? correlationID;
     const providerTransactionId = text(pix?.transactionID) ?? text(charge.transactionID);
     const eventId = `charge-completed:${providerTransactionId ?? providerChargeId ?? fallbackHash}`;
@@ -140,6 +154,15 @@ Deno.serve(async (request: Request) => {
         .select("id,order_id,status,amount,provider_charge_id,paid_at")
         .eq("provider", "openpix")
         .eq("provider_charge_id", providerChargeId)
+        .maybeSingle();
+      payment = isRecord(data) ? data : null;
+    }
+    if (!payment && correlationPaymentId) {
+      const { data } = await admin
+        .from("payments")
+        .select("id,order_id,status,amount,provider_charge_id,paid_at")
+        .eq("id", correlationPaymentId)
+        .eq("provider", "openpix")
         .maybeSingle();
       payment = isRecord(data) ? data : null;
     }
@@ -188,6 +211,18 @@ Deno.serve(async (request: Request) => {
     const localAmount = numberValue(payment.amount);
     if (!paymentId || !localOrderId || localAmount === null) {
       return response(500, { error: "Pagamento local inválido.", code: "INVALID_LOCAL_PAYMENT" });
+    }
+
+    if (orderId && orderId !== localOrderId) {
+      await admin
+        .from("payment_events")
+        .update({ status: "failed", error_message: "order_correlation_mismatch", payment_id: paymentId })
+        .eq("provider", "openpix")
+        .eq("provider_event_id", eventId);
+      return response(409, {
+        error: "Referência externa divergente.",
+        code: "EXTERNAL_REFERENCE_MISMATCH",
+      });
     }
 
     const paidValueCents = numberValue(pix?.value) ?? numberValue(charge.value);
@@ -314,6 +349,144 @@ Deno.serve(async (request: Request) => {
       .eq("provider", "openpix")
       .eq("provider_event_id", eventId);
     return response(200, { ok: true, paymentId, orderId: order.id });
+  }
+
+  if (event === "OPENPIX:CHARGE_EXPIRED" && charge) {
+    const correlationID = text(charge.correlationID);
+    const orderId = orderIdFromCorrelation(correlationID);
+    const correlationPaymentId = paymentIdFromCorrelation(correlationID);
+    const providerChargeId = text(charge.globalID) ?? text(charge.id) ?? correlationID;
+    const eventId = `charge-expired:${providerChargeId ?? fallbackHash}`;
+
+    const { data: existingEvent } = await admin
+      .from("payment_events")
+      .select("id,status")
+      .eq("provider", "openpix")
+      .eq("provider_event_id", eventId)
+      .maybeSingle();
+    if (existingEvent?.status === "processed" || existingEvent?.status === "ignored") {
+      return response(200, { ok: true, reused: true });
+    }
+
+    let payment: JsonRecord | null = null;
+    if (providerChargeId) {
+      const { data } = await admin
+        .from("payments")
+        .select("id,order_id,status,provider_charge_id")
+        .eq("provider", "openpix")
+        .eq("provider_charge_id", providerChargeId)
+        .maybeSingle();
+      payment = isRecord(data) ? data : null;
+    }
+    if (!payment && correlationPaymentId) {
+      const { data } = await admin
+        .from("payments")
+        .select("id,order_id,status,provider_charge_id")
+        .eq("id", correlationPaymentId)
+        .eq("provider", "openpix")
+        .maybeSingle();
+      payment = isRecord(data) ? data : null;
+    }
+    if (!payment && orderId) {
+      const { data } = await admin
+        .from("payments")
+        .select("id,order_id,status,provider_charge_id")
+        .eq("provider", "openpix")
+        .eq("order_id", orderId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      payment = isRecord(data) ? data : null;
+    }
+
+    const eventRow = {
+      provider: "openpix",
+      provider_event_id: eventId,
+      event_type: "OPENPIX:CHARGE_EXPIRED",
+      payment_id: text(payment?.id),
+      payload,
+      status: "received",
+      error_message: null,
+      processed_at: null,
+    };
+    if (existingEvent) await admin.from("payment_events").update(eventRow).eq("id", existingEvent.id);
+    else await admin.from("payment_events").insert(eventRow);
+
+    if (!payment) {
+      await admin
+        .from("payment_events")
+        .update({ status: "failed", error_message: "payment_not_found" })
+        .eq("provider", "openpix")
+        .eq("provider_event_id", eventId);
+      return response(500, {
+        error: "Pagamento local ainda não encontrado.",
+        code: "PAYMENT_NOT_FOUND",
+      });
+    }
+
+    const paymentId = text(payment.id);
+    const localOrderId = text(payment.order_id);
+    if (!paymentId || !localOrderId) {
+      return response(500, { error: "Pagamento local inválido.", code: "INVALID_LOCAL_PAYMENT" });
+    }
+    if (orderId && orderId !== localOrderId) {
+      await admin
+        .from("payment_events")
+        .update({ status: "failed", error_message: "order_correlation_mismatch", payment_id: paymentId })
+        .eq("provider", "openpix")
+        .eq("provider_event_id", eventId);
+      return response(409, {
+        error: "Referência externa divergente.",
+        code: "EXTERNAL_REFERENCE_MISMATCH",
+      });
+    }
+
+    if (["paid", "refunded"].includes(text(payment.status) ?? "")) {
+      await admin
+        .from("payment_events")
+        .update({ status: "ignored", error_message: "payment_finalized", processed_at: now })
+        .eq("provider", "openpix")
+        .eq("provider_event_id", eventId);
+      return response(200, { ok: true, ignored: true });
+    }
+
+    const { error: paymentUpdateError } = await admin
+      .from("payments")
+      .update({
+        status: "failed",
+        failed_at: now,
+        failure_reason: "OPENPIX:CHARGE_EXPIRED",
+        provider_charge_id: providerChargeId ?? text(payment.provider_charge_id),
+      })
+      .eq("id", paymentId)
+      .in("status", ["pending", "processing", "failed"]);
+    if (paymentUpdateError) {
+      await admin
+        .from("payment_events")
+        .update({ status: "failed", error_message: "payment_update_failed", payment_id: paymentId })
+        .eq("provider", "openpix")
+        .eq("provider_event_id", eventId);
+      return response(500, {
+        error: "Falha ao registrar expiração.",
+        code: "PAYMENT_UPDATE_FAILED",
+      });
+    }
+
+    const { data: order } = await admin
+      .from("orders")
+      .select("id,status,payment_status")
+      .eq("id", localOrderId)
+      .maybeSingle();
+    if (order && order.payment_status !== "paid" && !["cancelled", "refunded"].includes(order.status)) {
+      await admin.from("orders").update({ payment_status: "failed" }).eq("id", order.id);
+    }
+
+    await admin
+      .from("payment_events")
+      .update({ status: "processed", error_message: null, payment_id: paymentId, processed_at: now })
+      .eq("provider", "openpix")
+      .eq("provider_event_id", eventId);
+    return response(200, { ok: true, paymentId, orderId: localOrderId, status: "expired" });
   }
 
   if (
