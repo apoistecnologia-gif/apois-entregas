@@ -8,7 +8,7 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 const isMobileBuild = process.env["APOIS_MOBILE_BUILD"] === "1";
 const isVercelBuild = process.env["APOIS_VERCEL_BUILD"] === "1" || process.env["VERCEL"] === "1";
-const productMode = String(process.env["VITE_APOIS_PRODUCT_MODE"] ?? "customer")
+const productMode = String(process.env["VITE_APOIS_PRODUCT_MODE"] ?? "all")
   .trim()
   .toLowerCase();
 
@@ -35,8 +35,10 @@ const productOnlyRouteRoots: Record<string, string[]> = {
   admin: ["courier", "merchant", "configuracoes-estabelecimento", ...customerOnlyRouteRoots],
 };
 
-const ignoredRouteRoots = productOnlyRouteRoots[productMode] ?? productOnlyRouteRoots.customer;
-const routeFileIgnorePattern = `(^|/)(${ignoredRouteRoots.join("|")})(?:[./]|$)`;
+const ignoredRouteRoots = productOnlyRouteRoots[productMode];
+const routeFileIgnorePattern = ignoredRouteRoots
+  ? `(^|/)(${ignoredRouteRoots.join("|")})(?:[./]|$)`
+  : null;
 
 export default defineConfig({
   // Mobile packaging renders the built app once in CI to produce Capacitor's index.html.
@@ -48,12 +50,14 @@ export default defineConfig({
       : {}),
   tanstackStart: {
     server: { entry: "server" },
-    router: {
-      // Each deployed product gets a route tree that contains only its own operational
-      // routes plus the small shared auth/legal surface. This is build-time isolation,
-      // not merely a runtime redirect, so mobile artifacts cannot contain admin/merchant
-      // route modules and backoffice builds cannot expose another product's route tree.
-      routeFileIgnorePattern,
-    },
+    router: routeFileIgnorePattern
+      ? {
+          // Each deployed product gets a route tree that contains only its own operational
+          // routes plus the small shared auth/legal surface. This is build-time isolation,
+          // not merely a runtime redirect, so mobile artifacts cannot contain admin/merchant
+          // route modules and backoffice builds cannot expose another product's route tree.
+          routeFileIgnorePattern,
+        }
+      : {},
   },
 });
