@@ -301,8 +301,60 @@ function CourierApp() {
     await loadAll();
   };
 
+  const resubmitApplication = async () => {
+    if (!courier?.id || courier.status !== "rejected") return;
+    const requiredTypes =
+      courier.vehicle_type === "bicicleta"
+        ? ["foto_perfil"]
+        : ["cnh", "documento_veiculo", "foto_perfil"];
+    const pendingCorrection = requiredTypes.some((documentType) => {
+      const document = documents.find((row) => row.document_type === documentType);
+      return !document || !["pending", "approved"].includes(document.status);
+    });
+    if (pendingCorrection) {
+      toast.error("Substitua todos os documentos recusados antes de reenviar o cadastro.");
+      return;
+    }
+
+    const address = courier.address ?? {};
+    setBusy("application");
+    const { error } = await rpc("submit_courier_application", {
+      _payload: {
+        cpf: courier.cpf ?? "",
+        birth_date: courier.birth_date ?? "",
+        address: {
+          street: address.street ?? "",
+          number: address.number ?? "",
+          neighborhood: address.neighborhood ?? "",
+          city: address.city ?? "",
+          state: address.state ?? "",
+        },
+        vehicle_type: courier.vehicle_type ?? "moto",
+        vehicle_model: courier.vehicle_model ?? "",
+        vehicle_plate: courier.vehicle_plate ?? "",
+        cnh_number: courier.cnh_number ?? "",
+      },
+    });
+    setBusy(null);
+    if (error) {
+      toast.error(error.message || "Não foi possível reenviar o cadastro.");
+      return;
+    }
+    toast.success("Cadastro reenviado para análise.");
+    await loadAll(true);
+  };
+
   const uploadDocument = async (documentType: string, file: File) => {
     if (!courier?.id || !user?.id) return;
+    const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
+    if (!allowedTypes.has(file.type)) {
+      toast.error("Envie uma imagem JPG, PNG, WEBP ou um arquivo PDF.");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("O documento deve ter no máximo 15 MB.");
+      return;
+    }
     setBusy(`doc:${documentType}`);
     try {
       const extension = file.name.split(".").pop()?.toLowerCase() || "bin";
@@ -542,7 +594,7 @@ function CourierApp() {
         onRefresh={() => void loadAll(true)}
         refreshing={refreshing}
         onLogout={logout}
-        onResubmit={submitApplication}
+        onResubmit={resubmitApplication}
       />
     );
 
@@ -939,6 +991,7 @@ function CourierReviewState({
   onRefresh,
   refreshing,
   onLogout,
+  onResubmit,
 }: any) {
   const required = [
     ...(courier.vehicle_type === "bicicleta"
@@ -949,6 +1002,25 @@ function CourierReviewState({
         ]),
     { type: "foto_perfil", label: "Foto do entregador" },
   ];
+  const blocked = courier.status === "blocked" || courier.is_active === false;
+  const requiredReady = required.every((item) => {
+    const document = documents.find((row: any) => row.document_type === item.type);
+    return document && ["pending", "approved"].includes(document.status);
+  });
+  const canResubmit = courier.status === "rejected" && !blocked && requiredReady;
+
+  const statusLabel = blocked
+    ? "CONTA BLOQUEADA"
+    : courier.status === "under_review"
+      ? "EM ANÁLISE"
+      : courier.status === "rejected"
+        ? "CADASTRO RECUSADO"
+        : courier.status === "pending"
+          ? "CADASTRO PENDENTE"
+          : courier.status === "approved"
+            ? "APROVADO"
+            : String(courier.status ?? "PENDENTE").replaceAll("_", " ");
+
   return (
     <div className="min-h-dvh bg-black p-4 text-white">
       <div className="flex items-center justify-between pt-3">
@@ -960,18 +1032,17 @@ function CourierReviewState({
       <div className="mt-8 rounded-3xl border border-zinc-900 bg-zinc-950 p-5">
         <FileCheck2 className="h-9 w-9 text-primary" />
         <p className="mt-4 text-xs font-black uppercase text-zinc-500">Situação</p>
-        <h1 className="mt-1 text-2xl font-black uppercase text-primary">
-          {courier.status === "under_review"
-            ? "EM ANÁLISE"
-            : courier.status === "rejected"
-              ? "CADASTRO RECUSADO"
-              : courier.status === "approved"
-                ? "APROVADO"
-                : courier.status.replaceAll("_", " ")}
+        <h1
+          className={`mt-1 text-2xl font-black uppercase ${blocked ? "text-red-400" : "text-primary"}`}
+        >
+          {statusLabel}
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-zinc-500">
-          Os documentos são enviados automaticamente assim que você seleciona o arquivo. Depois do
-          envio, seu cadastro permanece em análise até a aprovação da APOIS.
+          {blocked
+            ? "Seu acesso operacional está bloqueado. Os documentos ficam preservados e não podem ser substituídos enquanto o bloqueio estiver ativo."
+            : courier.status === "rejected"
+              ? "Corrija os documentos recusados abaixo. Quando todos estiverem enviados ou aprovados, reenvie o cadastro para uma nova análise."
+              : "Os documentos são enviados automaticamente assim que você seleciona o arquivo. Depois do envio, seu cadastro permanece em análise até a aprovação da APOIS."}
         </p>
         {courier.rejection_reason ? (
           <p className="mt-3 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">
@@ -1017,7 +1088,7 @@ function CourierReviewState({
               {doc?.rejection_reason ? (
                 <p className="mt-2 text-xs text-red-300">{doc.rejection_reason}</p>
               ) : null}
-              {doc?.status !== "approved" ? (
+              {!blocked && doc?.status !== "approved" ? (
                 <>
                   <div className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
                     <Upload className="h-4 w-4" />
@@ -1032,9 +1103,9 @@ function CourierReviewState({
                     accept="image/jpeg,image/png,image/webp,application/pdf"
                     className="mt-2 w-full text-xs text-zinc-600"
                     disabled={busy === `doc:${item.type}`}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      const input = e.currentTarget;
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      const input = event.currentTarget;
                       if (file) {
                         void onUpload(item.type, file).finally(() => {
                           input.value = "";
@@ -1043,17 +1114,45 @@ function CourierReviewState({
                     }}
                   />
                 </>
-              ) : (
+              ) : doc?.status === "approved" ? (
                 <p className="mt-3 text-xs font-bold text-emerald-400">
                   Documento aprovado. Nenhuma ação necessária.
+                </p>
+              ) : (
+                <p className="mt-3 text-xs font-bold text-amber-300">
+                  Envio desativado enquanto a conta estiver bloqueada.
                 </p>
               )}
             </label>
           );
         })}
       </div>
+      {courier.status === "rejected" && !blocked ? (
+        <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+          <button
+            type="button"
+            disabled={Boolean(busy) || !canResubmit}
+            onClick={() => void onResubmit()}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-black text-black disabled:bg-zinc-800 disabled:text-zinc-500"
+          >
+            {busy === "application" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            REENVIAR PARA ANÁLISE
+          </button>
+          <p className="mt-2 text-center text-[11px] leading-4 text-zinc-500">
+            {canResubmit
+              ? "Seus documentos estão prontos para uma nova revisão."
+              : "Substitua todos os documentos recusados e envie os documentos que estiverem faltando."}
+          </p>
+        </div>
+      ) : null}
       <p className="mt-5 text-center text-xs text-zinc-600">
-        Após a aprovação, o botão Online e as ofertas de entrega serão liberados automaticamente.
+        {blocked
+          ? "Entre em contato com o suporte da APOIS para entender ou revisar o bloqueio."
+          : "Após a aprovação, o botão Online e as ofertas de entrega serão liberados automaticamente."}
       </p>
     </div>
   );
