@@ -7,26 +7,36 @@ import { useMemo, useState } from "react";
 import logoAsset from "@/assets/logo.png.asset.json";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  getApoisProductMode,
+  getProductHomeRoute,
+  getProductLabel,
+} from "@/lib/product-routing";
 
 export const Route = createFileRoute("/register")({
   beforeLoad: async () => {
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    if (session) throw redirect({ to: "/inicio" });
+    if (session) throw redirect({ to: getProductHomeRoute() });
   },
   component: Register,
   head: () => ({
-    title: "Criar conta - APOIS ENTREGA",
-    meta: [{ name: "description", content: "Crie sua conta no APOIS ENTREGA" }],
+    title: `Criar conta - ${getProductLabel()}`,
+    meta: [{ name: "description", content: `Crie sua conta no ${getProductLabel()}` }],
   }),
 });
 
 const onlyDigits = (value: string) => value.replace(/\D/g, "");
 
 type FieldName =
-  "fullName" | "phone" | "cpf" | "birthDate" | "email" | "password" | "confirmPassword";
-
+  | "fullName"
+  | "phone"
+  | "cpf"
+  | "birthDate"
+  | "email"
+  | "password"
+  | "confirmPassword";
 type FormErrors = Partial<Record<FieldName, string>>;
 
 const maskPhone = (value: string) => {
@@ -83,6 +93,9 @@ const birthDateToIso = (value: string) => {
 
 function Register() {
   const navigate = useNavigate();
+  const product = getApoisProductMode();
+  const productLabel = getProductLabel();
+  const isCourier = product === "courier";
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -108,25 +121,14 @@ function Register() {
 
   const errors = useMemo<FormErrors>(() => {
     const next: FormErrors = {};
-    if (formData.fullName.trim().split(/\s+/).length < 2) {
-      next.fullName = "Digite seu nome completo";
-    }
-    if (onlyDigits(formData.phone).length < 10) {
-      next.phone = "Telefone incompleto";
-    }
-    if (!isValidCpf(formData.cpf)) {
-      next.cpf = "Informe um CPF válido";
-    }
+    if (formData.fullName.trim().split(/\s+/).length < 2) next.fullName = "Digite seu nome completo";
+    if (onlyDigits(formData.phone).length < 10) next.phone = "Telefone incompleto";
+    if (!isValidCpf(formData.cpf)) next.cpf = "Informe um CPF válido";
     if (!birthDateToIso(formData.birthDate)) {
       next.birthDate = "Informe a data no formato DD/MM/AAAA";
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      next.email = "E-mail inválido";
-    }
-    if (formData.password.length < 8) {
-      next.password = "A senha deve ter no mínimo 8 caracteres";
-    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) next.email = "E-mail inválido";
+    if (formData.password.length < 8) next.password = "A senha deve ter no mínimo 8 caracteres";
     if (formData.confirmPassword !== formData.password) {
       next.confirmPassword = "As senhas não coincidem";
     }
@@ -137,8 +139,8 @@ function Register() {
   const fieldError = (field: FieldName): string | undefined =>
     touched[field] || submitted ? errors[field] : undefined;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setSubmitted(true);
     if (!isFormValid || isLoading) {
       setTouched({
@@ -171,6 +173,7 @@ function Register() {
             terms_accepted_at: new Date().toISOString(),
             privacy_accepted_at: new Date().toISOString(),
             legal_version: "2026-08-09",
+            signup_product: product,
           },
         },
       });
@@ -185,11 +188,15 @@ function Register() {
       }
 
       if (data.session) {
-        toast.success("Conta criada com sucesso!");
-        navigate({ to: "/inicio" });
+        toast.success(
+          isCourier
+            ? "Conta criada. Complete agora seu cadastro de entregador."
+            : "Conta criada com sucesso!",
+        );
+        await navigate({ to: getProductHomeRoute() });
       } else if (data.user) {
         toast.success("Conta criada. Faça login para continuar.");
-        navigate({ to: "/login" });
+        await navigate({ to: "/login" });
       }
     } catch {
       toast.error("Ocorreu um erro inesperado ao realizar seu cadastro.");
@@ -202,7 +209,7 @@ function Register() {
     `bg-zinc-900/50 border-zinc-800 h-11 rounded-xl text-white text-sm placeholder:text-zinc-600 focus:ring-primary focus:border-primary ${hasError ? "border-red-500/50" : ""}`;
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-black text-white">
+    <div className="flex min-h-dvh w-full flex-col bg-black text-white">
       <header className="flex shrink-0 items-center bg-black px-4 py-2 pt-[max(env(safe-area-inset-top),0.5rem)]">
         <button
           type="button"
@@ -215,15 +222,18 @@ function Register() {
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
-        <div className="mb-4 flex flex-col items-center text-center">
-          <img
-            src={logoAsset.url}
-            alt="APOIS ENTREGA"
-            className="mb-2 h-12 w-auto object-contain"
-          />
-          <h1 className="text-[20px] font-black">Crie sua conta</h1>
-          <p className="mt-1 text-xs text-zinc-500">
-            Seus dados já ficam prontos para pagamentos por PIX.
+        <div className="mb-5 flex flex-col items-center text-center">
+          <img src={logoAsset.url} alt="APOIS ENTREGA" className="mb-3 h-14 w-auto object-contain" />
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">
+            {productLabel}
+          </p>
+          <h1 className="mt-2 text-[22px] font-black">
+            {isCourier ? "Comece como entregador" : "Crie sua conta"}
+          </h1>
+          <p className="mt-1 max-w-xs text-xs leading-5 text-zinc-500">
+            {isCourier
+              ? "Crie seu acesso. Na próxima etapa você informa veículo, endereço e envia os documentos para aprovação."
+              : "Cadastre seus dados para começar a usar a APOIS ENTREGA."}
           </p>
         </div>
 
@@ -231,9 +241,10 @@ function Register() {
           <Field label="Nome completo" error={fieldError("fullName")}>
             <Input
               value={formData.fullName}
-              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+              onChange={(event) => setFormData({ ...formData, fullName: event.target.value })}
               onBlur={() => setTouched({ ...touched, fullName: true })}
               placeholder="Digite seu nome completo"
+              autoComplete="name"
               className={fieldClass(Boolean(fieldError("fullName")))}
             />
           </Field>
@@ -243,9 +254,10 @@ function Register() {
               type="tel"
               inputMode="tel"
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: maskPhone(e.target.value) })}
+              onChange={(event) => setFormData({ ...formData, phone: maskPhone(event.target.value) })}
               onBlur={() => setTouched({ ...touched, phone: true })}
               placeholder="(00) 00000-0000"
+              autoComplete="tel"
               className={fieldClass(Boolean(fieldError("phone")))}
             />
           </Field>
@@ -254,7 +266,7 @@ function Register() {
             <Input
               inputMode="numeric"
               value={formData.cpf}
-              onChange={(e) => setFormData({ ...formData, cpf: maskCpf(e.target.value) })}
+              onChange={(event) => setFormData({ ...formData, cpf: maskCpf(event.target.value) })}
               onBlur={() => setTouched({ ...touched, cpf: true })}
               placeholder="000.000.000-00"
               maxLength={14}
@@ -266,12 +278,13 @@ function Register() {
             <Input
               inputMode="numeric"
               value={formData.birthDate}
-              onChange={(e) =>
-                setFormData({ ...formData, birthDate: maskBirthDate(e.target.value) })
+              onChange={(event) =>
+                setFormData({ ...formData, birthDate: maskBirthDate(event.target.value) })
               }
               onBlur={() => setTouched({ ...touched, birthDate: true })}
               placeholder="DD/MM/AAAA"
               maxLength={10}
+              autoComplete="bday"
               className={fieldClass(Boolean(fieldError("birthDate")))}
             />
           </Field>
@@ -280,9 +293,10 @@ function Register() {
             <Input
               type="email"
               value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              onChange={(event) => setFormData({ ...formData, email: event.target.value })}
               onBlur={() => setTouched({ ...touched, email: true })}
               placeholder="seu@email.com"
+              autoComplete="email"
               className={fieldClass(Boolean(fieldError("email")))}
             />
           </Field>
@@ -292,9 +306,10 @@ function Register() {
               <Input
                 type={showPassword ? "text" : "password"}
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(event) => setFormData({ ...formData, password: event.target.value })}
                 onBlur={() => setTouched({ ...touched, password: true })}
                 placeholder="Mínimo 8 caracteres"
+                autoComplete="new-password"
                 className={`${fieldClass(Boolean(fieldError("password")))} pr-12`}
               />
               <button
@@ -312,9 +327,10 @@ function Register() {
             <Input
               type={showPassword ? "text" : "password"}
               value={formData.confirmPassword}
-              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+              onChange={(event) => setFormData({ ...formData, confirmPassword: event.target.value })}
               onBlur={() => setTouched({ ...touched, confirmPassword: true })}
               placeholder="Repita sua senha"
+              autoComplete="new-password"
               className={fieldClass(Boolean(fieldError("confirmPassword")))}
             />
           </Field>
@@ -350,7 +366,13 @@ function Register() {
             disabled={isLoading || !isFormValid}
             className="h-12 w-full rounded-xl bg-primary text-base font-bold text-black disabled:bg-zinc-800 disabled:text-zinc-500"
           >
-            {isLoading ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : "Criar minha conta"}
+            {isLoading ? (
+              <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+            ) : isCourier ? (
+              "Continuar cadastro"
+            ) : (
+              "Criar minha conta"
+            )}
           </Button>
 
           <p className="pt-1 text-center text-xs text-zinc-500">
