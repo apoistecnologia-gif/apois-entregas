@@ -22,6 +22,10 @@ import {
   CourierStatusCard,
   CourierWaitingSheet,
 } from "@/components/CourierPremiumViews";
+import {
+  CourierCompletionSheet,
+  CourierSupportSheet,
+} from "@/components/CourierCompletionSupport";
 import logoAsset from "@/assets/logo.png.asset.json";
 
 export const Route = createFileRoute("/courier")({
@@ -54,6 +58,7 @@ function CourierApp() {
   const [nearbyMerchants, setNearbyMerchants] = useState<any[]>([]);
   const [deliveryHistory, setDeliveryHistory] = useState<any[]>([]);
   const [activeJob, setActiveJob] = useState<any>(null);
+  const [completedJob, setCompletedJob] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
   const [metrics, setMetrics] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -61,6 +66,8 @@ function CourierApp() {
   const [payouts, setPayouts] = useState<any[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [pin, setPin] = useState("");
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportDescription, setSupportDescription] = useState("");
   const [financeOpen, setFinanceOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -454,6 +461,7 @@ function CourierApp() {
   const completeDelivery = async () => {
     if (!activeJob || !courier?.id || !/^\d{4}$/.test(pin))
       return toast.error("Informe o PIN de 4 dígitos do cliente.");
+    const deliveredJob = activeJob;
     setBusy("delivery");
     const { data, error } = await rpc("complete_delivery_with_pin", {
       _delivery_job_id: activeJob.id,
@@ -463,14 +471,16 @@ function CourierApp() {
     if (error) return toast.error(error.message || "Não foi possível concluir a entrega.");
     if (!data) return toast.error("PIN incorreto. Confira com o cliente.");
     setPin("");
+    setSupportOpen(false);
+    setSupportDescription("");
+    setCompletedJob(deliveredJob);
     toast.success("Entrega concluída!");
     await loadCourierOperations(courier.id);
   };
 
   const reportDeliveryProblem = async () => {
     if (!activeJob) return;
-    const description = window.prompt("Descreva o problema desta entrega para o suporte:")?.trim();
-    if (!description) return;
+    const description = supportDescription.trim();
     if (description.length < 10) {
       toast.error("Descreva o problema com pelo menos 10 caracteres.");
       return;
@@ -490,6 +500,8 @@ function CourierApp() {
       toast.error(error.message || "Não foi possível abrir o chamado.");
       return;
     }
+    setSupportOpen(false);
+    setSupportDescription("");
     toast.success("Chamado aberto para o suporte.");
   };
 
@@ -714,7 +726,16 @@ function CourierApp() {
           onToggle={toggleOnline}
         />
 
-        {activeJob ? (
+        {completedJob ? (
+          <>
+            <CourierLiveMap
+              currentPosition={currentPosition}
+              merchants={nearbyMerchants}
+              activeOfferMerchantIds={[]}
+            />
+            <CourierCompletionSheet job={completedJob} onDone={() => setCompletedJob(null)} />
+          </>
+        ) : activeJob ? (
           <>
             <CourierRouteMap job={activeJob} currentPosition={currentPosition} />
             <ActiveDelivery
@@ -725,7 +746,7 @@ function CourierApp() {
               setPin={setPin}
               onTransition={transitionDelivery}
               onComplete={completeDelivery}
-              onReport={reportDeliveryProblem}
+              onReport={() => setSupportOpen(true)}
             />
           </>
         ) : online ? (
@@ -759,6 +780,20 @@ function CourierApp() {
           <CourierOfflineCard busy={busy === "online"} onToggle={toggleOnline} />
         )}
       </main>
+
+      <CourierSupportSheet
+        open={supportOpen && Boolean(activeJob)}
+        value={supportDescription}
+        onChange={setSupportDescription}
+        busy={busy === "support"}
+        onClose={() => {
+          if (busy !== "support") {
+            setSupportOpen(false);
+            setSupportDescription("");
+          }
+        }}
+        onSubmit={() => void reportDeliveryProblem()}
+      />
 
       <CourierBottomNav
         active="home"
