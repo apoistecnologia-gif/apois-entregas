@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate, useParams } from "@tanstack/react-router";
 import { ArrowLeft, Loader2, MessageSquare, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,19 @@ type ReviewOrder = {
 };
 
 export const Route = createFileRoute("/pedido/$orderId/avaliar")({
+  ssr: false,
+  beforeLoad: async ({ location }) => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      throw redirect({
+        to: "/login",
+        search: { redirect: location.href },
+      });
+    }
+    return { session };
+  },
   component: RateOrderPage,
   head: () => ({ meta: [{ title: "Avaliar pedido | APOIS ENTREGA" }] }),
 });
