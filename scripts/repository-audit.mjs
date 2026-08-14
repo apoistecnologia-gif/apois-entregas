@@ -125,9 +125,15 @@ async function verifySupabaseConfig() {
     report(file, "wrong-project", "project_id must point to APOIS ENTREGA - PRODUÇÃO");
   }
 
-  const sections = [...content.matchAll(/^\[functions\.([^\]]+)\]([\s\S]*?)(?=^\[|\s*$)/gm)];
   const publicFunctions = new Set();
-  for (const [, slug, body] of sections) {
+  const sectionHeader = /^\[functions\.([^\]]+)\]\s*$/gm;
+  const matches = [...content.matchAll(sectionHeader)];
+  for (let index = 0; index < matches.length; index += 1) {
+    const match = matches[index];
+    const slug = match[1];
+    const bodyStart = (match.index ?? 0) + match[0].length;
+    const bodyEnd = matches[index + 1]?.index ?? content.length;
+    const body = content.slice(bodyStart, bodyEnd);
     if (!/^verify_jwt\s*=\s*false\s*$/m.test(body)) continue;
     publicFunctions.add(slug);
     if (!PUBLIC_WEBHOOK_FUNCTIONS.has(slug)) {
