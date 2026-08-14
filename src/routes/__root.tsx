@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { ApoisLaunchSplash } from "../components/ApoisLaunchSplash";
 import { AuthSessionIsolation } from "../components/AuthSessionIsolation";
+import { CourierActiveDeliveryOverlay } from "../components/CourierActiveDeliveryOverlay";
 import { CourierOfferOverlay } from "../components/CourierOfferOverlay";
 import { MerchantOrderSoundWatcher } from "../components/MerchantOrderSoundWatcher";
 import { CartProvider } from "../contexts/CartContext";
@@ -179,6 +180,7 @@ function RootComponent() {
       <ApoisLaunchSplash />
       <MerchantOrderSoundWatcher />
       <CourierOfferOverlay />
+      <CourierActiveDeliveryOverlay />
       <ProductRouteIsolation>
         <AuthSessionIsolation>
           <CartProvider>
