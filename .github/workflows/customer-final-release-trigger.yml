@@ -1,0 +1,26 @@
+name: Customer Final Release Trigger
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/customer-final-release-trigger.yml
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch signed customer release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run mobile-android.yml \
+            --repo "${{ github.repository }}" \
+            --ref main \
+            -f app=customer \
+            -f release=true \
+            -f version=1.0.0
