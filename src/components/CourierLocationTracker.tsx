@@ -33,6 +33,7 @@ export function CourierLocationTracker({
   const [status, setStatus] = useState<"idle" | "locating" | "active" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const lastSentRef = useRef<CourierPosition | null>(null);
+  const latestPositionRef = useRef<CourierPosition | null>(null);
   const sendingRef = useRef(false);
 
   useEffect(() => {
@@ -40,6 +41,7 @@ export function CourierLocationTracker({
       setStatus("idle");
       setErrorMessage("");
       lastSentRef.current = null;
+      latestPositionRef.current = null;
       onPosition?.(null);
       return;
     }
@@ -103,6 +105,7 @@ export function CourierLocationTracker({
               : null,
           recordedAt: Date.now(),
         };
+        latestPositionRef.current = next;
         onPosition?.(next);
         void sendLocation(next);
       },
@@ -115,6 +118,7 @@ export function CourierLocationTracker({
             ? "Ative a permissão de localização para receber corridas próximas."
             : "Não foi possível obter sua localização. Verifique o GPS.",
         );
+        latestPositionRef.current = null;
         onPosition?.(null);
       },
       {
@@ -124,9 +128,19 @@ export function CourierLocationTracker({
       },
     );
 
+    // Keep the server-side courier heartbeat fresh even when the device is stationary.
+    // Dispatch intentionally ignores stale availability/location records.
+    const heartbeatId = window.setInterval(() => {
+      const latest = latestPositionRef.current;
+      if (!latest || disposed) return;
+      void sendLocation({ ...latest, recordedAt: Date.now() });
+    }, 60_000);
+
     return () => {
       disposed = true;
       navigator.geolocation.clearWatch(watchId);
+      window.clearInterval(heartbeatId);
+      latestPositionRef.current = null;
       sendingRef.current = false;
     };
   }, [enabled, onPosition]);
