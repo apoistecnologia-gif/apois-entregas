@@ -14,6 +14,11 @@ const TEXT_EXTENSIONS = new Set([
   ".yaml",
   ".toml",
 ]);
+const PUBLIC_WEBHOOK_FUNCTIONS = new Set([
+  "mercadopago-webhook",
+  "openpix-webhook",
+  "asaas-webhook",
+]);
 
 const findings = [];
 
@@ -121,12 +126,25 @@ async function verifySupabaseConfig() {
   }
 
   const sections = [...content.matchAll(/^\[functions\.([^\]]+)\]([\s\S]*?)(?=^\[|\s*$)/gm)];
+  const publicFunctions = new Set();
   for (const [, slug, body] of sections) {
-    if (/^verify_jwt\s*=\s*false\s*$/m.test(body) && slug !== "mercadopago-webhook") {
+    if (!/^verify_jwt\s*=\s*false\s*$/m.test(body)) continue;
+    publicFunctions.add(slug);
+    if (!PUBLIC_WEBHOOK_FUNCTIONS.has(slug)) {
       report(
         file,
         "unexpected-public-edge-function",
-        `${slug} disables Supabase JWT verification; only mercadopago-webhook is allowed`,
+        `${slug} disables Supabase JWT verification but is not an approved provider webhook`,
+      );
+    }
+  }
+
+  for (const slug of PUBLIC_WEBHOOK_FUNCTIONS) {
+    if (!publicFunctions.has(slug)) {
+      report(
+        file,
+        "webhook-jwt-config-drift",
+        `${slug} must disable Supabase JWT verification because the provider authenticates the webhook directly`,
       );
     }
   }
