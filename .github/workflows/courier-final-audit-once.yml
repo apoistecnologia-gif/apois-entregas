@@ -34,13 +34,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          PATHS=(
+            src/routes/courier.tsx
+            src/routes/login.tsx
+            src/routes/register.tsx
+            src/routes/redefinir-senha.tsx
+            src/components/CourierActiveDeliveryOverlay.tsx
+            src/components/CourierIncomingOfferOverlay.tsx
+            src/components/CourierLocationTracker.tsx
+            src/components/CourierOfferOverlay.tsx
+            src/components/CourierPanels.tsx
+            src/components/CourierRouteMap.tsx
+          )
           echo '--- courier scoped markers ---'
-          rg -n -i 'TODO|FIXME|HACK|TEMP|PLACEHOLDER|MOCK|NOT_IMPLEMENTED|console\.log|throw new Error\(["'"']Not implemented|href=["'"']#|onClick=\{\(\) => \{\}\}' \
-            src/routes/courier.tsx \
-            src/routes/login.tsx \
-            src/routes/register.tsx \
-            src/routes/redefinir-senha.tsx \
-            src/components/Courier*.tsx || true
+          rg -n -i 'TODO|FIXME|HACK|TEMP|PLACEHOLDER|MOCK|NOT_IMPLEMENTED|console\.log|href="#"|onClick=\{\(\) => \{\}\}' "${PATHS[@]}" || true
+          rg -n -F 'throw new Error("Not implemented")' "${PATHS[@]}" || true
           echo '--- incoming overlay references ---'
           rg -n 'CourierIncomingOfferOverlay' src || true
           echo '--- offer overlay references ---'
