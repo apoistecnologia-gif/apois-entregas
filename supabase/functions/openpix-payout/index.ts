@@ -148,7 +148,7 @@ Deno.serve(async (request: Request) => {
   const { data: payout, error: payoutError } = await admin
     .from("payouts")
     .select(
-      "id,wallet_id,payout_account_id,amount,status,provider,provider_payout_id,idempotency_key,requested_by",
+      "id,wallet_id,payout_account_id,amount,status,provider,provider_payout_id,idempotency_key,requested_by,pix_key_snapshot",
     )
     .eq("id", payoutId)
     .maybeSingle();
@@ -238,31 +238,24 @@ Deno.serve(async (request: Request) => {
 
   const { data: destination } = await admin
     .from("payout_accounts")
-    .select("pix_key,pix_key_type,document,is_active")
+    .select("pix_key_type,document,is_active")
     .eq("id", payout.payout_account_id)
     .eq("wallet_id", payout.wallet_id)
     .maybeSingle();
-  if (!destination?.is_active || !destination.pix_key) {
+  const payoutPixKey = text(payout.pix_key_snapshot);
+  if (!destination?.is_active || !payoutPixKey) {
     return response(409, {
-      error: "Cadastre uma chave PIX antes de solicitar o saque.",
+      error: "A chave PIX registrada para este saque não está disponível.",
       code: "PIX_KEY_REQUIRED",
     });
   }
 
-  const pixKeyType =
-    destination.pix_key_type || inferPixKeyType(destination.pix_key, destination.document);
+  const pixKeyType = destination.pix_key_type || inferPixKeyType(payoutPixKey, destination.document);
   if (!pixKeyType) {
     return response(409, {
-      error: "Não foi possível identificar o tipo da chave PIX.",
+      error: "Não foi possível identificar o tipo da chave PIX registrada para este saque.",
       code: "PIX_KEY_TYPE_REQUIRED",
     });
-  }
-  if (!destination.pix_key_type) {
-    await admin
-      .from("payout_accounts")
-      .update({ pix_key_type: pixKeyType })
-      .eq("id", payout.payout_account_id)
-      .eq("wallet_id", payout.wallet_id);
   }
 
   const amount = Number(payout.amount);
@@ -299,7 +292,7 @@ Deno.serve(async (request: Request) => {
         body: JSON.stringify({
           type: "PIX_KEY",
           value: amountCents,
-          destinationAlias: normalizePixKey(pixKeyType, destination.pix_key),
+          destinationAlias: normalizePixKey(pixKeyType, payoutPixKey),
           destinationAliasType: openPixAliasType(pixKeyType),
           correlationID,
           comment: `Saque APOIS Entregas ${payout.id}`,
