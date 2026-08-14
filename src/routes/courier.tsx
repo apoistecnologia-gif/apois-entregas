@@ -22,10 +22,7 @@ import {
   CourierStatusCard,
   CourierWaitingSheet,
 } from "@/components/CourierPremiumViews";
-import {
-  CourierCompletionSheet,
-  CourierSupportSheet,
-} from "@/components/CourierCompletionSupport";
+import { CourierCompletionSheet, CourierSupportSheet } from "@/components/CourierCompletionSupport";
 import logoAsset from "@/assets/logo.png.asset.json";
 
 export const Route = createFileRoute("/courier")({
@@ -548,7 +545,11 @@ function CourierApp() {
     return (
       <div className="grid min-h-dvh place-items-center bg-black p-5 text-white">
         <div className="text-center">
-          <img src={logoAsset.url} alt="APOIS ENTREGA" className="mx-auto h-14 w-auto object-contain" />
+          <img
+            src={logoAsset.url}
+            alt="APOIS ENTREGA"
+            className="mx-auto h-14 w-auto object-contain"
+          />
           <Loader2 className="mx-auto mt-6 h-7 w-7 animate-spin text-primary" />
           <p className="mt-3 text-xs font-bold text-zinc-500">Carregando sua jornada...</p>
         </div>
@@ -570,11 +571,17 @@ function CourierApp() {
               : "Verifique sua conexão com a internet e tente novamente."}
           </p>
           {appError === "Sessão expirada." ? (
-            <Button onClick={() => navigate({ to: "/login" })} className="mt-5 h-12 w-full rounded-2xl font-black">
+            <Button
+              onClick={() => navigate({ to: "/login" })}
+              className="mt-5 h-12 w-full rounded-2xl font-black"
+            >
               ENTRAR NOVAMENTE
             </Button>
           ) : (
-            <Button onClick={() => void loadAll()} className="mt-5 h-12 w-full rounded-2xl font-black">
+            <Button
+              onClick={() => void loadAll()}
+              className="mt-5 h-12 w-full rounded-2xl font-black"
+            >
               <RefreshCw className="mr-2 h-4 w-4" /> TENTAR NOVAMENTE
             </Button>
           )}
@@ -703,7 +710,11 @@ function CourierApp() {
       <header className="sticky top-0 z-40 grid min-h-20 grid-cols-[3rem_1fr_3rem] items-center border-b border-primary/10 bg-black/92 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-2xl">
         <div aria-hidden="true" />
         <div className="flex justify-center py-2">
-          <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-11 w-auto max-w-[55vw] object-contain" />
+          <img
+            src={logoAsset.url}
+            alt="APOIS ENTREGA"
+            className="h-11 w-auto max-w-[55vw] object-contain"
+          />
         </div>
         <button
           type="button"
@@ -712,7 +723,9 @@ function CourierApp() {
           className="relative grid h-11 w-11 place-items-center justify-self-end rounded-full border border-zinc-800 bg-zinc-950 text-zinc-300 shadow-[0_8px_24px_rgba(0,0,0,0.4)] active:scale-95"
         >
           <UserRound className="h-5 w-5" />
-          <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-black ${online ? "bg-emerald-400" : "bg-zinc-600"}`} />
+          <span
+            className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-black ${online ? "bg-emerald-400" : "bg-zinc-600"}`}
+          />
         </button>
       </header>
 

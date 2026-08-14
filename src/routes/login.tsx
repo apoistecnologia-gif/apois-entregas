@@ -285,11 +285,7 @@ function Login() {
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 active:text-zinc-300"
                     aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
                 <div className="flex justify-end">

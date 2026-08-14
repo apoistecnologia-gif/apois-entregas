@@ -1,13 +1,6 @@
 /// <reference types="@types/google.maps" />
 import { APIProvider, AdvancedMarker, ColorScheme, Map, useMap } from "@vis.gl/react-google-maps";
-import {
-  Crosshair,
-  ExternalLink,
-  MapPin,
-  Navigation,
-  PackageCheck,
-  Store,
-} from "lucide-react";
+import { Crosshair, ExternalLink, MapPin, Navigation, PackageCheck, Store } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export type CourierPosition = {
@@ -325,7 +318,9 @@ export function CourierLiveMap({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-black text-white">{selectedMerchant.name}</p>
+                    <p className="truncate text-sm font-black text-white">
+                      {selectedMerchant.name}
+                    </p>
                     <p className="mt-0.5 text-xs text-zinc-400">
                       A aproximadamente {distanceLabel(selectedMerchant.distanceMeters)} de você
                     </p>
@@ -435,7 +430,9 @@ export function CourierRouteMap({
             >
               <RouteMapContent currentPosition={currentPosition} target={target} />
               {currentPosition ? (
-                <RecenterControl position={{ lat: currentPosition.lat, lng: currentPosition.lng }} />
+                <RecenterControl
+                  position={{ lat: currentPosition.lat, lng: currentPosition.lng }}
+                />
               ) : null}
             </Map>
           </div>

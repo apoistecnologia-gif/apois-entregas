@@ -1,4 +1,11 @@
-import { AlertTriangle, CheckCircle2, CircleDollarSign, Loader2, MessageSquareText, X } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CircleDollarSign,
+  Loader2,
+  MessageSquareText,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const money = (value: unknown) =>
@@ -29,7 +36,10 @@ export function CourierCompletionSheet({ job, onDone }: { job: any; onDone: () =
           <CircleDollarSign className="h-5 w-5" />
         </div>
       </div>
-      <Button onClick={onDone} className="mt-5 h-14 w-full rounded-2xl font-black uppercase tracking-[0.05em]">
+      <Button
+        onClick={onDone}
+        className="mt-5 h-14 w-full rounded-2xl font-black uppercase tracking-[0.05em]"
+      >
         Voltar ao início
       </Button>
     </section>
@@ -102,7 +112,11 @@ export function CourierSupportSheet({
           disabled={busy || value.trim().length < 10}
           className="mt-4 h-14 w-full rounded-2xl font-black uppercase tracking-[0.04em]"
         >
-          {busy ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <MessageSquareText className="mr-2 h-5 w-5" />}
+          {busy ? (
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          ) : (
+            <MessageSquareText className="mr-2 h-5 w-5" />
+          )}
           {busy ? "Abrindo chamado..." : "Enviar para o suporte"}
         </Button>
       </section>

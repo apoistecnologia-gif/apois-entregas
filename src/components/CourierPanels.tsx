@@ -133,7 +133,9 @@ export function CourierHistoryPanel({ jobs, onClose }: { jobs: any[]; onClose: (
             Seu histórico APOIS
           </p>
           <h1 className="mt-1 text-2xl font-black">Corridas</h1>
-          <p className="mt-1 text-sm text-zinc-500">Acompanhe suas entregas concluídas e canceladas.</p>
+          <p className="mt-1 text-sm text-zinc-500">
+            Acompanhe suas entregas concluídas e canceladas.
+          </p>
           <div className="mt-5 grid grid-cols-2 divide-x divide-zinc-800 rounded-2xl border border-zinc-800 bg-black/55 p-4">
             <div className="pr-4">
               <p className="text-[9px] font-black uppercase text-zinc-600">Concluídas</p>
@@ -169,8 +171,12 @@ export function CourierHistoryPanel({ jobs, onClose }: { jobs: any[]; onClose: (
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">Pedido</p>
-                    <p className="mt-0.5 text-base font-black">#{job.orders?.order_number ?? "—"}</p>
+                    <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
+                      Pedido
+                    </p>
+                    <p className="mt-0.5 text-base font-black">
+                      #{job.orders?.order_number ?? "—"}
+                    </p>
                   </div>
                   <span
                     className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase ${
@@ -231,7 +237,9 @@ export function CourierHistoryPanel({ jobs, onClose }: { jobs: any[]; onClose: (
                   {isDelivered ? (
                     <div className="text-right">
                       <p className="text-[9px] font-black uppercase text-zinc-600">Ganho</p>
-                      <p className="text-sm font-black text-primary">{money(job.estimated_earnings)}</p>
+                      <p className="text-sm font-black text-primary">
+                        {money(job.estimated_earnings)}
+                      </p>
                     </div>
                   ) : null}
                 </div>
@@ -265,7 +273,8 @@ export function CourierProfilePanel({
 }) {
   const approvedDocs = documents.filter((document) => document.status === "approved").length;
   const vehicle = [courier.vehicle_type, courier.vehicle_model].filter(Boolean).join(" · ");
-  const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name || "Entregador APOIS";
+  const fullName =
+    user?.user_metadata?.full_name || user?.user_metadata?.name || "Entregador APOIS";
 
   return (
     <div className="min-h-dvh bg-black text-white">
@@ -307,7 +316,9 @@ export function CourierProfilePanel({
           <section className="rounded-2xl border border-primary/15 bg-zinc-950 p-4">
             <Bike className="h-5 w-5 text-primary" />
             <p className="mt-3 text-[9px] font-black uppercase text-zinc-600">Disponibilidade</p>
-            <p className={`mt-1 text-lg font-black ${availability?.is_online ? "text-primary" : "text-zinc-400"}`}>
+            <p
+              className={`mt-1 text-lg font-black ${availability?.is_online ? "text-primary" : "text-zinc-400"}`}
+            >
               {availability?.is_online ? "ONLINE" : "OFFLINE"}
             </p>
             <p className="mt-1 text-[10px] text-zinc-500">
@@ -325,14 +336,18 @@ export function CourierProfilePanel({
             <Bike className="h-6 w-6 text-primary" />
           </div>
           <div className="mt-4 rounded-2xl border border-zinc-900 bg-black p-3.5">
-            <p className="text-sm font-bold capitalize text-zinc-200">{vehicle || "Veículo não informado"}</p>
+            <p className="text-sm font-bold capitalize text-zinc-200">
+              {vehicle || "Veículo não informado"}
+            </p>
             {courier.vehicle_plate ? (
               <p className="mt-1 text-xs font-bold uppercase tracking-wider text-zinc-500">
                 Placa {courier.vehicle_plate}
               </p>
             ) : null}
             {courier.cnh_number ? (
-              <p className="mt-1 text-xs text-zinc-600">CNH ••••{String(courier.cnh_number).slice(-4)}</p>
+              <p className="mt-1 text-xs text-zinc-600">
+                CNH ••••{String(courier.cnh_number).slice(-4)}
+              </p>
             ) : null}
           </div>
         </section>
@@ -340,7 +355,9 @@ export function CourierProfilePanel({
         <section className="rounded-[1.6rem] border border-zinc-800 bg-zinc-950 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[9px] font-black uppercase tracking-wider text-primary">Cadastro</p>
+              <p className="text-[9px] font-black uppercase tracking-wider text-primary">
+                Cadastro
+              </p>
               <h2 className="mt-1 font-black">Documentos</h2>
             </div>
             <FileCheck2 className="h-6 w-6 text-primary" />
@@ -360,7 +377,9 @@ export function CourierProfilePanel({
                     <p className="truncate text-sm font-bold text-zinc-200">
                       {documentLabel[document.document_type] || document.document_type}
                     </p>
-                    <p className="mt-0.5 text-[10px] text-zinc-600">Arquivo protegido na sua conta</p>
+                    <p className="mt-0.5 text-[10px] text-zinc-600">
+                      Arquivo protegido na sua conta
+                    </p>
                   </div>
                   <span
                     className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black uppercase ${
@@ -394,7 +413,9 @@ export function CourierProfilePanel({
             </div>
             <div className="min-w-0">
               <p className="font-black">Carteira e saques</p>
-              <p className="truncate text-xs text-zinc-500">Disponível {money(wallet?.available_balance)}</p>
+              <p className="truncate text-xs text-zinc-500">
+                Disponível {money(wallet?.available_balance)}
+              </p>
             </div>
           </div>
           <ChevronRight className="h-5 w-5 shrink-0 text-primary" />
