@@ -23,6 +23,10 @@ function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function text(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 function badRequest(message: string, code = "INVALID_REQUEST") {
   return new Response(JSON.stringify({ error: message, code }), {
     status: 400,
@@ -229,6 +233,10 @@ Deno.serve(async (request: Request) => {
     );
   }
 
+  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
   let payload: unknown;
   try {
     payload = await request.json();
@@ -259,11 +267,67 @@ Deno.serve(async (request: Request) => {
     return badRequest("Modalidade de recebimento inválida.");
   }
 
-  const deliveryAddress = fulfillmentType === "pickup" ? {} : rawDeliveryAddress;
-  if (!isRecord(deliveryAddress)) return badRequest("Endereço de entrega inválido.");
-  if (fulfillmentType === "delivery" && Object.keys(deliveryAddress).length === 0) {
-    return badRequest("Selecione um endereço de entrega.");
+  let deliveryAddress: JsonRecord = {};
+  if (fulfillmentType === "delivery") {
+    if (!isRecord(rawDeliveryAddress)) return badRequest("Endereço de entrega inválido.");
+    const addressId = text(rawDeliveryAddress.id);
+    if (!addressId || !UUID_RE.test(addressId)) {
+      return badRequest(
+        "Selecione um endereço salvo para entrega.",
+        "DELIVERY_ADDRESS_NOT_SAVED",
+      );
+    }
+
+    const { data: savedAddress, error: addressError } = await adminClient
+      .from("customer_addresses")
+      .select(
+        "id,label,street,number,complement,neighborhood,city,state,postal_code,reference,latitude,longitude",
+      )
+      .eq("id", addressId)
+      .eq("user_id", userData.user.id)
+      .maybeSingle();
+    if (addressError) {
+      console.error("create-order address lookup failed", {
+        code: addressError.code,
+        addressId,
+      });
+      return new Response(
+        JSON.stringify({
+          error: "Não foi possível validar o endereço de entrega.",
+          code: "DELIVERY_ADDRESS_LOOKUP_FAILED",
+        }),
+        { status: 500, headers: jsonHeaders },
+      );
+    }
+    if (!savedAddress) {
+      return badRequest(
+        "Este endereço não pertence à sua conta ou não está mais disponível.",
+        "DELIVERY_ADDRESS_NOT_FOUND",
+      );
+    }
+    if (savedAddress.latitude === null || savedAddress.longitude === null) {
+      return badRequest(
+        "Confirme o ponto exato deste endereço no mapa antes de finalizar.",
+        "DELIVERY_COORDINATES_REQUIRED",
+      );
+    }
+
+    deliveryAddress = {
+      id: savedAddress.id,
+      label: savedAddress.label,
+      street: savedAddress.street,
+      number: savedAddress.number,
+      complement: savedAddress.complement,
+      neighborhood: savedAddress.neighborhood,
+      city: savedAddress.city,
+      state: savedAddress.state,
+      postal_code: savedAddress.postal_code,
+      reference: savedAddress.reference,
+      latitude: savedAddress.latitude,
+      longitude: savedAddress.longitude,
+    };
   }
+
   if (observation !== undefined && observation !== null && typeof observation !== "string") {
     return badRequest("Observação inválida.");
   }
@@ -297,9 +361,6 @@ Deno.serve(async (request: Request) => {
   const effectiveRequestKey = await deriveUuid(`attempt:${requestKey}`, canonicalPayload);
   const checkoutIntentKey = await deriveUuid(`checkout:${userData.user.id}`, canonicalPayload);
 
-  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
   const { data, error } = await adminClient.rpc("create_order_for_checkout_intent_v2", {
     p_customer_user_id: userData.user.id,
     p_merchant_id: merchantId,
