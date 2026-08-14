@@ -1,22 +1,16 @@
 name: Mobile Android
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/mobile-android.yml"
-      - "capacitor.config.ts"
-      - "vite.config.ts"
-      - "public/favicon.png"
-      - "src/**"
-      - "scripts/**"
-      - "supabase/functions/create-asaas-pix-charge/**"
-      - "supabase/functions/asaas-webhook/**"
-      - "supabase/functions/sync-payment-status/**"
-      - "package.json"
-      - "bun.lock"
   workflow_dispatch:
+    inputs:
+      product:
+        description: Produto Android para empacotar
+        required: true
+        default: customer
+        type: choice
+        options:
+          - customer
+          - courier
 
 permissions:
   contents: read
@@ -25,16 +19,10 @@ jobs:
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 35
-    strategy:
-      fail-fast: false
-      matrix:
-        product:
-          - courier
-          - customer
     env:
-      APOIS_MOBILE_PRODUCT: ${{ matrix.product }}
+      APOIS_MOBILE_PRODUCT: ${{ inputs.product }}
       APOIS_MOBILE_BUILD: "1"
-      VITE_APOIS_PRODUCT_MODE: ${{ matrix.product }}
+      VITE_APOIS_PRODUCT_MODE: ${{ inputs.product }}
       VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_tmNxPNALqBcWiEdD7_eWOw_mk0qRkJa
       VITE_GOOGLE_MAPS_BROWSER_KEY: ${{ secrets.VITE_GOOGLE_MAPS_BROWSER_KEY || 'ci-placeholder' }}
@@ -349,11 +337,11 @@ jobs:
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: apois-${{ matrix.product }}-android
+          name: apois-${{ inputs.product }}-android
           if-no-files-found: error
           path: |
             android/app/build/outputs/apk/debug/app-debug.apk
             android/app/build/outputs/apk/release/app-release-signed.apk
             android/app/build/outputs/bundle/release/app-release-signed.aab
             android/app/build/outputs/bundle/release/app-release-unsigned.aab
-            android/artifact-manifest-${{ matrix.product }}.txt
+            android/artifact-manifest-${{ inputs.product }}.txt
