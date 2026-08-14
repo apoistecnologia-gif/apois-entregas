@@ -62,7 +62,10 @@ Deno.serve(async (request: Request) => {
     Deno.env.get("OPENPIX_APP_ID_PRODUCTION")?.trim(),
   ].filter((value): value is string => Boolean(value));
   if (appIds.length === 0) {
-    return response(503, { error: "OpenPix não configurada.", code: "PAYMENT_PROVIDER_NOT_CONFIGURED" });
+    return response(503, {
+      error: "OpenPix não configurada.",
+      code: "PAYMENT_PROVIDER_NOT_CONFIGURED",
+    });
   }
 
   let authenticated = false;
@@ -74,7 +77,10 @@ Deno.serve(async (request: Request) => {
     }
   }
   if (!authenticated) {
-    return response(401, { error: "Webhook OpenPix não autenticado.", code: "INVALID_WEBHOOK_AUTH" });
+    return response(401, {
+      error: "Webhook OpenPix não autenticado.",
+      code: "INVALID_WEBHOOK_AUTH",
+    });
   }
 
   const rawBody = await request.text();
@@ -171,7 +177,10 @@ Deno.serve(async (request: Request) => {
         .update({ status: "failed", error_message: "payment_not_found" })
         .eq("provider", "openpix")
         .eq("provider_event_id", eventId);
-      return response(500, { error: "Pagamento local ainda não encontrado.", code: "PAYMENT_NOT_FOUND" });
+      return response(500, {
+        error: "Pagamento local ainda não encontrado.",
+        code: "PAYMENT_NOT_FOUND",
+      });
     }
 
     const paymentId = text(payment.id);
@@ -189,7 +198,10 @@ Deno.serve(async (request: Request) => {
         .update({ status: "failed", error_message: "amount_mismatch", payment_id: paymentId })
         .eq("provider", "openpix")
         .eq("provider_event_id", eventId);
-      return response(409, { error: "Valor do webhook divergente.", code: "PAYMENT_AMOUNT_MISMATCH" });
+      return response(409, {
+        error: "Valor do webhook divergente.",
+        code: "PAYMENT_AMOUNT_MISMATCH",
+      });
     }
 
     const { data: order } = await admin
@@ -237,7 +249,10 @@ Deno.serve(async (request: Request) => {
         .update({ status: "failed", error_message: "payment_update_failed", payment_id: paymentId })
         .eq("provider", "openpix")
         .eq("provider_event_id", eventId);
-      return response(500, { error: "Falha ao confirmar pagamento.", code: "PAYMENT_UPDATE_FAILED" });
+      return response(500, {
+        error: "Falha ao confirmar pagamento.",
+        code: "PAYMENT_UPDATE_FAILED",
+      });
     }
 
     const { error: orderUpdateError } = await admin
@@ -278,7 +293,10 @@ Deno.serve(async (request: Request) => {
         .update({ status: "failed", error_message: "wallet_reserve_failed", payment_id: paymentId })
         .eq("provider", "openpix")
         .eq("provider_event_id", eventId);
-      console.error("openpix-webhook merchant reserve failed", { code: reserveError.code, orderId: order.id });
+      console.error("openpix-webhook merchant reserve failed", {
+        code: reserveError.code,
+        orderId: order.id,
+      });
       return response(500, {
         error: "Pagamento confirmado; conciliação financeira pendente.",
         code: "WALLET_SYNC_FAILED",
@@ -287,7 +305,12 @@ Deno.serve(async (request: Request) => {
 
     await admin
       .from("payment_events")
-      .update({ status: "processed", error_message: null, payment_id: paymentId, processed_at: now })
+      .update({
+        status: "processed",
+        error_message: null,
+        payment_id: paymentId,
+        processed_at: now,
+      })
       .eq("provider", "openpix")
       .eq("provider_event_id", eventId);
     return response(200, { ok: true, paymentId, orderId: order.id });
@@ -324,13 +347,18 @@ Deno.serve(async (request: Request) => {
       error_message: null,
       processed_at: null,
     };
-    if (existingEvent) await admin.from("payment_events").update(eventRow).eq("id", existingEvent.id);
+    if (existingEvent)
+      await admin.from("payment_events").update(eventRow).eq("id", existingEvent.id);
     else await admin.from("payment_events").insert(eventRow);
 
     if (!payoutId) {
       await admin
         .from("payment_events")
-        .update({ status: "ignored", error_message: "unknown_payout_correlation", processed_at: now })
+        .update({
+          status: "ignored",
+          error_message: "unknown_payout_correlation",
+          processed_at: now,
+        })
         .eq("provider", "openpix")
         .eq("provider_event_id", eventId);
       return response(200, { ok: true, ignored: true });
@@ -379,7 +407,8 @@ Deno.serve(async (request: Request) => {
           ? "failed"
           : "cancelled";
     const errorRecord = isRecord(payload.error) ? payload.error : null;
-    const failureReason = text(errorRecord?.description) ?? text(outgoingTransaction?.providerRejectedReason);
+    const failureReason =
+      text(errorRecord?.description) ?? text(outgoingTransaction?.providerRejectedReason);
     const { error: settleError } = await admin.rpc("settle_payout", {
       _payout_id: payout.id,
       _new_status: newStatus,
@@ -393,8 +422,14 @@ Deno.serve(async (request: Request) => {
         .update({ status: "failed", error_message: "payout_settlement_failed" })
         .eq("provider", "openpix")
         .eq("provider_event_id", eventId);
-      console.error("openpix-webhook payout settlement failed", { code: settleError.code, payoutId: payout.id });
-      return response(500, { error: "Falha ao conciliar saque.", code: "PAYOUT_SETTLEMENT_FAILED" });
+      console.error("openpix-webhook payout settlement failed", {
+        code: settleError.code,
+        payoutId: payout.id,
+      });
+      return response(500, {
+        error: "Falha ao conciliar saque.",
+        code: "PAYOUT_SETTLEMENT_FAILED",
+      });
     }
 
     await admin

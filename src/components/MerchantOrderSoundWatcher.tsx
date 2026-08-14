@@ -44,7 +44,8 @@ function MerchantOrderSoundWatcher() {
 
   const playOrderAlert = async () => {
     const context = audioContextRef.current;
-    if (!context || !audioUnlockedRef.current || document.visibilityState !== "visible") return false;
+    if (!context || !audioUnlockedRef.current || document.visibilityState !== "visible")
+      return false;
     try {
       if (context.state === "suspended") await context.resume();
       if (context.state !== "running") return false;
@@ -103,10 +104,7 @@ function MerchantOrderSoundWatcher() {
       }
 
       master.gain.setValueAtTime(0.9, now + strikeCount * strikeInterval);
-      master.gain.exponentialRampToValueAtTime(
-        0.0001,
-        now + strikeCount * strikeInterval + 0.08,
-      );
+      master.gain.exponentialRampToValueAtTime(0.0001, now + strikeCount * strikeInterval + 0.08);
       return true;
     } catch {
       audioUnlockedRef.current = false;
@@ -182,7 +180,10 @@ function MerchantOrderSoundWatcher() {
     unlockAudioRef.current = unlockAudio;
     const onBackgroundGesture = (event: PointerEvent | KeyboardEvent) => {
       const target = event.target;
-      if (target instanceof Element && target.closest("button,a,input,select,textarea,[role='button']")) {
+      if (
+        target instanceof Element &&
+        target.closest("button,a,input,select,textarea,[role='button']")
+      ) {
         return;
       }
       void unlockAudio();

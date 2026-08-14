@@ -302,9 +302,7 @@ Deno.serve(async (request: Request) => {
   }
 
   const providerPayment =
-    isRecord(providerPayload) && isRecord(providerPayload.payment)
-      ? providerPayload.payment
-      : null;
+    isRecord(providerPayload) && isRecord(providerPayload.payment) ? providerPayload.payment : null;
   if (!providerPayment) {
     return response(502, {
       error: "Resposta inválida da OpenPix.",

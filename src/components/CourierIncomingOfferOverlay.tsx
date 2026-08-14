@@ -54,7 +54,9 @@ const rpc = (name: string, args?: Record<string, unknown>) =>
   (supabase.rpc as any)(name, args ?? {});
 
 function money(value: unknown) {
-  return `R$ ${Number(value ?? 0).toFixed(2).replace(".", ",")}`;
+  return `R$ ${Number(value ?? 0)
+    .toFixed(2)
+    .replace(".", ",")}`;
 }
 
 function distance(value: unknown) {
@@ -322,9 +324,7 @@ function CourierIncomingOfferOverlay() {
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">
                   Nova entrega
                 </p>
-                <p className="text-sm font-black text-white">
-                  Pedido #{offer.order_number ?? "—"}
-                </p>
+                <p className="text-sm font-black text-white">Pedido #{offer.order_number ?? "—"}</p>
               </div>
             </div>
             {offers.length > 1 ? (

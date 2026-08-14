@@ -46,7 +46,9 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function money(value: MerchantOrder["total"]) {
-  return `R$ ${Number(value ?? 0).toFixed(2).replace(".", ",")}`;
+  return `R$ ${Number(value ?? 0)
+    .toFixed(2)
+    .replace(".", ",")}`;
 }
 
 function MerchantOrderControlCenter() {
