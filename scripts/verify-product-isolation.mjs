@@ -6,7 +6,9 @@ const product = String(process.argv[2] ?? "")
   .toLowerCase();
 const allowedProducts = new Set(["customer", "merchant", "courier", "admin"]);
 if (!allowedProducts.has(product)) {
-  console.error("Usage: node scripts/verify-product-isolation.mjs <customer|merchant|courier|admin>");
+  console.error(
+    "Usage: node scripts/verify-product-isolation.mjs <customer|merchant|courier|admin>",
+  );
   process.exit(1);
 }
 
@@ -45,7 +47,8 @@ function isAllowed(routePath) {
   const root = routeRoot(routePath);
   if (product === "customer") return customerRoots.has(root);
   if (product === "courier") return root === "courier";
-  if (product === "merchant") return root === "merchant" || root === "configuracoes-estabelecimento";
+  if (product === "merchant")
+    return root === "merchant" || root === "configuracoes-estabelecimento";
   return root === "admin";
 }
 
