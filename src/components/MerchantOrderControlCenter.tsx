@@ -66,6 +66,7 @@ function MerchantOrderControlCenter() {
         "id,order_number,status,payment_status,payment_method,fulfillment_type,total,created_at",
       )
       .eq("merchant_id", id)
+      .eq("payment_status", "paid")
       .in("status", ACTIVE_STATUSES)
       .order("created_at", { ascending: true })
       .limit(50);
