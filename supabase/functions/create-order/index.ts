@@ -272,10 +272,7 @@ Deno.serve(async (request: Request) => {
     if (!isRecord(rawDeliveryAddress)) return badRequest("Endereço de entrega inválido.");
     const addressId = text(rawDeliveryAddress.id);
     if (!addressId || !UUID_RE.test(addressId)) {
-      return badRequest(
-        "Selecione um endereço salvo para entrega.",
-        "DELIVERY_ADDRESS_NOT_SAVED",
-      );
+      return badRequest("Selecione um endereço salvo para entrega.", "DELIVERY_ADDRESS_NOT_SAVED");
     }
 
     const { data: savedAddress, error: addressError } = await adminClient
