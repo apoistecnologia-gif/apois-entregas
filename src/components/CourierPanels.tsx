@@ -30,22 +30,24 @@ const statusLabel: Record<string, string> = {
 };
 
 export function CourierBottomNav({
+  active = "home",
   onHome,
   onHistory,
   onFinance,
   onProfile,
 }: {
+  active?: "home" | "history" | "finance" | "profile";
   onHome: () => void;
   onHistory: () => void;
   onFinance: () => void;
   onProfile: () => void;
 }) {
   const items = [
-    { label: "Início", icon: House, onClick: onHome },
-    { label: "Corridas", icon: Bike, onClick: onHistory },
-    { label: "Ganhos", icon: WalletCards, onClick: onFinance },
-    { label: "Perfil", icon: UserRound, onClick: onProfile },
-  ];
+    { id: "home", label: "Início", icon: House, onClick: onHome },
+    { id: "history", label: "Corridas", icon: Bike, onClick: onHistory },
+    { id: "finance", label: "Ganhos", icon: WalletCards, onClick: onFinance },
+    { id: "profile", label: "Perfil", icon: UserRound, onClick: onProfile },
+  ] as const;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-900 bg-black/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl">
@@ -55,10 +57,16 @@ export function CourierBottomNav({
             key={item.label}
             type="button"
             onClick={item.onClick}
-            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-bold text-zinc-500 transition-colors active:bg-zinc-900 active:text-primary"
+            aria-current={active === item.id ? "page" : undefined}
+            className={`relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-bold transition-colors active:bg-zinc-900 ${
+              active === item.id ? "text-primary" : "text-zinc-500"
+            }`}
           >
             <item.icon className="h-5 w-5" />
             {item.label}
+            {active === item.id ? (
+              <span className="absolute bottom-0 h-0.5 w-7 rounded-full bg-primary" />
+            ) : null}
           </button>
         ))}
       </div>

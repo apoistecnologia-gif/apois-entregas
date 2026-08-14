@@ -7,11 +7,7 @@ import { useMemo, useState } from "react";
 import logoAsset from "@/assets/logo.png.asset.json";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  getApoisProductMode,
-  getProductHomeRoute,
-  getProductLabel,
-} from "@/lib/product-routing";
+import { getApoisProductMode, getProductHomeRoute, getProductLabel } from "@/lib/product-routing";
 
 export const Route = createFileRoute("/register")({
   beforeLoad: async () => {
@@ -30,13 +26,7 @@ export const Route = createFileRoute("/register")({
 const onlyDigits = (value: string) => value.replace(/\D/g, "");
 
 type FieldName =
-  | "fullName"
-  | "phone"
-  | "cpf"
-  | "birthDate"
-  | "email"
-  | "password"
-  | "confirmPassword";
+  "fullName" | "phone" | "cpf" | "birthDate" | "email" | "password" | "confirmPassword";
 type FormErrors = Partial<Record<FieldName, string>>;
 
 const maskPhone = (value: string) => {
@@ -121,7 +111,8 @@ function Register() {
 
   const errors = useMemo<FormErrors>(() => {
     const next: FormErrors = {};
-    if (formData.fullName.trim().split(/\s+/).length < 2) next.fullName = "Digite seu nome completo";
+    if (formData.fullName.trim().split(/\s+/).length < 2)
+      next.fullName = "Digite seu nome completo";
     if (onlyDigits(formData.phone).length < 10) next.phone = "Telefone incompleto";
     if (!isValidCpf(formData.cpf)) next.cpf = "Informe um CPF válido";
     if (!birthDateToIso(formData.birthDate)) {
@@ -223,7 +214,11 @@ function Register() {
 
       <main className="min-h-0 flex-1 overflow-y-auto px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
         <div className="mb-5 flex flex-col items-center text-center">
-          <img src={logoAsset.url} alt="APOIS ENTREGA" className="mb-3 h-14 w-auto object-contain" />
+          <img
+            src={logoAsset.url}
+            alt="APOIS ENTREGA"
+            className="mb-3 h-14 w-auto object-contain"
+          />
           <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">
             {productLabel}
           </p>
@@ -254,7 +249,9 @@ function Register() {
               type="tel"
               inputMode="tel"
               value={formData.phone}
-              onChange={(event) => setFormData({ ...formData, phone: maskPhone(event.target.value) })}
+              onChange={(event) =>
+                setFormData({ ...formData, phone: maskPhone(event.target.value) })
+              }
               onBlur={() => setTouched({ ...touched, phone: true })}
               placeholder="(00) 00000-0000"
               autoComplete="tel"
@@ -327,7 +324,9 @@ function Register() {
             <Input
               type={showPassword ? "text" : "password"}
               value={formData.confirmPassword}
-              onChange={(event) => setFormData({ ...formData, confirmPassword: event.target.value })}
+              onChange={(event) =>
+                setFormData({ ...formData, confirmPassword: event.target.value })
+              }
               onBlur={() => setTouched({ ...touched, confirmPassword: true })}
               placeholder="Repita sua senha"
               autoComplete="new-password"

@@ -85,57 +85,6 @@ function CourierApp() {
   });
   const [currentPosition, setCurrentPosition] = useState<CourierPosition | null>(null);
   const startupAvailabilityHandledRef = useRef(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const offerAlertIntervalRef = useRef<number | null>(null);
-  const offerAlertActiveRef = useRef(false);
-
-  const ensureOfferAudioContext = useCallback(() => {
-    if (typeof window === "undefined") return null;
-    const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextCtor) return null;
-    if (!audioContextRef.current) audioContextRef.current = new AudioContextCtor();
-    if (audioContextRef.current.state === "suspended") void audioContextRef.current.resume();
-    return audioContextRef.current;
-  }, []);
-
-  const stopOfferAlert = useCallback(() => {
-    offerAlertActiveRef.current = false;
-    if (offerAlertIntervalRef.current !== null) {
-      window.clearInterval(offerAlertIntervalRef.current);
-      offerAlertIntervalRef.current = null;
-    }
-    if (navigator.vibrate) navigator.vibrate(0);
-  }, []);
-
-  const playOfferAlertPulse = useCallback(() => {
-    const context = ensureOfferAudioContext();
-    if (context) {
-      const now = context.currentTime;
-      [0, 0.18, 0.36].forEach((offset, index) => {
-        const oscillator = context.createOscillator();
-        const gain = context.createGain();
-        oscillator.type = "square";
-        oscillator.frequency.setValueAtTime(index === 1 ? 1040 : 880, now + offset);
-        gain.gain.setValueAtTime(0.0001, now + offset);
-        gain.gain.exponentialRampToValueAtTime(0.22, now + offset + 0.015);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.14);
-        oscillator.connect(gain);
-        gain.connect(context.destination);
-        oscillator.start(now + offset);
-        oscillator.stop(now + offset + 0.16);
-      });
-    }
-    if (navigator.vibrate) navigator.vibrate([280, 120, 280, 120, 420]);
-  }, [ensureOfferAudioContext]);
-
-  const startOfferAlert = useCallback(() => {
-    if (offerAlertActiveRef.current) return;
-    offerAlertActiveRef.current = true;
-    playOfferAlertPulse();
-    offerAlertIntervalRef.current = window.setInterval(() => {
-      if (offerAlertActiveRef.current) playOfferAlertPulse();
-    }, 2200);
-  }, [playOfferAlertPulse]);
 
   const loadCourierOperations = useCallback(async (courierId: string) => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
@@ -284,24 +233,6 @@ function CourierApp() {
   }, [loadAll]);
 
   useEffect(() => {
-    const shouldAlert = Boolean(availability?.is_online && !activeJob && offers.length > 0);
-    if (shouldAlert) startOfferAlert();
-    else stopOfferAlert();
-    return () => {
-      if (!shouldAlert) stopOfferAlert();
-    };
-  }, [availability?.is_online, activeJob, offers.length, startOfferAlert, stopOfferAlert]);
-
-  useEffect(
-    () => () => {
-      stopOfferAlert();
-      if (audioContextRef.current) void audioContextRef.current.close();
-      audioContextRef.current = null;
-    },
-    [stopOfferAlert],
-  );
-
-  useEffect(() => {
     if (!courier?.id || courier.status !== "approved") return;
     const refresh = () => void loadCourierOperations(courier.id);
     const offersChannel = supabase
@@ -408,7 +339,6 @@ function CourierApp() {
     const target = !availability?.is_online;
 
     if (target) {
-      ensureOfferAudioContext();
       if (!navigator.geolocation) {
         toast.error(
           "Este dispositivo não disponibiliza localização. Ative o GPS para ficar online.",
@@ -471,7 +401,6 @@ function CourierApp() {
 
   const acceptOffer = async (offerId: string) => {
     if (!courier?.id) return;
-    stopOfferAlert();
     setBusy(`offer:${offerId}`);
     const { error } = await rpc("accept_delivery_offer", { _offer_id: offerId });
     setBusy(null);
@@ -482,7 +411,6 @@ function CourierApp() {
 
   const rejectOffer = async (offerId: string) => {
     if (!courier?.id) return;
-    stopOfferAlert();
     setBusy(`offer:${offerId}`);
     const { error } = await rpc("reject_delivery_offer", { _offer_id: offerId });
     setBusy(null);
@@ -623,6 +551,7 @@ function CourierApp() {
       <>
         <CourierHistoryPanel jobs={deliveryHistory} onClose={() => setHistoryOpen(false)} />
         <CourierBottomNav
+          active="history"
           onHome={() => setHistoryOpen(false)}
           onHistory={() => undefined}
           onFinance={() => {
@@ -655,6 +584,7 @@ function CourierApp() {
           onClose={() => setProfileOpen(false)}
         />
         <CourierBottomNav
+          active="profile"
           onHome={() => setProfileOpen(false)}
           onHistory={() => {
             setProfileOpen(false);
@@ -688,6 +618,7 @@ function CourierApp() {
           onClose={() => setFinanceOpen(false)}
         />
         <CourierBottomNav
+          active="finance"
           onHome={() => setFinanceOpen(false)}
           onHistory={() => {
             setFinanceOpen(false);
@@ -907,6 +838,7 @@ function CourierApp() {
         ) : null}
       </main>
       <CourierBottomNav
+        active="home"
         onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         onHistory={() => setHistoryOpen(true)}
         onFinance={() => setFinanceOpen(true)}
@@ -1403,14 +1335,18 @@ function CourierFinance({
         <button type="button" onClick={onClose} className="rounded-full bg-zinc-900 p-2">
           ←
         </button>
-        <h1 className="font-black">Carteira</h1>
+        <h1 className="font-black">Meus ganhos</h1>
         <CircleDollarSign className="text-primary" />
       </header>
       <main className="space-y-4 p-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
-        <div className="rounded-3xl bg-primary p-6 text-black">
-          <p className="text-xs font-black uppercase">Disponível para saque</p>
-          <p className="mt-2 text-4xl font-black">{money(wallet?.available_balance)}</p>
-          <p className="mt-2 text-xs opacity-70">
+        <div className="rounded-3xl border border-primary/40 bg-[linear-gradient(145deg,rgba(250,204,21,0.12),#090909_62%)] p-6 text-white shadow-[0_20px_55px_rgba(0,0,0,0.5)]">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">
+            Saldo disponível
+          </p>
+          <p className="mt-2 text-4xl font-black text-primary">
+            {money(wallet?.available_balance)}
+          </p>
+          <p className="mt-2 text-xs text-zinc-500">
             Saldo total {money(wallet?.balance)} · reservado {money(wallet?.reserved_balance)}
           </p>
         </div>
@@ -1500,12 +1436,16 @@ function CourierFinance({
                 type="number"
               />
               <Button
-                className="w-full"
+                className="h-12 w-full rounded-xl font-black"
                 disabled={!payoutAccount || busy === "payout"}
                 onClick={onRequestPayout}
               >
-                Solicitar
+                Solicitar saque
               </Button>
+              <p className="text-[11px] leading-4 text-zinc-500">
+                A solicitação entra em processamento após a reserva do saldo. O app não promete
+                transferência instantânea.
+              </p>
             </section>
             <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
               <h2 className="font-black">Saques</h2>

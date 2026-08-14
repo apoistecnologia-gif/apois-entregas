@@ -273,7 +273,7 @@ export function CourierOfferOverlay() {
   };
 
   return (
-    <div className="fixed inset-0 z-[1400] flex items-end justify-center bg-black/85 p-3 backdrop-blur-md">
+    <div className="fixed inset-x-0 top-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[1400] flex items-end justify-center bg-black/85 p-3 backdrop-blur-md">
       <section className="w-full max-w-[390px] overflow-hidden rounded-[2rem] border border-primary/45 bg-[#080808] text-white shadow-[0_0_90px_rgba(250,204,21,0.2)]">
         <div className="border-b border-primary/20 bg-[linear-gradient(135deg,rgba(250,204,21,0.16),rgba(0,0,0,0.95)_58%)] px-5 pb-4 pt-5">
           <div className="flex items-center justify-between gap-3">

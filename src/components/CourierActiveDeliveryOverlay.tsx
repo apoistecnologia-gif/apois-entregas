@@ -271,7 +271,7 @@ export function CourierActiveDeliveryOverlay() {
   };
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[1250] flex items-end justify-center p-3">
+    <div className="pointer-events-none fixed inset-x-0 top-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[1250] flex items-end justify-center p-3">
       <section className="pointer-events-auto w-full max-w-[390px] overflow-hidden rounded-[2rem] border border-primary/40 bg-[#080808]/98 text-white shadow-[0_-24px_80px_rgba(0,0,0,0.75)] backdrop-blur-xl">
         <div className="max-h-[68dvh] overflow-y-auto p-5">
           <div className="flex items-start justify-between gap-3">
