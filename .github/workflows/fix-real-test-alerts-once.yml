@@ -27,93 +27,67 @@ jobs:
 
           merchant = Path("src/components/MerchantOrderSoundWatcher.tsx")
           merchant_text = merchant.read_text(encoding="utf-8")
-          old = '''    const onBackgroundGesture = (event: PointerEvent | KeyboardEvent) => {
-              const target = event.target;
-              if (
-                target instanceof Element &&
-                target.closest("button,a,input,select,textarea,[role='button']")
-              ) {
-                return;
-              }
-              void unlockAudio();
-            };
-            window.addEventListener("pointerdown", onBackgroundGesture, { capture: true });
-            window.addEventListener("keydown", onBackgroundGesture, { capture: true });
-            return () => {
-              unlockAudioRef.current = null;
-              window.removeEventListener("pointerdown", onBackgroundGesture, { capture: true });
-              window.removeEventListener("keydown", onBackgroundGesture, { capture: true });
-            };
-          }, [enabled]);'''
-          new = '''    const onUserGesture = () => {
-              if (audioUnlockedRef.current) {
-                void flushPending();
-                return;
-              }
-              void unlockAudio().then((unlocked) => {
-                if (unlocked) void flushPending();
-              });
-            };
-            window.addEventListener("pointerdown", onUserGesture, { capture: true });
-            window.addEventListener("touchstart", onUserGesture, { capture: true, passive: true });
-            window.addEventListener("keydown", onUserGesture, { capture: true });
-            return () => {
-              unlockAudioRef.current = null;
-              window.removeEventListener("pointerdown", onUserGesture, { capture: true });
-              window.removeEventListener("touchstart", onUserGesture, { capture: true });
-              window.removeEventListener("keydown", onUserGesture, { capture: true });
-            };
-          }, [enabled, flushPending]);'''
-          if old not in merchant_text:
-              raise SystemExit("Merchant audio unlock block not found exactly")
-          merchant.write_text(merchant_text.replace(old, new, 1), encoding="utf-8")
+          start_marker = "    const onBackgroundGesture = (event: PointerEvent | KeyboardEvent) => {"
+          end_marker = "  }, [enabled]);"
+          start = merchant_text.find(start_marker)
+          end = merchant_text.find(end_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit("Merchant audio unlock block not found")
+          end += len(end_marker)
+          replacement = (
+              "    const onUserGesture = () => {\n"
+              "      if (audioUnlockedRef.current) {\n"
+              "        void flushPending();\n"
+              "        return;\n"
+              "      }\n"
+              "      void unlockAudio().then((unlocked) => {\n"
+              "        if (unlocked) void flushPending();\n"
+              "      });\n"
+              "    };\n"
+              "    window.addEventListener(\"pointerdown\", onUserGesture, { capture: true });\n"
+              "    window.addEventListener(\"touchstart\", onUserGesture, { capture: true, passive: true });\n"
+              "    window.addEventListener(\"keydown\", onUserGesture, { capture: true });\n"
+              "    return () => {\n"
+              "      unlockAudioRef.current = null;\n"
+              "      window.removeEventListener(\"pointerdown\", onUserGesture, { capture: true });\n"
+              "      window.removeEventListener(\"touchstart\", onUserGesture, { capture: true });\n"
+              "      window.removeEventListener(\"keydown\", onUserGesture, { capture: true });\n"
+              "    };\n"
+              "  }, [enabled, flushPending]);"
+          )
+          merchant.write_text(merchant_text[:start] + replacement + merchant_text[end:], encoding="utf-8")
 
           courier = Path("src/components/CourierOfferOverlay.tsx")
           courier_text = courier.read_text(encoding="utf-8")
-          old = '''    window.addEventListener("pointerdown", unlock, { capture: true });
-              window.addEventListener("keydown", unlock, { capture: true });
-              return () => {
-                window.removeEventListener("pointerdown", unlock, { capture: true });
-                window.removeEventListener("keydown", unlock, { capture: true });'''
-          new = '''    window.addEventListener("pointerdown", unlock, { capture: true });
-              window.addEventListener("touchstart", unlock, { capture: true, passive: true });
-              window.addEventListener("keydown", unlock, { capture: true });
-              return () => {
-                window.removeEventListener("pointerdown", unlock, { capture: true });
-                window.removeEventListener("touchstart", unlock, { capture: true });
-                window.removeEventListener("keydown", unlock, { capture: true });'''
-          if old not in courier_text:
-              raise SystemExit("Courier audio unlock listeners not found exactly")
-          courier.write_text(courier_text.replace(old, new, 1), encoding="utf-8")
+          add_needle = '    window.addEventListener("pointerdown", unlock, { capture: true });\n    window.addEventListener("keydown", unlock, { capture: true });'
+          add_replacement = '    window.addEventListener("pointerdown", unlock, { capture: true });\n    window.addEventListener("touchstart", unlock, { capture: true, passive: true });\n    window.addEventListener("keydown", unlock, { capture: true });'
+          remove_needle = '      window.removeEventListener("pointerdown", unlock, { capture: true });\n      window.removeEventListener("keydown", unlock, { capture: true });'
+          remove_replacement = '      window.removeEventListener("pointerdown", unlock, { capture: true });\n      window.removeEventListener("touchstart", unlock, { capture: true });\n      window.removeEventListener("keydown", unlock, { capture: true });'
+          if add_needle not in courier_text or remove_needle not in courier_text:
+              raise SystemExit("Courier audio unlock listeners not found")
+          courier_text = courier_text.replace(add_needle, add_replacement, 1).replace(remove_needle, remove_replacement, 1)
+          courier.write_text(courier_text, encoding="utf-8")
 
           workflow = Path(".github/workflows/mobile-android.yml")
           workflow_text = workflow.read_text(encoding="utf-8")
-          old = '''          permissions = (
-              '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\\n'
-              '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\\n'
-              '    <uses-feature android:name="android.hardware.location.gps" android:required="false" />\\n'
-          )'''
-          new = '''          permissions = (
-              '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\\n'
-              '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\\n'
-              + ('    <uses-permission android:name="android.permission.VIBRATE" />\\n' if product == "courier" else '')
-              + '    <uses-feature android:name="android.hardware.location.gps" android:required="false" />\\n'
-          )'''
-          if old not in workflow_text:
-              raise SystemExit("Android permissions block not found exactly")
-          workflow_text = workflow_text.replace(old, new, 1)
-          old_validate = '''          grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"
-                    ! grep -q 'android.permission.ACCESS_BACKGROUND_LOCATION' "$MANIFEST"'''
-          new_validate = '''          grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"
-                    if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
-                      grep -q 'android.permission.VIBRATE' "$MANIFEST"
-                    else
-                      ! grep -q 'android.permission.VIBRATE' "$MANIFEST"
-                    fi
-                    ! grep -q 'android.permission.ACCESS_BACKGROUND_LOCATION' "$MANIFEST"'''
-          if old_validate not in workflow_text:
-              raise SystemExit("Android permission validation block not found exactly")
-          workflow.write_text(workflow_text.replace(old_validate, new_validate, 1), encoding="utf-8")
+          fine_line = "              '    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />\\n'\n"
+          vibrate_line = "              + ('    <uses-permission android:name=\"android.permission.VIBRATE\" />\\n' if product == \"courier\" else '')\n"
+          if fine_line not in workflow_text:
+              raise SystemExit("Android fine location permission line not found")
+          workflow_text = workflow_text.replace(fine_line, fine_line + vibrate_line, 1)
+
+          validate_line = "          grep -q 'android.permission.ACCESS_FINE_LOCATION' \"$MANIFEST\"\n"
+          validate_block = (
+              validate_line
+              + '          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then\n'
+              + "            grep -q 'android.permission.VIBRATE' \"$MANIFEST\"\n"
+              + "          else\n"
+              + "            ! grep -q 'android.permission.VIBRATE' \"$MANIFEST\"\n"
+              + "          fi\n"
+          )
+          if validate_line not in workflow_text:
+              raise SystemExit("Android permission validation line not found")
+          workflow.write_text(workflow_text.replace(validate_line, validate_block, 1), encoding="utf-8")
 
       - name: Remove one-time workflow and commit fixes
         shell: bash
