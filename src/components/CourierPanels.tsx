@@ -1,15 +1,20 @@
 import {
   ArrowLeft,
   Bike,
+  CheckCircle2,
+  ChevronRight,
   CircleDollarSign,
   FileCheck2,
   House,
   MapPin,
   Route as RouteIcon,
+  ShieldCheck,
   Star,
   UserRound,
   WalletCards,
+  XCircle,
 } from "lucide-react";
+import logoAsset from "@/assets/logo.png.asset.json";
 
 const money = (value: unknown) =>
   `R$ ${Number(value ?? 0)
@@ -28,6 +33,12 @@ const statusLabel: Record<string, string> = {
   picked_up: "Pedido retirado",
   on_the_way: "A caminho do cliente",
   arrived_destination: "No destino",
+};
+
+const documentLabel: Record<string, string> = {
+  cnh: "CNH",
+  documento_veiculo: "Documento do veículo",
+  foto_perfil: "Foto do entregador",
 };
 
 export function CourierBottomNav({
@@ -51,56 +62,99 @@ export function CourierBottomNav({
   ] as const;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-900 bg-black/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-primary/10 bg-[linear-gradient(180deg,rgba(5,5,5,0.94),#000)] px-3 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-16px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
       <div className="mx-auto grid max-w-lg grid-cols-4 gap-1">
-        {items.map((item) => (
-          <button
-            key={item.label}
-            type="button"
-            onClick={item.onClick}
-            aria-current={active === item.id ? "page" : undefined}
-            className={`relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-bold transition-colors active:bg-zinc-900 ${
-              active === item.id ? "text-primary" : "text-zinc-500"
-            }`}
-          >
-            <item.icon className="h-5 w-5" />
-            {item.label}
-            {active === item.id ? (
-              <span className="absolute bottom-0 h-0.5 w-7 rounded-full bg-primary" />
-            ) : null}
-          </button>
-        ))}
+        {items.map((item) => {
+          const selected = active === item.id;
+          return (
+            <button
+              key={item.label}
+              type="button"
+              onClick={item.onClick}
+              aria-current={selected ? "page" : undefined}
+              className={`relative flex min-h-[3.7rem] flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-bold transition active:scale-[0.97] ${
+                selected ? "text-primary" : "text-zinc-600"
+              }`}
+            >
+              <span
+                className={`grid h-8 w-10 place-items-center rounded-xl transition ${
+                  selected ? "bg-primary/10" : "bg-transparent"
+                }`}
+              >
+                <item.icon className={`h-5 w-5 ${selected ? "stroke-[2.5]" : "stroke-2"}`} />
+              </span>
+              {item.label}
+              {selected ? (
+                <span className="absolute -bottom-1 h-[3px] w-8 rounded-full bg-primary shadow-[0_0_16px_rgba(250,204,21,0.65)]" />
+              ) : null}
+            </button>
+          );
+        })}
       </div>
     </nav>
   );
 }
 
+function PanelHeader({ title, onClose }: { title: string; onClose: () => void }) {
+  return (
+    <header className="sticky top-0 z-40 grid min-h-20 grid-cols-[2.75rem_1fr_2.75rem] items-center border-b border-primary/10 bg-black/92 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-2xl">
+      <button
+        type="button"
+        onClick={onClose}
+        className="grid h-10 w-10 place-items-center rounded-full border border-zinc-800 bg-zinc-950 text-zinc-300 active:scale-95"
+        aria-label="Voltar"
+      >
+        <ArrowLeft className="h-5 w-5" />
+      </button>
+      <div className="flex flex-col items-center py-2 text-center">
+        <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-9 w-auto object-contain" />
+        <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">
+          {title}
+        </p>
+      </div>
+      <div aria-hidden="true" />
+    </header>
+  );
+}
+
 export function CourierHistoryPanel({ jobs, onClose }: { jobs: any[]; onClose: () => void }) {
+  const delivered = jobs.filter((job) => job.status === "delivered").length;
+  const totalEarnings = jobs
+    .filter((job) => job.status === "delivered")
+    .reduce((sum, job) => sum + Number(job.estimated_earnings ?? 0), 0);
+
   return (
     <div className="min-h-dvh bg-black text-white">
-      <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-zinc-900 bg-black/95 p-4 backdrop-blur">
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-full bg-zinc-900 p-2"
-          aria-label="Voltar"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
-            APOIS ENTREGADOR
-          </p>
-          <h1 className="text-lg font-black">Corridas</h1>
-        </div>
-      </header>
+      <PanelHeader title="Corridas" onClose={onClose} />
 
-      <main className="space-y-3 p-4 pb-28">
+      <main className="mx-auto w-full max-w-lg space-y-4 p-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+        <section className="overflow-hidden rounded-[1.75rem] border border-primary/30 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.12),transparent_42%),#090909] p-5 shadow-[0_22px_60px_rgba(0,0,0,0.5)]">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">
+            Seu histórico APOIS
+          </p>
+          <h1 className="mt-1 text-2xl font-black">Corridas</h1>
+          <p className="mt-1 text-sm text-zinc-500">Acompanhe suas entregas concluídas e canceladas.</p>
+          <div className="mt-5 grid grid-cols-2 divide-x divide-zinc-800 rounded-2xl border border-zinc-800 bg-black/55 p-4">
+            <div className="pr-4">
+              <p className="text-[9px] font-black uppercase text-zinc-600">Concluídas</p>
+              <p className="mt-1 text-xl font-black">{delivered}</p>
+            </div>
+            <div className="pl-4">
+              <p className="text-[9px] font-black uppercase text-zinc-600">Ganhos listados</p>
+              <p className="mt-1 text-xl font-black text-primary">{money(totalEarnings)}</p>
+            </div>
+          </div>
+        </section>
+
         {jobs.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-zinc-800 bg-zinc-950 p-8 text-center">
-            <Bike className="mx-auto h-9 w-9 text-zinc-700" />
-            <p className="mt-3 font-black">Nenhuma entrega concluída ainda</p>
-            <p className="mt-1 text-sm text-zinc-500">Seu histórico aparecerá aqui.</p>
+          <div className="rounded-[1.75rem] border border-dashed border-primary/20 bg-zinc-950/80 p-9 text-center">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-primary/20 bg-primary/5">
+              <Bike className="h-7 w-7 text-primary" />
+            </div>
+            <p className="mt-4 font-black">Nenhuma entrega concluída ainda</p>
+            <p className="mx-auto mt-1 max-w-xs text-sm leading-5 text-zinc-500">
+              Assim que você finalizar uma entrega, os detalhes aparecerão aqui.
+            </p>
           </div>
         ) : (
           jobs.map((job) => {
@@ -109,38 +163,47 @@ export function CourierHistoryPanel({ jobs, onClose }: { jobs: any[]; onClose: (
             const isDelivered = job.status === "delivered";
             const distanceMeters = Number(job.estimated_distance_meters ?? 0);
             return (
-              <article key={job.id} className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
+              <article
+                key={job.id}
+                className="rounded-[1.6rem] border border-zinc-800/90 bg-[linear-gradient(145deg,#101010,#080808)] p-4 shadow-[0_14px_36px_rgba(0,0,0,0.38)]"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-black uppercase text-zinc-500">Pedido</p>
-                    <p className="font-black">#{job.orders?.order_number ?? "—"}</p>
+                    <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">Pedido</p>
+                    <p className="mt-0.5 text-base font-black">#{job.orders?.order_number ?? "—"}</p>
                   </div>
                   <span
-                    className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${
+                    className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase ${
                       isDelivered
-                        ? "bg-emerald-500/10 text-emerald-400"
-                        : "bg-red-500/10 text-red-300"
+                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                        : "border-red-500/20 bg-red-500/10 text-red-300"
                     }`}
                   >
+                    {isDelivered ? (
+                      <CheckCircle2 className="h-3 w-3" />
+                    ) : (
+                      <XCircle className="h-3 w-3" />
+                    )}
                     {statusLabel[job.status] ?? job.status}
                   </span>
                 </div>
 
-                <div className="mt-4 space-y-2">
-                  <div className="flex gap-2 rounded-xl bg-black p-3">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <div className="min-w-0">
-                      <p className="text-[9px] font-black uppercase text-zinc-600">Retirada</p>
-                      <p className="truncate text-xs text-zinc-300">
+                <div className="mt-4 rounded-2xl border border-zinc-900 bg-black/65 p-3.5">
+                  <div className="flex gap-3">
+                    <span className="mt-1 h-3 w-3 shrink-0 rounded-full border-[3px] border-primary bg-black" />
+                    <div className="min-w-0 flex-1 pb-3">
+                      <p className="text-[9px] font-black uppercase text-primary">Retirada</p>
+                      <p className="truncate text-sm font-bold text-zinc-200">
                         {pickup.name || pickup.address_line || pickup.street || "Estabelecimento"}
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2 rounded-xl bg-black p-3">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <div className="min-w-0">
-                      <p className="text-[9px] font-black uppercase text-zinc-600">Destino</p>
-                      <p className="truncate text-xs text-zinc-300">
+                  <div className="ml-[5px] h-5 border-l border-dashed border-zinc-700" />
+                  <div className="flex gap-3">
+                    <MapPin className="h-4 w-4 shrink-0 text-primary" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] font-black uppercase text-primary">Entrega</p>
+                      <p className="truncate text-sm text-zinc-300">
                         {delivery.street
                           ? `${delivery.street}, ${delivery.number || "s/n"}`
                           : "Endereço de entrega"}
@@ -149,10 +212,10 @@ export function CourierHistoryPanel({ jobs, onClose }: { jobs: any[]; onClose: (
                   </div>
                 </div>
 
-                <div className="mt-3 grid grid-cols-[1fr_auto_auto] items-end gap-4 border-t border-zinc-900 pt-3">
+                <div className="mt-3 grid grid-cols-[1fr_auto_auto] items-end gap-3 border-t border-zinc-900 pt-3">
                   <div className="min-w-0">
                     <p className="text-[9px] font-black uppercase text-zinc-600">Finalizada em</p>
-                    <p className="truncate text-xs text-zinc-400">
+                    <p className="truncate text-[11px] text-zinc-400">
                       {dateTime(job.delivered_at || job.cancelled_at || job.updated_at)}
                     </p>
                   </div>
@@ -168,7 +231,7 @@ export function CourierHistoryPanel({ jobs, onClose }: { jobs: any[]; onClose: (
                   {isDelivered ? (
                     <div className="text-right">
                       <p className="text-[9px] font-black uppercase text-zinc-600">Ganho</p>
-                      <p className="font-black text-primary">{money(job.estimated_earnings)}</p>
+                      <p className="text-sm font-black text-primary">{money(job.estimated_earnings)}</p>
                     </div>
                   ) : null}
                 </div>
@@ -202,100 +265,145 @@ export function CourierProfilePanel({
 }) {
   const approvedDocs = documents.filter((document) => document.status === "approved").length;
   const vehicle = [courier.vehicle_type, courier.vehicle_model].filter(Boolean).join(" · ");
+  const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name || "Entregador APOIS";
 
   return (
     <div className="min-h-dvh bg-black text-white">
-      <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-zinc-900 bg-black/95 p-4 backdrop-blur">
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-full bg-zinc-900 p-2"
-          aria-label="Voltar"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
-            APOIS ENTREGADOR
-          </p>
-          <h1 className="text-lg font-black">Perfil</h1>
-        </div>
-      </header>
+      <PanelHeader title="Perfil" onClose={onClose} />
 
-      <main className="space-y-4 p-4 pb-28">
-        <section className="rounded-3xl border border-zinc-900 bg-zinc-950 p-5">
-          <div className="flex items-center gap-4">
-            <div className="grid h-16 w-16 place-items-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
-              <UserRound className="h-8 w-8" />
+      <main className="mx-auto w-full max-w-lg space-y-4 p-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+        <section className="relative overflow-hidden rounded-[2rem] border border-primary/30 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.16),transparent_36%),linear-gradient(145deg,#101010,#070707)] p-5 shadow-[0_24px_65px_rgba(0,0,0,0.55)]">
+          <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full border border-primary/10" />
+          <div className="relative flex items-center gap-4">
+            <div className="grid h-[4.5rem] w-[4.5rem] shrink-0 place-items-center rounded-full border border-primary/35 bg-black text-primary shadow-[0_0_30px_rgba(250,204,21,0.08)]">
+              <UserRound className="h-9 w-9" />
             </div>
-            <div className="min-w-0">
-              <p className="pr-1 text-base font-black leading-snug sm:text-lg">
-                {user?.user_metadata?.full_name || user?.user_metadata?.name || "Entregador APOIS"}
-              </p>
-              <p className="mt-1 break-all text-xs text-zinc-500">{user?.email || "Conta APOIS"}</p>
-              <p className="mt-2 text-xs font-bold uppercase text-emerald-400">Cadastro aprovado</p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[9px] font-black uppercase text-emerald-400">
+                  <ShieldCheck className="h-3 w-3" /> Aprovado
+                </span>
+              </div>
+              <p className="mt-2 truncate text-xl font-black">{fullName}</p>
+              <p className="mt-1 truncate text-xs text-zinc-500">{user?.email || "Conta APOIS"}</p>
               <div className="mt-2 flex items-center gap-1 text-sm text-zinc-400">
                 <Star className="h-4 w-4 fill-primary text-primary" />
-                {Number(courier.rating || 0).toFixed(1)} · {courier.review_count || 0} avaliações
+                <b className="text-white">{Number(courier.rating || 0).toFixed(1)}</b>
+                <span>· {courier.review_count || 0} avaliações</span>
               </div>
             </div>
           </div>
         </section>
 
         <div className="grid grid-cols-2 gap-3">
-          <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
+          <section className="rounded-2xl border border-primary/15 bg-zinc-950 p-4">
             <FileCheck2 className="h-5 w-5 text-primary" />
-            <p className="mt-3 text-[10px] font-black uppercase text-zinc-500">Documentos</p>
+            <p className="mt-3 text-[9px] font-black uppercase text-zinc-600">Documentos</p>
             <p className="mt-1 text-lg font-black">
-              {approvedDocs}/{documents.length || 3}
+              {approvedDocs}/{documents.length || (courier.vehicle_type === "bicicleta" ? 1 : 3)}
             </p>
+            <p className="mt-1 text-[10px] text-zinc-500">aprovados</p>
           </section>
-          <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
+          <section className="rounded-2xl border border-primary/15 bg-zinc-950 p-4">
             <Bike className="h-5 w-5 text-primary" />
-            <p className="mt-3 text-[10px] font-black uppercase text-zinc-500">Status</p>
-            <p
-              className={
-                availability?.is_online
-                  ? "mt-1 font-black text-emerald-400"
-                  : "mt-1 font-black text-zinc-400"
-              }
-            >
+            <p className="mt-3 text-[9px] font-black uppercase text-zinc-600">Disponibilidade</p>
+            <p className={`mt-1 text-lg font-black ${availability?.is_online ? "text-primary" : "text-zinc-400"}`}>
               {availability?.is_online ? "ONLINE" : "OFFLINE"}
+            </p>
+            <p className="mt-1 text-[10px] text-zinc-500">
+              {availability?.is_online ? "recebendo ofertas" : "jornada pausada"}
             </p>
           </section>
         </div>
 
-        <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
-          <h2 className="font-black">Veículo</h2>
-          <p className="text-sm text-zinc-400">{vehicle || "Veículo não informado"}</p>
-          {courier.vehicle_plate ? (
-            <p className="text-xs font-bold uppercase tracking-wider text-zinc-600">
-              Placa {courier.vehicle_plate}
-            </p>
-          ) : null}
+        <section className="rounded-[1.6rem] border border-zinc-800 bg-zinc-950 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-wider text-primary">Veículo</p>
+              <h2 className="mt-1 font-black">Informações do veículo</h2>
+            </div>
+            <Bike className="h-6 w-6 text-primary" />
+          </div>
+          <div className="mt-4 rounded-2xl border border-zinc-900 bg-black p-3.5">
+            <p className="text-sm font-bold capitalize text-zinc-200">{vehicle || "Veículo não informado"}</p>
+            {courier.vehicle_plate ? (
+              <p className="mt-1 text-xs font-bold uppercase tracking-wider text-zinc-500">
+                Placa {courier.vehicle_plate}
+              </p>
+            ) : null}
+            {courier.cnh_number ? (
+              <p className="mt-1 text-xs text-zinc-600">CNH ••••{String(courier.cnh_number).slice(-4)}</p>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="rounded-[1.6rem] border border-zinc-800 bg-zinc-950 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-wider text-primary">Cadastro</p>
+              <h2 className="mt-1 font-black">Documentos</h2>
+            </div>
+            <FileCheck2 className="h-6 w-6 text-primary" />
+          </div>
+          <div className="mt-3 space-y-2">
+            {documents.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-zinc-800 bg-black p-4 text-sm text-zinc-500">
+                Nenhum documento disponível para exibição.
+              </div>
+            ) : (
+              documents.map((document) => (
+                <div
+                  key={document.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-900 bg-black p-3.5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-zinc-200">
+                      {documentLabel[document.document_type] || document.document_type}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-zinc-600">Arquivo protegido na sua conta</p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black uppercase ${
+                      document.status === "approved"
+                        ? "bg-emerald-500/10 text-emerald-400"
+                        : document.status === "rejected"
+                          ? "bg-red-500/10 text-red-300"
+                          : "bg-primary/10 text-primary"
+                    }`}
+                  >
+                    {document.status === "approved"
+                      ? "Aprovado"
+                      : document.status === "rejected"
+                        ? "Recusado"
+                        : "Em análise"}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
         </section>
 
         <button
           type="button"
           onClick={onFinance}
-          className="flex w-full items-center justify-between rounded-2xl border border-primary/20 bg-primary/5 p-4 text-left"
+          className="flex w-full items-center justify-between rounded-[1.6rem] border border-primary/30 bg-[linear-gradient(135deg,rgba(250,204,21,0.1),#090909_62%)] p-4 text-left shadow-[0_14px_35px_rgba(0,0,0,0.35)] active:scale-[0.99]"
         >
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-primary/10 p-2.5 text-primary">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-black">
               <CircleDollarSign className="h-5 w-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="font-black">Carteira e saques</p>
-              <p className="text-xs text-zinc-500">Disponível {money(wallet?.available_balance)}</p>
+              <p className="truncate text-xs text-zinc-500">Disponível {money(wallet?.available_balance)}</p>
             </div>
           </div>
-          <WalletCards className="h-5 w-5 text-primary" />
+          <ChevronRight className="h-5 w-5 shrink-0 text-primary" />
         </button>
 
         <button
           type="button"
           onClick={onLogout}
-          className="w-full rounded-2xl border border-red-500/20 bg-red-500/5 p-4 font-black text-red-300"
+          className="w-full rounded-2xl border border-red-500/20 bg-red-500/5 p-4 font-black text-red-300 active:scale-[0.99]"
         >
           Sair da conta
         </button>
