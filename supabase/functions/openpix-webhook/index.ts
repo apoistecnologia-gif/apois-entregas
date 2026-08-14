@@ -509,6 +509,254 @@ Deno.serve(async (request: Request) => {
     return response(200, { ok: true, paymentId, orderId: localOrderId, status: "expired" });
   }
 
+  if (event === "OPENPIX:TRANSACTION_REFUND_RECEIVED" && charge && pix) {
+    const nestedPixCharge = isRecord(pix.charge) ? pix.charge : null;
+    const correlationID = text(charge.correlationID) ?? text(nestedPixCharge?.correlationID);
+    const orderId = orderIdFromCorrelation(correlationID);
+    const correlationPaymentId = paymentIdFromCorrelation(correlationID);
+    const providerChargeId = text(charge.globalID) ?? text(charge.id) ?? correlationID;
+    const providerRefundId = text(pix.endToEndId) ?? text(pix.globalID);
+    const eventId = `refund-received:${providerRefundId ?? providerChargeId ?? fallbackHash}`;
+
+    const { data: existingEvent } = await admin
+      .from("payment_events")
+      .select("id,status")
+      .eq("provider", "openpix")
+      .eq("provider_event_id", eventId)
+      .maybeSingle();
+    if (existingEvent?.status === "processed" || existingEvent?.status === "ignored") {
+      return response(200, { ok: true, reused: true });
+    }
+
+    let payment: JsonRecord | null = null;
+    if (providerChargeId) {
+      const { data } = await admin
+        .from("payments")
+        .select("id,order_id,status,amount,provider_charge_id")
+        .eq("provider", "openpix")
+        .eq("provider_charge_id", providerChargeId)
+        .maybeSingle();
+      payment = isRecord(data) ? data : null;
+    }
+    if (!payment && correlationPaymentId) {
+      const { data } = await admin
+        .from("payments")
+        .select("id,order_id,status,amount,provider_charge_id")
+        .eq("id", correlationPaymentId)
+        .eq("provider", "openpix")
+        .maybeSingle();
+      payment = isRecord(data) ? data : null;
+    }
+    if (!payment && orderId) {
+      const { data } = await admin
+        .from("payments")
+        .select("id,order_id,status,amount,provider_charge_id")
+        .eq("provider", "openpix")
+        .eq("order_id", orderId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      payment = isRecord(data) ? data : null;
+    }
+
+    const eventRow = {
+      provider: "openpix",
+      provider_event_id: eventId,
+      event_type: "OPENPIX:TRANSACTION_REFUND_RECEIVED",
+      payment_id: text(payment?.id),
+      payload,
+      status: "received",
+      error_message: null,
+      processed_at: null,
+    };
+    if (existingEvent) {
+      await admin.from("payment_events").update(eventRow).eq("id", existingEvent.id);
+    } else {
+      await admin.from("payment_events").insert(eventRow);
+    }
+
+    if (!payment) {
+      await admin
+        .from("payment_events")
+        .update({ status: "failed", error_message: "payment_not_found" })
+        .eq("provider", "openpix")
+        .eq("provider_event_id", eventId);
+      return response(500, {
+        error: "Pagamento local do estorno não encontrado.",
+        code: "PAYMENT_NOT_FOUND",
+      });
+    }
+
+    const paymentId = text(payment.id);
+    const localOrderId = text(payment.order_id);
+    const localAmount = numberValue(payment.amount);
+    if (!paymentId || !localOrderId || localAmount === null) {
+      return response(500, { error: "Pagamento local inválido.", code: "INVALID_LOCAL_PAYMENT" });
+    }
+    if (!orderId || orderId !== localOrderId) {
+      await admin
+        .from("payment_events")
+        .update({
+          status: "failed",
+          error_message: "order_correlation_mismatch",
+          payment_id: paymentId,
+        })
+        .eq("provider", "openpix")
+        .eq("provider_event_id", eventId);
+      return response(409, {
+        error: "Referência externa divergente.",
+        code: "EXTERNAL_REFERENCE_MISMATCH",
+      });
+    }
+
+    const refundValueCents = numberValue(pix.value);
+    const fullPaymentCents = Math.round(localAmount * 100);
+    if (pix.partial === true || refundValueCents === null || Math.round(refundValueCents) !== fullPaymentCents) {
+      await admin
+        .from("payment_events")
+        .update({ status: "failed", error_message: "unsupported_partial_or_amount_mismatch", payment_id: paymentId })
+        .eq("provider", "openpix")
+        .eq("provider_event_id", eventId);
+      return response(409, {
+        error: "O estorno recebido não corresponde ao estorno total esperado.",
+        code: "REFUND_AMOUNT_MISMATCH",
+      });
+    }
+
+    const { data: refund } = await admin
+      .from("refunds")
+      .select("id,amount,status,provider_refund_id")
+      .eq("payment_id", paymentId)
+      .eq("order_id", localOrderId)
+      .in("status", ["pending", "processing", "failed", "completed"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!refund) {
+      await admin
+        .from("payment_events")
+        .update({
+          status: "ignored",
+          error_message: "local_refund_not_found",
+          payment_id: paymentId,
+          processed_at: now,
+        })
+        .eq("provider", "openpix")
+        .eq("provider_event_id", eventId);
+      return response(200, { ok: true, ignored: true });
+    }
+
+    if (Math.round(Number(refund.amount) * 100) !== refundValueCents) {
+      await admin
+        .from("payment_events")
+        .update({ status: "failed", error_message: "local_refund_amount_mismatch", payment_id: paymentId })
+        .eq("provider", "openpix")
+        .eq("provider_event_id", eventId);
+      return response(409, {
+        error: "O valor do estorno local diverge do webhook.",
+        code: "REFUND_AMOUNT_MISMATCH",
+      });
+    }
+
+    if (refund.status !== "completed") {
+      const { error: refundUpdateError } = await admin
+        .from("refunds")
+        .update({
+          status: "completed",
+          provider_refund_id: providerRefundId ?? refund.provider_refund_id,
+          processed_at: now,
+        })
+        .eq("id", refund.id);
+      if (refundUpdateError) {
+        await admin
+          .from("payment_events")
+          .update({ status: "failed", error_message: "refund_update_failed", payment_id: paymentId })
+          .eq("provider", "openpix")
+          .eq("provider_event_id", eventId);
+        return response(500, {
+          error: "Falha ao confirmar estorno local.",
+          code: "REFUND_UPDATE_FAILED",
+        });
+      }
+    }
+
+    const { error: paymentUpdateError } = await admin
+      .from("payments")
+      .update({ status: "refunded" })
+      .eq("id", paymentId);
+    if (paymentUpdateError) {
+      await admin
+        .from("payment_events")
+        .update({ status: "failed", error_message: "payment_refund_update_failed", payment_id: paymentId })
+        .eq("provider", "openpix")
+        .eq("provider_event_id", eventId);
+      return response(500, {
+        error: "Falha ao conciliar pagamento estornado.",
+        code: "PAYMENT_UPDATE_FAILED",
+      });
+    }
+
+    const { data: transitionedOrder, error: orderTransitionError } = await admin
+      .from("orders")
+      .update({ payment_status: "refunded", status: "refunded" })
+      .eq("id", localOrderId)
+      .eq("status", "cancelled")
+      .select("id")
+      .maybeSingle();
+    if (orderTransitionError) {
+      await admin
+        .from("payment_events")
+        .update({ status: "failed", error_message: "order_refund_update_failed", payment_id: paymentId })
+        .eq("provider", "openpix")
+        .eq("provider_event_id", eventId);
+      return response(500, {
+        error: "Falha ao conciliar pedido estornado.",
+        code: "ORDER_UPDATE_FAILED",
+      });
+    }
+    if (transitionedOrder) {
+      await admin.from("order_status_history").insert({
+        order_id: localOrderId,
+        status: "refunded",
+        changed_by_user_id: null,
+      });
+    } else {
+      await admin.from("orders").update({ payment_status: "refunded" }).eq("id", localOrderId);
+    }
+
+    if (providerRefundId) {
+      await admin.from("payment_transactions").upsert(
+        {
+          payment_id: paymentId,
+          provider_transaction_id: providerRefundId,
+          transaction_type: "refund",
+          amount: localAmount,
+          status: "completed",
+          processed_at: now,
+        },
+        { onConflict: "payment_id,provider_transaction_id,transaction_type" },
+      );
+    }
+
+    await admin
+      .from("payment_events")
+      .update({
+        status: "processed",
+        error_message: null,
+        payment_id: paymentId,
+        processed_at: now,
+      })
+      .eq("provider", "openpix")
+      .eq("provider_event_id", eventId);
+    return response(200, {
+      ok: true,
+      paymentId,
+      refundId: refund.id,
+      orderId: localOrderId,
+      status: "refunded",
+    });
+  }
+
   if (
     outgoingPayment &&
     ["OPENPIX:MOVEMENT_CONFIRMED", "OPENPIX:MOVEMENT_FAILED", "OPENPIX:MOVEMENT_REMOVED"].includes(
