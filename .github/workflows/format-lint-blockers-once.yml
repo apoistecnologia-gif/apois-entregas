@@ -22,6 +22,7 @@ jobs:
         run: |
           bunx prettier --write \
             src/components/CourierIncomingOfferOverlay.tsx \
+            src/components/CourierOfferOverlay.tsx \
             src/components/MerchantOrderControlCenter.tsx \
             src/components/MerchantOrderSoundWatcher.tsx \
             supabase/functions/openpix-payout/index.ts \
@@ -36,6 +37,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/components/CourierIncomingOfferOverlay.tsx \
+            src/components/CourierOfferOverlay.tsx \
             src/components/MerchantOrderControlCenter.tsx \
             src/components/MerchantOrderSoundWatcher.tsx \
             supabase/functions/openpix-payout/index.ts \
