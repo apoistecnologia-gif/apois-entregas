@@ -68,35 +68,13 @@ jobs:
           courier_text = courier_text.replace(add_needle, add_replacement, 1).replace(remove_needle, remove_replacement, 1)
           courier.write_text(courier_text, encoding="utf-8")
 
-          workflow = Path(".github/workflows/mobile-android.yml")
-          workflow_text = workflow.read_text(encoding="utf-8")
-          fine_line = "              '    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />\\n'\n"
-          vibrate_line = "              + ('    <uses-permission android:name=\"android.permission.VIBRATE\" />\\n' if product == \"courier\" else '')\n"
-          if fine_line not in workflow_text:
-              raise SystemExit("Android fine location permission line not found")
-          workflow_text = workflow_text.replace(fine_line, fine_line + vibrate_line, 1)
-
-          validate_line = "          grep -q 'android.permission.ACCESS_FINE_LOCATION' \"$MANIFEST\"\n"
-          validate_block = (
-              validate_line
-              + '          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then\n'
-              + "            grep -q 'android.permission.VIBRATE' \"$MANIFEST\"\n"
-              + "          else\n"
-              + "            ! grep -q 'android.permission.VIBRATE' \"$MANIFEST\"\n"
-              + "          fi\n"
-          )
-          if validate_line not in workflow_text:
-              raise SystemExit("Android permission validation line not found")
-          workflow.write_text(workflow_text.replace(validate_line, validate_block, 1), encoding="utf-8")
-
-      - name: Remove one-time workflow and commit fixes
+      - name: Commit alert fixes
         shell: bash
         run: |
           set -euo pipefail
-          git rm .github/workflows/fix-real-test-alerts-once.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/components/MerchantOrderSoundWatcher.tsx src/components/CourierOfferOverlay.tsx .github/workflows/mobile-android.yml
+          git add src/components/MerchantOrderSoundWatcher.tsx src/components/CourierOfferOverlay.tsx
           git diff --cached --check
           git commit -m "fix(alerts): make merchant and courier calls reliable"
           git push origin HEAD:main
