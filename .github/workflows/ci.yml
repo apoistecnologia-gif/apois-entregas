@@ -59,3 +59,4 @@ jobs:
           set -euo pipefail
           test -d .output/public
           test -f .output/server/index.mjs
+          node scripts/verify-product-isolation.mjs "${{ matrix.product }}"
