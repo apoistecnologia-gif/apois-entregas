@@ -1,0 +1,128 @@
+name: Fix Real Test Alerts Once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/fix-real-test-alerts-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix-alerts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch merchant and courier alert reliability
+        shell: python
+        run: |
+          from pathlib import Path
+
+          merchant = Path("src/components/MerchantOrderSoundWatcher.tsx")
+          merchant_text = merchant.read_text(encoding="utf-8")
+          old = '''    const onBackgroundGesture = (event: PointerEvent | KeyboardEvent) => {
+              const target = event.target;
+              if (
+                target instanceof Element &&
+                target.closest("button,a,input,select,textarea,[role='button']")
+              ) {
+                return;
+              }
+              void unlockAudio();
+            };
+            window.addEventListener("pointerdown", onBackgroundGesture, { capture: true });
+            window.addEventListener("keydown", onBackgroundGesture, { capture: true });
+            return () => {
+              unlockAudioRef.current = null;
+              window.removeEventListener("pointerdown", onBackgroundGesture, { capture: true });
+              window.removeEventListener("keydown", onBackgroundGesture, { capture: true });
+            };
+          }, [enabled]);'''
+          new = '''    const onUserGesture = () => {
+              if (audioUnlockedRef.current) {
+                void flushPending();
+                return;
+              }
+              void unlockAudio().then((unlocked) => {
+                if (unlocked) void flushPending();
+              });
+            };
+            window.addEventListener("pointerdown", onUserGesture, { capture: true });
+            window.addEventListener("touchstart", onUserGesture, { capture: true, passive: true });
+            window.addEventListener("keydown", onUserGesture, { capture: true });
+            return () => {
+              unlockAudioRef.current = null;
+              window.removeEventListener("pointerdown", onUserGesture, { capture: true });
+              window.removeEventListener("touchstart", onUserGesture, { capture: true });
+              window.removeEventListener("keydown", onUserGesture, { capture: true });
+            };
+          }, [enabled, flushPending]);'''
+          if old not in merchant_text:
+              raise SystemExit("Merchant audio unlock block not found exactly")
+          merchant.write_text(merchant_text.replace(old, new, 1), encoding="utf-8")
+
+          courier = Path("src/components/CourierOfferOverlay.tsx")
+          courier_text = courier.read_text(encoding="utf-8")
+          old = '''    window.addEventListener("pointerdown", unlock, { capture: true });
+              window.addEventListener("keydown", unlock, { capture: true });
+              return () => {
+                window.removeEventListener("pointerdown", unlock, { capture: true });
+                window.removeEventListener("keydown", unlock, { capture: true });'''
+          new = '''    window.addEventListener("pointerdown", unlock, { capture: true });
+              window.addEventListener("touchstart", unlock, { capture: true, passive: true });
+              window.addEventListener("keydown", unlock, { capture: true });
+              return () => {
+                window.removeEventListener("pointerdown", unlock, { capture: true });
+                window.removeEventListener("touchstart", unlock, { capture: true });
+                window.removeEventListener("keydown", unlock, { capture: true });'''
+          if old not in courier_text:
+              raise SystemExit("Courier audio unlock listeners not found exactly")
+          courier.write_text(courier_text.replace(old, new, 1), encoding="utf-8")
+
+          workflow = Path(".github/workflows/mobile-android.yml")
+          workflow_text = workflow.read_text(encoding="utf-8")
+          old = '''          permissions = (
+              '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\\n'
+              '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\\n'
+              '    <uses-feature android:name="android.hardware.location.gps" android:required="false" />\\n'
+          )'''
+          new = '''          permissions = (
+              '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\\n'
+              '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\\n'
+              + ('    <uses-permission android:name="android.permission.VIBRATE" />\\n' if product == "courier" else '')
+              + '    <uses-feature android:name="android.hardware.location.gps" android:required="false" />\\n'
+          )'''
+          if old not in workflow_text:
+              raise SystemExit("Android permissions block not found exactly")
+          workflow_text = workflow_text.replace(old, new, 1)
+          old_validate = '''          grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"
+                    ! grep -q 'android.permission.ACCESS_BACKGROUND_LOCATION' "$MANIFEST"'''
+          new_validate = '''          grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"
+                    if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+                      grep -q 'android.permission.VIBRATE' "$MANIFEST"
+                    else
+                      ! grep -q 'android.permission.VIBRATE' "$MANIFEST"
+                    fi
+                    ! grep -q 'android.permission.ACCESS_BACKGROUND_LOCATION' "$MANIFEST"'''
+          if old_validate not in workflow_text:
+              raise SystemExit("Android permission validation block not found exactly")
+          workflow.write_text(workflow_text.replace(old_validate, new_validate, 1), encoding="utf-8")
+
+      - name: Remove one-time workflow and commit fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/fix-real-test-alerts-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/MerchantOrderSoundWatcher.tsx src/components/CourierOfferOverlay.tsx .github/workflows/mobile-android.yml
+          git diff --cached --check
+          git commit -m "fix(alerts): make merchant and courier calls reliable"
+          git push origin HEAD:main
