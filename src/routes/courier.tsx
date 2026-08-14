@@ -16,10 +16,11 @@ import {
   RefreshCw,
   Route as RouteIcon,
   Upload,
+  UserRound,
   WalletCards,
   XCircle,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ import {
 } from "@/components/CourierPanels";
 import { CourierLocationTracker, type CourierPosition } from "@/components/CourierLocationTracker";
 import { CourierLiveMap, CourierRouteMap } from "@/components/CourierRouteMap";
+import logoAsset from "@/assets/logo.png.asset.json";
 
 export const Route = createFileRoute("/courier")({
   ssr: false,
@@ -58,6 +60,7 @@ const dateTime = (value: string | null | undefined) =>
 function CourierApp() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [appError, setAppError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [courier, setCourier] = useState<any>(null);
@@ -84,7 +87,6 @@ function CourierApp() {
     amount: "",
   });
   const [currentPosition, setCurrentPosition] = useState<CourierPosition | null>(null);
-  const startupAvailabilityHandledRef = useRef(false);
 
   const loadCourierOperations = useCallback(async (courierId: string) => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
@@ -167,6 +169,7 @@ function CourierApp() {
   const loadAll = useCallback(
     async (quiet = false) => {
       quiet ? setRefreshing(true) : setLoading(true);
+      setAppError(null);
       try {
         const {
           data: { user: authUser },
@@ -191,35 +194,15 @@ function CourierApp() {
           .order("created_at");
         setDocuments(docsRes.data ?? []);
         if (courierRow.status === "approved" && courierRow.is_active) {
-          if (!startupAvailabilityHandledRef.current) {
-            startupAvailabilityHandledRef.current = true;
-            const activeDeliveryRes = await from("delivery_jobs")
-              .select("id")
-              .eq("courier_id", courierRow.id)
-              .in("status", [
-                "accepted",
-                "arriving_pickup",
-                "at_pickup",
-                "picked_up",
-                "on_the_way",
-                "arrived_destination",
-              ])
-              .limit(1)
-              .maybeSingle();
-
-            if (!activeDeliveryRes.data) {
-              const { error: offlineError } = await rpc("set_courier_online", {
-                _is_online: false,
-              });
-              if (offlineError)
-                console.warn("courier startup offline reset failed", offlineError.message);
-              setCurrentPosition(null);
-            }
-          }
+          // Preserve the server-side online state on a quick app reopen so a still-valid offer
+          // can be recovered immediately. Stale couriers are already excluded by dispatch, and
+          // CourierLocationTracker refreshes location/heartbeat as soon as this screen resumes.
           await loadCourierOperations(courierRow.id);
         }
       } catch (error: any) {
-        toast.error(error?.message || "Não foi possível carregar o app do entregador.");
+        const message = error?.message || "Não foi possível carregar o app do entregador.";
+        setAppError(message);
+        toast.error(message);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -575,6 +558,35 @@ function CourierApp() {
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  if (appError)
+    return (
+      <div className="grid min-h-dvh place-items-center bg-black p-5 text-white">
+        <section className="w-full max-w-sm rounded-[2rem] border border-red-500/20 bg-zinc-950 p-6 text-center">
+          <XCircle className="mx-auto h-10 w-10 text-red-400" />
+          <h1 className="mt-4 text-xl font-black">Não foi possível carregar o app</h1>
+          <p className="mt-2 text-sm leading-5 text-zinc-500">
+            {appError === "Sessão expirada."
+              ? "Sua sessão expirou. Entre novamente para continuar."
+              : "Verifique sua conexão com a internet e tente novamente."}
+          </p>
+          {appError === "Sessão expirada." ? (
+            <Button
+              onClick={() => navigate({ to: "/login" })}
+              className="mt-5 h-12 w-full rounded-2xl font-black"
+            >
+              ENTRAR NOVAMENTE
+            </Button>
+          ) : (
+            <Button
+              onClick={() => void loadAll()}
+              className="mt-5 h-12 w-full rounded-2xl font-black"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" /> TENTAR NOVAMENTE
+            </Button>
+          )}
+        </section>
+      </div>
+    );
   if (!courier)
     return (
       <CourierApplication
@@ -688,29 +700,22 @@ function CourierApp() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-black text-white">
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-zinc-900 bg-black/90 p-4 backdrop-blur">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
-            APOIS ENTREGADOR
-          </p>
-          <p className="text-sm text-zinc-500">Olá, {user?.email?.split("@")[0]}</p>
+      <header className="sticky top-0 z-40 grid h-20 grid-cols-[3rem_1fr_3rem] items-center border-b border-zinc-900 bg-black/92 px-4 backdrop-blur-xl">
+        <div aria-hidden="true" />
+        <div className="flex justify-center">
+          <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-11 w-auto object-contain" />
         </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setFinanceOpen(true)}
-            className="rounded-full bg-zinc-900 p-2"
-          >
-            <WalletCards className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={logout}
-            className="rounded-full bg-zinc-900 p-2 text-red-400"
-          >
-            <LogOut className="h-5 w-5" />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setProfileOpen(true)}
+          aria-label="Abrir perfil"
+          className="relative grid h-11 w-11 place-items-center justify-self-end rounded-full border border-zinc-800 bg-zinc-950 text-zinc-300 shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+        >
+          <UserRound className="h-5 w-5" />
+          <span
+            className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-black ${availability?.is_online ? "bg-emerald-400" : "bg-zinc-600"}`}
+          />
+        </button>
       </header>
 
       <main className="flex-1 space-y-4 overflow-y-auto p-4 pb-28">

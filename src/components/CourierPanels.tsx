@@ -5,6 +5,7 @@ import {
   FileCheck2,
   House,
   MapPin,
+  Route as RouteIcon,
   Star,
   UserRound,
   WalletCards,
@@ -106,6 +107,7 @@ export function CourierHistoryPanel({ jobs, onClose }: { jobs: any[]; onClose: (
             const pickup = job.pickup_address ?? {};
             const delivery = job.delivery_address ?? {};
             const isDelivered = job.status === "delivered";
+            const distanceMeters = Number(job.estimated_distance_meters ?? 0);
             return (
               <article key={job.id} className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -147,11 +149,20 @@ export function CourierHistoryPanel({ jobs, onClose }: { jobs: any[]; onClose: (
                   </div>
                 </div>
 
-                <div className="mt-3 flex items-end justify-between gap-3 border-t border-zinc-900 pt-3">
-                  <div>
+                <div className="mt-3 grid grid-cols-[1fr_auto_auto] items-end gap-4 border-t border-zinc-900 pt-3">
+                  <div className="min-w-0">
                     <p className="text-[9px] font-black uppercase text-zinc-600">Finalizada em</p>
-                    <p className="text-xs text-zinc-400">
+                    <p className="truncate text-xs text-zinc-400">
                       {dateTime(job.delivered_at || job.cancelled_at || job.updated_at)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[9px] font-black uppercase text-zinc-600">Distância</p>
+                    <p className="flex items-center justify-end gap-1 text-xs font-bold text-zinc-300">
+                      <RouteIcon className="h-3 w-3 text-primary" />
+                      {distanceMeters > 0
+                        ? `${(distanceMeters / 1000).toFixed(1).replace(".", ",")} km`
+                        : "—"}
                     </p>
                   </div>
                   {isDelivered ? (
@@ -218,10 +229,11 @@ export function CourierProfilePanel({
               <UserRound className="h-8 w-8" />
             </div>
             <div className="min-w-0">
-              <p className="break-all pr-1 text-base font-black leading-snug sm:text-lg">
-                {user?.email || "Entregador APOIS"}
+              <p className="pr-1 text-base font-black leading-snug sm:text-lg">
+                {user?.user_metadata?.full_name || user?.user_metadata?.name || "Entregador APOIS"}
               </p>
-              <p className="mt-1 text-xs font-bold uppercase text-emerald-400">Cadastro aprovado</p>
+              <p className="mt-1 break-all text-xs text-zinc-500">{user?.email || "Conta APOIS"}</p>
+              <p className="mt-2 text-xs font-bold uppercase text-emerald-400">Cadastro aprovado</p>
               <div className="mt-2 flex items-center gap-1 text-sm text-zinc-400">
                 <Star className="h-4 w-4 fill-primary text-primary" />
                 {Number(courier.rating || 0).toFixed(1)} · {courier.review_count || 0} avaliações
