@@ -28,7 +28,6 @@ const PRODUCT_LABELS: Record<ApoisProductMode, string> = {
 const SHARED_PUBLIC_PATHS = new Set([
   "/",
   "/login",
-  "/register",
   "/redefinir-senha",
   "/auth/callback",
   "/termos",
@@ -75,6 +74,7 @@ export function productAllowsPublicSignup(product = getApoisProductMode()) {
  */
 export function isPathAllowedForProduct(pathname: string, product = getApoisProductMode()) {
   if (!pathname.startsWith("/") || pathname.startsWith("//")) return false;
+  if (pathname === "/register") return product !== "admin";
   if (SHARED_PUBLIC_PATHS.has(pathname)) return true;
 
   if (product === "courier") return isWithin(pathname, "/courier");
