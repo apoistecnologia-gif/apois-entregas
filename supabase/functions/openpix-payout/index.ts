@@ -321,7 +321,8 @@ Deno.serve(async (request: Request) => {
             lookupStatus: verified.providerResponse.status,
           });
           return response(502, {
-            error: "Não foi possível confirmar o estado da transferência na OpenPix. Tente novamente.",
+            error:
+              "Não foi possível confirmar o estado da transferência na OpenPix. Tente novamente.",
             code: "PAYOUT_PROVIDER_UNCERTAIN",
           });
         }
@@ -396,7 +397,8 @@ Deno.serve(async (request: Request) => {
   }
 
   if (["FAILED", "REMOVED", "CANCELLED", "CANCELED", "DENIED"].includes(providerStatus)) {
-    const finalStatus = providerStatus === "FAILED" || providerStatus === "DENIED" ? "failed" : "cancelled";
+    const finalStatus =
+      providerStatus === "FAILED" || providerStatus === "DENIED" ? "failed" : "cancelled";
     const { error: settleError } = await admin.rpc("settle_payout", {
       _payout_id: payout.id,
       _new_status: finalStatus,
