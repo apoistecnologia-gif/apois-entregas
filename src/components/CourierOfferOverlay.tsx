@@ -45,6 +45,10 @@ type RpcResponse = {
 };
 
 type RpcCaller = (name: string, args?: Record<string, unknown>) => Promise<RpcResponse>;
+type WindowWithWebkitAudioContext = Window &
+  typeof globalThis & {
+    webkitAudioContext?: typeof AudioContext;
+  };
 
 const callRpc = supabase.rpc as unknown as RpcCaller;
 
@@ -197,7 +201,8 @@ export function CourierOfferOverlay() {
   useEffect(() => {
     if (!enabled) return;
     const unlock = () => {
-      const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+      const audioWindow = window as WindowWithWebkitAudioContext;
+      const AudioContextCtor = audioWindow.AudioContext || audioWindow.webkitAudioContext;
       if (!AudioContextCtor) return;
       if (!audioContextRef.current) audioContextRef.current = new AudioContextCtor();
       if (audioContextRef.current.state === "suspended") void audioContextRef.current.resume();
