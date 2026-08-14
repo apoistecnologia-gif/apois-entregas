@@ -2,8 +2,11 @@ import { createClient } from "npm:@supabase/supabase-js@2.112.1";
 
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const OPENPIX_SANDBOX_BASE = "https://api.woovi-sandbox.com";
+const OPENPIX_PRODUCTION_BASE = "https://api.openpix.com.br";
 
 type JsonRecord = Record<string, unknown>;
+type OpenPixWebhookCredential = { appId: string; apiBase: string };
 
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -19,6 +22,14 @@ function numberValue(value: unknown): number | null {
 
 function response(status: number, body: JsonRecord) {
   return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
+}
+
+async function readJson(providerResponse: Response): Promise<unknown> {
+  try {
+    return await providerResponse.json();
+  } catch {
+    return null;
+  }
 }
 
 async function sha256Hex(value: string): Promise<string> {
@@ -72,32 +83,211 @@ function isForeignPayoutCorrelation(correlationID: string | null): boolean {
   return Boolean(correlationID && !correlationID.startsWith("apois-entrega-payout-"));
 }
 
+async function refundLateCancelledOpenPixCharge(input: {
+  admin: ReturnType<typeof createClient>;
+  credential: OpenPixWebhookCredential;
+  paymentId: string;
+  orderId: string;
+  amount: number;
+  correlationID: string;
+  providerChargeId: string | null;
+  providerTransactionId: string | null;
+  paidAt: string | null;
+}) {
+  const {
+    admin,
+    credential,
+    paymentId,
+    orderId,
+    amount,
+    correlationID,
+    providerChargeId,
+    providerTransactionId,
+    paidAt,
+  } = input;
+  const now = new Date().toISOString();
+
+  const { error: paymentUpdateError } = await admin
+    .from("payments")
+    .update({
+      status: "paid",
+      paid_at: paidAt ?? now,
+      provider_charge_id: providerChargeId,
+      failed_at: null,
+      failure_reason: null,
+    })
+    .eq("id", paymentId)
+    .neq("status", "refunded");
+  if (paymentUpdateError) throw new Error("payment_update_failed");
+
+  if (providerTransactionId) {
+    const { error: transactionError } = await admin.from("payment_transactions").upsert(
+      {
+        payment_id: paymentId,
+        provider_transaction_id: providerTransactionId,
+        transaction_type: "charge",
+        amount,
+        status: "completed",
+        processed_at: now,
+      },
+      { onConflict: "payment_id,provider_transaction_id,transaction_type" },
+    );
+    if (transactionError) throw new Error("charge_transaction_update_failed");
+  }
+
+  const { data: refundId, error: refundCreateError } = await admin.rpc(
+    "ensure_cancelled_paid_order_refund",
+    { _payment_id: paymentId },
+  );
+  if (refundCreateError || typeof refundId !== "string" || !UUID_RE.test(refundId)) {
+    throw new Error("refund_create_failed");
+  }
+
+  const refundCorrelationID = `apois-entrega-refund-${refundId}`;
+  const refundValueCents = Math.round(amount * 100);
+  const refundUrl = `${credential.apiBase}/api/v1/charge/${encodeURIComponent(correlationID)}/refund`;
+  const providerHeaders = { Authorization: credential.appId, Accept: "application/json" };
+
+  const readRefunds = async () => {
+    const providerResponse = await fetch(refundUrl, { headers: providerHeaders });
+    return { providerResponse, body: await readJson(providerResponse) };
+  };
+  const findOwnRefund = (payload: unknown): JsonRecord | null => {
+    if (!isRecord(payload) || !Array.isArray(payload.refunds)) return null;
+    const found = payload.refunds.find(
+      (candidate) => isRecord(candidate) && text(candidate.correlationID) === refundCorrelationID,
+    );
+    return isRecord(found) ? found : null;
+  };
+
+  const existingLookup = await readRefunds();
+  if (!existingLookup.providerResponse.ok) throw new Error("refund_lookup_failed");
+  let providerRefund = findOwnRefund(existingLookup.body);
+
+  if (!providerRefund) {
+    const { error: markProcessingError } = await admin
+      .from("refunds")
+      .update({ status: "processing" })
+      .eq("id", refundId)
+      .in("status", ["pending", "failed", "processing"]);
+    if (markProcessingError) throw new Error("refund_update_failed");
+
+    const providerResponse = await fetch(refundUrl, {
+      method: "POST",
+      headers: {
+        ...providerHeaders,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        correlationID: refundCorrelationID,
+        value: refundValueCents,
+        comment: "Pagamento recebido após cancelamento do pedido",
+      }),
+    });
+    const providerPayload = await readJson(providerResponse);
+    providerRefund =
+      providerResponse.ok && isRecord(providerPayload) && isRecord(providerPayload.refund)
+        ? providerPayload.refund
+        : null;
+
+    if (!providerRefund) {
+      const verification = await readRefunds();
+      providerRefund = verification.providerResponse.ok ? findOwnRefund(verification.body) : null;
+      if (!providerRefund) {
+        await admin.from("refunds").update({ status: "failed" }).eq("id", refundId);
+        throw new Error(`refund_provider_http_${providerResponse.status}`);
+      }
+    }
+  }
+
+  const providerValue = numberValue(providerRefund.value);
+  if (providerValue !== null && Math.round(providerValue) !== refundValueCents) {
+    await admin.from("refunds").update({ status: "failed" }).eq("id", refundId);
+    throw new Error("refund_amount_mismatch");
+  }
+
+  const providerStatus = (text(providerRefund.status) ?? "IN_PROCESSING").toUpperCase();
+  const providerRefundId =
+    text(providerRefund.endToEndId) ?? text(providerRefund.refundId) ?? refundCorrelationID;
+
+  if (["CONFIRMED", "COMPLETED", "REFUNDED"].includes(providerStatus)) {
+    const { error: refundUpdateError } = await admin
+      .from("refunds")
+      .update({
+        status: "completed",
+        provider_refund_id: providerRefundId,
+        processed_at: now,
+      })
+      .eq("id", refundId);
+    if (refundUpdateError) throw new Error("refund_update_failed");
+
+    const { error: paymentRefundError } = await admin
+      .from("payments")
+      .update({ status: "refunded" })
+      .eq("id", paymentId);
+    if (paymentRefundError) throw new Error("payment_refund_update_failed");
+
+    const { error: transactionError } = await admin.from("payment_transactions").upsert(
+      {
+        payment_id: paymentId,
+        provider_transaction_id: providerRefundId,
+        transaction_type: "refund",
+        amount,
+        status: "completed",
+        processed_at: now,
+      },
+      { onConflict: "payment_id,provider_transaction_id,transaction_type" },
+    );
+    if (transactionError) throw new Error("refund_transaction_update_failed");
+
+    return { refundId, refundStatus: "completed", providerRefundId };
+  }
+
+  if (["FAILED", "REJECTED", "CANCELLED", "CANCELED"].includes(providerStatus)) {
+    await admin
+      .from("refunds")
+      .update({ status: "failed", provider_refund_id: providerRefundId })
+      .eq("id", refundId);
+    throw new Error(`refund_provider_${providerStatus.toLowerCase()}`);
+  }
+
+  const { error: pendingUpdateError } = await admin
+    .from("refunds")
+    .update({ status: "processing", provider_refund_id: providerRefundId })
+    .eq("id", refundId);
+  if (pendingUpdateError) throw new Error("refund_update_failed");
+
+  return { refundId, refundStatus: "processing", providerRefundId };
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method !== "POST") {
     return response(405, { error: "Método não permitido.", code: "METHOD_NOT_ALLOWED" });
   }
 
   const receivedAuthorization = request.headers.get("Authorization")?.trim() ?? "";
-  const appIds = [
-    Deno.env.get("OPENPIX_APP_ID_SANDBOX")?.trim(),
-    Deno.env.get("OPENPIX_APP_ID_PRODUCTION")?.trim(),
-  ].filter((value): value is string => Boolean(value));
-  if (appIds.length === 0) {
+  const sandboxAppId = Deno.env.get("OPENPIX_APP_ID_SANDBOX")?.trim();
+  const productionAppId = Deno.env.get("OPENPIX_APP_ID_PRODUCTION")?.trim();
+  const credentials: OpenPixWebhookCredential[] = [];
+  if (sandboxAppId) credentials.push({ appId: sandboxAppId, apiBase: OPENPIX_SANDBOX_BASE });
+  if (productionAppId)
+    credentials.push({ appId: productionAppId, apiBase: OPENPIX_PRODUCTION_BASE });
+  if (credentials.length === 0) {
     return response(503, {
       error: "OpenPix não configurada.",
       code: "PAYMENT_PROVIDER_NOT_CONFIGURED",
     });
   }
 
-  let authenticated = false;
-  for (const appId of appIds) {
-    const expected = await expectedWebhookAuthorization(appId);
+  let providerCredential: OpenPixWebhookCredential | null = null;
+  for (const credential of credentials) {
+    const expected = await expectedWebhookAuthorization(credential.appId);
     if (safeEqual(receivedAuthorization, expected)) {
-      authenticated = true;
+      providerCredential = credential;
       break;
     }
   }
-  if (!authenticated) {
+  if (!providerCredential) {
     return response(401, {
       error: "Webhook OpenPix não autenticado.",
       code: "INVALID_WEBHOOK_AUTH",
@@ -268,18 +458,86 @@ Deno.serve(async (request: Request) => {
       return response(500, { error: "Pedido local não encontrado.", code: "ORDER_NOT_FOUND" });
     }
 
-    if (payment.status === "refunded" || ["cancelled", "refunded"].includes(order.status)) {
+    if (payment.status === "refunded" || order.status === "refunded") {
       await admin
         .from("payment_events")
         .update({
           status: "ignored",
-          error_message: "order_or_payment_finalized",
+          error_message: "order_or_payment_refunded",
           payment_id: paymentId,
           processed_at: now,
         })
         .eq("provider", "openpix")
         .eq("provider_event_id", eventId);
       return response(200, { ok: true, ignored: true });
+    }
+
+    if (order.status === "cancelled") {
+      if (!correlationID || orderId !== localOrderId) {
+        await admin
+          .from("payment_events")
+          .update({
+            status: "failed",
+            error_message: "cancelled_order_correlation_required",
+            payment_id: paymentId,
+          })
+          .eq("provider", "openpix")
+          .eq("provider_event_id", eventId);
+        return response(409, {
+          error: "Pagamento cancelado sem referência válida para estorno.",
+          code: "EXTERNAL_REFERENCE_MISMATCH",
+        });
+      }
+
+      try {
+        const recovery = await refundLateCancelledOpenPixCharge({
+          admin,
+          credential: providerCredential,
+          paymentId,
+          orderId: localOrderId,
+          amount: localAmount,
+          correlationID,
+          providerChargeId,
+          providerTransactionId,
+          paidAt: text(payment.paid_at),
+        });
+        await admin
+          .from("payment_events")
+          .update({
+            status: "processed",
+            error_message: null,
+            payment_id: paymentId,
+            processed_at: now,
+          })
+          .eq("provider", "openpix")
+          .eq("provider_event_id", eventId);
+        return response(200, {
+          ok: true,
+          paymentId,
+          orderId: localOrderId,
+          refundId: recovery.refundId,
+          refundStatus: recovery.refundStatus,
+        });
+      } catch (error) {
+        console.error("openpix-webhook late cancelled charge refund failed", {
+          orderId: localOrderId,
+          paymentId,
+          message: error instanceof Error ? error.message : "unknown",
+        });
+        await admin
+          .from("payment_events")
+          .update({
+            status: "failed",
+            error_message: "late_cancel_refund_failed",
+            payment_id: paymentId,
+          })
+          .eq("provider", "openpix")
+          .eq("provider_event_id", eventId);
+        return response(500, {
+          error: "Pagamento recebido após cancelamento; estorno pendente de nova tentativa.",
+          code: "LATE_CANCEL_REFUND_FAILED",
+        });
+      }
     }
 
     const { error: paymentUpdateError } = await admin
