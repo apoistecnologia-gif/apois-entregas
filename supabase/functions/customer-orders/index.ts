@@ -412,17 +412,14 @@ Deno.serve(async (request: Request) => {
         }
       : null;
 
-    let pin: string | null = null;
-    if (deliveryJob && !["delivered", "cancelled"].includes(deliveryJob.status)) {
-      const { data: secret, error: secretError } = await adminClient
-        .from("delivery_confirmation_secrets")
-        .select("pin_code")
-        .eq("order_id", orderId)
-        .maybeSingle();
-      if (secretError)
-        console.error("customer-orders PIN load failed", { code: secretError.code, orderId });
-      pin = secret?.pin_code ?? null;
-    }
+    const { data: secret, error: secretError } = await userClient
+      .from("delivery_confirmation_secrets")
+      .select("pin_code")
+      .eq("order_id", orderId)
+      .maybeSingle();
+    if (secretError)
+      console.error("customer-orders PIN load failed", { code: secretError.code, orderId });
+    const pin = secret?.pin_code ?? null;
 
     const { data: review, error: reviewError } = await adminClient
       .from("reviews")
