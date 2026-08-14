@@ -25,37 +25,64 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           courier = Path('src/routes/courier.tsx')
           s = courier.read_text()
 
-          def replace_once(old, new, label):
+          def must_replace(old, new, label):
               global s
               if old not in s:
                   raise SystemExit(f'{label} target not found')
               s = s.replace(old, new, 1)
 
-          replace_once(
-              '''  const startupAvailabilityHandledRef = useRef(false);\n  const audioContextRef = useRef<AudioContext | null>(null);\n  const offerAlertIntervalRef = useRef<number | null>(null);\n  const offerAlertActiveRef = useRef(false);\n\n  const ensureOfferAudioContext = useCallback(() => {\n    if (typeof window === "undefined") return null;\n    const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;\n    if (!AudioContextCtor) return null;\n    if (!audioContextRef.current) audioContextRef.current = new AudioContextCtor();\n    if (audioContextRef.current.state === "suspended") void audioContextRef.current.resume();\n    return audioContextRef.current;\n  }, []);\n\n  const stopOfferAlert = useCallback(() => {\n    offerAlertActiveRef.current = false;\n    if (offerAlertIntervalRef.current !== null) {\n      window.clearInterval(offerAlertIntervalRef.current);\n      offerAlertIntervalRef.current = null;\n    }\n    if (navigator.vibrate) navigator.vibrate(0);\n  }, []);\n\n  const playOfferAlertPulse = useCallback(() => {\n    const context = ensureOfferAudioContext();\n    if (context) {\n      const now = context.currentTime;\n      [0, 0.18, 0.36].forEach((offset, index) => {\n        const oscillator = context.createOscillator();\n        const gain = context.createGain();\n        oscillator.type = "square";\n        oscillator.frequency.setValueAtTime(index === 1 ? 1040 : 880, now + offset);\n        gain.gain.setValueAtTime(0.0001, now + offset);\n        gain.gain.exponentialRampToValueAtTime(0.22, now + offset + 0.015);\n        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.14);\n        oscillator.connect(gain);\n        gain.connect(context.destination);\n        oscillator.start(now + offset);\n        oscillator.stop(now + offset + 0.16);\n      });\n    }\n    if (navigator.vibrate) navigator.vibrate([280, 120, 280, 120, 420]);\n  }, [ensureOfferAudioContext]);\n\n  const startOfferAlert = useCallback(() => {\n    if (offerAlertActiveRef.current) return;\n    offerAlertActiveRef.current = true;\n    playOfferAlertPulse();\n    offerAlertIntervalRef.current = window.setInterval(() => {\n      if (offerAlertActiveRef.current) playOfferAlertPulse();\n    }, 2200);\n  }, [playOfferAlertPulse]);''',
-              '''  const startupAvailabilityHandledRef = useRef(false);''',
-              'duplicate route offer alert',
+          s, n = re.subn(
+              r'\n  const audioContextRef = useRef<AudioContext \| null>\(null\);.*?\n  const loadCourierOperations = useCallback',
+              '\n  const loadCourierOperations = useCallback',
+              s,
+              count=1,
+              flags=re.S,
           )
+          if n != 1:
+              raise SystemExit('duplicate route offer alert target not found')
 
-          replace_once(
-              '''  useEffect(() => {\n    const shouldAlert = Boolean(availability?.is_online && !activeJob && offers.length > 0);\n    if (shouldAlert) startOfferAlert();\n    else stopOfferAlert();\n    return () => {\n      if (!shouldAlert) stopOfferAlert();\n    };\n  }, [availability?.is_online, activeJob, offers.length, startOfferAlert, stopOfferAlert]);\n\n  useEffect(\n    () => () => {\n      stopOfferAlert();\n      if (audioContextRef.current) void audioContextRef.current.close();\n      audioContextRef.current = null;\n    },\n    [stopOfferAlert],\n  );\n\n''',
-              '',
-              'duplicate offer alert effects',
+          s, n = re.subn(
+              r'\n  useEffect\(\(\) => \{\n    const shouldAlert = Boolean\(availability\?\.is_online && !activeJob && offers\.length > 0\);.*?\n  useEffect\(\(\) => \{\n    if \(!courier\?\.id \|\| courier\.status !== "approved"\) return;',
+              '\n  useEffect(() => {\n    if (!courier?.id || courier.status !== "approved") return;',
+              s,
+              count=1,
+              flags=re.S,
           )
+          if n != 1:
+              raise SystemExit('duplicate offer alert effects target not found')
 
-          replace_once('<h1 className="font-black">Carteira</h1>', '<h1 className="font-black">Meus ganhos</h1>', 'finance title')
-          replace_once(
+          s = s.replace('      ensureOfferAudioContext();\n', '', 1)
+          s = s.replace('    stopOfferAlert();\n', '', 2)
+
+          must_replace('<h1 className="font-black">Carteira</h1>', '<h1 className="font-black">Meus ganhos</h1>', 'finance title')
+          must_replace(
               '<div className="rounded-3xl bg-primary p-6 text-black">\n          <p className="text-xs font-black uppercase">Disponível para saque</p>\n          <p className="mt-2 text-4xl font-black">{money(wallet?.available_balance)}</p>\n          <p className="mt-2 text-xs opacity-70">',
               '<div className="rounded-3xl border border-primary/40 bg-[linear-gradient(145deg,rgba(250,204,21,0.12),#090909_62%)] p-6 text-white shadow-[0_20px_55px_rgba(0,0,0,0.5)]">\n          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Saldo disponível</p>\n          <p className="mt-2 text-4xl font-black text-primary">{money(wallet?.available_balance)}</p>\n          <p className="mt-2 text-xs text-zinc-500">',
               'finance balance card',
           )
-          replace_once(
-              '''              <Button\n                className="w-full"\n                disabled={!payoutAccount || busy === "payout"}\n                onClick={onRequestPayout}\n              >\n                Solicitar\n              </Button>''',
-              '''              <Button\n                className="h-12 w-full rounded-xl font-black"\n                disabled={!payoutAccount || busy === "payout"}\n                onClick={onRequestPayout}\n              >\n                Solicitar saque\n              </Button>\n              <p className="text-[11px] leading-4 text-zinc-500">\n                A solicitação entra em processamento após a reserva do saldo. O app não promete transferência instantânea.\n              </p>''',
+          must_replace(
+              '''              <Button
+                className="w-full"
+                disabled={!payoutAccount || busy === "payout"}
+                onClick={onRequestPayout}
+              >
+                Solicitar
+              </Button>''',
+              '''              <Button
+                className="h-12 w-full rounded-xl font-black"
+                disabled={!payoutAccount || busy === "payout"}
+                onClick={onRequestPayout}
+              >
+                Solicitar saque
+              </Button>
+              <p className="text-[11px] leading-4 text-zinc-500">
+                A solicitação entra em processamento após a reserva do saldo. O app não promete transferência instantânea.
+              </p>''',
               'payout disclaimer',
           )
 
@@ -63,27 +90,61 @@ jobs:
           s = s.replace('<CourierBottomNav\n          onHome={() => setProfileOpen(false)}', '<CourierBottomNav\n          active="profile"\n          onHome={() => setProfileOpen(false)}', 1)
           s = s.replace('<CourierBottomNav\n          onHome={() => setFinanceOpen(false)}', '<CourierBottomNav\n          active="finance"\n          onHome={() => setFinanceOpen(false)}', 1)
           s = s.replace('<CourierBottomNav\n        onHome={() => window.scrollTo', '<CourierBottomNav\n        active="home"\n        onHome={() => window.scrollTo', 1)
-
           courier.write_text(s)
 
           panels = Path('src/components/CourierPanels.tsx')
           p = panels.read_text()
-          p = p.replace(
-              '''export function CourierBottomNav({\n  onHome,\n  onHistory,\n  onFinance,\n  onProfile,\n}: {\n  onHome: () => void;''',
-              '''export function CourierBottomNav({\n  active = "home",\n  onHome,\n  onHistory,\n  onFinance,\n  onProfile,\n}: {\n  active?: "home" | "history" | "finance" | "profile";\n  onHome: () => void;''',
-              1,
-          )
-          p = p.replace(
-              '''  const items = [\n    { label: "Início", icon: House, onClick: onHome },\n    { label: "Corridas", icon: Bike, onClick: onHistory },\n    { label: "Ganhos", icon: WalletCards, onClick: onFinance },\n    { label: "Perfil", icon: UserRound, onClick: onProfile },\n  ];''',
-              '''  const items = [\n    { id: "home", label: "Início", icon: House, onClick: onHome },\n    { id: "history", label: "Corridas", icon: Bike, onClick: onHistory },\n    { id: "finance", label: "Ganhos", icon: WalletCards, onClick: onFinance },\n    { id: "profile", label: "Perfil", icon: UserRound, onClick: onProfile },\n  ] as const;''',
-              1,
-          )
-          p = p.replace(
-              '''            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-bold text-zinc-500 transition-colors active:bg-zinc-900 active:text-primary"\n          >\n            <item.icon className="h-5 w-5" />\n            {item.label}''',
-              '''            aria-current={active === item.id ? "page" : undefined}\n            className={`relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-bold transition-colors active:bg-zinc-900 ${\n              active === item.id ? "text-primary" : "text-zinc-500"\n            }`}\n          >\n            <item.icon className="h-5 w-5" />\n            {item.label}\n            {active === item.id ? (\n              <span className="absolute bottom-0 h-0.5 w-7 rounded-full bg-primary" />\n            ) : null}''',
-              1,
-          )
-          panels.write_text(p)
+          old = '''export function CourierBottomNav({
+  onHome,
+  onHistory,
+  onFinance,
+  onProfile,
+}: {
+  onHome: () => void;'''
+          new = '''export function CourierBottomNav({
+  active = "home",
+  onHome,
+  onHistory,
+  onFinance,
+  onProfile,
+}: {
+  active?: "home" | "history" | "finance" | "profile";
+  onHome: () => void;'''
+          if old not in p:
+              raise SystemExit('bottom nav signature target not found')
+          p = p.replace(old, new, 1)
+          old = '''  const items = [
+    { label: "Início", icon: House, onClick: onHome },
+    { label: "Corridas", icon: Bike, onClick: onHistory },
+    { label: "Ganhos", icon: WalletCards, onClick: onFinance },
+    { label: "Perfil", icon: UserRound, onClick: onProfile },
+  ];'''
+          new = '''  const items = [
+    { id: "home", label: "Início", icon: House, onClick: onHome },
+    { id: "history", label: "Corridas", icon: Bike, onClick: onHistory },
+    { id: "finance", label: "Ganhos", icon: WalletCards, onClick: onFinance },
+    { id: "profile", label: "Perfil", icon: UserRound, onClick: onProfile },
+  ] as const;'''
+          if old not in p:
+              raise SystemExit('bottom nav items target not found')
+          p = p.replace(old, new, 1)
+          old = '''            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-bold text-zinc-500 transition-colors active:bg-zinc-900 active:text-primary"
+          >
+            <item.icon className="h-5 w-5" />
+            {item.label}'''
+          new = '''            aria-current={active === item.id ? "page" : undefined}
+            className={`relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-bold transition-colors active:bg-zinc-900 ${
+              active === item.id ? "text-primary" : "text-zinc-500"
+            }`}
+          >
+            <item.icon className="h-5 w-5" />
+            {item.label}
+            {active === item.id ? (
+              <span className="absolute bottom-0 h-0.5 w-7 rounded-full bg-primary" />
+            ) : null}'''
+          if old not in p:
+              raise SystemExit('bottom nav active state target not found')
+          panels.write_text(p.replace(old, new, 1))
 
           offer = Path('src/components/CourierOfferOverlay.tsx')
           o = offer.read_text()
@@ -101,7 +162,7 @@ jobs:
               raise SystemExit('active overlay viewport target not found')
           active.write_text(a.replace(old, new, 1))
           PY
-          bunx prettier --write src/routes/courier.tsx src/components/CourierPanels.tsx src/components/CourierOfferOverlay.tsx src/components/CourierActiveDeliveryOverlay.tsx
+          bunx prettier --write src/routes/courier.tsx src/components/CourierPanels.tsx src/components/CourierOfferOverlay.tsx src/components/CourierActiveDeliveryOverlay.tsx src/routes/register.tsx
           rm -f scripts/refine-courier-once.py .github/workflows/refine-courier-once.yml
       - name: Validate package
         run: |
@@ -117,9 +178,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          if git diff --cached --quiet; then
-            exit 0
-          fi
           git commit -m "feat(courier): finalize premium operational UX"
           git pull --rebase origin main
           bun run typecheck
