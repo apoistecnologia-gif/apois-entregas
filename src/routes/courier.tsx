@@ -1,26 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import {
-  Bike,
-  CheckCircle2,
-  ChevronRight,
-  CircleDollarSign,
-  Clock3,
-  FileCheck2,
-  Loader2,
-  LocateFixed,
-  LogOut,
-  MapPin,
-  Navigation,
-  PackageCheck,
-  Power,
-  RefreshCw,
-  Route as RouteIcon,
-  Upload,
-  UserRound,
-  WalletCards,
-  XCircle,
-} from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Loader2, RefreshCw, UserRound, XCircle } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -32,6 +12,16 @@ import {
 } from "@/components/CourierPanels";
 import { CourierLocationTracker, type CourierPosition } from "@/components/CourierLocationTracker";
 import { CourierLiveMap, CourierRouteMap } from "@/components/CourierRouteMap";
+import {
+  ActiveDelivery,
+  CourierApplication,
+  CourierFinance,
+  CourierOfflineCard,
+  CourierOfferCard,
+  CourierReviewState,
+  CourierStatusCard,
+  CourierWaitingSheet,
+} from "@/components/CourierPremiumViews";
 import logoAsset from "@/assets/logo.png.asset.json";
 
 export const Route = createFileRoute("/courier")({
@@ -50,12 +40,6 @@ export const Route = createFileRoute("/courier")({
 const from = (table: string) => (supabase.from as any)(table);
 const rpc = (name: string, args?: Record<string, unknown>) =>
   (supabase.rpc as any)(name, args ?? {});
-const money = (value: unknown) =>
-  `R$ ${Number(value ?? 0)
-    .toFixed(2)
-    .replace(".", ",")}`;
-const dateTime = (value: string | null | undefined) =>
-  value ? new Date(value).toLocaleString("pt-BR") : "—";
 
 function CourierApp() {
   const navigate = useNavigate();
@@ -119,7 +103,7 @@ function CourierApp() {
           .limit(100),
       ]);
     setAvailability(availabilityRes.data ?? null);
-    setOffers(offersRes.data ?? []);
+    setOffers(Array.isArray(offersRes.data) ? offersRes.data : []);
     setNearbyMerchants(merchantsRes.data ?? []);
     setActiveJob(jobsRes.data ?? null);
     setWallet(walletRes.data ?? null);
@@ -163,6 +147,10 @@ function CourierApp() {
           document: accountRes.data.document ?? "",
         }));
       }
+    } else {
+      setTransactions([]);
+      setPayoutAccount(null);
+      setPayouts([]);
     }
   }, []);
 
@@ -194,9 +182,6 @@ function CourierApp() {
           .order("created_at");
         setDocuments(docsRes.data ?? []);
         if (courierRow.status === "approved" && courierRow.is_active) {
-          // Preserve the server-side online state on a quick app reopen so a still-valid offer
-          // can be recovered immediately. Stale couriers are already excluded by dispatch, and
-          // CourierLocationTracker refreshes location/heartbeat as soon as this screen resumes.
           await loadCourierOperations(courierRow.id);
         }
       } catch (error: any) {
@@ -547,22 +532,25 @@ function CourierApp() {
     if (courier?.id) await loadCourierOperations(courier.id);
   };
 
-  const expectedEarnings = useMemo(
-    () => offers.reduce((sum, offer) => sum + Number(offer.estimated_earnings || 0), 0),
-    [offers],
-  );
-
-  if (loading)
-    return (
-      <div className="grid min-h-dvh place-items-center bg-black">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  if (appError)
+  if (loading) {
     return (
       <div className="grid min-h-dvh place-items-center bg-black p-5 text-white">
-        <section className="w-full max-w-sm rounded-[2rem] border border-red-500/20 bg-zinc-950 p-6 text-center">
-          <XCircle className="mx-auto h-10 w-10 text-red-400" />
+        <div className="text-center">
+          <img src={logoAsset.url} alt="APOIS ENTREGA" className="mx-auto h-14 w-auto object-contain" />
+          <Loader2 className="mx-auto mt-6 h-7 w-7 animate-spin text-primary" />
+          <p className="mt-3 text-xs font-bold text-zinc-500">Carregando sua jornada...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (appError) {
+    return (
+      <div className="grid min-h-dvh place-items-center bg-black p-5 text-white">
+        <section className="w-full max-w-sm rounded-[2rem] border border-red-500/20 bg-zinc-950 p-6 text-center shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-red-500/20 bg-red-500/10">
+            <XCircle className="h-7 w-7 text-red-400" />
+          </div>
           <h1 className="mt-4 text-xl font-black">Não foi possível carregar o app</h1>
           <p className="mt-2 text-sm leading-5 text-zinc-500">
             {appError === "Sessão expirada."
@@ -570,24 +558,20 @@ function CourierApp() {
               : "Verifique sua conexão com a internet e tente novamente."}
           </p>
           {appError === "Sessão expirada." ? (
-            <Button
-              onClick={() => navigate({ to: "/login" })}
-              className="mt-5 h-12 w-full rounded-2xl font-black"
-            >
+            <Button onClick={() => navigate({ to: "/login" })} className="mt-5 h-12 w-full rounded-2xl font-black">
               ENTRAR NOVAMENTE
             </Button>
           ) : (
-            <Button
-              onClick={() => void loadAll()}
-              className="mt-5 h-12 w-full rounded-2xl font-black"
-            >
+            <Button onClick={() => void loadAll()} className="mt-5 h-12 w-full rounded-2xl font-black">
               <RefreshCw className="mr-2 h-4 w-4" /> TENTAR NOVAMENTE
             </Button>
           )}
         </section>
       </div>
     );
-  if (!courier)
+  }
+
+  if (!courier) {
     return (
       <CourierApplication
         user={user}
@@ -596,7 +580,9 @@ function CourierApp() {
         onBack={() => navigate({ to: "/perfil" })}
       />
     );
-  if (courier.status !== "approved" || !courier.is_active)
+  }
+
+  if (courier.status !== "approved" || !courier.is_active) {
     return (
       <CourierReviewState
         courier={courier}
@@ -609,6 +595,7 @@ function CourierApp() {
         onResubmit={resubmitApplication}
       />
     );
+  }
 
   if (historyOpen) {
     return (
@@ -668,7 +655,6 @@ function CourierApp() {
     return (
       <>
         <CourierFinance
-          courier={courier}
           wallet={wallet}
           metrics={metrics}
           transactions={transactions}
@@ -698,84 +684,35 @@ function CourierApp() {
     );
   }
 
+  const online = Boolean(availability?.is_online);
+
   return (
-    <div className="flex min-h-dvh flex-col bg-black text-white">
-      <header className="sticky top-0 z-40 grid h-20 grid-cols-[3rem_1fr_3rem] items-center border-b border-zinc-900 bg-black/92 px-4 backdrop-blur-xl">
+    <div className="min-h-dvh bg-black text-white">
+      <header className="sticky top-0 z-40 grid min-h-20 grid-cols-[3rem_1fr_3rem] items-center border-b border-primary/10 bg-black/92 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-2xl">
         <div aria-hidden="true" />
-        <div className="flex justify-center">
-          <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-11 w-auto object-contain" />
+        <div className="flex justify-center py-2">
+          <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-11 w-auto max-w-[55vw] object-contain" />
         </div>
         <button
           type="button"
           onClick={() => setProfileOpen(true)}
           aria-label="Abrir perfil"
-          className="relative grid h-11 w-11 place-items-center justify-self-end rounded-full border border-zinc-800 bg-zinc-950 text-zinc-300 shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+          className="relative grid h-11 w-11 place-items-center justify-self-end rounded-full border border-zinc-800 bg-zinc-950 text-zinc-300 shadow-[0_8px_24px_rgba(0,0,0,0.4)] active:scale-95"
         >
           <UserRound className="h-5 w-5" />
-          <span
-            className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-black ${availability?.is_online ? "bg-emerald-400" : "bg-zinc-600"}`}
-          />
+          <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-black ${online ? "bg-emerald-400" : "bg-zinc-600"}`} />
         </button>
       </header>
 
-      <main className="flex-1 space-y-4 overflow-y-auto p-4 pb-28">
-        <section
-          className={`rounded-3xl border p-5 ${availability?.is_online ? "border-emerald-500/30 bg-emerald-500/10" : "border-zinc-800 bg-zinc-950"}`}
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-black uppercase text-zinc-500">Status</p>
-              <p
-                className={`mt-1 text-xl font-black ${availability?.is_online ? "text-emerald-400" : "text-zinc-400"}`}
-              >
-                {availability?.is_online ? "ONLINE" : "OFFLINE"}
-              </p>
-            </div>
-            <button
-              type="button"
-              disabled={busy === "online" || Boolean(activeJob && availability?.is_online)}
-              onClick={toggleOnline}
-              className={`relative grid h-14 w-14 place-items-center rounded-full transition active:scale-95 ${availability?.is_online ? "bg-emerald-500 text-black shadow-[0_0_28px_rgba(16,185,129,0.22)]" : "bg-primary text-black shadow-[0_0_30px_rgba(250,204,21,0.28)]"}`}
-            >
-              {busy === "online" ? (
-                <Loader2 className="h-6 w-6 animate-spin" />
-              ) : (
-                <Power className="h-6 w-6" />
-              )}
-            </button>
-          </div>
-          {activeJob && availability?.is_online ? (
-            <p className="mt-3 text-xs text-zinc-500">
-              Finalize a entrega atual antes de ficar offline.
-            </p>
-          ) : null}
-        </section>
+      <CourierLocationTracker enabled={online} onPosition={setCurrentPosition} />
 
-        <CourierLocationTracker
-          enabled={Boolean(availability?.is_online)}
-          onPosition={setCurrentPosition}
+      <main className="mx-auto w-full max-w-lg space-y-4 overflow-x-hidden p-4 pb-[calc(7.7rem+env(safe-area-inset-bottom))]">
+        <CourierStatusCard
+          online={online}
+          busy={busy === "online"}
+          activeJob={activeJob}
+          onToggle={toggleOnline}
         />
-
-        {availability?.is_online && !activeJob ? (
-          <CourierLiveMap
-            currentPosition={currentPosition}
-            merchants={nearbyMerchants}
-            activeOfferMerchantIds={offers.map((offer) => offer.merchant_id).filter(Boolean)}
-          />
-        ) : null}
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
-            <p className="text-[10px] font-black uppercase text-zinc-500">Saldo disponível</p>
-            <p className="mt-1 text-xl font-black text-primary">
-              {money(wallet?.available_balance)}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
-            <p className="text-[10px] font-black uppercase text-zinc-500">Avaliação</p>
-            <p className="mt-1 text-xl font-black">{Number(courier.rating || 0).toFixed(1)} ★</p>
-          </div>
-        </div>
 
         {activeJob ? (
           <>
@@ -791,109 +728,38 @@ function CourierApp() {
               onReport={reportDeliveryProblem}
             />
           </>
-        ) : null}
-
-        {!activeJob && availability?.is_online ? (
-          <section>
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h2 className="font-black">Entregas disponíveis</h2>
-                <p className="text-xs text-zinc-500">Ofertas válidas próximas de você</p>
+        ) : online ? (
+          <>
+            <CourierLiveMap
+              currentPosition={currentPosition}
+              merchants={nearbyMerchants}
+              activeOfferMerchantIds={offers.map((offer) => offer.merchant_id).filter(Boolean)}
+            />
+            {offers.length > 0 ? (
+              <div className="relative -mt-8 space-y-3">
+                {offers.map((offer) => (
+                  <CourierOfferCard
+                    key={offer.id}
+                    offer={offer}
+                    busy={busy === `offer:${offer.id}`}
+                    onAccept={acceptOffer}
+                    onReject={rejectOffer}
+                  />
+                ))}
               </div>
-              <button
-                type="button"
-                onClick={() => courier?.id && void loadCourierOperations(courier.id)}
-                className="rounded-full bg-zinc-900 p-2"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              {offers.map((offer) => (
-                <OfferCard
-                  key={offer.id}
-                  offer={offer}
-                  busy={busy === `offer:${offer.id}`}
-                  onAccept={acceptOffer}
-                  onReject={rejectOffer}
-                />
-              ))}
-              {offers.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/60 p-8 text-center">
-                  <LocateFixed className="mx-auto h-8 w-8 text-zinc-700" />
-                  <p className="mt-3 font-bold">Procurando entregas...</p>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Mantenha o app aberto e a localização ativa.
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          </section>
-        ) : null}
-
-        {!activeJob && !availability?.is_online ? (
-          <section className="relative overflow-hidden rounded-[2rem] border border-primary/20 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.14),transparent_38%),linear-gradient(145deg,#111111,#070707)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.5)]">
-            <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full border border-primary/10" />
-            <div className="pointer-events-none absolute -right-3 top-5 h-24 w-24 rounded-full border border-primary/10" />
-
-            <div className="relative flex items-start gap-4">
-              <div className="relative grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-primary/30 bg-primary/10">
-                <Bike className="h-8 w-8 text-primary" />
-                <span className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full bg-primary shadow-[0_0_18px_rgba(250,204,21,0.9)]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">
-                  Pronto para começar?
-                </p>
-                <h2 className="mt-1 text-xl font-black leading-tight">Você está offline</h2>
-                <p className="mt-2 text-sm leading-5 text-zinc-400">
-                  Ative quando quiser receber entregas. Sua localização só será utilizada enquanto
-                  você estiver online.
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={toggleOnline}
-              disabled={busy === "online"}
-              className="mt-5 flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-primary px-5 text-sm font-black uppercase tracking-[0.08em] text-black shadow-[0_12px_35px_rgba(250,204,21,0.22)] transition active:scale-[0.98] disabled:opacity-60"
-            >
-              {busy === "online" ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Power className="h-5 w-5" />
-              )}
-              {busy === "online" ? "Ativando..." : "Ficar online agora"}
-            </button>
-
-            <div className="mt-5 grid grid-cols-3 gap-2">
-              <div className="rounded-2xl border border-zinc-800/80 bg-black/45 px-3 py-3 text-center">
-                <LocateFixed className="mx-auto h-4 w-4 text-primary" />
-                <p className="mt-2 text-[10px] font-bold text-zinc-300">GPS ao ativar</p>
-              </div>
-              <div className="rounded-2xl border border-zinc-800/80 bg-black/45 px-3 py-3 text-center">
-                <MapPin className="mx-auto h-4 w-4 text-primary" />
-                <p className="mt-2 text-[10px] font-bold text-zinc-300">Parceiros perto</p>
-              </div>
-              <div className="rounded-2xl border border-zinc-800/80 bg-black/45 px-3 py-3 text-center">
-                <CircleDollarSign className="mx-auto h-4 w-4 text-primary" />
-                <p className="mt-2 text-[10px] font-bold text-zinc-300">Ganhos em tempo real</p>
-              </div>
-            </div>
-
-            <p className="mt-4 text-center text-[10px] leading-4 text-zinc-600">
-              Você controla quando começa e quando encerra sua jornada.
-            </p>
-          </section>
-        ) : null}
-
-        {offers.length > 0 ? (
-          <p className="text-center text-[10px] text-zinc-600">
-            Potencial das ofertas atuais: {money(expectedEarnings)}
-          </p>
-        ) : null}
+            ) : (
+              <CourierWaitingSheet
+                metrics={metrics}
+                wallet={wallet}
+                onRefresh={() => courier?.id && void loadCourierOperations(courier.id)}
+              />
+            )}
+          </>
+        ) : (
+          <CourierOfflineCard busy={busy === "online"} onToggle={toggleOnline} />
+        )}
       </main>
+
       <CourierBottomNav
         active="home"
         onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
@@ -902,748 +768,5 @@ function CourierApp() {
         onProfile={() => setProfileOpen(true)}
       />
     </div>
-  );
-}
-
-function CourierApplication({ user, busy, onSubmit, onBack }: any) {
-  const [vehicleType, setVehicleType] = useState("moto");
-  const motorized = vehicleType === "moto" || vehicleType === "carro";
-
-  return (
-    <div className="min-h-dvh bg-black p-4 text-white">
-      <button type="button" onClick={onBack} className="mt-3 text-sm font-bold text-zinc-500">
-        ← Voltar
-      </button>
-      <div className="mt-6">
-        <p className="text-xs font-black uppercase tracking-[0.25em] text-primary">
-          APOIS ENTREGADOR
-        </p>
-        <h1 className="mt-2 text-3xl font-black">Faça seu cadastro</h1>
-        <p className="mt-2 text-sm text-zinc-500">
-          Preencha seus dados. Documentos serão enviados na etapa seguinte.
-        </p>
-      </div>
-      <form onSubmit={onSubmit} className="mt-7 space-y-3">
-        <Input name="cpf" placeholder="CPF" required inputMode="numeric" />
-        <Input name="birthDate" type="date" placeholder="Data de nascimento" required />
-        <div className="grid grid-cols-[1fr_90px] gap-2">
-          <Input name="street" placeholder="Rua" required />
-          <Input name="number" placeholder="Número" required />
-        </div>
-        <Input name="neighborhood" placeholder="Bairro" required />
-        <div className="grid grid-cols-[1fr_80px] gap-2">
-          <Input name="city" placeholder="Cidade" required />
-          <Input name="state" placeholder="UF" maxLength={2} required />
-        </div>
-        <select
-          name="vehicleType"
-          required
-          value={vehicleType}
-          onChange={(event) => setVehicleType(event.target.value)}
-          className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-4 text-sm"
-        >
-          <option value="moto">Moto</option>
-          <option value="carro">Carro</option>
-          <option value="bicicleta">Bicicleta</option>
-        </select>
-        <Input name="vehicleModel" placeholder="Modelo do veículo" required />
-        {motorized ? (
-          <>
-            <Input
-              name="vehiclePlate"
-              placeholder="Placa do veículo"
-              required
-              autoCapitalize="characters"
-              maxLength={8}
-            />
-            <Input
-              name="cnh"
-              placeholder="Número da CNH (11 dígitos)"
-              required
-              inputMode="numeric"
-              maxLength={14}
-            />
-            <p className="rounded-2xl border border-zinc-900 bg-zinc-950 p-3 text-xs text-zinc-500">
-              Para moto ou carro, placa, CNH e documento do veículo serão validados antes da
-              aprovação.
-            </p>
-          </>
-        ) : (
-          <p className="rounded-2xl border border-zinc-900 bg-zinc-950 p-3 text-xs text-zinc-500">
-            Para bicicleta, CNH e documento do veículo não são exigidos. A foto do entregador
-            continua obrigatória.
-          </p>
-        )}
-        <p className="text-xs text-zinc-600">Conta: {user?.email}</p>
-        <Button disabled={busy} className="h-14 w-full rounded-2xl font-black uppercase">
-          {busy ? (
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-          ) : (
-            <ChevronRight className="mr-2 h-5 w-5" />
-          )}
-          Enviar cadastro
-        </Button>
-      </form>
-    </div>
-  );
-}
-
-function CourierReviewState({
-  courier,
-  documents,
-  busy,
-  onUpload,
-  onRefresh,
-  refreshing,
-  onLogout,
-  onResubmit,
-}: any) {
-  const required = [
-    ...(courier.vehicle_type === "bicicleta"
-      ? []
-      : [
-          { type: "cnh", label: "CNH" },
-          { type: "documento_veiculo", label: "Documento do veículo" },
-        ]),
-    { type: "foto_perfil", label: "Foto do entregador" },
-  ];
-  const blocked = courier.status === "blocked" || courier.is_active === false;
-  const requiredReady = required.every((item) => {
-    const document = documents.find((row: any) => row.document_type === item.type);
-    return document && ["pending", "approved"].includes(document.status);
-  });
-  const canResubmit = courier.status === "rejected" && !blocked && requiredReady;
-
-  const statusLabel = blocked
-    ? "CONTA BLOQUEADA"
-    : courier.status === "under_review"
-      ? "EM ANÁLISE"
-      : courier.status === "rejected"
-        ? "CADASTRO RECUSADO"
-        : courier.status === "pending"
-          ? "CADASTRO PENDENTE"
-          : courier.status === "approved"
-            ? "APROVADO"
-            : String(courier.status ?? "PENDENTE").replaceAll("_", " ");
-
-  return (
-    <div className="min-h-dvh bg-black p-4 text-white">
-      <div className="flex items-center justify-between pt-3">
-        <p className="font-black text-primary">APOIS ENTREGADOR</p>
-        <button type="button" onClick={onLogout} className="text-sm font-bold text-red-400">
-          Sair
-        </button>
-      </div>
-      <div className="mt-8 rounded-3xl border border-zinc-900 bg-zinc-950 p-5">
-        <FileCheck2 className="h-9 w-9 text-primary" />
-        <p className="mt-4 text-xs font-black uppercase text-zinc-500">Situação</p>
-        <h1
-          className={`mt-1 text-2xl font-black uppercase ${blocked ? "text-red-400" : "text-primary"}`}
-        >
-          {statusLabel}
-        </h1>
-        <p className="mt-3 text-sm leading-relaxed text-zinc-500">
-          {blocked
-            ? "Seu acesso operacional está bloqueado. Os documentos ficam preservados e não podem ser substituídos enquanto o bloqueio estiver ativo."
-            : courier.status === "rejected"
-              ? "Corrija os documentos recusados abaixo. Quando todos estiverem enviados ou aprovados, reenvie o cadastro para uma nova análise."
-              : "Os documentos são enviados automaticamente assim que você seleciona o arquivo. Depois do envio, seu cadastro permanece em análise até a aprovação da APOIS."}
-        </p>
-        {courier.rejection_reason ? (
-          <p className="mt-3 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">
-            {courier.rejection_reason}
-          </p>
-        ) : null}
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="mt-4 flex items-center gap-2 text-sm font-bold text-zinc-400"
-        >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Atualizar situação
-        </button>
-      </div>
-      <div className="mt-4 space-y-3">
-        {required.map((item) => {
-          const doc = documents.find((row: any) => row.document_type === item.type);
-          return (
-            <label
-              key={item.type}
-              className="block rounded-2xl border border-zinc-900 bg-zinc-950 p-4"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-bold">{item.label}</span>
-                <span
-                  className={`text-[10px] font-black uppercase ${doc?.status === "approved" ? "text-emerald-400" : doc?.status === "rejected" ? "text-red-400" : "text-primary"}`}
-                >
-                  {doc?.status === "approved"
-                    ? "APROVADO"
-                    : doc?.status === "rejected"
-                      ? "RECUSADO"
-                      : doc?.status === "pending"
-                        ? "ENVIADO"
-                        : "NÃO ENVIADO"}
-                </span>
-              </div>
-              {doc?.status === "pending" ? (
-                <p className="mt-2 rounded-xl bg-primary/5 px-3 py-2 text-xs leading-relaxed text-zinc-400">
-                  Arquivo enviado com sucesso e aguardando análise. Se precisar corrigir o
-                  documento, você pode selecionar outro arquivo abaixo para substituí-lo.
-                </p>
-              ) : null}
-              {doc?.rejection_reason ? (
-                <p className="mt-2 text-xs text-red-300">{doc.rejection_reason}</p>
-              ) : null}
-              {!blocked && doc?.status !== "approved" ? (
-                <>
-                  <div className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
-                    <Upload className="h-4 w-4" />
-                    {busy === `doc:${item.type}`
-                      ? "Enviando arquivo..."
-                      : doc
-                        ? "Substituir arquivo"
-                        : "Selecionar arquivo para envio automático"}
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,application/pdf"
-                    className="mt-2 w-full text-xs text-zinc-600"
-                    disabled={busy === `doc:${item.type}`}
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      const input = event.currentTarget;
-                      if (file) {
-                        void onUpload(item.type, file).finally(() => {
-                          input.value = "";
-                        });
-                      }
-                    }}
-                  />
-                </>
-              ) : doc?.status === "approved" ? (
-                <p className="mt-3 text-xs font-bold text-emerald-400">
-                  Documento aprovado. Nenhuma ação necessária.
-                </p>
-              ) : (
-                <p className="mt-3 text-xs font-bold text-amber-300">
-                  Envio desativado enquanto a conta estiver bloqueada.
-                </p>
-              )}
-            </label>
-          );
-        })}
-      </div>
-      {courier.status === "rejected" && !blocked ? (
-        <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4">
-          <button
-            type="button"
-            disabled={Boolean(busy) || !canResubmit}
-            onClick={() => void onResubmit()}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-black text-black disabled:bg-zinc-800 disabled:text-zinc-500"
-          >
-            {busy === "application" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-            REENVIAR PARA ANÁLISE
-          </button>
-          <p className="mt-2 text-center text-[11px] leading-4 text-zinc-500">
-            {canResubmit
-              ? "Seus documentos estão prontos para uma nova revisão."
-              : "Substitua todos os documentos recusados e envie os documentos que estiverem faltando."}
-          </p>
-        </div>
-      ) : null}
-      <p className="mt-5 text-center text-xs text-zinc-600">
-        {blocked
-          ? "Entre em contato com o suporte da APOIS para entender ou revisar o bloqueio."
-          : "Após a aprovação, o botão Online e as ofertas de entrega serão liberados automaticamente."}
-      </p>
-    </div>
-  );
-}
-
-function OfferCard({ offer, busy, onAccept, onReject }: any) {
-  const job = offer.delivery_jobs ?? offer;
-  const pickup = offer.pickup_address ?? job?.pickup_address ?? {};
-  const delivery = offer.delivery_area ?? job?.delivery_address ?? {};
-  const distanceKm =
-    Number(offer.delivery_distance_meters ?? job?.estimated_distance_meters ?? 0) / 1000;
-  const durationMinutes = Math.max(
-    1,
-    Math.round(
-      Number(offer.estimated_duration_seconds ?? job?.estimated_duration_seconds ?? 0) / 60,
-    ),
-  );
-  return (
-    <div className="overflow-hidden rounded-3xl border border-primary/30 bg-zinc-950 shadow-[0_0_35px_rgba(255,193,7,0.08)]">
-      <div className="flex items-center justify-between bg-primary/10 px-5 py-3">
-        <span className="text-xs font-black uppercase text-primary">Nova entrega</span>
-        <span className="text-xs font-bold text-zinc-400">
-          até{" "}
-          {new Date(offer.expires_at).toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          })}
-        </span>
-      </div>
-      <div className="space-y-4 p-5">
-        <div className="flex items-start gap-3">
-          <div className="rounded-xl bg-zinc-900 p-2">
-            <StoreIcon />
-          </div>
-          <div>
-            <p className="text-[10px] font-black uppercase text-zinc-500">Retirada</p>
-            <p className="font-bold">{pickup.name || "Estabelecimento"}</p>
-            <p className="text-xs text-zinc-500">
-              {pickup.address_line || pickup.street || "Endereço do estabelecimento"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-start gap-3">
-          <div className="rounded-xl bg-zinc-900 p-2">
-            <MapPin className="h-4 w-4 text-primary" />
-          </div>
-          <div>
-            <p className="text-[10px] font-black uppercase text-zinc-500">Entrega</p>
-            <p className="font-bold">
-              {[delivery.neighborhood, delivery.city, delivery.state].filter(Boolean).join(" · ") ||
-                "Região aproximada"}
-            </p>
-            <p className="text-xs text-zinc-500">Endereço exato liberado após o aceite</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-2xl bg-black p-3">
-            <div className="flex items-center gap-1.5 text-zinc-500">
-              <RouteIcon className="h-4 w-4 text-primary" />
-              <span className="text-[10px] font-black uppercase">Distância</span>
-            </div>
-            <p className="mt-1 text-sm font-black">
-              {distanceKm > 0 ? `${distanceKm.toFixed(1).replace(".", ",")} km` : "A calcular"}
-            </p>
-          </div>
-          <div className="rounded-2xl bg-black p-3">
-            <div className="flex items-center gap-1.5 text-zinc-500">
-              <Clock3 className="h-4 w-4 text-primary" />
-              <span className="text-[10px] font-black uppercase">Tempo</span>
-            </div>
-            <p className="mt-1 text-sm font-black">
-              {Number(offer.estimated_duration_seconds ?? job?.estimated_duration_seconds ?? 0) > 0
-                ? `${durationMinutes} min`
-                : "A calcular"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center justify-between rounded-2xl bg-black p-4">
-          <span className="text-sm text-zinc-500">Seu ganho estimado</span>
-          <span className="text-2xl font-black text-primary">
-            {money(offer.estimated_earnings ?? job?.estimated_earnings)}
-          </span>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={() => void onReject(offer.id)}
-            className="h-12 border-zinc-800"
-          >
-            Recusar
-          </Button>
-          <Button
-            disabled={busy}
-            onClick={() => void onAccept(offer.id)}
-            className="h-12 font-black"
-          >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "ACEITAR"}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ActiveDelivery({
-  job,
-  busy,
-  supportBusy,
-  pin,
-  setPin,
-  onTransition,
-  onComplete,
-  onReport,
-}: any) {
-  const pickup = job.pickup_address ?? {};
-  const delivery = job.delivery_address ?? {};
-  const action =
-    job.status === "accepted"
-      ? { status: "arriving_pickup", label: "Ir para retirada", icon: Navigation }
-      : job.status === "arriving_pickup"
-        ? { status: "at_pickup", label: "Cheguei na retirada", icon: MapPin }
-        : job.status === "at_pickup"
-          ? { status: "picked_up", label: "Pedido coletado", icon: PackageCheck }
-          : job.status === "picked_up"
-            ? { status: "on_the_way", label: "Iniciar entrega", icon: RouteIcon }
-            : job.status === "on_the_way"
-              ? { status: "arrived_destination", label: "Cheguei ao destino", icon: MapPin }
-              : null;
-  const stageIndex =
-    job.status === "accepted" || job.status === "arriving_pickup"
-      ? 0
-      : job.status === "at_pickup" || job.status === "picked_up"
-        ? 1
-        : job.status === "on_the_way" || job.status === "arrived_destination"
-          ? 2
-          : 3;
-  const stages = ["Aceito", "Retirada", "Entrega", "Concluído"];
-  return (
-    <section className="rounded-[2rem] border border-primary/35 bg-[linear-gradient(180deg,#111111,#070707)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-black uppercase text-primary">Entrega em andamento</p>
-          <p className="mt-1 text-xl font-black">Pedido #{job.orders?.order_number}</p>
-        </div>
-        <Bike className="h-8 w-8 text-primary" />
-      </div>
-      <div className="mt-5 space-y-3">
-        <AddressRow
-          label="Retirada"
-          title={pickup.name || "Estabelecimento"}
-          detail={pickup.address_line || pickup.street}
-        />
-        <AddressRow
-          label="Destino"
-          title={`${delivery.street || "Destino"}, ${delivery.number || "s/n"}`}
-          detail={delivery.neighborhood}
-        />
-      </div>
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <div className="rounded-2xl border border-zinc-900 bg-black p-3 text-center">
-          <p className="text-[9px] font-black uppercase text-zinc-600">Ganho</p>
-          <p className="mt-1 text-sm font-black text-primary">{money(job.estimated_earnings)}</p>
-        </div>
-        <div className="rounded-2xl border border-zinc-900 bg-black p-3 text-center">
-          <p className="text-[9px] font-black uppercase text-zinc-600">Distância</p>
-          <p className="mt-1 text-sm font-black">
-            {Number(job.estimated_distance_meters || 0) > 0
-              ? `${(Number(job.estimated_distance_meters) / 1000).toFixed(1).replace(".", ",")} km`
-              : "—"}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-zinc-900 bg-black p-3 text-center">
-          <p className="text-[9px] font-black uppercase text-zinc-600">Tempo</p>
-          <p className="mt-1 text-sm font-black">
-            {Number(job.estimated_duration_seconds || 0) > 0
-              ? `${Math.max(1, Math.round(Number(job.estimated_duration_seconds) / 60))} min`
-              : "—"}
-          </p>
-        </div>
-      </div>
-      <div className="mt-5 grid grid-cols-4 gap-1">
-        {stages.map((stage, index) => (
-          <div key={stage} className="text-center">
-            <div className="flex items-center">
-              <span
-                className={`h-3 w-3 shrink-0 rounded-full border ${
-                  index <= stageIndex
-                    ? "border-primary bg-primary shadow-[0_0_14px_rgba(250,204,21,0.35)]"
-                    : "border-zinc-700 bg-zinc-950"
-                }`}
-              />
-              {index < stages.length - 1 ? (
-                <span
-                  className={`h-px flex-1 ${index < stageIndex ? "bg-primary" : "bg-zinc-800"}`}
-                />
-              ) : null}
-            </div>
-            <p
-              className={`mt-2 text-[9px] font-black ${index <= stageIndex ? "text-primary" : "text-zinc-600"}`}
-            >
-              {stage}
-            </p>
-          </div>
-        ))}
-      </div>
-      {action ? (
-        <Button
-          disabled={busy}
-          onClick={() => void onTransition(action.status)}
-          className="mt-4 h-14 w-full rounded-2xl font-black uppercase"
-        >
-          {busy ? (
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-          ) : (
-            <action.icon className="mr-2 h-5 w-5" />
-          )}
-          {action.label}
-        </Button>
-      ) : null}
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => void onReport()}
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 py-3 text-sm font-bold text-red-300 disabled:opacity-50"
-      >
-        {supportBusy ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <XCircle className="h-4 w-4" />
-        )}
-        {supportBusy ? "Abrindo chamado..." : "Reportar problema"}
-      </button>
-      {job.status === "arrived_destination" ? (
-        <div className="mt-4 rounded-2xl border border-zinc-800 bg-black p-4">
-          <p className="text-sm font-bold">Confirme o PIN do cliente</p>
-          <p className="mt-1 text-xs text-zinc-500">
-            Peça o código de 4 dígitos antes de entregar o pedido.
-          </p>
-          <input
-            value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-            inputMode="numeric"
-            placeholder="0000"
-            className="mt-3 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-4 text-center text-2xl font-black tracking-[0.5em]"
-          />
-          <Button
-            disabled={busy || pin.length !== 4}
-            onClick={onComplete}
-            className="mt-3 h-12 w-full"
-          >
-            <CheckCircle2 className="mr-2 h-5 w-5" />
-            Confirmar entrega
-          </Button>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function CourierFinance({
-  courier,
-  wallet,
-  metrics,
-  transactions,
-  payoutAccount,
-  payouts,
-  draft,
-  setDraft,
-  busy,
-  onSaveAccount,
-  onRequestPayout,
-  onClose,
-}: any) {
-  return (
-    <div className="min-h-dvh bg-black text-white">
-      <header className="sticky top-0 flex items-center justify-between border-b border-zinc-900 bg-black/90 p-4">
-        <button type="button" onClick={onClose} className="rounded-full bg-zinc-900 p-2">
-          ←
-        </button>
-        <h1 className="font-black">Meus ganhos</h1>
-        <CircleDollarSign className="text-primary" />
-      </header>
-      <main className="space-y-4 p-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
-        <div className="rounded-3xl border border-primary/40 bg-[linear-gradient(145deg,rgba(250,204,21,0.12),#090909_62%)] p-6 text-white shadow-[0_20px_55px_rgba(0,0,0,0.5)]">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">
-            Saldo disponível
-          </p>
-          <p className="mt-2 text-4xl font-black text-primary">
-            {money(wallet?.available_balance)}
-          </p>
-          <p className="mt-2 text-xs text-zinc-500">
-            Saldo total {money(wallet?.balance)} · reservado {money(wallet?.reserved_balance)}
-          </p>
-        </div>
-
-        <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-wider text-primary">
-              Resumo operacional
-            </p>
-            <h2 className="mt-1 font-black">Seus ganhos e desempenho</h2>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <MetricCard label="Hoje" value={money(metrics?.earnings_today)} />
-            <MetricCard label="Semana" value={money(metrics?.earnings_week)} />
-            <MetricCard label="Mês" value={money(metrics?.earnings_month)} />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <MetricCard
-              label="Taxa de aceitação"
-              value={`${Number(metrics?.acceptance_rate ?? 0)
-                .toFixed(1)
-                .replace(".", ",")}%`}
-            />
-            <MetricCard
-              label="Entregas concluídas"
-              value={String(metrics?.completed_deliveries ?? 0)}
-            />
-          </div>
-          <div className="rounded-xl border border-zinc-900 bg-black p-3">
-            <p className="text-[10px] font-black uppercase text-zinc-600">Horas online</p>
-            <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-              <div>
-                <p className="text-sm font-black text-white">
-                  {formatOnlineTime(metrics?.online_seconds_today)}
-                </p>
-                <p className="text-[9px] uppercase text-zinc-600">Hoje</p>
-              </div>
-              <div>
-                <p className="text-sm font-black text-white">
-                  {formatOnlineTime(metrics?.online_seconds_week)}
-                </p>
-                <p className="text-[9px] uppercase text-zinc-600">Semana</p>
-              </div>
-              <div>
-                <p className="text-sm font-black text-white">
-                  {formatOnlineTime(metrics?.online_seconds_month)}
-                </p>
-                <p className="text-[9px] uppercase text-zinc-600">Mês</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {!wallet ? (
-          <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5 text-sm text-zinc-500">
-            Sua carteira será criada automaticamente após a primeira entrega liquidada.
-          </div>
-        ) : (
-          <>
-            <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
-              <h2 className="font-black">Recebimento via PIX</h2>
-              <FinanceInput
-                value={draft.pixKey}
-                onChange={(v) => setDraft((d: any) => ({ ...d, pixKey: v }))}
-                placeholder="Chave PIX"
-              />
-              <FinanceInput
-                value={draft.holderName}
-                onChange={(v) => setDraft((d: any) => ({ ...d, holderName: v }))}
-                placeholder="Titular"
-              />
-              <FinanceInput
-                value={draft.document}
-                onChange={(v) => setDraft((d: any) => ({ ...d, document: v }))}
-                placeholder="CPF/CNPJ"
-              />
-              <Button className="w-full" disabled={busy === "account"} onClick={onSaveAccount}>
-                Salvar chave
-              </Button>
-            </section>
-            <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
-              <h2 className="font-black">Solicitar saque</h2>
-              <FinanceInput
-                value={draft.amount}
-                onChange={(v) => setDraft((d: any) => ({ ...d, amount: v }))}
-                placeholder="Valor"
-                type="number"
-              />
-              <Button
-                className="h-12 w-full rounded-xl font-black"
-                disabled={!payoutAccount || busy === "payout"}
-                onClick={onRequestPayout}
-              >
-                Solicitar saque
-              </Button>
-              <p className="text-[11px] leading-4 text-zinc-500">
-                A solicitação entra em processamento após a reserva do saldo. O app não promete
-                transferência instantânea.
-              </p>
-            </section>
-            <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
-              <h2 className="font-black">Saques</h2>
-              <div className="mt-3 space-y-2">
-                {payouts.map((p: any) => (
-                  <div key={p.id} className="flex justify-between rounded-xl bg-black p-3 text-sm">
-                    <div>
-                      <b>{money(p.amount)}</b>
-                      <p className="text-xs text-zinc-600">{dateTime(p.requested_at)}</p>
-                    </div>
-                    <span className="text-xs font-black uppercase text-primary">{p.status}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-            <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
-              <h2 className="font-black">Extrato</h2>
-              <div className="mt-3 divide-y divide-zinc-900">
-                {transactions.map((tx: any) => (
-                  <div key={tx.id} className="flex justify-between py-3 text-sm">
-                    <div>
-                      <b>{tx.description || tx.transaction_type}</b>
-                      <p className="text-xs text-zinc-600">{dateTime(tx.created_at)}</p>
-                    </div>
-                    <span
-                      className={
-                        Number(tx.balance_delta) >= 0
-                          ? "font-black text-emerald-400"
-                          : "font-black text-red-400"
-                      }
-                    >
-                      {Number(tx.balance_delta) >= 0 ? "+" : ""}
-                      {money(tx.balance_delta)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </>
-        )}
-      </main>
-    </div>
-  );
-}
-
-function MetricCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-zinc-900 bg-black p-3">
-      <p className="text-[9px] font-black uppercase text-zinc-600">{label}</p>
-      <p className="mt-1 text-sm font-black text-primary">{value}</p>
-    </div>
-  );
-}
-
-function formatOnlineTime(value: unknown) {
-  const seconds = Math.max(0, Number(value ?? 0));
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (hours <= 0) return `${minutes}min`;
-  return `${hours}h ${minutes}min`;
-}
-
-function AddressRow({ label, title, detail }: { label: string; title: string; detail?: string }) {
-  return (
-    <div className="flex gap-3 rounded-2xl bg-black p-3">
-      <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-      <div>
-        <p className="text-[10px] font-black uppercase text-zinc-600">{label}</p>
-        <p className="text-sm font-bold">{title}</p>
-        {detail ? <p className="text-xs text-zinc-500">{detail}</p> : null}
-      </div>
-    </div>
-  );
-}
-function StoreIcon() {
-  return <PackageCheck className="h-4 w-4 text-primary" />;
-}
-function FinanceInput({ value, onChange, placeholder, type = "text" }: any) {
-  return (
-    <input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      type={type}
-      step={type === "number" ? "0.01" : undefined}
-      placeholder={placeholder}
-      className="w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
-    />
-  );
-}
-function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      {...props}
-      className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-4 text-sm outline-none focus:border-primary"
-    />
   );
 }
