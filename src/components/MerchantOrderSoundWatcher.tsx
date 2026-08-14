@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getApoisProductMode } from "@/lib/product-routing";
 import { toast } from "sonner";
@@ -42,7 +42,7 @@ function MerchantOrderSoundWatcher() {
   const alertedOrdersRef = useRef<Set<string>>(loadAlertedOrders());
   const pendingAlertsRef = useRef<Map<string, PendingAlert>>(new Map());
 
-  const playOrderAlert = async () => {
+  const playOrderAlert = useCallback(async () => {
     const context = audioContextRef.current;
     if (!context || !audioUnlockedRef.current || document.visibilityState !== "visible")
       return false;
@@ -111,9 +111,9 @@ function MerchantOrderSoundWatcher() {
       setAudioUnlocked(false);
       return false;
     }
-  };
+  }, []);
 
-  const flushPending = async () => {
+  const flushPending = useCallback(async () => {
     if (!audioUnlockedRef.current || document.visibilityState !== "visible") return;
     for (const [orderId] of Array.from(pendingAlertsRef.current.entries())) {
       if (alertedOrdersRef.current.has(orderId)) {
@@ -126,7 +126,7 @@ function MerchantOrderSoundWatcher() {
       alertedOrdersRef.current.add(orderId);
       persistAlertedOrders(alertedOrdersRef.current);
     }
-  };
+  }, [playOrderAlert]);
 
   const discardDeferredAlerts = () => {
     for (const orderId of pendingAlertsRef.current.keys()) {
@@ -136,16 +136,19 @@ function MerchantOrderSoundWatcher() {
     persistAlertedOrders(alertedOrdersRef.current);
   };
 
-  const queuePaidOrder = (orderId: string, orderNumber: string) => {
-    if (alertedOrdersRef.current.has(orderId) || pendingAlertsRef.current.has(orderId)) return;
-    pendingAlertsRef.current.set(orderId, { orderId, orderNumber });
-    const label = orderNumber ? ` #${orderNumber}` : "";
-    toast.success(`Novo pedido pago${label}!`, {
-      description: "O pedido já pode ser atendido pelo estabelecimento.",
-      duration: 12_000,
-    });
-    void flushPending();
-  };
+  const queuePaidOrder = useCallback(
+    (orderId: string, orderNumber: string) => {
+      if (alertedOrdersRef.current.has(orderId) || pendingAlertsRef.current.has(orderId)) return;
+      pendingAlertsRef.current.set(orderId, { orderId, orderNumber });
+      const label = orderNumber ? ` #${orderNumber}` : "";
+      toast.success(`Novo pedido pago${label}!`, {
+        description: "O pedido já pode ser atendido pelo estabelecimento.",
+        duration: 12_000,
+      });
+      void flushPending();
+    },
+    [flushPending],
+  );
 
   useEffect(() => {
     if (!enabled) return;
@@ -286,7 +289,7 @@ function MerchantOrderSoundWatcher() {
       window.clearInterval(interval);
       void supabase.removeChannel(channel);
     };
-  }, [enabled, merchantId]);
+  }, [enabled, merchantId, queuePaidOrder]);
 
   useEffect(
     () => () => {
