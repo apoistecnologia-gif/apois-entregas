@@ -1,0 +1,23 @@
+name: Dispatch real test after limit
+
+on:
+  push:
+    paths:
+      - ".github/workflows/dispatch-realtest-after-limit.yml"
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch merchant web build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run merchant-web-build.yml --repo "$GITHUB_REPOSITORY" --ref main
+      - name: Dispatch courier Android build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run mobile-android.yml --repo "$GITHUB_REPOSITORY" --ref main --field product=courier
