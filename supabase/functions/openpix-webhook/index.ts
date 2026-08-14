@@ -611,10 +611,18 @@ Deno.serve(async (request: Request) => {
 
     const refundValueCents = numberValue(pix.value);
     const fullPaymentCents = Math.round(localAmount * 100);
-    if (pix.partial === true || refundValueCents === null || Math.round(refundValueCents) !== fullPaymentCents) {
+    if (
+      pix.partial === true ||
+      refundValueCents === null ||
+      Math.round(refundValueCents) !== fullPaymentCents
+    ) {
       await admin
         .from("payment_events")
-        .update({ status: "failed", error_message: "unsupported_partial_or_amount_mismatch", payment_id: paymentId })
+        .update({
+          status: "failed",
+          error_message: "unsupported_partial_or_amount_mismatch",
+          payment_id: paymentId,
+        })
         .eq("provider", "openpix")
         .eq("provider_event_id", eventId);
       return response(409, {
@@ -649,7 +657,11 @@ Deno.serve(async (request: Request) => {
     if (Math.round(Number(refund.amount) * 100) !== refundValueCents) {
       await admin
         .from("payment_events")
-        .update({ status: "failed", error_message: "local_refund_amount_mismatch", payment_id: paymentId })
+        .update({
+          status: "failed",
+          error_message: "local_refund_amount_mismatch",
+          payment_id: paymentId,
+        })
         .eq("provider", "openpix")
         .eq("provider_event_id", eventId);
       return response(409, {
@@ -670,7 +682,11 @@ Deno.serve(async (request: Request) => {
       if (refundUpdateError) {
         await admin
           .from("payment_events")
-          .update({ status: "failed", error_message: "refund_update_failed", payment_id: paymentId })
+          .update({
+            status: "failed",
+            error_message: "refund_update_failed",
+            payment_id: paymentId,
+          })
           .eq("provider", "openpix")
           .eq("provider_event_id", eventId);
         return response(500, {
@@ -687,7 +703,11 @@ Deno.serve(async (request: Request) => {
     if (paymentUpdateError) {
       await admin
         .from("payment_events")
-        .update({ status: "failed", error_message: "payment_refund_update_failed", payment_id: paymentId })
+        .update({
+          status: "failed",
+          error_message: "payment_refund_update_failed",
+          payment_id: paymentId,
+        })
         .eq("provider", "openpix")
         .eq("provider_event_id", eventId);
       return response(500, {
@@ -706,7 +726,11 @@ Deno.serve(async (request: Request) => {
     if (orderTransitionError) {
       await admin
         .from("payment_events")
-        .update({ status: "failed", error_message: "order_refund_update_failed", payment_id: paymentId })
+        .update({
+          status: "failed",
+          error_message: "order_refund_update_failed",
+          payment_id: paymentId,
+        })
         .eq("provider", "openpix")
         .eq("provider_event_id", eventId);
       return response(500, {

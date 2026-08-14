@@ -61,7 +61,9 @@ function chargeCorrelationMatchesOrder(correlationID: string | null, orderId: st
   const legacy = `apois-entrega-order-${orderId}`;
   if (correlationID === legacy) return true;
   const retryPrefix = `${legacy}-payment-`;
-  return correlationID.startsWith(retryPrefix) && UUID_RE.test(correlationID.slice(retryPrefix.length));
+  return (
+    correlationID.startsWith(retryPrefix) && UUID_RE.test(correlationID.slice(retryPrefix.length))
+  );
 }
 
 async function finalizeRefund(
@@ -420,7 +422,9 @@ async function processMercadoPagoRefund(input: {
   }
 
   if (!providerTransactionId) {
-    const transactions = isRecord(providerPayload.transactions) ? providerPayload.transactions : null;
+    const transactions = isRecord(providerPayload.transactions)
+      ? providerPayload.transactions
+      : null;
     const providerPayments =
       transactions && Array.isArray(transactions.payments) ? transactions.payments : [];
     const firstPayment =

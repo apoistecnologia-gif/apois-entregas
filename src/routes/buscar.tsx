@@ -242,7 +242,8 @@ function Buscar() {
         const leftMerchant = merchantById.get(left.merchant_id);
         const rightMerchant = merchantById.get(right.merchant_id);
         if (!leftMerchant || !rightMerchant) return left.name.localeCompare(right.name, "pt-BR");
-        if (sortMode === "rating") return Number(rightMerchant.rating) - Number(leftMerchant.rating);
+        if (sortMode === "rating")
+          return Number(rightMerchant.rating) - Number(leftMerchant.rating);
         if (sortMode === "time")
           return (
             Number(leftMerchant.delivery_min_minutes ?? Number.MAX_SAFE_INTEGER) -
@@ -285,11 +286,14 @@ function Buscar() {
   const filteredMerchants = useMemo(() => {
     const query = searchParams.q?.trim().toLowerCase() ?? "";
     const categoryId = searchParams.categoria;
-    const merchantsWithMatchingProducts = new Set(matchingProducts.map((product) => product.merchant_id));
+    const merchantsWithMatchingProducts = new Set(
+      matchingProducts.map((product) => product.merchant_id),
+    );
 
     const result = merchants.filter((merchant) => {
       const merchantCategoryName =
-        categories.find((category) => category.id === merchant.category_id)?.name?.toLowerCase() ?? "";
+        categories.find((category) => category.id === merchant.category_id)?.name?.toLowerCase() ??
+        "";
       const matchesQuery =
         !query ||
         merchant.name.toLowerCase().includes(query) ||
@@ -308,7 +312,8 @@ function Buscar() {
           Number(left.delivery_min_minutes ?? Number.MAX_SAFE_INTEGER) -
           Number(right.delivery_min_minutes ?? Number.MAX_SAFE_INTEGER)
         );
-      if (sortMode === "fee") return Number(left.delivery_fee ?? 0) - Number(right.delivery_fee ?? 0);
+      if (sortMode === "fee")
+        return Number(left.delivery_fee ?? 0) - Number(right.delivery_fee ?? 0);
       if (sortMode === "distance") {
         const leftDistance =
           distanceKm(
@@ -641,7 +646,9 @@ function Buscar() {
                             <p className="line-clamp-2 text-sm font-extrabold text-white">
                               {product.name}
                             </p>
-                            <p className="mt-0.5 truncate text-[10px] text-zinc-500">{merchant.name}</p>
+                            <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+                              {merchant.name}
+                            </p>
                             <p className="mt-2 text-sm font-black text-primary">
                               R$ {Number(product.price).toFixed(2).replace(".", ",")}
                             </p>
