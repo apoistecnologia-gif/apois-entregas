@@ -9,6 +9,7 @@ const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json; charset
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const OPENPIX_SANDBOX_BASE = "https://api.woovi-sandbox.com";
 const OPENPIX_PRODUCTION_BASE = "https://api.openpix.com.br";
+const PIX_KEY_TYPES = new Set(["CPF", "CNPJ", "EMAIL", "PHONE", "EVP"]);
 
 type JsonRecord = Record<string, unknown>;
 
@@ -22,18 +23,6 @@ function text(value: unknown): string | null {
 
 function response(status: number, body: JsonRecord) {
   return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
-}
-
-function inferPixKeyType(value: string, document: string | null) {
-  const trimmed = value.trim();
-  const normalized = trimmed.replace(/\D/g, "");
-  const normalizedDocument = String(document ?? "").replace(/\D/g, "");
-  if (trimmed.includes("@")) return "EMAIL";
-  if (normalized.length === 14) return "CNPJ";
-  if (normalized.length === 11 && normalized === normalizedDocument) return "CPF";
-  if ([10, 11, 12, 13].includes(normalized.length)) return "PHONE";
-  if (UUID_RE.test(trimmed)) return "EVP";
-  return null;
 }
 
 function normalizePixKey(type: string, value: string) {
@@ -148,7 +137,7 @@ Deno.serve(async (request: Request) => {
   const { data: payout, error: payoutError } = await admin
     .from("payouts")
     .select(
-      "id,wallet_id,payout_account_id,amount,status,provider,provider_payout_id,idempotency_key,requested_by,pix_key_snapshot",
+      "id,wallet_id,payout_account_id,amount,status,provider,provider_payout_id,idempotency_key,requested_by,pix_key_snapshot,pix_key_type_snapshot",
     )
     .eq("id", payoutId)
     .maybeSingle();
@@ -236,26 +225,12 @@ Deno.serve(async (request: Request) => {
     return response(403, { error: "Acesso negado.", code: "FORBIDDEN" });
   }
 
-  const { data: destination } = await admin
-    .from("payout_accounts")
-    .select("pix_key_type,document,is_active")
-    .eq("id", payout.payout_account_id)
-    .eq("wallet_id", payout.wallet_id)
-    .maybeSingle();
   const payoutPixKey = text(payout.pix_key_snapshot);
-  if (!destination?.is_active || !payoutPixKey) {
+  const pixKeyType = text(payout.pix_key_type_snapshot)?.toUpperCase() ?? null;
+  if (!payoutPixKey || !pixKeyType || !PIX_KEY_TYPES.has(pixKeyType)) {
     return response(409, {
-      error: "A chave PIX registrada para este saque não está disponível.",
-      code: "PIX_KEY_REQUIRED",
-    });
-  }
-
-  const pixKeyType =
-    destination.pix_key_type || inferPixKeyType(payoutPixKey, destination.document);
-  if (!pixKeyType) {
-    return response(409, {
-      error: "Não foi possível identificar o tipo da chave PIX registrada para este saque.",
-      code: "PIX_KEY_TYPE_REQUIRED",
+      error: "O destino PIX congelado para este saque está incompleto.",
+      code: "PAYOUT_DESTINATION_SNAPSHOT_REQUIRED",
     });
   }
 
