@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { autocompleteAddress, geocodeAddress, getPlaceDetails } from "@/lib/google-maps.functions";
+import { getApoisProductMode } from "@/lib/product-routing";
 import { toast } from "sonner";
 
 interface GoogleMapsAddressSelectorProps {
@@ -45,6 +46,7 @@ export function GoogleMapsAddressSelector({
   const browserKey = (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
   const mapId = (import.meta as any).env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined;
   const mapConfigured = Boolean(browserKey && mapId);
+  const isMerchantProduct = getApoisProductMode() === "merchant";
   const [markerPos, setMarkerPos] = useState(initialCenter || { lat: -9.3891, lng: -40.5031 });
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
@@ -132,6 +134,10 @@ export function GoogleMapsAddressSelector({
   };
 
   const handleGetCurrentLocation = () => {
+    if (isMerchantProduct) {
+      toast.error("No painel do estabelecimento, pesquise o endereço real da loja no mapa.");
+      return;
+    }
     if (!navigator.geolocation) {
       toast.error("Geolocalização não suportada pelo seu aparelho");
       return;
@@ -239,19 +245,26 @@ export function GoogleMapsAddressSelector({
         ) : null}
       </div>
 
-      <Button
-        type="button"
-        onClick={handleGetCurrentLocation}
-        disabled={isLocating || isConfirming}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFD700] font-bold text-black shadow-lg active:scale-[0.98]"
-      >
-        {isLocating ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
-        ) : (
-          <Navigation className="h-5 w-5 fill-current" />
-        )}
-        {isLocating ? "Localizando..." : "Usar minha localização atual"}
-      </Button>
+      {!isMerchantProduct ? (
+        <Button
+          type="button"
+          onClick={handleGetCurrentLocation}
+          disabled={isLocating || isConfirming}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFD700] font-bold text-black shadow-lg active:scale-[0.98]"
+        >
+          {isLocating ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <Navigation className="h-5 w-5 fill-current" />
+          )}
+          {isLocating ? "Localizando..." : "Usar minha localização atual"}
+        </Button>
+      ) : (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-relaxed text-amber-200">
+          O GPS deste computador ou celular não será usado como endereço da loja. Pesquise o endereço
+          físico real do estabelecimento e confirme o ponto no mapa.
+        </div>
+      )}
 
       {mapConfigured ? (
         <APIProvider apiKey={browserKey!}>
@@ -273,23 +286,25 @@ export function GoogleMapsAddressSelector({
               <AdvancedMarker position={markerPos} draggable onDragEnd={handleMarkerDragEnd} />
             </Map>
 
-            <button
-              type="button"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                handleGetCurrentLocation();
-              }}
-              disabled={isLocating || isConfirming}
-              className="absolute bottom-4 right-4 z-[150] flex h-12 w-12 items-center justify-center rounded-full border-2 border-black bg-[#FFD700] text-black shadow-lg active:scale-90"
-              aria-label="Usar minha localização atual"
-            >
-              {isLocating ? (
-                <Loader2 className="h-6 w-6 animate-spin" />
-              ) : (
-                <Navigation className="h-6 w-6 fill-current" />
-              )}
-            </button>
+            {!isMerchantProduct ? (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleGetCurrentLocation();
+                }}
+                disabled={isLocating || isConfirming}
+                className="absolute bottom-4 right-4 z-[150] flex h-12 w-12 items-center justify-center rounded-full border-2 border-black bg-[#FFD700] text-black shadow-lg active:scale-90"
+                aria-label="Usar minha localização atual"
+              >
+                {isLocating ? (
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                ) : (
+                  <Navigation className="h-6 w-6 fill-current" />
+                )}
+              </button>
+            ) : null}
 
             {!isMapLoaded ? (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-zinc-900">
@@ -302,7 +317,9 @@ export function GoogleMapsAddressSelector({
             <div className="flex items-start gap-2">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <p>
-                Toque no mapa ou arraste o marcador até o ponto exato da entrega e confirme abaixo.
+                {isMerchantProduct
+                  ? "Pesquise o endereço físico da loja, ajuste o marcador se necessário e confirme o ponto abaixo."
+                  : "Toque no mapa ou arraste o marcador até o ponto exato da entrega e confirme abaixo."}
               </p>
             </div>
           </div>
@@ -329,8 +346,9 @@ export function GoogleMapsAddressSelector({
         </APIProvider>
       ) : (
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-200">
-          O mapa e a busca automática de endereços estão indisponíveis neste ambiente. Ative a
-          localização do aparelho para confirmar o ponto de entrega.
+          {isMerchantProduct
+            ? "O mapa e a busca automática de endereços estão indisponíveis neste ambiente. Não grave a localização do aparelho como se fosse a loja; tente novamente quando o mapa estiver disponível."
+            : "O mapa e a busca automática de endereços estão indisponíveis neste ambiente. Ative a localização do aparelho para confirmar o ponto de entrega."}
         </div>
       )}
     </div>
