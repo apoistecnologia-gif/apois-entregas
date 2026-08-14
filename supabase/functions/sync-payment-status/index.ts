@@ -422,12 +422,9 @@ async function getAsaasState(order: any, payment: any): Promise<ProviderState> {
   return {
     status,
     paid: ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"].includes(status),
-    refunded: [
-      "REFUNDED",
-      "REFUND_REQUESTED",
-      "REFUND_IN_PROGRESS",
-      "PARTIALLY_REFUNDED",
-    ].includes(status),
+    refunded: ["REFUNDED", "REFUND_REQUESTED", "REFUND_IN_PROGRESS", "PARTIALLY_REFUNDED"].includes(
+      status,
+    ),
     failed: [
       "OVERDUE",
       "DELETED",
