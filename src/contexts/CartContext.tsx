@@ -52,7 +52,7 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 const CART_OWNER_KEY = "apois_cart_owner_id";
-const BOUND_USER_KEY = "apois_bound_user_id";
+const BOUND_USER_KEY = "apois:customer:bound_user_id";
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
