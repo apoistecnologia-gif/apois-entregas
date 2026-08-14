@@ -235,8 +235,7 @@ Deno.serve(async (request: Request) => {
     });
   }
 
-  const idempotencyKey = `openpix:order:${order.id}:pix:${environment}`;
-  const correlationID = `apois-entrega-order-${order.id}`;
+  const idempotencyPrefix = `openpix:order:${order.id}:pix:${environment}`;
   const { data: allOrderPayments, error: allPaymentsError } = await admin
     .from("payments")
     .select(
@@ -270,8 +269,28 @@ Deno.serve(async (request: Request) => {
       code: "PENDING_PAYMENT_PROVIDER_CONFLICT",
     });
 
-  let localPayment = payments.find((item) => item.idempotency_key === idempotencyKey) ?? null;
+  const environmentPayments = payments.filter(
+    (item) => item.provider === "openpix" && item.idempotency_key.startsWith(idempotencyPrefix),
+  );
+  const nowMs = Date.now();
+  let localPayment =
+    environmentPayments.find((item) => {
+      const expirationMs = item.expires_at ? Date.parse(item.expires_at) : Number.NaN;
+      const expiredLocally = Number.isFinite(expirationMs) && expirationMs <= nowMs;
+      if (["pending", "processing"].includes(item.status)) return !expiredLocally;
+      return item.status === "failed" && !item.provider_charge_id;
+    }) ?? null;
+
+  let idempotencyKey = localPayment?.idempotency_key ?? null;
   if (!localPayment) {
+    const legacyKeyAvailable = !environmentPayments.some(
+      (item) => item.idempotency_key === idempotencyPrefix,
+    );
+    const attemptNumber = environmentPayments.length + 1;
+    idempotencyKey = legacyKeyAvailable
+      ? idempotencyPrefix
+      : `${idempotencyPrefix}:attempt:${attemptNumber}`;
+
     const { data: insertedPayment, error: insertError } = await admin
       .from("payments")
       .insert({
@@ -310,6 +329,11 @@ Deno.serve(async (request: Request) => {
       error: "Não foi possível preparar a cobrança.",
       code: "PAYMENT_CREATE_FAILED",
     });
+
+  const correlationID =
+    localPayment.idempotency_key === idempotencyPrefix
+      ? `apois-entrega-order-${order.id}`
+      : `apois-entrega-order-${order.id}-payment-${localPayment.id}`;
 
   const providerResponse = await fetch(`${apiBase}/api/v1/charge?return_existing=true`, {
     method: "POST",
@@ -359,6 +383,35 @@ Deno.serve(async (request: Request) => {
   const providerStatus = (text(charge.status) ?? "ACTIVE").toUpperCase();
   const paid = providerStatus === "COMPLETED";
   const now = new Date().toISOString();
+
+  if (providerStatus === "EXPIRED") {
+    await admin
+      .from("payments")
+      .update({
+        provider_charge_id: providerChargeId,
+        qr_code_text: qrCodeText,
+        qr_code_image_url: qrCodeImageUrl,
+        expires_at: expiresAt,
+        status: "failed",
+        failed_at: now,
+        failure_reason: "openpix_charge_expired",
+      })
+      .eq("id", localPayment.id)
+      .neq("status", "paid");
+    if (order.payment_status !== "paid") {
+      await admin
+        .from("orders")
+        .update({ payment_status: "failed" })
+        .eq("id", order.id)
+        .neq("status", "cancelled")
+        .neq("status", "refunded");
+    }
+    return response(409, {
+      error: "Este código PIX expirou. Gere um novo PIX para continuar.",
+      code: "PAYMENT_EXPIRED",
+    });
+  }
+
   if (!qrCodeText && !paid) {
     await admin
       .from("payments")
@@ -395,18 +448,21 @@ Deno.serve(async (request: Request) => {
       code: "PAYMENT_SAVE_FAILED",
     });
 
+  const { error: orderUpdateError } = await admin
+    .from("orders")
+    .update({ payment_status: paid ? "paid" : "pending" })
+    .eq("id", order.id)
+    .neq("status", "cancelled")
+    .neq("status", "refunded");
+  if (orderUpdateError)
+    return response(500, {
+      error: paid
+        ? "Pagamento confirmado, aguardando conciliação."
+        : "PIX gerado, mas o pedido ainda não foi sincronizado.",
+      code: "ORDER_SYNC_FAILED",
+    });
+
   if (paid) {
-    const { error: orderUpdateError } = await admin
-      .from("orders")
-      .update({ payment_status: "paid" })
-      .eq("id", order.id)
-      .neq("status", "cancelled")
-      .neq("status", "refunded");
-    if (orderUpdateError)
-      return response(500, {
-        error: "Pagamento confirmado, aguardando conciliação.",
-        code: "ORDER_SYNC_FAILED",
-      });
     const { error: reserveError } = await admin.rpc("reserve_paid_order_merchant_net", {
       _order_id: order.id,
     });
