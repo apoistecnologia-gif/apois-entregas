@@ -69,6 +69,15 @@ export function GoogleMapsAddressSelector({
     return session.access_token;
   };
 
+  const persistMerchantCoordinates = async (lat: number, lng: number) => {
+    if (!isMerchantProduct) return;
+    const { error } = await (supabase as any).rpc("set_merchant_mapped_location", {
+      _latitude: lat,
+      _longitude: lng,
+    });
+    if (error) throw error;
+  };
+
   const parseAddressComponents = (components: AddressComponent[]) => {
     const getComponent = (type: string) =>
       components.find((component) => component.types.includes(type))?.long_name || "";
@@ -92,6 +101,15 @@ export function GoogleMapsAddressSelector({
     setMarkerPos({ lat, lng });
     setIsConfirming(true);
 
+    try {
+      await persistMerchantCoordinates(lat, lng);
+    } catch (error) {
+      console.error("Merchant mapped location error:", error);
+      setIsConfirming(false);
+      toast.error("Não foi possível salvar o ponto da loja. Tente novamente pelo mapa.");
+      return;
+    }
+
     // Coordinates are the authoritative delivery point. Persist them even when reverse
     // geocoding is unavailable so the checkout never gets stuck behind a decorative pin.
     onAddressSelected({
@@ -114,11 +132,17 @@ export function GoogleMapsAddressSelector({
         onAddressSelected({ ...address, latitude: lat, longitude: lng });
       }
       setPointConfirmed(true);
-      toast.success(successMessage || "Ponto de entrega confirmado!");
+      toast.success(
+        successMessage || (isMerchantProduct ? "Ponto da loja confirmado!" : "Ponto de entrega confirmado!"),
+      );
     } catch (error) {
       console.error("Reverse geocoding error:", error);
       setPointConfirmed(true);
-      toast.success("Ponto de entrega confirmado. Revise os dados do endereço antes de salvar.");
+      toast.success(
+        isMerchantProduct
+          ? "Ponto da loja confirmado. Revise os dados do endereço antes de salvar."
+          : "Ponto de entrega confirmado. Revise os dados do endereço antes de salvar.",
+      );
     } finally {
       setIsConfirming(false);
     }
@@ -192,14 +216,19 @@ export function GoogleMapsAddressSelector({
       }
 
       const { lat, lng } = result.geometry.location;
+      await persistMerchantCoordinates(lat, lng);
       setMarkerPos({ lat, lng });
       const address = parseAddressComponents(result.address_components);
       onAddressSelected({ ...address, latitude: lat, longitude: lng });
       setPointConfirmed(true);
-      toast.success("Endereço localizado no mapa!");
+      toast.success(isMerchantProduct ? "Endereço da loja localizado no mapa!" : "Endereço localizado no mapa!");
     } catch (error) {
       console.error("Place details error:", error);
-      toast.error("Erro ao carregar detalhes do endereço");
+      toast.error(
+        isMerchantProduct
+          ? "Não foi possível salvar o endereço da loja no mapa."
+          : "Erro ao carregar detalhes do endereço",
+      );
     } finally {
       setIsSearching(false);
     }
