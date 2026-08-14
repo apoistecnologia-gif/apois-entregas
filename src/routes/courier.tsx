@@ -244,7 +244,7 @@ function CourierApp() {
   const logout = async () => {
     if (availability?.is_online) await rpc("set_courier_online", { _is_online: false });
     await supabase.auth.signOut();
-    navigate({ to: "/login" });
+    navigate({ to: "/login", replace: true });
   };
 
   const submitApplication = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -596,7 +596,7 @@ function CourierApp() {
         user={user}
         busy={busy === "application"}
         onSubmit={submitApplication}
-        onBack={() => navigate({ to: "/perfil" })}
+        onBack={() => void logout()}
       />
     );
   }
