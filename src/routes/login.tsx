@@ -1,9 +1,19 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, Eye, EyeOff, Loader2 } from "lucide-react";
+import {
+  Bike,
+  ChevronLeft,
+  Eye,
+  EyeOff,
+  Loader2,
+  LockKeyhole,
+  Mail,
+  ShieldCheck,
+} from "lucide-react";
 import { useState } from "react";
 import logoAsset from "@/assets/logo.png.asset.json";
+import deliveryHeroAsset from "@/assets/delivery-hero.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -70,6 +80,7 @@ function isRedirectAllowedForCurrentProduct(pathname: string) {
 
 function Login() {
   const navigate = useNavigate();
+  const productMode = getApoisProductMode();
   const productLabel = getProductLabel();
   const allowsSignup = productAllowsPublicSignup();
   const [showPassword, setShowPassword] = useState(false);
@@ -182,6 +193,161 @@ function Login() {
       setIsLoading(false);
     }
   };
+
+  if (productMode === "courier") {
+    return (
+      <div className="relative min-h-dvh w-full overflow-x-hidden bg-black text-white">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[31rem] overflow-hidden">
+          <img
+            src={deliveryHeroAsset.url}
+            alt=""
+            aria-hidden="true"
+            className="h-full w-full scale-105 object-cover object-center opacity-55 saturate-[0.8]"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.12)_0%,rgba(0,0,0,0.62)_54%,#000_100%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_18%,rgba(250,204,21,0.18),transparent_28%)]" />
+        </div>
+
+        <header className="relative z-10 mx-auto flex w-full max-w-md items-center justify-between px-5 pt-[max(env(safe-area-inset-top),1rem)]">
+          <button
+            onClick={() => navigate({ to: "/" })}
+            className="-ml-2 grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-black/35 backdrop-blur-md transition-colors active:bg-white/10"
+            aria-label="Voltar"
+          >
+            <ChevronLeft className="h-5 w-5 text-white" />
+          </button>
+          <span className="flex items-center gap-1.5 rounded-full border border-primary/25 bg-black/45 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-primary backdrop-blur-md">
+            <Bike className="h-3.5 w-3.5" /> Entregador
+          </span>
+        </header>
+
+        <main className="relative z-10 mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-md flex-col px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-12">
+          <div className="flex min-h-[17rem] flex-col items-center justify-end text-center">
+            <img
+              src={logoAsset.url}
+              alt="APOIS ENTREGA"
+              className="h-20 w-auto max-w-[72vw] object-contain drop-shadow-[0_10px_30px_rgba(0,0,0,0.7)]"
+            />
+          </div>
+
+          <section className="mt-4 rounded-[2rem] border border-primary/25 bg-[#090909]/94 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.7),0_0_45px_rgba(250,204,21,0.06)] backdrop-blur-xl sm:p-6">
+            <div className="text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-primary">
+                APOIS ENTREGADOR
+              </p>
+              <h1 className="mt-2 text-[1.75rem] font-black leading-tight text-white">
+                Entrar na sua <span className="text-primary">conta</span>
+              </h1>
+              <p className="mx-auto mt-2 max-w-xs text-sm leading-5 text-zinc-400">
+                Acesse sua conta para começar a receber entregas.
+              </p>
+            </div>
+
+            <form onSubmit={handleLogin} className="mt-6 space-y-4">
+              <div className="space-y-2">
+                <label className="ml-1 text-xs font-bold text-zinc-400">E-mail</label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-primary" />
+                  <Input
+                    type="email"
+                    placeholder="Digite seu e-mail"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (loginError) setLoginError(null);
+                    }}
+                    required
+                    autoComplete="email"
+                    className="h-14 rounded-2xl border-zinc-800 bg-black/65 pl-11 pr-4 text-base text-white placeholder:text-zinc-600 focus:border-primary focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="ml-1 text-xs font-bold text-zinc-400">Senha</label>
+                <div className="relative">
+                  <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-primary" />
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Sua senha"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (loginError) setLoginError(null);
+                    }}
+                    required
+                    autoComplete="current-password"
+                    className="h-14 rounded-2xl border-zinc-800 bg-black/65 pl-11 pr-12 text-base text-white placeholder:text-zinc-600 focus:border-primary focus:ring-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 active:text-zinc-300"
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => void handlePasswordReset()}
+                    className="text-xs font-bold text-primary disabled:opacity-50"
+                  >
+                    Esqueci minha senha
+                  </button>
+                </div>
+              </div>
+
+              {loginError ? (
+                <div
+                  role="alert"
+                  className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-medium leading-relaxed text-red-300"
+                >
+                  {loginError}
+                </div>
+              ) : null}
+
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="h-14 w-full rounded-2xl bg-primary text-base font-black uppercase tracking-[0.06em] text-black shadow-[0_12px_35px_rgba(250,204,21,0.2)] transition-transform active:scale-[0.985]"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Entrando...
+                  </>
+                ) : (
+                  "Entrar"
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-5 flex items-center justify-center gap-2 text-[11px] text-zinc-500">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              Acesso protegido pela sua conta APOIS
+            </div>
+          </section>
+
+          <div className="mt-5 text-center">
+            {allowsSignup ? (
+              <p className="text-sm text-zinc-500">
+                Ainda não é entregador?{" "}
+                <Link to="/register" className="font-black text-primary">
+                  Criar minha conta
+                </Link>
+              </p>
+            ) : null}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh w-full overflow-y-auto bg-black text-white">
