@@ -148,7 +148,7 @@ Deno.serve(async (request: Request) => {
   const { data: payout, error: payoutError } = await admin
     .from("payouts")
     .select(
-      "id,wallet_id,payout_account_id,amount,status,provider,provider_payout_id,idempotency_key",
+      "id,wallet_id,payout_account_id,amount,status,provider,provider_payout_id,idempotency_key,requested_by",
     )
     .eq("id", payoutId)
     .maybeSingle();
@@ -176,27 +176,63 @@ Deno.serve(async (request: Request) => {
 
   const { data: wallet } = await admin
     .from("wallets")
-    .select("id,merchant_id")
+    .select("id,merchant_id,courier_id")
     .eq("id", payout.wallet_id)
     .maybeSingle();
-  if (!wallet?.merchant_id) {
+  if (!wallet || (!wallet.merchant_id && !wallet.courier_id)) {
     return response(409, {
-      error: "Este fluxo automático é exclusivo da carteira do estabelecimento.",
+      error: "Carteira de saque inválida.",
       code: "INVALID_WALLET_OWNER",
     });
   }
 
-  const [{ data: membership }, { data: isAdmin }] = await Promise.all([
+  const [{ data: activeProfile }, { data: adminRole }] = await Promise.all([
+    admin.from("profiles").select("is_active").eq("id", authData.user.id).maybeSingle(),
     admin
-      .from("merchant_members")
-      .select("merchant_id")
-      .eq("merchant_id", wallet.merchant_id)
+      .from("user_roles")
+      .select("user_id")
       .eq("user_id", authData.user.id)
-      .eq("status", "active")
+      .eq("role", "admin")
       .maybeSingle(),
-    admin.rpc("has_role", { _user_id: authData.user.id, _role: "admin" }),
   ]);
-  if (!membership && !isAdmin) {
+  if (activeProfile?.is_active !== true) {
+    return response(403, { error: "Conta bloqueada.", code: "ACCOUNT_BLOCKED" });
+  }
+
+  let ownerAuthorized = false;
+  let ownerType: "merchant" | "courier";
+  let ownerId: string;
+
+  if (wallet.merchant_id) {
+    ownerType = "merchant";
+    ownerId = wallet.merchant_id;
+    const [{ data: merchantOwner }, { data: membership }] = await Promise.all([
+      admin.from("merchants").select("owner_user_id").eq("id", wallet.merchant_id).maybeSingle(),
+      admin
+        .from("merchant_members")
+        .select("role")
+        .eq("merchant_id", wallet.merchant_id)
+        .eq("user_id", authData.user.id)
+        .eq("status", "active")
+        .in("role", ["owner", "manager"])
+        .maybeSingle(),
+    ]);
+    ownerAuthorized = merchantOwner?.owner_user_id === authData.user.id || Boolean(membership);
+  } else {
+    ownerType = "courier";
+    ownerId = wallet.courier_id as string;
+    const { data: courierOwner } = await admin
+      .from("couriers")
+      .select("user_id,status,is_active")
+      .eq("id", wallet.courier_id)
+      .maybeSingle();
+    ownerAuthorized =
+      courierOwner?.user_id === authData.user.id &&
+      courierOwner?.status === "approved" &&
+      courierOwner?.is_active === true;
+  }
+
+  if (!ownerAuthorized && !adminRole) {
     return response(403, { error: "Acesso negado.", code: "FORBIDDEN" });
   }
 
@@ -204,6 +240,7 @@ Deno.serve(async (request: Request) => {
     .from("payout_accounts")
     .select("pix_key,pix_key_type,document,is_active")
     .eq("id", payout.payout_account_id)
+    .eq("wallet_id", payout.wallet_id)
     .maybeSingle();
   if (!destination?.is_active || !destination.pix_key) {
     return response(409, {
@@ -224,7 +261,8 @@ Deno.serve(async (request: Request) => {
     await admin
       .from("payout_accounts")
       .update({ pix_key_type: pixKeyType })
-      .eq("id", payout.payout_account_id);
+      .eq("id", payout.payout_account_id)
+      .eq("wallet_id", payout.wallet_id);
   }
 
   const amount = Number(payout.amount);
@@ -266,23 +304,25 @@ Deno.serve(async (request: Request) => {
           correlationID,
           comment: `Saque APOIS Entregas ${payout.id}`,
           autoApprove: true,
-          metadata: { payoutId: payout.id, merchantId: wallet.merchant_id },
+          metadata: {
+            payoutId: payout.id,
+            ownerType,
+            ownerId,
+          },
         }),
       });
       const created = await readJson(createResponse);
       if (!createResponse.ok || !isRecord(created)) {
         const verified = await lookupPayment();
         if (!verified.providerResponse.ok || !isRecord(verified.providerPayload)) {
-          await admin.rpc("settle_payout", {
-            _payout_id: payout.id,
-            _new_status: "failed",
-            _provider: "openpix",
-            _provider_payout_id: correlationID,
-            _failure_reason: `OpenPix HTTP ${createResponse.status}`,
+          console.error("openpix-payout provider state uncertain", {
+            payoutId: payout.id,
+            createStatus: createResponse.status,
+            lookupStatus: verified.providerResponse.status,
           });
           return response(502, {
-            error: "A OpenPix recusou a transferência PIX.",
-            code: "PAYOUT_PROVIDER_ERROR",
+            error: "Não foi possível confirmar o estado da transferência na OpenPix. Tente novamente.",
+            code: "PAYOUT_PROVIDER_UNCERTAIN",
           });
         }
         providerPayload = verified.providerPayload;
@@ -307,6 +347,14 @@ Deno.serve(async (request: Request) => {
     return response(502, {
       error: "Resposta inválida da OpenPix.",
       code: "INVALID_PROVIDER_RESPONSE",
+    });
+  }
+
+  const providerCorrelationID = text(providerPayment.correlationID);
+  if (providerCorrelationID && providerCorrelationID !== correlationID) {
+    return response(409, {
+      error: "Referência do saque divergente na OpenPix.",
+      code: "PAYOUT_CORRELATION_MISMATCH",
     });
   }
 
@@ -347,15 +395,21 @@ Deno.serve(async (request: Request) => {
     });
   }
 
-  if (["FAILED", "REMOVED", "CANCELLED"].includes(providerStatus)) {
-    const finalStatus = providerStatus === "FAILED" ? "failed" : "cancelled";
-    await admin.rpc("settle_payout", {
+  if (["FAILED", "REMOVED", "CANCELLED", "CANCELED", "DENIED"].includes(providerStatus)) {
+    const finalStatus = providerStatus === "FAILED" || providerStatus === "DENIED" ? "failed" : "cancelled";
+    const { error: settleError } = await admin.rpc("settle_payout", {
       _payout_id: payout.id,
       _new_status: finalStatus,
       _provider: "openpix",
       _provider_payout_id: providerPayoutId,
       _failure_reason: `OpenPix status ${providerStatus}`,
     });
+    if (settleError) {
+      return response(500, {
+        error: "Transferência rejeitada; conciliação pendente.",
+        code: "PAYOUT_SETTLEMENT_FAILED",
+      });
+    }
     return response(409, {
       error: "A transferência PIX não foi concluída.",
       code: "PAYOUT_PROVIDER_REJECTED",
