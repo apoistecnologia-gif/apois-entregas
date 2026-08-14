@@ -1,3 +1,5 @@
+// Security/UX boundary shared by the four independently shipped APOIS products.
+// Keep courier mobile builds isolated even when a stale deep link targets another product.
 export type ApoisProductMode = "customer" | "merchant" | "courier" | "admin";
 export type ApoisProductHomeRoute = "/inicio" | "/merchant" | "/courier" | "/admin";
 export type ApoisProductLandingRoute = "/" | "/merchant" | "/courier" | "/admin";
