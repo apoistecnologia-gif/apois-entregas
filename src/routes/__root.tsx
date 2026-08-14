@@ -15,6 +15,7 @@ import { ApoisLaunchSplash } from "../components/ApoisLaunchSplash";
 import { AuthSessionIsolation } from "../components/AuthSessionIsolation";
 import { CourierActiveDeliveryOverlay } from "../components/CourierActiveDeliveryOverlay";
 import { CourierOfferOverlay } from "../components/CourierOfferOverlay";
+import { CourierPendingPayoutProcessor } from "../components/CourierPendingPayoutProcessor";
 import { MerchantOrderSoundWatcher } from "../components/MerchantOrderSoundWatcher";
 import { CartProvider } from "../contexts/CartContext";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -181,6 +182,7 @@ function RootComponent() {
       <MerchantOrderSoundWatcher />
       <CourierOfferOverlay />
       <CourierActiveDeliveryOverlay />
+      <CourierPendingPayoutProcessor />
       <ProductRouteIsolation>
         <AuthSessionIsolation>
           <CartProvider>
