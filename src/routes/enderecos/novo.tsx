@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { GoogleMapsAddressSelector } from "@/components/GoogleMapsAddressSelector";
 
 export const Route = createFileRoute("/enderecos/novo")({
+  ssr: false,
   beforeLoad: async () => {
     const {
       data: { session },
