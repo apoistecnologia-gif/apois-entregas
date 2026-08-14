@@ -181,24 +181,25 @@ function MerchantOrderSoundWatcher() {
     };
 
     unlockAudioRef.current = unlockAudio;
-    const onBackgroundGesture = (event: PointerEvent | KeyboardEvent) => {
-      const target = event.target;
-      if (
-        target instanceof Element &&
-        target.closest("button,a,input,select,textarea,[role='button']")
-      ) {
+    const onUserGesture = () => {
+      if (audioUnlockedRef.current) {
+        void flushPending();
         return;
       }
-      void unlockAudio();
+      void unlockAudio().then((unlocked) => {
+        if (unlocked) void flushPending();
+      });
     };
-    window.addEventListener("pointerdown", onBackgroundGesture, { capture: true });
-    window.addEventListener("keydown", onBackgroundGesture, { capture: true });
+    window.addEventListener("pointerdown", onUserGesture, { capture: true });
+    window.addEventListener("touchstart", onUserGesture, { capture: true, passive: true });
+    window.addEventListener("keydown", onUserGesture, { capture: true });
     return () => {
       unlockAudioRef.current = null;
-      window.removeEventListener("pointerdown", onBackgroundGesture, { capture: true });
-      window.removeEventListener("keydown", onBackgroundGesture, { capture: true });
+      window.removeEventListener("pointerdown", onUserGesture, { capture: true });
+      window.removeEventListener("touchstart", onUserGesture, { capture: true });
+      window.removeEventListener("keydown", onUserGesture, { capture: true });
     };
-  }, [enabled]);
+  }, [enabled, flushPending]);
 
   useEffect(() => {
     if (!enabled) return;
