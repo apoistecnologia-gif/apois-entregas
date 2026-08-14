@@ -58,13 +58,13 @@ function money(value: unknown) {
 
 function addressText(value: unknown) {
   const address = (value ?? {}) as Record<string, unknown>;
-  const first = [address.street, address.address_line, address.name].find(
+  const first = [address["street"], address["address_line"], address["name"]].find(
     (part) => typeof part === "string" && part.trim(),
   );
-  const number = typeof address.number === "string" ? address.number : null;
-  const neighborhood = typeof address.neighborhood === "string" ? address.neighborhood : null;
-  const city = typeof address.city === "string" ? address.city : null;
-  const state = typeof address.state === "string" ? address.state : null;
+  const number = typeof address["number"] === "string" ? address["number"] : null;
+  const neighborhood = typeof address["neighborhood"] === "string" ? address["neighborhood"] : null;
+  const city = typeof address["city"] === "string" ? address["city"] : null;
+  const state = typeof address["state"] === "string" ? address["state"] : null;
   return {
     title: [first, number].filter(Boolean).join(", ") || "Endereço da entrega",
     detail: [neighborhood, city, state].filter(Boolean).join(" · "),
@@ -283,7 +283,9 @@ export function CourierActiveDeliveryOverlay() {
             </div>
             <div className="rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2 text-right">
               <p className="text-[9px] font-black uppercase text-zinc-500">Seu ganho</p>
-              <p className="mt-1 text-lg font-black text-primary">{money(job.estimated_earnings)}</p>
+              <p className="mt-1 text-lg font-black text-primary">
+                {money(job.estimated_earnings)}
+              </p>
             </div>
           </div>
 
@@ -381,7 +383,9 @@ export function CourierActiveDeliveryOverlay() {
                 <CheckCircle2 className="h-5 w-5 text-primary" />
                 <div>
                   <p className="text-sm font-black">Confirme o PIN do cliente</p>
-                  <p className="text-[11px] text-zinc-500">Peça o código antes de entregar o pedido.</p>
+                  <p className="text-[11px] text-zinc-500">
+                    Peça o código antes de entregar o pedido.
+                  </p>
                 </div>
               </div>
               <input
@@ -414,7 +418,11 @@ export function CourierActiveDeliveryOverlay() {
             onClick={() => setSupportOpen((open) => !open)}
             className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 text-sm font-bold text-zinc-300"
           >
-            {supportOpen ? <X className="h-4 w-4" /> : <Headphones className="h-4 w-4 text-primary" />}
+            {supportOpen ? (
+              <X className="h-4 w-4" />
+            ) : (
+              <Headphones className="h-4 w-4 text-primary" />
+            )}
             {supportOpen ? "Fechar suporte" : "Ajuda / Problema"}
           </button>
 
@@ -447,7 +455,11 @@ export function CourierActiveDeliveryOverlay() {
                 onClick={() => void reportProblem()}
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 text-sm font-black text-primary disabled:opacity-50"
               >
-                {busy === "support" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Headphones className="h-4 w-4" />}
+                {busy === "support" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Headphones className="h-4 w-4" />
+                )}
                 ENVIAR AO SUPORTE
               </button>
             </div>
