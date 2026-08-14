@@ -1,0 +1,84 @@
+name: Customer Release Status Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/customer-release-status-once.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Wait for latest customer Android release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 90); do
+            run_json="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/workflows/mobile-android.yml/runs?event=workflow_dispatch&branch=main&per_page=1")"
+            run_id="$(jq -r '.workflow_runs[0].id // empty' <<<"$run_json")"
+            status="$(jq -r '.workflow_runs[0].status // empty' <<<"$run_json")"
+            if [[ -n "$run_id" && "$status" == "completed" ]]; then
+              break
+            fi
+            sleep 20
+          done
+
+          if [[ -z "${run_id:-}" ]]; then
+            echo "No Mobile Android workflow run found" >&2
+            exit 1
+          fi
+
+          run="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}")"
+          jobs="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs?per_page=100")"
+          artifacts="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts?per_page=100")"
+
+          conclusion="$(jq -r '.conclusion // empty' <<<"$run")"
+          head_sha="$(jq -r '.head_sha // empty' <<<"$run")"
+          html_url="$(jq -r '.html_url // empty' <<<"$run")"
+          created_at="$(jq -r '.created_at // empty' <<<"$run")"
+          updated_at="$(jq -r '.updated_at // empty' <<<"$run")"
+          job_summary="$(jq -c '[.jobs[] | {name, status, conclusion}]' <<<"$jobs")"
+          artifact_summary="$(jq -c '[.artifacts[] | {name, expired, size_in_bytes}]' <<<"$artifacts")"
+
+          mkdir -p docs
+          jq -n \
+            --arg workflow "Mobile Android" \
+            --arg app "customer" \
+            --arg version "1.0.0" \
+            --arg package_id "br.com.apois.cliente" \
+            --arg run_id "$run_id" \
+            --arg conclusion "$conclusion" \
+            --arg head_sha "$head_sha" \
+            --arg html_url "$html_url" \
+            --arg created_at "$created_at" \
+            --arg updated_at "$updated_at" \
+            --argjson jobs "$job_summary" \
+            --argjson artifacts "$artifact_summary" \
+            '{workflow:$workflow,app:$app,version:$version,package_id:$package_id,run_id:($run_id|tonumber),conclusion:$conclusion,head_sha:$head_sha,html_url:$html_url,created_at:$created_at,updated_at:$updated_at,jobs:$jobs,artifacts:$artifacts}' \
+            > docs/customer-final-android-release.json
+
+          cat docs/customer-final-android-release.json
+          [[ "$conclusion" == "success" ]]
+      - name: Commit release record
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/customer-final-android-release.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "docs(release): record final customer Android build"
+          git push origin HEAD:main
