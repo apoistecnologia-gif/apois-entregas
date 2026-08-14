@@ -250,7 +250,8 @@ Deno.serve(async (request: Request) => {
     });
   }
 
-  const pixKeyType = destination.pix_key_type || inferPixKeyType(payoutPixKey, destination.document);
+  const pixKeyType =
+    destination.pix_key_type || inferPixKeyType(payoutPixKey, destination.document);
   if (!pixKeyType) {
     return response(409, {
       error: "Não foi possível identificar o tipo da chave PIX registrada para este saque.",
