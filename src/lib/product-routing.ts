@@ -2,7 +2,7 @@
 // Keep courier mobile builds isolated even when a stale deep link targets another product.
 export type ApoisProductMode = "customer" | "merchant" | "courier" | "admin";
 export type ApoisProductHomeRoute = "/inicio" | "/merchant" | "/courier" | "/admin";
-export type ApoisProductLandingRoute = "/" | "/merchant" | "/courier" | "/admin";
+export type ApoisProductLandingRoute = "/" | "/login" | "/merchant" | "/courier";
 
 const PRODUCT_HOME_ROUTES: Record<ApoisProductMode, ApoisProductHomeRoute> = {
   customer: "/inicio",
@@ -15,7 +15,7 @@ const PRODUCT_LANDING_ROUTES: Record<ApoisProductMode, ApoisProductLandingRoute>
   customer: "/",
   merchant: "/merchant",
   courier: "/courier",
-  admin: "/admin",
+  admin: "/login",
 };
 
 const PRODUCT_LABELS: Record<ApoisProductMode, string> = {
