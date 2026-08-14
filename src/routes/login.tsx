@@ -221,8 +221,8 @@ function Login() {
           </span>
         </header>
 
-        <main className="relative z-10 mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-md flex-col px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-12">
-          <div className="flex min-h-[17rem] flex-col items-center justify-end text-center">
+        <main className="relative z-10 mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-md flex-col px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-2">
+          <div className="flex min-h-[8.5rem] flex-col items-center justify-end text-center">
             <img
               src={logoAsset.url}
               alt="APOIS ENTREGA"
@@ -230,7 +230,7 @@ function Login() {
             />
           </div>
 
-          <section className="mt-4 rounded-[2rem] border border-primary/25 bg-[#090909]/94 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.7),0_0_45px_rgba(250,204,21,0.06)] backdrop-blur-xl sm:p-6">
+          <section className="mt-1 rounded-[2rem] border border-primary/25 bg-[#090909]/94 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.7),0_0_45px_rgba(250,204,21,0.06)] backdrop-blur-xl sm:p-6">
             <div className="text-center">
               <p className="text-[10px] font-black uppercase tracking-[0.24em] text-primary">
                 APOIS ENTREGADOR
