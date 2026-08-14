@@ -255,7 +255,13 @@ async function getOpenPixState(admin: any, order: any, payment: any): Promise<Pr
     throw new Error("provider_lookup_failed");
   const charge = payload.charge;
   const correlationID = text(charge.correlationID);
-  if (correlationID && correlationID !== `apois-entrega-order-${order.id}`)
+  const legacyCorrelationID = `apois-entrega-order-${order.id}`;
+  const retryCorrelationPrefix = `${legacyCorrelationID}-payment-`;
+  if (
+    correlationID &&
+    correlationID !== legacyCorrelationID &&
+    !correlationID.startsWith(retryCorrelationPrefix)
+  )
     throw new Error("conflict:EXTERNAL_REFERENCE_MISMATCH");
   const cents = Number(charge.value);
   if (!Number.isFinite(cents) || Math.round(cents) !== Math.round(Number(payment.amount) * 100))
