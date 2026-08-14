@@ -20,6 +20,11 @@ type ProviderState = {
   payload: unknown;
 };
 
+type CancelledPaymentRecovery = {
+  refundId: string;
+  refundStatus: string;
+};
+
 const isRecord = (value: unknown): value is JsonRecord =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
@@ -32,6 +37,59 @@ async function readJson(res: Response): Promise<unknown> {
   } catch {
     return null;
   }
+}
+
+async function recoverCancelledPaidOrder(input: {
+  admin: ReturnType<typeof createClient>;
+  supabaseUrl: string;
+  anonKey: string;
+  authorization: string;
+  order: { id: string; status: string; payment_status: string };
+  payment: { id: string; provider: string; status: string };
+}): Promise<CancelledPaymentRecovery> {
+  const { admin, supabaseUrl, anonKey, authorization, order, payment } = input;
+
+  const { error: orderUpdateError } = await admin
+    .from("orders")
+    .update({ payment_status: "paid" })
+    .eq("id", order.id)
+    .eq("status", "cancelled");
+  if (orderUpdateError) throw new Error("cancelled_order_payment_sync_failed");
+
+  const { data: refundId, error: refundError } = await admin.rpc(
+    "ensure_cancelled_paid_order_refund",
+    { _payment_id: payment.id },
+  );
+  if (refundError || typeof refundId !== "string" || !UUID_RE.test(refundId)) {
+    throw new Error("cancelled_order_refund_create_failed");
+  }
+
+  if (!["openpix", "mercadopago"].includes(payment.provider)) {
+    throw new Error("cancelled_order_refund_provider_unsupported");
+  }
+
+  const refundResponse = await fetch(`${supabaseUrl}/functions/v1/process-refund`, {
+    method: "POST",
+    headers: {
+      Authorization: authorization,
+      apikey: anonKey,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ refundId }),
+  });
+  const refundPayload = await readJson(refundResponse);
+  if (!refundResponse.ok) {
+    throw new Error(
+      isRecord(refundPayload) && text(refundPayload.code)
+        ? `cancelled_order_refund_${text(refundPayload.code)}`
+        : `cancelled_order_refund_http_${refundResponse.status}`,
+    );
+  }
+
+  const refund = isRecord(refundPayload) && isRecord(refundPayload.refund) ? refundPayload.refund : null;
+  const refundStatus = text(refund?.status) ?? (refundResponse.status === 202 ? "processing" : "completed");
+  return { refundId, refundStatus };
 }
 
 Deno.serve(async (request: Request) => {
@@ -96,7 +154,7 @@ Deno.serve(async (request: Request) => {
   if (!payment?.provider_charge_id)
     return reply(404, { error: "Pagamento não encontrado.", code: "PAYMENT_NOT_FOUND" });
 
-  if (payment.status === "refunded" || order.payment_status === "refunded") {
+  if (payment.status === "refunded" || order.payment_status === "refunded" || order.status === "refunded") {
     return reply(200, {
       paymentStatus: "refunded",
       providerStatus: "refunded",
@@ -106,6 +164,37 @@ Deno.serve(async (request: Request) => {
   }
 
   if (payment.status === "paid" && order.payment_status === "paid") {
+    if (order.status === "cancelled") {
+      try {
+        const recovery = await recoverCancelledPaidOrder({
+          admin,
+          supabaseUrl,
+          anonKey,
+          authorization,
+          order,
+          payment,
+        });
+        return reply(recovery.refundStatus === "completed" ? 200 : 202, {
+          paymentStatus: recovery.refundStatus === "completed" ? "refunded" : "paid",
+          providerStatus: "confirmed",
+          refundStatus: recovery.refundStatus,
+          refundId: recovery.refundId,
+          reconciled: true,
+          provider: payment.provider,
+        });
+      } catch (error) {
+        console.error("sync-payment-status cancelled order refund recovery failed", {
+          orderId: order.id,
+          paymentId: payment.id,
+          message: error instanceof Error ? error.message : "unknown",
+        });
+        return reply(502, {
+          error: "Pagamento recebido após o cancelamento; estorno pendente de nova tentativa.",
+          code: "REFUND_RECONCILIATION_FAILED",
+        });
+      }
+    }
+
     if (payment.provider === "openpix") {
       const { error: reserveError } = await admin.rpc("reserve_paid_order_merchant_net", {
         _order_id: order.id,
@@ -148,6 +237,7 @@ Deno.serve(async (request: Request) => {
 
   const now = new Date().toISOString();
   let paymentStatus = payment.status;
+  let cancelledRecovery: CancelledPaymentRecovery | null = null;
   if (provider.paid) {
     const { error } = await admin
       .from("payments")
@@ -161,7 +251,30 @@ Deno.serve(async (request: Request) => {
       .neq("status", "refunded");
     if (error)
       return reply(500, { error: "Falha ao atualizar pagamento.", code: "PAYMENT_UPDATE_FAILED" });
-    if (!["cancelled", "refunded"].includes(order.status)) {
+
+    if (order.status === "cancelled") {
+      try {
+        cancelledRecovery = await recoverCancelledPaidOrder({
+          admin,
+          supabaseUrl,
+          anonKey,
+          authorization,
+          order,
+          payment: { ...payment, status: "paid" },
+        });
+      } catch (error) {
+        console.error("sync-payment-status late payment refund recovery failed", {
+          orderId: order.id,
+          paymentId: payment.id,
+          message: error instanceof Error ? error.message : "unknown",
+        });
+        return reply(502, {
+          error: "Pagamento recebido após o cancelamento; estorno pendente de nova tentativa.",
+          code: "REFUND_RECONCILIATION_FAILED",
+        });
+      }
+      paymentStatus = cancelledRecovery.refundStatus === "completed" ? "refunded" : "paid";
+    } else if (order.status !== "refunded") {
       const { error: orderUpdateError } = await admin
         .from("orders")
         .update({ payment_status: "paid" })
@@ -170,18 +283,19 @@ Deno.serve(async (request: Request) => {
         .neq("status", "refunded");
       if (orderUpdateError)
         return reply(500, { error: "Falha ao sincronizar pedido.", code: "ORDER_UPDATE_FAILED" });
-    }
-    if (payment.provider === "openpix") {
-      const { error: reserveError } = await admin.rpc("reserve_paid_order_merchant_net", {
-        _order_id: order.id,
-      });
-      if (reserveError)
-        return reply(500, {
-          error: "Pagamento confirmado; conciliação financeira pendente.",
-          code: "WALLET_SYNC_FAILED",
+
+      if (payment.provider === "openpix") {
+        const { error: reserveError } = await admin.rpc("reserve_paid_order_merchant_net", {
+          _order_id: order.id,
         });
+        if (reserveError)
+          return reply(500, {
+            error: "Pagamento confirmado; conciliação financeira pendente.",
+            code: "WALLET_SYNC_FAILED",
+          });
+      }
+      paymentStatus = "paid";
     }
-    paymentStatus = "paid";
   } else if (provider.refunded) {
     await admin.from("payments").update({ status: "refunded" }).eq("id", payment.id);
     await admin.from("orders").update({ payment_status: "refunded" }).eq("id", order.id);
@@ -218,9 +332,11 @@ Deno.serve(async (request: Request) => {
     { onConflict: "provider,provider_event_id", ignoreDuplicates: true },
   );
 
-  return reply(200, {
+  return reply(cancelledRecovery?.refundStatus === "processing" ? 202 : 200, {
     paymentStatus,
     providerStatus: provider.status,
+    refundStatus: cancelledRecovery?.refundStatus ?? null,
+    refundId: cancelledRecovery?.refundId ?? null,
     reconciled: true,
     provider: payment.provider,
   });
