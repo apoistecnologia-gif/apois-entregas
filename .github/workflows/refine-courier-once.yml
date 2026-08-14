@@ -23,7 +23,24 @@ jobs:
       - name: Apply courier lifecycle refinements
         run: |
           python3 scripts/refine-courier-once.py
-          bunx prettier --write src/routes/courier.tsx
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/components/CourierActiveDeliveryOverlay.tsx')
+          source = path.read_text()
+          replacements = {
+              'address.street': "address['street']",
+              'address.address_line': "address['address_line']",
+              'address.name': "address['name']",
+              'address.number': "address['number']",
+              'address.neighborhood': "address['neighborhood']",
+              'address.city': "address['city']",
+              'address.state': "address['state']",
+          }
+          for old, new in replacements.items():
+              source = source.replace(old, new)
+          path.write_text(source)
+          PY
+          bunx prettier --write src/routes/courier.tsx src/components/CourierActiveDeliveryOverlay.tsx
       - name: Validate courier changes
         run: |
           bun run typecheck
@@ -38,7 +55,11 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/routes/courier.tsx
-          git commit -m "feat(courier): refine offer privacy and delivery lifecycle"
+          git add src/routes/courier.tsx src/components/CourierActiveDeliveryOverlay.tsx
+          git commit -m "feat(courier): refine secure delivery lifecycle"
           git pull --rebase origin main
+          bun run typecheck
+          bun run test
+          bun run lint
+          bun run format:check
           git push
