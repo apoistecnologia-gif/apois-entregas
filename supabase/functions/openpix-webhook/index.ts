@@ -216,7 +216,11 @@ Deno.serve(async (request: Request) => {
     if (orderId && orderId !== localOrderId) {
       await admin
         .from("payment_events")
-        .update({ status: "failed", error_message: "order_correlation_mismatch", payment_id: paymentId })
+        .update({
+          status: "failed",
+          error_message: "order_correlation_mismatch",
+          payment_id: paymentId,
+        })
         .eq("provider", "openpix")
         .eq("provider_event_id", eventId);
       return response(409, {
@@ -409,8 +413,11 @@ Deno.serve(async (request: Request) => {
       error_message: null,
       processed_at: null,
     };
-    if (existingEvent) await admin.from("payment_events").update(eventRow).eq("id", existingEvent.id);
-    else await admin.from("payment_events").insert(eventRow);
+    if (existingEvent) {
+      await admin.from("payment_events").update(eventRow).eq("id", existingEvent.id);
+    } else {
+      await admin.from("payment_events").insert(eventRow);
+    }
 
     if (!payment) {
       await admin
@@ -432,7 +439,11 @@ Deno.serve(async (request: Request) => {
     if (orderId && orderId !== localOrderId) {
       await admin
         .from("payment_events")
-        .update({ status: "failed", error_message: "order_correlation_mismatch", payment_id: paymentId })
+        .update({
+          status: "failed",
+          error_message: "order_correlation_mismatch",
+          payment_id: paymentId,
+        })
         .eq("provider", "openpix")
         .eq("provider_event_id", eventId);
       return response(409, {
@@ -477,13 +488,22 @@ Deno.serve(async (request: Request) => {
       .select("id,status,payment_status")
       .eq("id", localOrderId)
       .maybeSingle();
-    if (order && order.payment_status !== "paid" && !["cancelled", "refunded"].includes(order.status)) {
+    if (
+      order &&
+      order.payment_status !== "paid" &&
+      !["cancelled", "refunded"].includes(order.status)
+    ) {
       await admin.from("orders").update({ payment_status: "failed" }).eq("id", order.id);
     }
 
     await admin
       .from("payment_events")
-      .update({ status: "processed", error_message: null, payment_id: paymentId, processed_at: now })
+      .update({
+        status: "processed",
+        error_message: null,
+        payment_id: paymentId,
+        processed_at: now,
+      })
       .eq("provider", "openpix")
       .eq("provider_event_id", eventId);
     return response(200, { ok: true, paymentId, orderId: localOrderId, status: "expired" });
@@ -520,9 +540,11 @@ Deno.serve(async (request: Request) => {
       error_message: null,
       processed_at: null,
     };
-    if (existingEvent)
+    if (existingEvent) {
       await admin.from("payment_events").update(eventRow).eq("id", existingEvent.id);
-    else await admin.from("payment_events").insert(eventRow);
+    } else {
+      await admin.from("payment_events").insert(eventRow);
+    }
 
     if (!payoutId) {
       await admin
