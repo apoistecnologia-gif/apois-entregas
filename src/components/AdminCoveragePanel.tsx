@@ -276,7 +276,8 @@ export function AdminCoveragePanel({
           <div>
             <h2 className="font-black">Cidades atendidas</h2>
             <p className="text-xs text-zinc-500">
-              O raio de entrega do cliente e o raio de busca do entregador são controles independentes.
+              O raio de entrega do cliente e o raio de busca do entregador são controles
+              independentes.
             </p>
           </div>
           <MapPinned className="h-5 w-5 text-primary" />
@@ -339,7 +340,8 @@ export function AdminCoveragePanel({
                       </label>
                     </div>
                     <p className="text-[10px] leading-relaxed text-zinc-600">
-                      Deixe a busca do entregador vazia para bloquear novos despachos nesta cidade até uma distância operacional ser definida.
+                      Deixe a busca do entregador vazia para bloquear novos despachos nesta cidade
+                      até uma distância operacional ser definida.
                     </p>
                     <label className="flex items-center gap-2 text-xs text-zinc-400">
                       <input
@@ -394,7 +396,8 @@ export function AdminCoveragePanel({
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-zinc-500">
-                        {city.timezone || "America/Sao_Paulo"} · entrega {city.default_delivery_radius_km} km · entregador{" "}
+                        {city.timezone || "America/Sao_Paulo"} · entrega{" "}
+                        {city.default_delivery_radius_km} km · entregador{" "}
                         {city.courier_dispatch_radius_km === null
                           ? "não configurado"
                           : `${city.courier_dispatch_radius_km} km`}
