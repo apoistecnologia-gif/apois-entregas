@@ -1,8 +1,9 @@
 project_id = "sbvhdgyuuperszlsllji"
 
 # External payment providers call these endpoints directly and authenticate with their
-# own provider-specific credentials/signatures. All other Edge Functions keep Supabase
-# JWT verification enabled by default. Keep this file aligned with production deploys.
+# own provider-specific credentials/signatures. Internal async callbacks may also
+# disable Supabase JWT verification when they enforce a dedicated secret header.
+# Keep this file aligned with production deploys.
 [functions.mercadopago-webhook]
 verify_jwt = false
 
@@ -10,4 +11,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.asaas-webhook]
+verify_jwt = false
+
+# Called only by the protected Postgres push outbox trigger. The function validates
+# x-apois-push-dispatch-key against PUSH_DISPATCH_WEBHOOK_SECRET before doing work.
+[functions.dispatch-push-outbox]
 verify_jwt = false
