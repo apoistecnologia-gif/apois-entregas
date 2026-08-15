@@ -1,5 +1,5 @@
 name: Merchant Web Build
-# Audited production redeploy after merchant location hardening.
+# Audited production redeploy after merchant location hardening and operational UX feedback.
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
       - ".github/workflows/merchant-web-build.yml"
       - "src/**"
       - "scripts/build-product.mjs"
+      - "scripts/apply-merchant-ux-feedback.py"
       - "vite.config.ts"
       - "vercel.json"
       - "package.json"
@@ -15,7 +16,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   merchant:
@@ -33,6 +34,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Apply merchant operational UX feedback
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/apply-merchant-ux-feedback.py
+          if ! git diff --quiet -- src/routes/merchant.tsx; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/routes/merchant.tsx
+            git commit -m "fix(merchant): surface operational action feedback"
+            git push origin HEAD:main
+          fi
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
