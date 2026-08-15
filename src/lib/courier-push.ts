@@ -15,6 +15,8 @@ type RegistrationState =
   | { status: "failed"; message: string };
 
 let listenersInstalled = false;
+let notificationReceivedHandle: PluginListenerHandle | null = null;
+let notificationActionHandle: PluginListenerHandle | null = null;
 let registrationPromise: Promise<RegistrationState> | null = null;
 
 export function isNativeCourierAndroid() {
@@ -29,34 +31,11 @@ async function persistAndroidToken(token: string) {
   const normalized = token.trim();
   if (!normalized) throw new Error("FCM registration returned an empty token.");
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user)
-    throw new Error("Courier authentication is required for push registration.");
-
-  const { error: deleteError } = await supabase
-    .from("push_devices")
-    .delete()
-    .eq("user_id", user.id)
-    .eq("platform", "android")
-    .neq("token", normalized);
-  if (deleteError) throw deleteError;
-
-  const now = new Date().toISOString();
-  const { error: insertError } = await supabase.from("push_devices").upsert(
-    {
-      user_id: user.id,
-      platform: "android",
-      token: normalized,
-      is_active: true,
-      last_seen_at: now,
-      updated_at: now,
-    },
-    { onConflict: "token" },
-  );
-  if (insertError) throw insertError;
+  const { error } = await (supabase.rpc as any)("register_courier_push_device", {
+    _token: normalized,
+    _platform: "android",
+  });
+  if (error) throw error;
 }
 
 async function ensureNotificationChannel() {
@@ -80,22 +59,48 @@ function emitCourierPush(notification?: PushNotificationSchema) {
 
 export async function installCourierPushListeners() {
   if (!isNativeCourierAndroid() || listenersInstalled) return;
-  listenersInstalled = true;
 
-  await PushNotifications.addListener("pushNotificationReceived", (notification) => {
-    emitCourierPush(notification);
-  });
+  let receivedHandle: PluginListenerHandle | null = null;
+  let actionHandle: PluginListenerHandle | null = null;
+  try {
+    receivedHandle = await PushNotifications.addListener(
+      "pushNotificationReceived",
+      (notification) => {
+        emitCourierPush(notification);
+      },
+    );
+    actionHandle = await PushNotifications.addListener(
+      "pushNotificationActionPerformed",
+      (action) => {
+        emitCourierPush(action.notification);
+        if (window.location.pathname !== "/courier") window.location.assign("/courier");
+      },
+    );
 
-  await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
-    emitCourierPush(action.notification);
-    if (window.location.pathname !== "/courier") window.location.assign("/courier");
-  });
+    notificationReceivedHandle = receivedHandle;
+    notificationActionHandle = actionHandle;
+    listenersInstalled = true;
+  } catch (error) {
+    await receivedHandle?.remove().catch(() => undefined);
+    await actionHandle?.remove().catch(() => undefined);
+    notificationReceivedHandle = null;
+    notificationActionHandle = null;
+    listenersInstalled = false;
+    throw error;
+  }
 }
 
 async function registerForPush(requestPermission: boolean): Promise<RegistrationState> {
   if (!isNativeCourierAndroid()) return { status: "not-native" };
 
-  await installCourierPushListeners();
+  try {
+    await installCourierPushListeners();
+  } catch (error) {
+    return {
+      status: "failed",
+      message: error instanceof Error ? error.message : "Failed to install push listeners.",
+    };
+  }
 
   let permission = await PushNotifications.checkPermissions();
   if (permission.receive === "prompt" && requestPermission) {
@@ -104,7 +109,14 @@ async function registerForPush(requestPermission: boolean): Promise<Registration
   if (permission.receive === "prompt") return { status: "permission-required" };
   if (permission.receive !== "granted") return { status: "permission-denied" };
 
-  await ensureNotificationChannel();
+  try {
+    await ensureNotificationChannel();
+  } catch (error) {
+    return {
+      status: "failed",
+      message: error instanceof Error ? error.message : "Failed to create notification channel.",
+    };
+  }
 
   return await new Promise<RegistrationState>((resolve) => {
     let settled = false;
@@ -184,18 +196,22 @@ export function ensureCourierPushRegistration(requestPermission = false) {
 export async function removeCourierPushRegistration() {
   if (!isNativeCourierAndroid()) return;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (user) {
-    await supabase.from("push_devices").delete().eq("user_id", user.id).eq("platform", "android");
-  }
+  const { error } = await (supabase.rpc as any)("remove_courier_push_devices");
+  if (error) throw error;
 
   try {
     await PushNotifications.unregister();
   } catch {
-    // Removing the backend token is authoritative for user-targeted pushes.
+    // Backend removal is authoritative for user-targeted pushes.
   }
+}
+
+export async function removeCourierPushListeners() {
+  await notificationReceivedHandle?.remove().catch(() => undefined);
+  await notificationActionHandle?.remove().catch(() => undefined);
+  notificationReceivedHandle = null;
+  notificationActionHandle = null;
+  listenersInstalled = false;
 }
 
 export { DELIVERY_CHANNEL_ID };
