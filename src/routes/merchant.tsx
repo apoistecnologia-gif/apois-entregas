@@ -207,8 +207,9 @@ function MerchantWorkspace() {
       [reviewsRes.error, "avaliações"],
       [specialHoursRes.error, "horários especiais"],
     ].filter(([error]) => Boolean(error));
-    if (operationErrors.length > 0) {
-      const [, area] = operationErrors[0];
+    const firstOperationError = operationErrors[0];
+    if (firstOperationError) {
+      const [, area] = firstOperationError;
       toast.error(`Não foi possível carregar ${area} do estabelecimento.`);
     }
     setOrders(ordersRes.data ?? []);
