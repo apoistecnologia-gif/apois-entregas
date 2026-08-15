@@ -80,29 +80,83 @@ jobs:
       - name: Pull Vercel production configuration
         run: bunx vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
 
-      - name: Write Admin-only Vercel root redirect
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat > vercel.json <<'JSON'
-          {
-            "$schema": "https://openapi.vercel.sh/vercel.json",
-            "outputDirectory": null,
-            "redirects": [
-              {
-                "source": "/",
-                "destination": "https://admin.apoisbrasil.com.br/login",
-                "permanent": false
-              }
-            ]
-          }
-          JSON
-          python3 -m json.tool vercel.json >/dev/null
-
       - name: Build Vercel production bundle
         env:
           APOIS_VERCEL_BUILD: "1"
         run: bunx vercel build --prod --token "$VERCEL_TOKEN"
+
+      - name: Install HTTP-safe Admin root entry in Build Output
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          output = Path('.vercel/output')
+          config_path = output / 'config.json'
+          static_dir = output / 'static'
+          if not config_path.is_file():
+              raise SystemExit('Vercel Build Output config.json was not generated')
+          static_dir.mkdir(parents=True, exist_ok=True)
+
+          # Nitro/Vercel scopes framework redirects to the generated Admin function
+          # prefix, which turned /login into /admin/login. Keep `/` outside that
+          # redirect machinery: serve a tiny Admin-only static entry with HTTP 200,
+          # then let the browser open the canonical authentication route.
+          entry = '''<!doctype html>
+          <html lang="pt-BR">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+              <meta name="robots" content="noindex,nofollow" />
+              <meta http-equiv="refresh" content="0;url=https://admin.apoisbrasil.com.br/login" />
+              <title>APOIS Administração</title>
+              <style>
+                html,body{margin:0;min-height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+                body{min-height:100vh;display:grid;place-items:center}
+                main{text-align:center;padding:28px}
+                strong{display:block;letter-spacing:.08em;font-size:22px}
+                span{display:block;margin-top:8px;color:#f6b900;font-weight:700}
+                p{margin:18px 0 0;color:#a1a1aa;font-size:14px}
+                a{color:#f6b900}
+              </style>
+              <script>window.location.replace('https://admin.apoisbrasil.com.br/login');</script>
+            </head>
+            <body>
+              <main data-apois-admin-root="true">
+                <strong>APOIS</strong><span>ADMINISTRAÇÃO</span>
+                <p>Abrindo a autenticação administrativa…</p>
+                <noscript><p><a href="https://admin.apoisbrasil.com.br/login">Entrar no painel administrativo</a></p></noscript>
+              </main>
+            </body>
+          </html>
+          '''
+          (static_dir / 'admin-root.html').write_text(entry, encoding='utf-8')
+
+          config = json.loads(config_path.read_text(encoding='utf-8'))
+          if config.get('version') != 3:
+              raise SystemExit(f"Unexpected Vercel Build Output version: {config.get('version')!r}")
+          routes = config.get('routes')
+          if not isinstance(routes, list):
+              raise SystemExit('Vercel Build Output routes array is missing')
+
+          # Exact root route must win before Nitro's generated catch-all/function routes.
+          routes = [
+              r for r in routes
+              if not (isinstance(r, dict) and r.get('src') in ('/', '^/$', '^\\/$'))
+          ]
+          routes.insert(0, {'src': '^/$', 'dest': '/admin-root.html'})
+          config['routes'] = routes
+          config_path.write_text(json.dumps(config, indent=2) + '\n', encoding='utf-8')
+
+          if not (static_dir / 'admin-root.html').is_file():
+              raise SystemExit('Admin root static entry missing')
+          if routes[0] != {'src': '^/$', 'dest': '/admin-root.html'}:
+              raise SystemExit('Admin root route was not installed first')
+          print('APOIS_ADMIN_STATIC_ROOT_BUILD_OUTPUT_OK')
+          print(json.dumps(routes[0], sort_keys=True))
+          PY
 
       - name: Detach Git metadata for Hobby CLI deployment
         shell: bash
@@ -116,37 +170,27 @@ jobs:
         run: |
           set -euo pipefail
           BASE="https://admin.apoisbrasil.com.br"
-          EXPECTED_LOCATION="https://admin.apoisbrasil.com.br/login"
 
           for attempt in $(seq 1 20); do
-            curl -sS -D /tmp/apois-admin-root.headers -o /tmp/apois-admin-root-first.html "$BASE/"
-            ROOT_STATUS="$(awk 'NR==1 {print $2}' /tmp/apois-admin-root.headers)"
-            ROOT_LOCATION="$(awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/\r$/, "", $2); print $2; exit}' /tmp/apois-admin-root.headers)"
-            ROOT_FINAL_STATUS="$(curl -sS -L -o /tmp/apois-admin-root-followed.html -w '%{http_code}' "$BASE/")"
+            ROOT_STATUS="$(curl -sS -o /tmp/apois-admin-root.html -w '%{http_code}' "$BASE/")"
             LOGIN_STATUS="$(curl -sS -o /tmp/apois-admin-login.html -w '%{http_code}' "$BASE/login")"
             ADMIN_STATUS="$(curl -sS -o /tmp/apois-admin-workspace.html -w '%{http_code}' "$BASE/admin")"
 
-            ROOT_OK=false
-            if [ "$ROOT_STATUS" = "200" ]; then
-              ROOT_OK=true
-            elif { [ "$ROOT_STATUS" = "307" ] || [ "$ROOT_STATUS" = "308" ] || [ "$ROOT_STATUS" = "302" ]; } && [ "$ROOT_LOCATION" = "$EXPECTED_LOCATION" ]; then
-              ROOT_OK=true
-            fi
-
-            if [ "$ROOT_OK" = "true" ] && [ "$ROOT_FINAL_STATUS" = "200" ] && [ "$LOGIN_STATUS" = "200" ] && [ "$ADMIN_STATUS" = "200" ]; then
+            if [ "$ROOT_STATUS" = "200" ] && [ "$LOGIN_STATUS" = "200" ] && [ "$ADMIN_STATUS" = "200" ]; then
               break
             fi
 
             if [ "$attempt" -eq 20 ]; then
-              echo "Admin route gate failed: root=$ROOT_STATUS location=$ROOT_LOCATION followed=$ROOT_FINAL_STATUS login=$LOGIN_STATUS admin=$ADMIN_STATUS" >&2
-              cat /tmp/apois-admin-root.headers >&2 || true
+              echo "Admin route gate failed: root=$ROOT_STATUS login=$LOGIN_STATUS admin=$ADMIN_STATUS" >&2
               exit 1
             fi
             sleep 3
           done
 
-          grep -Fq '<title>APOIS Administração</title>' /tmp/apois-admin-root-followed.html
+          grep -Fq 'data-apois-admin-root="true"' /tmp/apois-admin-root.html
+          grep -Fq 'admin.apoisbrasil.com.br/login' /tmp/apois-admin-root.html
+          grep -Fq '<title>APOIS Administração</title>' /tmp/apois-admin-root.html
           grep -Fq '<title>APOIS Administração</title>' /tmp/apois-admin-login.html
           grep -Fq '<title>Administração | APOIS ENTREGA</title>' /tmp/apois-admin-workspace.html
-          ! grep -Fq 'Seu delivery do seu jeito' /tmp/apois-admin-root-followed.html
-          echo "APOIS_ADMIN_PRODUCTION_ROUTES_OK root=$ROOT_STATUS location=$ROOT_LOCATION followed=$ROOT_FINAL_STATUS login=$LOGIN_STATUS admin=$ADMIN_STATUS"
+          ! grep -Fq 'Seu delivery do seu jeito' /tmp/apois-admin-root.html
+          echo "APOIS_ADMIN_PRODUCTION_ROUTES_OK root=$ROOT_STATUS login=$LOGIN_STATUS admin=$ADMIN_STATUS"
