@@ -1,10 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./config";
+import { getApoisProductMode } from "@/lib/product-routing";
+
+const productMode = getApoisProductMode();
 
 const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: typeof window !== "undefined" ? window.localStorage : undefined,
+    // Merchant uses a dedicated auth namespace. This prevents the establishment
+    // panel from restoring a legacy/default Supabase session that may belong to a
+    // previous browser state and immediately bouncing /login back to /merchant.
+    storageKey: productMode === "merchant" ? "apois-merchant-auth-v2" : undefined,
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
