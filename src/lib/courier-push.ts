@@ -1,9 +1,5 @@
-import { Capacitor } from "@capacitor/core";
-import {
-  PushNotifications,
-  type PluginListenerHandle,
-  type PushNotificationSchema,
-} from "@capacitor/push-notifications";
+import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
+import { PushNotifications, type PushNotificationSchema } from "@capacitor/push-notifications";
 
 import { supabase } from "@/integrations/supabase/client";
 import { getApoisProductMode } from "@/lib/product-routing";
@@ -47,14 +43,15 @@ async function persistAndroidToken(token: string) {
     .neq("token", normalized);
   if (deleteError) throw deleteError;
 
+  const now = new Date().toISOString();
   const { error: insertError } = await supabase.from("push_devices").upsert(
     {
       user_id: user.id,
       platform: "android",
       token: normalized,
       is_active: true,
-      last_seen_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      last_seen_at: now,
+      updated_at: now,
     },
     { onConflict: "token" },
   );
@@ -108,23 +105,23 @@ async function registerForPush(requestPermission: boolean): Promise<Registration
 
   await ensureNotificationChannel();
 
-  let registrationHandle: PluginListenerHandle | null = null;
-  let registrationErrorHandle: PluginListenerHandle | null = null;
-  let timeoutId: number | null = null;
+  return await new Promise<RegistrationState>((resolve) => {
+    let settled = false;
+    let registrationHandle: PluginListenerHandle | null = null;
+    let registrationErrorHandle: PluginListenerHandle | null = null;
+    let timeoutId: number | null = null;
 
-  try {
-    return await new Promise<RegistrationState>((resolve) => {
-      let settled = false;
-      const finish = (state: RegistrationState) => {
-        if (settled) return;
-        settled = true;
-        if (timeoutId !== null) window.clearTimeout(timeoutId);
-        void registrationHandle?.remove();
-        void registrationErrorHandle?.remove();
-        resolve(state);
-      };
+    const finish = (state: RegistrationState) => {
+      if (settled) return;
+      settled = true;
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      if (registrationHandle) void registrationHandle.remove();
+      if (registrationErrorHandle) void registrationErrorHandle.remove();
+      resolve(state);
+    };
 
-      void PushNotifications.addListener("registration", async ({ value }) => {
+    const setup = async () => {
+      registrationHandle = await PushNotifications.addListener("registration", async ({ value }) => {
         try {
           await persistAndroidToken(value);
           finish({ status: "registered", token: value });
@@ -134,17 +131,13 @@ async function registerForPush(requestPermission: boolean): Promise<Registration
             message: error instanceof Error ? error.message : "Failed to persist push token.",
           });
         }
-      }).then((handle) => {
-        registrationHandle = handle;
       });
 
-      void PushNotifications.addListener("registrationError", ({ error }) => {
+      registrationErrorHandle = await PushNotifications.addListener("registrationError", ({ error }) => {
         finish({
           status: "failed",
           message: String(error || "Android push registration failed."),
         });
-      }).then((handle) => {
-        registrationErrorHandle = handle;
       });
 
       timeoutId = window.setTimeout(
@@ -152,18 +145,23 @@ async function registerForPush(requestPermission: boolean): Promise<Registration
         REGISTRATION_TIMEOUT_MS,
       );
 
-      void PushNotifications.register().catch((error) => {
+      try {
+        await PushNotifications.register();
+      } catch (error) {
         finish({
           status: "failed",
           message: error instanceof Error ? error.message : "Android push registration failed.",
         });
+      }
+    };
+
+    void setup().catch((error) => {
+      finish({
+        status: "failed",
+        message: error instanceof Error ? error.message : "Android push registration failed.",
       });
     });
-  } finally {
-    if (timeoutId !== null) window.clearTimeout(timeoutId);
-    void registrationHandle?.remove();
-    void registrationErrorHandle?.remove();
-  }
+  });
 }
 
 export function ensureCourierPushRegistration(requestPermission = false) {
@@ -188,7 +186,7 @@ export async function removeCourierPushRegistration() {
   try {
     await PushNotifications.unregister();
   } catch {
-    // Token deletion in the backend is authoritative for preventing further user-targeted pushes.
+    // Removing the backend token is authoritative for user-targeted pushes.
   }
 }
 
