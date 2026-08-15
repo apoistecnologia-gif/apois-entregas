@@ -6,6 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { clearPayoutAttemptKey, getPayoutAttemptKey } from "@/lib/payout-attempt";
 import {
+  ensureCourierPushRegistration,
+  installCourierPushListeners,
+  isNativeCourierAndroid,
+  removeCourierPushRegistration,
+} from "@/lib/courier-push";
+import {
   CourierBottomNav,
   CourierHistoryPanel,
   CourierProfilePanel,
@@ -205,6 +211,11 @@ function CourierApp() {
   }, [loadAll]);
 
   useEffect(() => {
+    if (!courier?.id || courier.status !== "approved" || !courier.is_active) return;
+    void installCourierPushListeners().then(() => ensureCourierPushRegistration(false));
+  }, [courier?.id, courier?.is_active, courier?.status]);
+
+  useEffect(() => {
     if (!courier?.id || courier.status !== "approved") return;
     const refresh = () => void loadCourierOperations(courier.id);
     const offersChannel = supabase
@@ -242,7 +253,18 @@ function CourierApp() {
   }, [courier?.id, courier?.status, loadCourierOperations]);
 
   const logout = async () => {
-    if (availability?.is_online) await rpc("set_courier_online", { _is_online: false });
+    if (activeJob) {
+      toast.error("Conclua a entrega ativa antes de sair da conta.");
+      return;
+    }
+    if (availability?.is_online) {
+      const { error } = await rpc("set_courier_online", { _is_online: false });
+      if (error) {
+        toast.error(error.message || "Não foi possível ficar offline antes de sair.");
+        return;
+      }
+    }
+    await removeCourierPushRegistration();
     await supabase.auth.signOut();
     navigate({ to: "/login", replace: true });
   };
@@ -363,6 +385,23 @@ function CourierApp() {
     const target = !availability?.is_online;
 
     if (target) {
+      if (isNativeCourierAndroid()) {
+        setBusy("online");
+        const pushState = await ensureCourierPushRegistration(true);
+        if (pushState.status !== "registered") {
+          setBusy(null);
+          const message =
+            pushState.status === "permission-denied"
+              ? "Ative as notificações para ficar online e receber chamadas de entrega."
+              : pushState.status === "permission-required"
+                ? "Autorize as notificações para receber chamadas de entrega."
+                : pushState.status === "failed"
+                  ? `Não foi possível ativar as chamadas de entrega: ${pushState.message}`
+                  : "As chamadas nativas de entrega não estão disponíveis neste dispositivo.";
+          toast.error(message);
+          return;
+        }
+      }
       if (!navigator.geolocation) {
         toast.error(
           "Este dispositivo não disponibiliza localização. Ative o GPS para ficar online.",

@@ -207,11 +207,13 @@ export function CourierOfferOverlay() {
       if (document.visibilityState === "visible") refresh();
     };
     window.addEventListener("focus", refresh);
+    window.addEventListener("apois:courier-push", refresh);
     document.addEventListener("visibilitychange", onForeground);
 
     return () => {
       window.clearInterval(poll);
       window.removeEventListener("focus", refresh);
+      window.removeEventListener("apois:courier-push", refresh);
       document.removeEventListener("visibilitychange", onForeground);
       void supabase.removeChannel(offersChannel);
       void supabase.removeChannel(availabilityChannel);

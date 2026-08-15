@@ -33,7 +33,8 @@ async function persistAndroidToken(token: string) {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
-  if (userError || !user) throw new Error("Courier authentication is required for push registration.");
+  if (userError || !user)
+    throw new Error("Courier authentication is required for push registration.");
 
   const { error: deleteError } = await supabase
     .from("push_devices")
@@ -121,24 +122,30 @@ async function registerForPush(requestPermission: boolean): Promise<Registration
     };
 
     const setup = async () => {
-      registrationHandle = await PushNotifications.addListener("registration", async ({ value }) => {
-        try {
-          await persistAndroidToken(value);
-          finish({ status: "registered", token: value });
-        } catch (error) {
+      registrationHandle = await PushNotifications.addListener(
+        "registration",
+        async ({ value }) => {
+          try {
+            await persistAndroidToken(value);
+            finish({ status: "registered", token: value });
+          } catch (error) {
+            finish({
+              status: "failed",
+              message: error instanceof Error ? error.message : "Failed to persist push token.",
+            });
+          }
+        },
+      );
+
+      registrationErrorHandle = await PushNotifications.addListener(
+        "registrationError",
+        ({ error }) => {
           finish({
             status: "failed",
-            message: error instanceof Error ? error.message : "Failed to persist push token.",
+            message: String(error || "Android push registration failed."),
           });
-        }
-      });
-
-      registrationErrorHandle = await PushNotifications.addListener("registrationError", ({ error }) => {
-        finish({
-          status: "failed",
-          message: String(error || "Android push registration failed."),
-        });
-      });
+        },
+      );
 
       timeoutId = window.setTimeout(
         () => finish({ status: "failed", message: "Android push registration timed out." }),
@@ -165,7 +172,8 @@ async function registerForPush(requestPermission: boolean): Promise<Registration
 }
 
 export function ensureCourierPushRegistration(requestPermission = false) {
-  if (!isNativeCourierAndroid()) return Promise.resolve<RegistrationState>({ status: "not-native" });
+  if (!isNativeCourierAndroid())
+    return Promise.resolve<RegistrationState>({ status: "not-native" });
   if (registrationPromise) return registrationPromise;
   registrationPromise = registerForPush(requestPermission).finally(() => {
     registrationPromise = null;
