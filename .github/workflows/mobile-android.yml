@@ -314,7 +314,7 @@ jobs:
           mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/app-release-signed.apk
           mv app/build/outputs/bundle/release/app-release.aab app/build/outputs/bundle/release/app-release-signed.aab
 
-      - name: Validate package, permissions, signature and SHA-256
+      - name: Locate Android release tools and artifacts
         shell: bash
         run: |
           set -euo pipefail
@@ -325,41 +325,81 @@ jobs:
           test -s "$RELEASE_APK"
           test -s "$RELEASE_AAB"
 
-          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
-          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
-          test -n "$AAPT"
-          test -n "$APKSIGNER"
+          AAPT_PATH="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          APKSIGNER_PATH="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -x "$AAPT_PATH"
+          test -x "$APKSIGNER_PATH"
+          echo "AAPT_PATH=$AAPT_PATH" >> "$GITHUB_ENV"
+          echo "APKSIGNER_PATH=$APKSIGNER_PATH" >> "$GITHUB_ENV"
 
+      - name: Validate Android package and version
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEBUG_APK=android/app/build/outputs/apk/debug/app-debug.apk
+          RELEASE_APK=android/app/build/outputs/apk/release/app-release-signed.apk
           if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
             EXPECTED_PACKAGE="br.com.apois.entregador"
           else
             EXPECTED_PACKAGE="br.com.apois.cliente"
           fi
 
-          "$AAPT" dump badging "$DEBUG_APK" | grep -Fq "package: name='$EXPECTED_PACKAGE'"
-          "$AAPT" dump badging "$RELEASE_APK" | grep -Fq "package: name='$EXPECTED_PACKAGE'"
-          "$AAPT" dump badging "$RELEASE_APK" | grep -Fq "versionCode='${GITHUB_RUN_NUMBER}'"
-          "$AAPT" dump badging "$RELEASE_APK" | grep -Fq "versionName='1.0.${GITHUB_RUN_NUMBER}'"
-          "$AAPT" dump permissions "$RELEASE_APK" | grep -Fq 'android.permission.INTERNET'
-          "$AAPT" dump permissions "$RELEASE_APK" | grep -Fq 'android.permission.ACCESS_COARSE_LOCATION'
-          "$AAPT" dump permissions "$RELEASE_APK" | grep -Fq 'android.permission.ACCESS_FINE_LOCATION'
-          ! "$AAPT" dump permissions "$RELEASE_APK" | grep -Fq 'android.permission.ACCESS_BACKGROUND_LOCATION'
-          ! "$AAPT" dump permissions "$RELEASE_APK" | grep -Fq 'android.permission.MANAGE_EXTERNAL_STORAGE'
-          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
-            "$AAPT" dump permissions "$RELEASE_APK" | grep -Fq 'android.permission.POST_NOTIFICATIONS'
-            "$AAPT" dump permissions "$RELEASE_APK" | grep -Fq 'android.permission.VIBRATE'
-          fi
+          "$AAPT_PATH" dump badging "$DEBUG_APK" | tee /tmp/apois-debug-badging.txt
+          "$AAPT_PATH" dump badging "$RELEASE_APK" | tee /tmp/apois-release-badging.txt
+          grep -Fq "package: name='$EXPECTED_PACKAGE'" /tmp/apois-debug-badging.txt
+          grep -Fq "package: name='$EXPECTED_PACKAGE'" /tmp/apois-release-badging.txt
+          grep -Fq "versionCode='${GITHUB_RUN_NUMBER}'" /tmp/apois-release-badging.txt
+          grep -Fq "versionName='1.0.${GITHUB_RUN_NUMBER}'" /tmp/apois-release-badging.txt
+          echo "APOIS_ANDROID_IDENTITY_OK package=$EXPECTED_PACKAGE versionCode=$GITHUB_RUN_NUMBER versionName=1.0.$GITHUB_RUN_NUMBER"
 
-          "$APKSIGNER" verify --verbose --print-certs "$RELEASE_APK" | tee /tmp/apois-apksigner.txt
+      - name: Validate Android permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_APK=android/app/build/outputs/apk/release/app-release-signed.apk
+          "$AAPT_PATH" dump permissions "$RELEASE_APK" | tee /tmp/apois-release-permissions.txt
+          grep -Fq 'android.permission.INTERNET' /tmp/apois-release-permissions.txt
+          grep -Fq 'android.permission.ACCESS_COARSE_LOCATION' /tmp/apois-release-permissions.txt
+          grep -Fq 'android.permission.ACCESS_FINE_LOCATION' /tmp/apois-release-permissions.txt
+          ! grep -Fq 'android.permission.ACCESS_BACKGROUND_LOCATION' /tmp/apois-release-permissions.txt
+          ! grep -Fq 'android.permission.MANAGE_EXTERNAL_STORAGE' /tmp/apois-release-permissions.txt
+          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+            grep -Fq 'android.permission.POST_NOTIFICATIONS' /tmp/apois-release-permissions.txt
+            grep -Fq 'android.permission.VIBRATE' /tmp/apois-release-permissions.txt
+          fi
+          echo "APOIS_ANDROID_PERMISSIONS_OK"
+
+      - name: Validate APK signature and certificate SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_APK=android/app/build/outputs/apk/release/app-release-signed.apk
+          "$APKSIGNER_PATH" verify --verbose --print-certs "$RELEASE_APK" | tee /tmp/apois-apksigner.txt
           grep -Fq 'certificate SHA-256 digest:' /tmp/apois-apksigner.txt
-          awk -F': ' '/certificate SHA-256 digest:/ {print $2; exit}' /tmp/apois-apksigner.txt > /tmp/apois-signer-sha256.txt
+          awk -F': ' '/certificate SHA-256 digest:/ {print $2; exit}' /tmp/apois-apksigner.txt | tr -d '\r[:space:]' > /tmp/apois-signer-sha256.txt
           test -s /tmp/apois-signer-sha256.txt
           grep -Eq '^[0-9a-fA-F]{64}$' /tmp/apois-signer-sha256.txt
+          echo "APOIS_ANDROID_APK_SIGNATURE_OK sha256=$(cat /tmp/apois-signer-sha256.txt)"
 
-          jarsigner -verify "$RELEASE_AAB" >/tmp/apois-jarsigner.txt 2>&1
-          grep -qi 'jar verified' /tmp/apois-jarsigner.txt
+      - name: Validate AAB signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_AAB=android/app/build/outputs/bundle/release/app-release-signed.aab
+          jarsigner -verify -verbose -certs "$RELEASE_AAB" | tee /tmp/apois-jarsigner.txt
+          echo "APOIS_ANDROID_AAB_SIGNATURE_OK"
 
-          sha256sum "$DEBUG_APK" "$RELEASE_APK" "$RELEASE_AAB"
+      - name: Validate Android release SHA-256 hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum \
+            android/app/build/outputs/apk/debug/app-debug.apk \
+            android/app/build/outputs/apk/release/app-release-signed.apk \
+            android/app/build/outputs/bundle/release/app-release-signed.aab \
+            | tee /tmp/apois-release-sha256.txt
+          test "$(wc -l < /tmp/apois-release-sha256.txt)" -eq 3
+          echo "APOIS_ANDROID_HASHES_OK"
 
       - name: Write artifact manifest
         shell: bash
