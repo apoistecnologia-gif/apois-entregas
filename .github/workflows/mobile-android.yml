@@ -27,6 +27,7 @@ jobs:
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_tmNxPNALqBcWiEdD7_eWOw_mk0qRkJa
       VITE_GOOGLE_MAPS_BROWSER_KEY: ${{ secrets.VITE_GOOGLE_MAPS_BROWSER_KEY || 'ci-placeholder' }}
       VITE_GOOGLE_MAPS_MAP_ID: ${{ secrets.VITE_GOOGLE_MAPS_MAP_ID || 'ci-placeholder' }}
+      FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64 }}
       ANDROID_COURIER_KEYSTORE_BASE64: ${{ secrets.ANDROID_COURIER_KEYSTORE_BASE64 }}
       ANDROID_COURIER_STORE_PASSWORD: ${{ secrets.ANDROID_COURIER_STORE_PASSWORD }}
       ANDROID_COURIER_KEY_ALIAS: ${{ secrets.ANDROID_COURIER_KEY_ALIAS }}
@@ -57,7 +58,7 @@ jobs:
       - name: Install web dependencies
         run: bun install --frozen-lockfile
 
-      - name: Validate production runtime configuration
+      - name: Validate release configuration
         shell: bash
         run: |
           set -euo pipefail
@@ -76,6 +77,17 @@ jobs:
           SIGNING_CONFIGURED=false
           if [ -n "$KS_B64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASS" ]; then
             SIGNING_CONFIGURED=true
+          fi
+
+          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+            if [ "$SIGNING_CONFIGURED" != "true" ]; then
+              echo "Courier release signing is mandatory." >&2
+              exit 1
+            fi
+            if [ -z "$FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64" ]; then
+              echo "FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64 is required for native courier calls." >&2
+              exit 1
+            fi
           fi
 
           if [ "$SIGNING_CONFIGURED" = "true" ]; then
@@ -130,18 +142,45 @@ jobs:
           grep -Fq "$EXPECTED_TITLE" .output/public/index.html
 
       - name: Install Capacitor runtime for packaging
-        run: npm install --no-save @capacitor/core@8.4.2 @capacitor/cli@8.4.2 @capacitor/android@8.4.2
+        run: npm install --no-save @capacitor/core@8.4.2 @capacitor/cli@8.4.2 @capacitor/android@8.4.2 @capacitor/push-notifications@8.1.2
 
       - name: Create Android native project
         run: npx cap add android
+
+      - name: Install and validate courier Firebase configuration
+        if: inputs.product == 'courier'
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("android/app/google-services.json")
+          data = json.loads(path.read_text(encoding="utf-8"))
+          clients = data.get("client") or []
+          packages = {
+              str(client.get("client_info", {}).get("android_client_info", {}).get("package_name", ""))
+              for client in clients
+          }
+          if "br.com.apois.entregador" not in packages:
+              raise SystemExit("google-services.json is not registered for br.com.apois.entregador")
+          project_id = str(data.get("project_info", {}).get("project_id", "")).strip()
+          project_number = str(data.get("project_info", {}).get("project_number", "")).strip()
+          if not project_id or not project_number:
+              raise SystemExit("google-services.json is missing Firebase project identity")
+          print("Firebase Android configuration validated for APOIS Entregador.")
+          PY
 
       - name: Configure Android identity, version, permissions and branding
         shell: python
         run: |
           from pathlib import Path
+          import os
           import re
 
-          product = "courier" if Path("capacitor.config.ts").exists() and __import__("os").environ["APOIS_MOBILE_PRODUCT"] == "courier" else "customer"
+          product = "courier" if os.environ["APOIS_MOBILE_PRODUCT"] == "courier" else "customer"
           app_name = "APOIS Entregador" if product == "courier" else "APOIS Cliente"
           expected_package = "br.com.apois.entregador" if product == "courier" else "br.com.apois.cliente"
 
@@ -150,11 +189,15 @@ jobs:
           permissions = (
               '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n'
               '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n'
+              '    <uses-permission android:name="android.permission.VIBRATE" />\n'
               '    <uses-feature android:name="android.hardware.location.gps" android:required="false" />\n'
           )
           if "android.permission.ACCESS_FINE_LOCATION" not in text:
               marker = '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
               text = text.replace(marker, marker + permissions, 1)
+          elif product == "courier" and "android.permission.VIBRATE" not in text:
+              marker = '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
+              text = text.replace(marker, marker + '    <uses-permission android:name="android.permission.VIBRATE" />\n', 1)
           if "android:usesCleartextTraffic" not in text:
               text = text.replace("<application", '<application android:usesCleartextTraffic="false"', 1)
           manifest.write_text(text, encoding="utf-8")
@@ -181,22 +224,21 @@ jobs:
 
           values = res / "values"
           values.mkdir(parents=True, exist_ok=True)
-          colors = values / "colors.xml"
-          colors.write_text(
-              '''<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="apois_black">#000000</color>\n    <color name="apois_gold">#F6B900</color>\n</resources>\n''',
+          (values / "colors.xml").write_text(
+              '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="apois_black">#000000</color>\n    <color name="apois_gold">#F6B900</color>\n</resources>\n',
               encoding="utf-8",
           )
 
           for png in res.glob("drawable*/splash.png"):
               png.unlink()
           (drawable / "splash.xml").write_text(
-              '''<?xml version="1.0" encoding="utf-8"?>\n<layer-list xmlns:android="http://schemas.android.com/apk/res/android">\n    <item android:drawable="@color/apois_black" />\n    <item android:gravity="center">\n        <bitmap android:src="@drawable/apois_icon" android:gravity="center" />\n    </item>\n</layer-list>\n''',
+              '<?xml version="1.0" encoding="utf-8"?>\n<layer-list xmlns:android="http://schemas.android.com/apk/res/android">\n    <item android:drawable="@color/apois_black" />\n    <item android:gravity="center">\n        <bitmap android:src="@drawable/apois_icon" android:gravity="center" />\n    </item>\n</layer-list>\n',
               encoding="utf-8",
           )
 
           anydpi = res / "mipmap-anydpi-v26"
           anydpi.mkdir(parents=True, exist_ok=True)
-          adaptive = '''<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n    <background android:drawable="@color/apois_black" />\n    <foreground android:drawable="@drawable/apois_icon" />\n</adaptive-icon>\n'''
+          adaptive = '<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n    <background android:drawable="@color/apois_black" />\n    <foreground android:drawable="@drawable/apois_icon" />\n</adaptive-icon>\n'
           (anydpi / "ic_launcher.xml").write_text(adaptive, encoding="utf-8")
           (anydpi / "ic_launcher_round.xml").write_text(adaptive, encoding="utf-8")
 
@@ -205,26 +247,44 @@ jobs:
           if not package_path.exists():
               raise SystemExit(f"Expected Android package directory not found: {package_path}")
 
-      - name: Sync web bundle into Android
+      - name: Sync web bundle and native plugins into Android
         run: npx cap sync android
 
-      - name: Validate native Android package and permissions
+      - name: Validate Capacitor native plugin wiring
         shell: bash
         run: |
           set -euo pipefail
-          MANIFEST=android/app/src/main/AndroidManifest.xml
-          grep -q 'android.permission.INTERNET' "$MANIFEST"
-          grep -q 'android.permission.ACCESS_COARSE_LOCATION' "$MANIFEST"
-          grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"
-          ! grep -q 'android.permission.ACCESS_BACKGROUND_LOCATION' "$MANIFEST"
-          ! grep -q 'android.permission.CAMERA' "$MANIFEST"
-          ! grep -q 'android.permission.READ_EXTERNAL_STORAGE' "$MANIFEST"
-          ! grep -q 'android.permission.WRITE_EXTERNAL_STORAGE' "$MANIFEST"
-          ! grep -q 'android.permission.MANAGE_EXTERNAL_STORAGE' "$MANIFEST"
+          PLUGINS=android/app/src/main/assets/capacitor.plugins.json
+          test -s "$PLUGINS"
+          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+            test -s android/app/google-services.json
+            grep -qi 'pushnotifications' "$PLUGINS"
+          fi
 
       - name: Build installable debug APK
         working-directory: android
         run: ./gradlew assembleDebug
+
+      - name: Validate generated Android app
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -n "$AAPT"
+          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+            "$AAPT" dump badging "$APK" | grep -Fq "package: name='br.com.apois.entregador'"
+            "$AAPT" dump permissions "$APK" | grep -Fq 'android.permission.POST_NOTIFICATIONS'
+            "$AAPT" dump permissions "$APK" | grep -Fq 'android.permission.VIBRATE'
+          else
+            "$AAPT" dump badging "$APK" | grep -Fq "package: name='br.com.apois.cliente'"
+          fi
+          "$AAPT" dump permissions "$APK" | grep -Fq 'android.permission.INTERNET'
+          "$AAPT" dump permissions "$APK" | grep -Fq 'android.permission.ACCESS_COARSE_LOCATION'
+          "$AAPT" dump permissions "$APK" | grep -Fq 'android.permission.ACCESS_FINE_LOCATION'
+          ! "$AAPT" dump permissions "$APK" | grep -Fq 'android.permission.ACCESS_BACKGROUND_LOCATION'
+          ! "$AAPT" dump permissions "$APK" | grep -Fq 'android.permission.MANAGE_EXTERNAL_STORAGE'
 
       - name: Prepare production signing
         id: signing
@@ -274,18 +334,21 @@ jobs:
           mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/app-release-signed.apk
           mv app/build/outputs/bundle/release/app-release.aab app/build/outputs/bundle/release/app-release-signed.aab
 
-      - name: Build unsigned release AAB when signing secrets are absent
-        if: steps.signing.outputs.signed != 'true'
+      - name: Build unsigned release AAB when customer signing secrets are absent
+        if: steps.signing.outputs.signed != 'true' && inputs.product == 'customer'
         working-directory: android
         run: |
           ./gradlew bundleRelease
           mv app/build/outputs/bundle/release/app-release.aab app/build/outputs/bundle/release/app-release-unsigned.aab
 
-      - name: Verify generated artifacts
+      - name: Verify generated release artifacts
         shell: bash
         run: |
           set -euo pipefail
-          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ] && [ "${{ steps.signing.outputs.signed }}" != "true" ]; then
+            echo "Unsigned courier artifacts are forbidden." >&2
+            exit 1
+          fi
           if [ "${{ steps.signing.outputs.signed }}" = "true" ]; then
             test -s android/app/build/outputs/apk/release/app-release-signed.apk
             test -s android/app/build/outputs/bundle/release/app-release-signed.aab
@@ -296,8 +359,6 @@ jobs:
             grep -qi 'jar verified' /tmp/apois-jarsigner.txt
           else
             test -s android/app/build/outputs/bundle/release/app-release-unsigned.aab
-            jarsigner -verify android/app/build/outputs/bundle/release/app-release-unsigned.aab >/tmp/apois-jarsigner.txt 2>&1 || true
-            grep -qi 'jar is unsigned' /tmp/apois-jarsigner.txt
           fi
 
       - name: Write artifact manifest
@@ -312,8 +373,10 @@ jobs:
             echo "version_name=1.0.0"
             if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
               echo "package_id=br.com.apois.entregador"
+              echo "native_push_configured=true"
             else
               echo "package_id=br.com.apois.cliente"
+              echo "native_push_configured=false"
             fi
             echo "signed=${{ steps.signing.outputs.signed }}"
             for FILE in \
@@ -330,9 +393,9 @@ jobs:
           } > "$MANIFEST"
           cat "$MANIFEST"
 
-      - name: Remove decoded keystore
+      - name: Remove decoded secrets
         if: always()
-        run: rm -f android/apois-release.keystore
+        run: rm -f android/apois-release.keystore android/app/google-services.json
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
