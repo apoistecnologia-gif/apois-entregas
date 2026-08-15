@@ -12,6 +12,7 @@ type City = {
   timezone?: string | null;
   is_active: boolean;
   default_delivery_radius_km: number | string;
+  courier_dispatch_radius_km: number | string | null;
 };
 
 type DeliveryZone = {
@@ -78,6 +79,7 @@ export function AdminCoveragePanel({
     state: "",
     timezone: "America/Sao_Paulo",
     radius: "12",
+    dispatchRadius: "",
     active: false,
   });
   const [zoneDraft, setZoneDraft] = useState<ZoneDraft>(emptyZoneDraft);
@@ -116,12 +118,22 @@ export function AdminCoveragePanel({
     void loadZones();
   }, [loadZones]);
 
+  const parseDispatchRadius = (value: number | string | null) => {
+    if (value === null || String(value).trim() === "") return null;
+    const radius = Number(value);
+    if (!Number.isFinite(radius) || radius <= 0 || radius > 100) return undefined;
+    return radius;
+  };
+
   const saveCity = async (city: City) => {
     const radius = Number(city.default_delivery_radius_km);
+    const dispatchRadius = parseDispatchRadius(city.courier_dispatch_radius_km);
     if (!city.name.trim()) return toast.error("Informe o nome da cidade.");
     if (city.state.trim().length !== 2) return toast.error("Informe a UF com 2 caracteres.");
     if (!Number.isFinite(radius) || radius <= 0)
       return toast.error("Informe um raio padrão válido.");
+    if (dispatchRadius === undefined)
+      return toast.error("O raio de busca do entregador deve ficar entre 0 e 100 km.");
     setBusy(`city:${city.id}`);
     const { error } = await rpc("admin_update_city", {
       _city_id: city.id,
@@ -130,6 +142,7 @@ export function AdminCoveragePanel({
       _timezone: city.timezone || "America/Sao_Paulo",
       _default_delivery_radius_km: radius,
       _is_active: city.is_active,
+      _courier_dispatch_radius_km: dispatchRadius,
     });
     setBusy(null);
     if (error) return toast.error(error.message || "Não foi possível atualizar a cidade.");
@@ -141,10 +154,13 @@ export function AdminCoveragePanel({
   const createCity = async (event: React.FormEvent) => {
     event.preventDefault();
     const radius = Number(newCity.radius);
+    const dispatchRadius = parseDispatchRadius(newCity.dispatchRadius);
     if (!newCity.name.trim()) return toast.error("Informe o nome da cidade.");
     if (newCity.state.trim().length !== 2) return toast.error("Informe a UF com 2 caracteres.");
     if (!Number.isFinite(radius) || radius <= 0)
       return toast.error("Informe um raio padrão válido.");
+    if (dispatchRadius === undefined)
+      return toast.error("O raio de busca do entregador deve ficar entre 0 e 100 km.");
     setBusy("new-city");
     const { data, error } = await rpc("admin_create_city", {
       _name: newCity.name.trim(),
@@ -152,6 +168,7 @@ export function AdminCoveragePanel({
       _timezone: newCity.timezone || "America/Sao_Paulo",
       _default_delivery_radius_km: radius,
       _is_active: newCity.active,
+      _courier_dispatch_radius_km: dispatchRadius,
     });
     setBusy(null);
     if (error) return toast.error(error.message || "Não foi possível cadastrar a cidade.");
@@ -161,6 +178,7 @@ export function AdminCoveragePanel({
       state: "",
       timezone: "America/Sao_Paulo",
       radius: "12",
+      dispatchRadius: "",
       active: false,
     });
     await onRefresh();
@@ -258,7 +276,7 @@ export function AdminCoveragePanel({
           <div>
             <h2 className="font-black">Cidades atendidas</h2>
             <p className="text-xs text-zinc-500">
-              Ativação, fuso e raio padrão influenciam a elegibilidade de entrega no servidor.
+              O raio de entrega do cliente e o raio de busca do entregador são controles independentes.
             </p>
           </div>
           <MapPinned className="h-5 w-5 text-primary" />
@@ -292,17 +310,37 @@ export function AdminCoveragePanel({
                       onChange={(value) => setEditingCity({ ...row, timezone: value })}
                       placeholder="America/Sao_Paulo"
                     />
-                    <label className="block text-[10px] font-bold uppercase text-zinc-600">
-                      Raio padrão (km)
-                      <Input
-                        value={String(row.default_delivery_radius_km)}
-                        onChange={(value) =>
-                          setEditingCity({ ...row, default_delivery_radius_km: value })
-                        }
-                        placeholder="Raio km"
-                        inputMode="decimal"
-                      />
-                    </label>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block text-[10px] font-bold uppercase text-zinc-600">
+                        Raio de entrega do cliente (km)
+                        <Input
+                          value={String(row.default_delivery_radius_km)}
+                          onChange={(value) =>
+                            setEditingCity({ ...row, default_delivery_radius_km: value })
+                          }
+                          placeholder="Raio km"
+                          inputMode="decimal"
+                        />
+                      </label>
+                      <label className="block text-[10px] font-bold uppercase text-zinc-600">
+                        Busca do entregador até a loja (km)
+                        <Input
+                          value={
+                            row.courier_dispatch_radius_km === null
+                              ? ""
+                              : String(row.courier_dispatch_radius_km)
+                          }
+                          onChange={(value) =>
+                            setEditingCity({ ...row, courier_dispatch_radius_km: value })
+                          }
+                          placeholder="Ex.: 8 (vazio desativa)"
+                          inputMode="decimal"
+                        />
+                      </label>
+                    </div>
+                    <p className="text-[10px] leading-relaxed text-zinc-600">
+                      Deixe a busca do entregador vazia para bloquear novos despachos nesta cidade até uma distância operacional ser definida.
+                    </p>
                     <label className="flex items-center gap-2 text-xs text-zinc-400">
                       <input
                         type="checkbox"
@@ -356,8 +394,10 @@ export function AdminCoveragePanel({
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-zinc-500">
-                        {city.timezone || "America/Sao_Paulo"} · raio padrão{" "}
-                        {city.default_delivery_radius_km} km
+                        {city.timezone || "America/Sao_Paulo"} · entrega {city.default_delivery_radius_km} km · entregador{" "}
+                        {city.courier_dispatch_radius_km === null
+                          ? "não configurado"
+                          : `${city.courier_dispatch_radius_km} km`}
                       </p>
                     </button>
                     <button
@@ -377,7 +417,7 @@ export function AdminCoveragePanel({
 
         <form
           onSubmit={createCity}
-          className="mt-4 grid gap-2 rounded-2xl border border-dashed border-zinc-800 p-4 sm:grid-cols-2 lg:grid-cols-6"
+          className="mt-4 grid gap-2 rounded-2xl border border-dashed border-zinc-800 p-4 sm:grid-cols-2 lg:grid-cols-7"
         >
           <Input
             value={newCity.name}
@@ -399,7 +439,13 @@ export function AdminCoveragePanel({
           <Input
             value={newCity.radius}
             onChange={(value) => setNewCity({ ...newCity, radius: value })}
-            placeholder="Raio km"
+            placeholder="Entrega km"
+            inputMode="decimal"
+          />
+          <Input
+            value={newCity.dispatchRadius}
+            onChange={(value) => setNewCity({ ...newCity, dispatchRadius: value })}
+            placeholder="Entregador km"
             inputMode="decimal"
           />
           <Button disabled={busy === "new-city"}>
@@ -410,7 +456,7 @@ export function AdminCoveragePanel({
             )}
             Adicionar
           </Button>
-          <label className="flex items-center gap-2 text-xs text-zinc-500 sm:col-span-2 lg:col-span-6">
+          <label className="flex items-center gap-2 text-xs text-zinc-500 sm:col-span-2 lg:col-span-7">
             <input
               type="checkbox"
               checked={newCity.active}
@@ -546,7 +592,7 @@ export function AdminCoveragePanel({
           ) : zones.length === 0 ? (
             <EmptyState
               title="Nenhuma zona cadastrada"
-              description="Sem zonas ativas, o servidor usa o raio padrão da cidade quando houver coordenadas do estabelecimento; caso contrário, restringe pela cidade/UF."
+              description="Sem zonas ativas, o servidor usa o raio de entrega do cliente quando houver coordenadas do estabelecimento. O raio de busca do entregador é configurado separadamente acima."
             />
           ) : (
             <div className="space-y-3">
