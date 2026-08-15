@@ -2,7 +2,11 @@
 // Keep courier mobile builds isolated even when a stale deep link targets another product.
 export type ApoisProductMode = "customer" | "merchant" | "courier" | "admin";
 export type ApoisProductHomeRoute = "/inicio" | "/merchant" | "/courier" | "/admin";
-export type ApoisProductLandingRoute = "/" | "/login" | "/merchant" | "/courier";
+export type ApoisProductLandingRoute =
+  | "/"
+  | "/login"
+  | "/login-estabelecimento"
+  | "/courier";
 
 const PRODUCT_HOME_ROUTES: Record<ApoisProductMode, ApoisProductHomeRoute> = {
   customer: "/inicio",
@@ -13,7 +17,7 @@ const PRODUCT_HOME_ROUTES: Record<ApoisProductMode, ApoisProductHomeRoute> = {
 
 const PRODUCT_LANDING_ROUTES: Record<ApoisProductMode, ApoisProductLandingRoute> = {
   customer: "/",
-  merchant: "/merchant",
+  merchant: "/login-estabelecimento",
   courier: "/courier",
   admin: "/login",
 };
@@ -79,7 +83,11 @@ export function isPathAllowedForProduct(pathname: string, product = getApoisProd
 
   if (product === "courier") return isWithin(pathname, "/courier");
   if (product === "merchant") {
-    return isWithin(pathname, "/merchant") || isWithin(pathname, "/configuracoes-estabelecimento");
+    return (
+      isWithin(pathname, "/merchant") ||
+      isWithin(pathname, "/configuracoes-estabelecimento") ||
+      isWithin(pathname, "/login-estabelecimento")
+    );
   }
   if (product === "admin") return isWithin(pathname, "/admin");
 
@@ -87,6 +95,7 @@ export function isPathAllowedForProduct(pathname: string, product = getApoisProd
     isWithin(pathname, "/courier") ||
     isWithin(pathname, "/merchant") ||
     isWithin(pathname, "/configuracoes-estabelecimento") ||
+    isWithin(pathname, "/login-estabelecimento") ||
     isWithin(pathname, "/admin")
   );
 }
