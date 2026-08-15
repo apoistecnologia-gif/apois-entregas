@@ -35,10 +35,8 @@ function persistAlertedOrders(ids: Set<string>) {
 function MerchantOrderSoundWatcher() {
   const enabled = getApoisProductMode() === "merchant";
   const [merchantId, setMerchantId] = useState<string | null>(null);
-  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioUnlockedRef = useRef(false);
-  const unlockAudioRef = useRef<(() => Promise<boolean>) | null>(null);
   const alertedOrdersRef = useRef<Set<string>>(loadAlertedOrders());
   const pendingAlertsRef = useRef<Map<string, PendingAlert>>(new Map());
 
@@ -108,7 +106,6 @@ function MerchantOrderSoundWatcher() {
       return true;
     } catch {
       audioUnlockedRef.current = false;
-      setAudioUnlocked(false);
       return false;
     }
   }, []);
@@ -128,21 +125,13 @@ function MerchantOrderSoundWatcher() {
     }
   }, [playOrderAlert]);
 
-  const discardDeferredAlerts = () => {
-    for (const orderId of pendingAlertsRef.current.keys()) {
-      alertedOrdersRef.current.add(orderId);
-    }
-    pendingAlertsRef.current.clear();
-    persistAlertedOrders(alertedOrdersRef.current);
-  };
-
   const queuePaidOrder = useCallback(
     (orderId: string, orderNumber: string) => {
       if (alertedOrdersRef.current.has(orderId) || pendingAlertsRef.current.has(orderId)) return;
       pendingAlertsRef.current.set(orderId, { orderId, orderNumber });
       const label = orderNumber ? ` #${orderNumber}` : "";
       toast.success(`Novo pedido pago${label}!`, {
-        description: "O pedido já pode ser atendido pelo estabelecimento.",
+        description: "Pagamento confirmado. O pedido já pode ser atendido pelo estabelecimento.",
         duration: 12_000,
       });
       void flushPending();
@@ -171,16 +160,13 @@ function MerchantOrderSoundWatcher() {
         oscillator.start();
         oscillator.stop(context.currentTime + 0.01);
         audioUnlockedRef.current = true;
-        setAudioUnlocked(true);
         return true;
       } catch {
         audioUnlockedRef.current = false;
-        setAudioUnlocked(false);
         return false;
       }
     };
 
-    unlockAudioRef.current = unlockAudio;
     const onUserGesture = () => {
       if (audioUnlockedRef.current) {
         void flushPending();
@@ -190,11 +176,11 @@ function MerchantOrderSoundWatcher() {
         if (unlocked) void flushPending();
       });
     };
+
     window.addEventListener("pointerdown", onUserGesture, { capture: true });
     window.addEventListener("touchstart", onUserGesture, { capture: true, passive: true });
     window.addEventListener("keydown", onUserGesture, { capture: true });
     return () => {
-      unlockAudioRef.current = null;
       window.removeEventListener("pointerdown", onUserGesture, { capture: true });
       window.removeEventListener("touchstart", onUserGesture, { capture: true });
       window.removeEventListener("keydown", onUserGesture, { capture: true });
@@ -304,29 +290,6 @@ function MerchantOrderSoundWatcher() {
     <>
       <Toaster position="top-center" richColors closeButton />
       <MerchantOrderControlCenter />
-      <button
-        type="button"
-        onClick={() => {
-          const unlock = unlockAudioRef.current;
-          if (!unlock) {
-            toast.error("O controle de áudio ainda não está disponível.");
-            return;
-          }
-          void unlock().then(async (unlocked) => {
-            if (!unlocked) {
-              toast.error("O navegador bloqueou o áudio. Verifique o volume e a permissão de som.");
-              return;
-            }
-            discardDeferredAlerts();
-            const played = await playOrderAlert();
-            if (played) toast.success("Som do novo pedido funcionando.");
-            else toast.error("Não foi possível reproduzir o som neste dispositivo.");
-          });
-        }}
-        className="fixed bottom-5 right-5 z-[1000] rounded-full bg-[#FFD700] px-4 py-3 text-sm font-black text-black shadow-2xl"
-      >
-        {audioUnlocked ? "Testar som" : "Ativar som"}
-      </button>
     </>
   );
 }
