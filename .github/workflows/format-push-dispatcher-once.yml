@@ -1,0 +1,29 @@
+name: Format push dispatcher once
+
+on:
+  push:
+    paths:
+      - ".github/workflows/format-push-dispatcher-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: oven-sh/setup-bun@v2
+      - run: |
+          bun install --frozen-lockfile
+          bunx prettier --write supabase/functions/dispatch-push-outbox/index.ts
+          bunx prettier --check supabase/functions/dispatch-push-outbox/index.ts
+      - run: |
+          rm .github/workflows/format-push-dispatcher-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/functions/dispatch-push-outbox/index.ts .github/workflows/format-push-dispatcher-once.yml
+          git commit -m "style(push): format native dispatcher"
+          git push origin HEAD:main
