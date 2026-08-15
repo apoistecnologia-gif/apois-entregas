@@ -23,22 +23,33 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
+function rewriteProductRootRequest(request: Request): Request {
+  if (request.method !== "GET" && request.method !== "HEAD") return request;
+
+  const url = new URL(request.url);
+  const product = getApoisProductMode();
+  const landingRoute = getProductLandingRoute(product);
+
+  if (url.pathname !== "/" || landingRoute === "/") return request;
+
+  // On Vercel/Nitro an HTTP redirect emitted from the custom server entry can be
+  // resolved against the generated function route prefix (for Admin that became
+  // /admin/login). Render the product landing route internally instead. This keeps
+  // the public root HTTP-safe (200), never renders the customer app, and lets the
+  // normal client router take over from the product-specific authentication screen.
+  url.pathname = landingRoute;
+  url.search = "";
+  url.hash = "";
+
+  return new Request(url, request);
+}
+
 function enforceProductRouteBoundary(request: Request): Response | null {
   if (request.method !== "GET" && request.method !== "HEAD") return null;
 
   const url = new URL(request.url);
   const product = getApoisProductMode();
   const landingRoute = getProductLandingRoute(product);
-
-  // Product-specific deployments must never SSR the shared customer root.
-  // Redirect before TanStack Start handles the request so the HTTP status is
-  // a real redirect instead of a client-side navigation rendered as 404.
-  if (url.pathname === "/" && landingRoute !== "/") {
-    url.pathname = landingRoute;
-    url.search = "";
-    url.hash = "";
-    return Response.redirect(url, 307);
-  }
 
   if (isPathAllowedForProduct(url.pathname, product)) return null;
 
@@ -78,11 +89,12 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
-      const boundaryResponse = enforceProductRouteBoundary(request);
+      const routedRequest = rewriteProductRootRequest(request);
+      const boundaryResponse = enforceProductRouteBoundary(routedRequest);
       if (boundaryResponse) return boundaryResponse;
 
       const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
+      const response = await handler.fetch(routedRequest, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);
