@@ -24,114 +24,119 @@ jobs:
           bun install
           python - <<'PY'
           from pathlib import Path
+          import re
 
           push = Path('src/lib/courier-push.ts')
           s = push.read_text(encoding='utf-8')
-          old = '''import { Capacitor } from "@capacitor/core";
-          import {
-            PushNotifications,
-            type PluginListenerHandle,
-            type PushNotificationSchema,
-          } from "@capacitor/push-notifications";
-          '''.replace('          ', '')
-          new = '''import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
-          import { PushNotifications, type PushNotificationSchema } from "@capacitor/push-notifications";
-          '''.replace('          ', '')
-          if old in s:
-              s = s.replace(old, new, 1)
+          s = s.replace(
+              'import { Capacitor } from "@capacitor/core";\nimport {\n  PushNotifications,\n  type PluginListenerHandle,\n  type PushNotificationSchema,\n} from "@capacitor/push-notifications";',
+              'import { Capacitor, type PluginListenerHandle } from "@capacitor/core";\nimport { PushNotifications, type PushNotificationSchema } from "@capacitor/push-notifications";',
+              1,
+          )
           push.write_text(s, encoding='utf-8')
 
           route = Path('src/routes/courier.tsx')
           s = route.read_text(encoding='utf-8')
+
           import_anchor = 'import { clearPayoutAttemptKey, getPayoutAttemptKey } from "@/lib/payout-attempt";\n'
           import_addition = '''import {
-            ensureCourierPushRegistration,
-            installCourierPushListeners,
-            isNativeCourierAndroid,
-            removeCourierPushRegistration,
-          } from "@/lib/courier-push";
-          '''.replace('          ', '')
-          if import_addition not in s:
+  ensureCourierPushRegistration,
+  installCourierPushListeners,
+  isNativeCourierAndroid,
+  removeCourierPushRegistration,
+} from "@/lib/courier-push";
+'''
+          if 'from "@/lib/courier-push"' not in s:
               if import_anchor not in s:
                   raise SystemExit('courier import anchor not found')
               s = s.replace(import_anchor, import_anchor + import_addition, 1)
 
-          bootstrap_anchor = '  useEffect(() => {\n    void loadAll();\n  }, [loadAll]);\n'
-          bootstrap_addition = '''
-
-          useEffect(() => {
-            if (!courier?.id || courier.status !== "approved" || !courier.is_active) return;
-            void installCourierPushListeners().then(() => ensureCourierPushRegistration(false));
-          }, [courier?.id, courier?.is_active, courier?.status]);'''.replace('          ', '')
           if 'installCourierPushListeners().then' not in s:
-              if bootstrap_anchor not in s:
+              marker = '''  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
+'''
+              addition = '''
+  useEffect(() => {
+    if (!courier?.id || courier.status !== "approved" || !courier.is_active) return;
+    void installCourierPushListeners().then(() => ensureCourierPushRegistration(false));
+  }, [courier?.id, courier?.is_active, courier?.status]);
+'''
+              if marker not in s:
                   raise SystemExit('courier bootstrap anchor not found')
-              s = s.replace(bootstrap_anchor, bootstrap_anchor.rstrip('\n') + bootstrap_addition + '\n', 1)
+              s = s.replace(marker, marker + addition, 1)
 
-          old_logout = '''  const logout = async () => {
-            if (availability?.is_online) await rpc("set_courier_online", { _is_online: false });
-            await supabase.auth.signOut();
-            navigate({ to: "/login", replace: true });
-          };
-          '''.replace('          ', '')
-          new_logout = '''  const logout = async () => {
-            if (activeJob) {
-              toast.error("Conclua a entrega ativa antes de sair da conta.");
-              return;
-            }
-            if (availability?.is_online) {
-              const { error } = await rpc("set_courier_online", { _is_online: false });
-              if (error) {
-                toast.error(error.message || "Não foi possível ficar offline antes de sair.");
-                return;
-              }
-            }
-            await removeCourierPushRegistration();
-            await supabase.auth.signOut();
-            navigate({ to: "/login", replace: true });
-          };
-          '''.replace('          ', '')
           if 'Conclua a entrega ativa antes de sair da conta.' not in s:
-              if old_logout not in s:
-                  raise SystemExit('courier logout block not found')
-              s = s.replace(old_logout, new_logout, 1)
+              pattern = re.compile(r'  const logout = async \(\) => \{.*?\n  \};\n\n  const submitApplication', re.S)
+              replacement = '''  const logout = async () => {
+    if (activeJob) {
+      toast.error("Conclua a entrega ativa antes de sair da conta.");
+      return;
+    }
+    if (availability?.is_online) {
+      const { error } = await rpc("set_courier_online", { _is_online: false });
+      if (error) {
+        toast.error(error.message || "Não foi possível ficar offline antes de sair.");
+        return;
+      }
+    }
+    await removeCourierPushRegistration();
+    await supabase.auth.signOut();
+    navigate({ to: "/login", replace: true });
+  };
 
-          online_anchor = '    if (target) {\n      if (!navigator.geolocation) {'
-          online_new = '''    if (target) {
-            if (isNativeCourierAndroid()) {
-              setBusy("online");
-              const pushState = await ensureCourierPushRegistration(true);
-              if (pushState.status !== "registered") {
-                setBusy(null);
-                const message =
-                  pushState.status === "permission-denied"
-                    ? "Ative as notificações para ficar online e receber chamadas de entrega."
-                    : pushState.status === "permission-required"
-                      ? "Autorize as notificações para receber chamadas de entrega."
-                      : pushState.status === "failed"
-                        ? `Não foi possível ativar as chamadas de entrega: ${pushState.message}`
-                        : "As chamadas nativas de entrega não estão disponíveis neste dispositivo.";
-                toast.error(message);
-                return;
-              }
-            }
-            if (!navigator.geolocation) {'''.replace('          ', '')
+  const submitApplication'''
+              s, count = pattern.subn(replacement, s, count=1)
+              if count != 1:
+                  raise SystemExit(f'courier logout replacement count={count}')
+
           if 'const pushState = await ensureCourierPushRegistration(true);' not in s:
-              if online_anchor not in s:
-                  raise SystemExit('courier online block not found')
-              s = s.replace(online_anchor, online_new, 1)
+              toggle_start = s.find('  const toggleOnline = async () => {')
+              if toggle_start < 0:
+                  raise SystemExit('toggleOnline not found')
+              target_start = s.find('    if (target) {\n', toggle_start)
+              if target_start < 0:
+                  raise SystemExit('target online branch not found')
+              insert_at = target_start + len('    if (target) {\n')
+              push_gate = '''      if (isNativeCourierAndroid()) {
+        setBusy("online");
+        const pushState = await ensureCourierPushRegistration(true);
+        if (pushState.status !== "registered") {
+          setBusy(null);
+          const message =
+            pushState.status === "permission-denied"
+              ? "Ative as notificações para ficar online e receber chamadas de entrega."
+              : pushState.status === "permission-required"
+                ? "Autorize as notificações para receber chamadas de entrega."
+                : pushState.status === "failed"
+                  ? `Não foi possível ativar as chamadas de entrega: ${pushState.message}`
+                  : "As chamadas nativas de entrega não estão disponíveis neste dispositivo.";
+          toast.error(message);
+          return;
+        }
+      }
+'''
+              s = s[:insert_at] + push_gate + s[insert_at:]
+
           route.write_text(s, encoding='utf-8')
 
           overlay = Path('src/components/CourierOfferOverlay.tsx')
           s = overlay.read_text(encoding='utf-8')
-          if '"apois:courier-push"' not in s:
-              focus_anchor = '    window.addEventListener("focus", refresh);\n    document.addEventListener("visibilitychange", onForeground);'
-              focus_new = '    window.addEventListener("focus", refresh);\n    window.addEventListener("apois:courier-push", refresh);\n    document.addEventListener("visibilitychange", onForeground);'
-              cleanup_anchor = '      window.removeEventListener("focus", refresh);\n      document.removeEventListener("visibilitychange", onForeground);'
-              cleanup_new = '      window.removeEventListener("focus", refresh);\n      window.removeEventListener("apois:courier-push", refresh);\n      document.removeEventListener("visibilitychange", onForeground);'
+          if 'window.addEventListener("apois:courier-push", refresh);' not in s:
+              focus_anchor = '    window.addEventListener("focus", refresh);\n'
+              cleanup_anchor = '      window.removeEventListener("focus", refresh);\n'
               if focus_anchor not in s or cleanup_anchor not in s:
-                  raise SystemExit('courier overlay foreground block not found')
-              s = s.replace(focus_anchor, focus_new, 1).replace(cleanup_anchor, cleanup_new, 1)
+                  raise SystemExit('courier overlay focus anchors not found')
+              s = s.replace(
+                  focus_anchor,
+                  focus_anchor + '    window.addEventListener("apois:courier-push", refresh);\n',
+                  1,
+              )
+              s = s.replace(
+                  cleanup_anchor,
+                  cleanup_anchor + '      window.removeEventListener("apois:courier-push", refresh);\n',
+                  1,
+              )
           overlay.write_text(s, encoding='utf-8')
           PY
 
