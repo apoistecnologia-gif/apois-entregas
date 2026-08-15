@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# Idempotent merchant UX/type-safety validator used by the isolated production build.
 path = Path("src/routes/merchant.tsx")
 text = path.read_text(encoding="utf-8")
 
