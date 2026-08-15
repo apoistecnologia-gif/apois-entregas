@@ -1,4 +1,4 @@
-name: One-time merchant finance and asset audit fixes
+name: One-time merchant physical address audit fix
 
 on:
   push:
@@ -21,15 +21,15 @@ jobs:
         with:
           bun-version: 1.3.14
       - run: bun install --frozen-lockfile
-      - run: python3 .github/scripts/fix_merchant_audit.py
+      - run: python3 .github/scripts/lock_merchant_address_ui.py
       - run: bunx prettier --write src/routes/merchant.tsx
       - run: bun run typecheck
-      - name: Commit audited merchant fixes
+      - name: Commit audited merchant address fix
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/routes/merchant.tsx
-          git commit -m "fix(merchant): retire Asaas UI and harden finance uploads"
+          git commit -m "fix(merchant): lock physical address to mapped confirmation"
           git push origin HEAD:main
