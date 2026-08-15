@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   admin:
@@ -33,6 +33,39 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Repair merchant review template literals
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/routes/admin.tsx')
+          text = path.read_text(encoding='utf-8')
+          replacements = {
+              r'busyKey === \`merchant:\${merchant.id}\`': 'busyKey === `merchant:${merchant.id}`',
+              r'busyKey === \`doc:\${doc.id}\`': 'busyKey === `doc:${doc.id}`',
+              r'busyKey === \`doc:\${preview.doc.id}\`': 'busyKey === `doc:${preview.doc.id}`',
+          }
+          changed = text
+          for broken, fixed in replacements.items():
+              changed = changed.replace(broken, fixed)
+
+          if changed != text:
+              path.write_text(changed, encoding='utf-8')
+              print('APOIS_ADMIN_TEMPLATE_LITERAL_REPAIR_APPLIED')
+          else:
+              print('APOIS_ADMIN_TEMPLATE_LITERAL_REPAIR_NOT_NEEDED')
+          PY
+
+          if ! git diff --quiet -- src/routes/admin.tsx; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/routes/admin.tsx
+            git commit -m "fix(admin): repair merchant review template literals"
+            git push origin HEAD:main
+          fi
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
