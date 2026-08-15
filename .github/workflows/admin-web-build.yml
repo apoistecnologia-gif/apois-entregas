@@ -141,18 +141,20 @@ jobs:
           if not isinstance(routes, list):
               raise SystemExit('Vercel Build Output routes array is missing')
 
-          # Exact root route must win before Nitro's generated catch-all/function routes.
+          # Build Output API route src values use path regexes such as `/redirect`.
+          # A literal root matcher avoids the adapter interpreting anchored forms
+          # relative to the generated function prefix.
           routes = [
               r for r in routes
               if not (isinstance(r, dict) and r.get('src') in ('/', '^/$', '^\\/$'))
           ]
-          routes.insert(0, {'src': '^/$', 'dest': '/admin-root.html'})
+          routes.insert(0, {'src': '/', 'dest': '/admin-root.html'})
           config['routes'] = routes
           config_path.write_text(json.dumps(config, indent=2) + '\n', encoding='utf-8')
 
           if not (static_dir / 'admin-root.html').is_file():
               raise SystemExit('Admin root static entry missing')
-          if routes[0] != {'src': '^/$', 'dest': '/admin-root.html'}:
+          if routes[0] != {'src': '/', 'dest': '/admin-root.html'}:
               raise SystemExit('Admin root route was not installed first')
           print('APOIS_ADMIN_STATIC_ROOT_BUILD_OUTPUT_OK')
           print(json.dumps(routes[0], sort_keys=True))
