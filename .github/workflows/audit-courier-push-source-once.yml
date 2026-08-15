@@ -1,0 +1,164 @@
+name: Audit courier push source once
+
+on:
+  push:
+    paths:
+      - ".github/workflows/audit-courier-push-source-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Update lockfile and courier push integration
+        shell: bash
+        run: |
+          bun install
+          python - <<'PY'
+          from pathlib import Path
+
+          push = Path('src/lib/courier-push.ts')
+          s = push.read_text(encoding='utf-8')
+          s = s.replace(
+              'import { Capacitor } from "@capacitor/core";\nimport {\n  PushNotifications,\n  type PluginListenerHandle,\n  type PushNotificationSchema,\n} from "@capacitor/push-notifications";',
+              'import { Capacitor, type PluginListenerHandle } from "@capacitor/core";\nimport { PushNotifications, type PushNotificationSchema } from "@capacitor/push-notifications";',
+              1,
+          )
+          push.write_text(s, encoding='utf-8')
+
+          route = Path('src/routes/courier.tsx')
+          s = route.read_text(encoding='utf-8')
+          anchor = 'import { clearPayoutAttemptKey, getPayoutAttemptKey } from "@/lib/payout-attempt";\n'
+          addition = '''import {
+            ensureCourierPushRegistration,
+            installCourierPushListeners,
+            isNativeCourierAndroid,
+            removeCourierPushRegistration,
+          } from "@/lib/courier-push";
+          '''.replace('          ', '')
+          if addition not in s:
+              if anchor not in s:
+                  raise SystemExit('courier import anchor not found')
+              s = s.replace(anchor, anchor + addition, 1)
+
+          anchor = '''  useEffect(() => {
+            void loadAll();
+          }, [loadAll]);
+          '''.replace('          ', '')
+          addition = '''
+          useEffect(() => {
+            if (!courier?.id || courier.status !== "approved" || !courier.is_active) return;
+            void installCourierPushListeners().then(() => ensureCourierPushRegistration(false));
+          }, [courier?.id, courier?.is_active, courier?.status]);
+          '''.replace('          ', '')
+          if addition.strip() not in s:
+              if anchor not in s:
+                  raise SystemExit('courier bootstrap anchor not found')
+              s = s.replace(anchor, anchor + addition, 1)
+
+          old = '''  const logout = async () => {
+            if (availability?.is_online) await rpc("set_courier_online", { _is_online: false });
+            await supabase.auth.signOut();
+            navigate({ to: "/login", replace: true });
+          };
+          '''.replace('          ', '')
+          new = '''  const logout = async () => {
+            if (activeJob) {
+              toast.error("Conclua a entrega ativa antes de sair da conta.");
+              return;
+            }
+            if (availability?.is_online) {
+              const { error } = await rpc("set_courier_online", { _is_online: false });
+              if (error) {
+                toast.error(error.message || "Não foi possível ficar offline antes de sair.");
+                return;
+              }
+            }
+            await removeCourierPushRegistration();
+            await supabase.auth.signOut();
+            navigate({ to: "/login", replace: true });
+          };
+          '''.replace('          ', '')
+          if old not in s:
+              raise SystemExit('courier logout block not found')
+          s = s.replace(old, new, 1)
+
+          old = '''    if (target) {
+            if (!navigator.geolocation) {
+          '''.replace('          ', '')
+          new = '''    if (target) {
+            if (isNativeCourierAndroid()) {
+              setBusy("online");
+              const pushState = await ensureCourierPushRegistration(true);
+              if (pushState.status !== "registered") {
+                setBusy(null);
+                const message =
+                  pushState.status === "permission-denied"
+                    ? "Ative as notificações para ficar online e receber chamadas de entrega."
+                    : pushState.status === "permission-required"
+                      ? "Autorize as notificações para receber chamadas de entrega."
+                      : pushState.status === "failed"
+                        ? `Não foi possível ativar as chamadas de entrega: ${pushState.message}`
+                        : "As chamadas nativas de entrega não estão disponíveis neste dispositivo.";
+                toast.error(message);
+                return;
+              }
+            }
+            if (!navigator.geolocation) {
+          '''.replace('          ', '')
+          if old not in s:
+              raise SystemExit('courier online block not found')
+          s = s.replace(old, new, 1)
+          route.write_text(s, encoding='utf-8')
+
+          overlay = Path('src/components/CourierOfferOverlay.tsx')
+          s = overlay.read_text(encoding='utf-8')
+          old = '''    window.addEventListener("focus", refresh);
+            document.addEventListener("visibilitychange", onForeground);
+
+            return () => {
+              window.clearInterval(poll);
+              window.removeEventListener("focus", refresh);
+              document.removeEventListener("visibilitychange", onForeground);
+          '''.replace('          ', '')
+          new = '''    window.addEventListener("focus", refresh);
+            window.addEventListener("apois:courier-push", refresh);
+            document.addEventListener("visibilitychange", onForeground);
+
+            return () => {
+              window.clearInterval(poll);
+              window.removeEventListener("focus", refresh);
+              window.removeEventListener("apois:courier-push", refresh);
+              document.removeEventListener("visibilitychange", onForeground);
+          '''.replace('          ', '')
+          if old not in s:
+              raise SystemExit('courier overlay foreground block not found')
+          s = s.replace(old, new, 1)
+          overlay.write_text(s, encoding='utf-8')
+          PY
+
+          bunx prettier --write src/lib/courier-push.ts src/routes/courier.tsx src/components/CourierOfferOverlay.tsx package.json
+
+      - name: Validate source integration
+        run: |
+          bun install --frozen-lockfile
+          bun run typecheck
+          bun run test
+          bun run build:courier
+
+      - name: Commit audited source
+        run: |
+          rm .github/workflows/audit-courier-push-source-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json bun.lock src/lib/courier-push.ts src/routes/courier.tsx src/components/CourierOfferOverlay.tsx .github/workflows/audit-courier-push-source-once.yml
+          git commit -m "feat(courier): require native alerts before going online"
+          git push origin HEAD:main
