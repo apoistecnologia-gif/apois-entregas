@@ -613,38 +613,6 @@ function MerchantWorkspace() {
     await loadOperations(merchant.id);
   };
 
-  const captureMerchantLocation = async () => {
-    if (!merchant?.id) return;
-    if (!navigator.geolocation) {
-      toast.error("Este dispositivo não oferece localização pelo navegador.");
-      return;
-    }
-
-    setBusyAction("merchant-location");
-    try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 0,
-        });
-      });
-      const { error } = await from("merchants")
-        .update({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        })
-        .eq("id", merchant.id);
-      if (error) throw error;
-      toast.success("Localização da loja atualizada.");
-      await loadAll(true);
-    } catch (error: any) {
-      toast.error(error?.message || "Não foi possível obter a localização da loja.");
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
   const saveMerchantMappedLocation = async (address: {
     street: string;
     number: string;
@@ -659,19 +627,23 @@ function MerchantWorkspace() {
     const mappedAddressLine = [address.street, address.number].filter(Boolean).join(", ");
     setBusyAction("merchant-map-location");
     try {
-      const { error } = await from("merchants")
-        .update({
-          latitude: address.latitude,
-          longitude: address.longitude,
-          address_line: mappedAddressLine || merchant.address_line,
-          neighborhood: address.neighborhood || merchant.neighborhood,
-          city: address.city || merchant.city,
-          state: address.state || merchant.state,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", merchant.id);
-      if (error) throw error;
-      toast.success("Ponto exato da loja atualizado no mapa.");
+      const { error: coordinateError } = await rpc("set_merchant_mapped_location", {
+        _latitude: address.latitude,
+        _longitude: address.longitude,
+      });
+      if (coordinateError) throw coordinateError;
+
+      const addressPatch: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (mappedAddressLine) addressPatch.address_line = mappedAddressLine;
+      if (address.neighborhood) addressPatch.neighborhood = address.neighborhood;
+
+      if (Object.keys(addressPatch).length > 1) {
+        const { error } = await from("merchants").update(addressPatch).eq("id", merchant.id);
+        if (error) throw error;
+      }
+
       await loadAll(true);
     } catch (error: any) {
       toast.error(error?.message || "Não foi possível salvar o ponto da loja.");
@@ -875,7 +847,7 @@ function MerchantWorkspace() {
         busyAction={busyAction}
         onUpload={uploadDocument}
         onResubmit={resubmitApplication}
-        onCaptureLocation={captureMerchantLocation}
+        onMappedLocation={saveMerchantMappedLocation}
         onRefresh={() => void loadAll(true)}
         refreshing={refreshing}
         onLogout={logout}
@@ -958,15 +930,8 @@ function MerchantWorkspace() {
                 proximidade.
               </p>
             </div>
-            <Button
-              type="button"
-              onClick={() => void captureMerchantLocation()}
-              disabled={busyAction === "merchant-location"}
-            >
-              {busyAction === "merchant-location" ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Capturar localização
+            <Button type="button" onClick={() => setActiveTab("settings")}>
+              Definir no mapa
             </Button>
           </div>
         </section>
@@ -1893,18 +1858,6 @@ function MerchantWorkspace() {
                 onAddressSelected={(address) => void saveMerchantMappedLocation(address)}
               />
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={captureMerchantLocation}
-              disabled={busyAction === "merchant-location"}
-              className="w-full border-zinc-800 bg-black"
-            >
-              {busyAction === "merchant-location" ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Usar localização atual da loja
-            </Button>
           </section>
 
           <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
@@ -2059,7 +2012,7 @@ function MerchantReviewState({
   busyAction,
   onUpload,
   onResubmit,
-  onCaptureLocation,
+  onMappedLocation,
   onRefresh,
   refreshing,
   onLogout,
@@ -2111,29 +2064,23 @@ function MerchantReviewState({
                 : "border-primary/30 bg-primary/5"
             }`}
           >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-black">Localização exata da loja</p>
-                <p className="mt-1 text-xs text-zinc-500">
-                  {merchant.latitude != null && merchant.longitude != null
-                    ? "Localização registrada. Ela será usada para validar a entrega e encontrar entregadores próximos."
-                    : "Obrigatória antes da aprovação para calcular a área de entrega e a retirada do entregador."}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busyAction === "merchant-location"}
-                onClick={() => void onCaptureLocation()}
-                className="border-zinc-800 bg-black"
-              >
-                {busyAction === "merchant-location" ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
+            <div>
+              <p className="text-sm font-black">Localização exata da loja</p>
+              <p className="mt-1 text-xs text-zinc-500">
                 {merchant.latitude != null && merchant.longitude != null
-                  ? "Atualizar localização"
-                  : "Capturar localização"}
-              </Button>
+                  ? "Ponto registrado. Pesquise ou ajuste o marcador abaixo se precisar corrigir a posição da loja."
+                  : "Obrigatória antes da aprovação. Pesquise o endereço físico real da loja e confirme o marcador no mapa."}
+              </p>
+            </div>
+            <div className="mt-4 rounded-2xl border border-zinc-900 bg-black p-3">
+              <GoogleMapsAddressSelector
+                initialCenter={
+                  merchant.latitude != null && merchant.longitude != null
+                    ? { lat: Number(merchant.latitude), lng: Number(merchant.longitude) }
+                    : undefined
+                }
+                onAddressSelected={(address) => void onMappedLocation(address)}
+              />
             </div>
           </div>
 
