@@ -193,7 +193,7 @@ export function GoogleMapsAddressSelector({
     setMarkerPos({ lat, lng });
     setPointConfirmed(false);
     setHasExplicitPoint(true);
-    void confirmCoordinates(lat, lng, undefined, true);
+    if (!isMerchantProduct) void confirmCoordinates(lat, lng, undefined, true);
   };
 
   const handleGetCurrentLocation = () => {
@@ -256,19 +256,26 @@ export function GoogleMapsAddressSelector({
 
       const { lat, lng } = result.geometry.location;
       setHasExplicitPoint(true);
-      const address = parseAddressComponents(result.address_components);
-      await persistMerchantMappedAddress(address, lat, lng);
       setMarkerPos({ lat, lng });
+
+      if (isMerchantProduct) {
+        // Selecting a Google suggestion only positions the marker. The physical
+        // store address is persisted exclusively by the explicit confirmation
+        // button below, after the merchant has visually checked the point.
+        setPointConfirmed(false);
+        toast.success("Endereço localizado. Confira o marcador e confirme o ponto da loja.");
+        return;
+      }
+
+      const address = parseAddressComponents(result.address_components);
       onAddressSelected({ ...address, latitude: lat, longitude: lng });
       setPointConfirmed(true);
-      toast.success(
-        isMerchantProduct ? "Endereço da loja localizado no mapa!" : "Endereço localizado no mapa!",
-      );
+      toast.success("Endereço localizado no mapa!");
     } catch (error) {
       console.error("Place details error:", error);
       toast.error(
         isMerchantProduct
-          ? "Não foi possível salvar o endereço da loja no mapa."
+          ? "Não foi possível localizar o endereço da loja no mapa."
           : "Erro ao carregar detalhes do endereço",
       );
     } finally {
