@@ -85,6 +85,21 @@ jobs:
           APOIS_VERCEL_BUILD: "1"
         run: bunx vercel build --prod --token "$VERCEL_TOKEN"
 
+      - name: Diagnose generated Vercel routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s .vercel/output/config.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          config = json.loads(Path('.vercel/output/config.json').read_text(encoding='utf-8'))
+          print('APOIS_VERCEL_CONFIG_BEGIN')
+          print(json.dumps(config, indent=2, sort_keys=True))
+          print('APOIS_VERCEL_CONFIG_END')
+          PY
+
       - name: Detach Git metadata for Hobby CLI deployment
         shell: bash
         run: rm -rf .git
@@ -99,7 +114,9 @@ jobs:
           BASE="https://admin.apoisbrasil.com.br"
 
           for attempt in $(seq 1 20); do
-            ROOT_STATUS="$(curl -sS -o /tmp/apois-admin-root.html -w '%{http_code}' "$BASE/")"
+            curl -sS -D /tmp/apois-admin-root.headers -o /tmp/apois-admin-root.html "$BASE/"
+            ROOT_STATUS="$(awk 'NR==1 {print $2}' /tmp/apois-admin-root.headers)"
+            ROOT_LOCATION="$(awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/\r$/, "", $2); print $2; exit}' /tmp/apois-admin-root.headers)"
             LOGIN_STATUS="$(curl -sS -o /tmp/apois-admin-login.html -w '%{http_code}' "$BASE/login")"
             ADMIN_STATUS="$(curl -sS -o /tmp/apois-admin-workspace.html -w '%{http_code}' "$BASE/admin")"
 
@@ -108,7 +125,8 @@ jobs:
             fi
 
             if [ "$attempt" -eq 20 ]; then
-              echo "Admin route gate failed: root=$ROOT_STATUS login=$LOGIN_STATUS admin=$ADMIN_STATUS" >&2
+              echo "Admin route gate failed: root=$ROOT_STATUS location=$ROOT_LOCATION login=$LOGIN_STATUS admin=$ADMIN_STATUS" >&2
+              cat /tmp/apois-admin-root.headers >&2 || true
               exit 1
             fi
             sleep 3
