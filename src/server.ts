@@ -23,6 +23,50 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
+function merchantFreshLoginResponse(): Response {
+  const html = `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="robots" content="noindex" />
+  <title>APOIS Estabelecimento</title>
+  <style>
+    html,body{margin:0;background:#000;color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    main{min-height:100dvh;display:grid;place-items:center;padding:24px;text-align:center}
+    strong{display:block;font-size:22px;letter-spacing:.04em}.gold{color:#ffd700;font-size:12px;font-weight:800;letter-spacing:.18em;margin-top:8px}
+    p{color:#71717a;font-size:14px;margin-top:16px}
+  </style>
+</head>
+<body>
+  <main><div><strong>APOIS</strong><div class="gold">ESTABELECIMENTO</div><p>Abrindo área de acesso…</p></div></main>
+  <script>
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i) || "";
+        if (key.includes("auth-token") || key.startsWith("sb-")) localStorage.removeItem(key);
+      }
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const key = sessionStorage.key(i) || "";
+        if (key.includes("auth-token") || key.startsWith("sb-")) sessionStorage.removeItem(key);
+      }
+    } catch {}
+    window.location.replace('/login?fresh=1');
+  </script>
+</body>
+</html>`;
+
+  return new Response(html, {
+    status: 200,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store, no-cache, must-revalidate, max-age=0",
+      pragma: "no-cache",
+      expires: "0",
+    },
+  });
+}
+
 function enforceProductRouteBoundary(request: Request): Response | null {
   if (request.method !== "GET" && request.method !== "HEAD") return null;
 
@@ -30,26 +74,23 @@ function enforceProductRouteBoundary(request: Request): Response | null {
   const product = getApoisProductMode();
   const landingRoute = getProductLandingRoute(product);
 
-  // The merchant website must always have a public login as its fresh browser
-  // entry point. A remembered /merchant URL, bookmark or page refresh must not
-  // reopen the previous establishment merely because Supabase still has a local
-  // session. After a successful login the SPA can navigate client-side to these
-  // protected routes without hitting this server boundary again.
+  // A fresh browser entry, bookmark or reload of a protected merchant route must
+  // never reuse a stale Supabase session. Clear only local Supabase auth state and
+  // then open the public login screen. Successful login still navigates client-side
+  // to /merchant normally, so everyday operation inside the panel is unaffected.
   if (
     product === "merchant" &&
     (url.pathname === "/merchant" || url.pathname === "/configuracoes-estabelecimento")
   ) {
-    url.pathname = "/login";
-    url.search = "";
-    url.hash = "";
-    return Response.redirect(url, 307);
+    if (request.method === "HEAD") {
+      return new Response(null, {
+        status: 200,
+        headers: { "cache-control": "no-store, no-cache, must-revalidate, max-age=0" },
+      });
+    }
+    return merchantFreshLoginResponse();
   }
 
-  // `/` is intentionally a shared public route. Product-specific builds render a
-  // safe product entry there and navigate client-side to their canonical landing
-  // route. Do not rewrite it at the server/adapter layer: Nitro/Vercel can scope a
-  // rewritten `/login` underneath the generated function prefix (for Admin this
-  // previously produced `/admin/login` and an HTTP 404).
   if (isPathAllowedForProduct(url.pathname, product)) return null;
 
   url.pathname = landingRoute;
@@ -59,8 +100,6 @@ function enforceProductRouteBoundary(request: Request): Response | null {
   return Response.redirect(url, 307);
 }
 
-// h3 swallows in-handler throws into a normal 500 Response with body
-// {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
 async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
   if (response.status < 500) return response;
   const contentType = response.headers.get("content-type") ?? "";
