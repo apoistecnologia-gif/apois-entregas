@@ -198,7 +198,19 @@ function MerchantWorkspace() {
         .limit(90),
     ]);
 
-    if (ordersRes.error) toast.error("Não foi possível carregar os pedidos do estabelecimento.");
+    const operationErrors = [
+      [ordersRes.error, "pedidos"],
+      [categoriesRes.error, "categorias do cardápio"],
+      [productsRes.error, "produtos"],
+      [hoursRes.error, "horários"],
+      [walletRes.error, "carteira"],
+      [reviewsRes.error, "avaliações"],
+      [specialHoursRes.error, "horários especiais"],
+    ].filter(([error]) => Boolean(error));
+    if (operationErrors.length > 0) {
+      const [, area] = operationErrors[0];
+      toast.error(`Não foi possível carregar ${area} do estabelecimento.`);
+    }
     setOrders(ordersRes.data ?? []);
     setMenuCategories(categoriesRes.data ?? []);
     setProducts(productsRes.data ?? []);
@@ -545,10 +557,13 @@ function MerchantWorkspace() {
 
   const toggleProduct = async (product: any) => {
     if (!merchant?.id) return;
+    setBusyAction(`product:${product.id}`);
     const { error } = await from("products")
       .update({ is_available: !product.is_available })
       .eq("id", product.id);
-    if (error) return toast.error(error.message);
+    setBusyAction(null);
+    if (error) return toast.error(error.message || "Não foi possível atualizar o produto.");
+    toast.success(product.is_available ? "Produto pausado." : "Produto ativado.");
     await loadOperations(merchant.id);
   };
 
@@ -573,10 +588,13 @@ function MerchantWorkspace() {
       is_closed: current?.is_closed ?? false,
       ...patch,
     };
+    setBusyAction(`hours:${weekday}`);
     const { error } = await from("merchant_hours").upsert(row, {
       onConflict: "merchant_id,weekday",
     });
-    if (error) return toast.error(error.message);
+    setBusyAction(null);
+    if (error) return toast.error(error.message || "Não foi possível salvar o horário.");
+    toast.success(`${week[weekday]} atualizado.`);
     await loadOperations(merchant.id);
   };
 
@@ -1204,9 +1222,13 @@ function MerchantWorkspace() {
                       type="button"
                       variant="outline"
                       size="sm"
+                      disabled={busyAction === `product:${product.id}`}
                       onClick={() => void toggleProduct(product)}
                       className="flex-1 border-zinc-800 bg-zinc-950"
                     >
+                      {busyAction === `product:${product.id}` ? (
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                      ) : null}
                       {product.is_available ? "Pausar" : "Ativar"}
                     </Button>
                     <MerchantProductEditor
