@@ -1,4 +1,4 @@
-name: Inspect Admin Vercel Routing Once
+name: Remove Stale Admin Vercel Root Route Once
 
 on:
   push:
@@ -11,13 +11,14 @@ permissions:
   contents: read
 
 jobs:
-  inspect:
+  repair:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       VERCEL_ORG_ID: team_shDkxHdc4ARgsiLdRaLSz0zA
       VERCEL_PROJECT_ID: prj_KjPKn2tXBIqxqCNzRxInuVXLLxNO
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      STALE_ROUTE_ID: e06005be-c489-41a0-9ec4-8d2d6de41b8c
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,22 +37,59 @@ jobs:
       - name: Link Admin Vercel project
         run: bunx vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
 
-      - name: Inspect live project routing rules
+      - name: Verify stale route identity
         shell: bash
         run: |
-          set +e
-          echo '=== VERCEL ROUTES LIST PRODUCTION EXPANDED ==='
-          bunx vercel routes list --production --expand --token "$VERCEL_TOKEN"
-          echo "routes-list-exit=$?"
-          echo '=== VERCEL ROUTES EXPORT ==='
-          bunx vercel routes export --token "$VERCEL_TOKEN" > /tmp/routes-export.txt 2>&1
-          ROUTES_EXPORT_EXIT=$?
-          cat /tmp/routes-export.txt
-          echo "routes-export-exit=$ROUTES_EXPORT_EXIT"
-          echo '=== VERCEL REDIRECTS LIST ==='
-          bunx vercel redirects list --per-page 100 --token "$VERCEL_TOKEN"
-          echo "redirects-list-exit=$?"
-          echo '=== VERCEL ROUTES VERSIONS ==='
-          bunx vercel routes list-versions --token "$VERCEL_TOKEN"
-          echo "routes-versions-exit=$?"
-          exit 0
+          set -euo pipefail
+          bunx vercel routes inspect "$STALE_ROUTE_ID" --token "$VERCEL_TOKEN" | tee /tmp/stale-route.txt
+          grep -Fq 'Source:  /' /tmp/stale-route.txt
+          grep -Fq 'Dest:    /admin/login' /tmp/stale-route.txt
+          grep -Fq 'Code:    307' /tmp/stale-route.txt
+          echo 'APOIS_ADMIN_STALE_ROUTE_CONFIRMED'
+
+      - name: Delete only the stale root redirect
+        run: bunx vercel routes delete "$STALE_ROUTE_ID" --yes --token "$VERCEL_TOKEN"
+
+      - name: Review staged routing diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          bunx vercel routes list --diff --expand --token "$VERCEL_TOKEN" | tee /tmp/routes-diff.txt
+          echo 'APOIS_ADMIN_ROUTE_DELETE_STAGED'
+
+      - name: Publish routing repair
+        run: bunx vercel routes publish --yes --token "$VERCEL_TOKEN"
+
+      - name: Verify no live project route remains
+        shell: bash
+        run: |
+          set -euo pipefail
+          bunx vercel routes list --production --expand --token "$VERCEL_TOKEN" | tee /tmp/routes-live.txt
+          if grep -Fq '/admin/login' /tmp/routes-live.txt; then
+            echo 'Stale /admin/login project route is still live' >&2
+            exit 1
+          fi
+          echo 'APOIS_ADMIN_PROJECT_ROUTES_CLEAN'
+
+      - name: Validate Admin root after route repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://admin.apoisbrasil.com.br'
+          for attempt in $(seq 1 20); do
+            ROOT_STATUS="$(curl -sS -o /tmp/admin-root.html -w '%{http_code}' "$BASE/")"
+            LOGIN_STATUS="$(curl -sS -o /tmp/admin-login.html -w '%{http_code}' "$BASE/login")"
+            ADMIN_STATUS="$(curl -sS -o /tmp/admin-workspace.html -w '%{http_code}' "$BASE/admin")"
+            if [ "$ROOT_STATUS" = '200' ] && [ "$LOGIN_STATUS" = '200' ] && [ "$ADMIN_STATUS" = '200' ]; then
+              break
+            fi
+            if [ "$attempt" -eq 20 ]; then
+              echo "Admin route repair failed: root=$ROOT_STATUS login=$LOGIN_STATUS admin=$ADMIN_STATUS" >&2
+              exit 1
+            fi
+            sleep 3
+          done
+          grep -Fq '<title>APOIS Administração</title>' /tmp/admin-root.html
+          grep -Fq 'Abrindo o acesso correto' /tmp/admin-root.html
+          ! grep -Fq 'Seu delivery do seu jeito' /tmp/admin-root.html
+          echo "APOIS_ADMIN_ROOT_REPAIRED root=$ROOT_STATUS login=$LOGIN_STATUS admin=$ADMIN_STATUS"
