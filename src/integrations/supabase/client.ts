@@ -11,7 +11,7 @@ const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     // Merchant uses a dedicated auth namespace. This prevents the establishment
     // panel from restoring a legacy/default Supabase session that may belong to a
     // previous browser state and immediately bouncing /login back to /merchant.
-    storageKey: productMode === "merchant" ? "apois-merchant-auth-v2" : undefined,
+    ...(productMode === "merchant" ? { storageKey: "apois-merchant-auth-v2" } : {}),
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
