@@ -19,6 +19,19 @@ const PUBLIC_WEBHOOK_FUNCTIONS = new Set([
   "openpix-webhook",
   "asaas-webhook",
 ]);
+const INTERNAL_PUBLIC_FUNCTIONS = new Map([
+  [
+    "dispatch-push-outbox",
+    {
+      file: "supabase/functions/dispatch-push-outbox/index.ts",
+      requiredPatterns: [
+        /x-apois-push-dispatch-key/,
+        /PUSH_DISPATCH_WEBHOOK_SECRET/,
+        /suppliedDispatchKey\s*!==\s*expectedDispatchKey/,
+      ],
+    },
+  ],
+]);
 
 const findings = [];
 
@@ -117,6 +130,31 @@ function scanSource(file, content) {
   }
 }
 
+async function verifyInternalPublicFunction(slug, definition) {
+  let source;
+  try {
+    source = await readFile(path.join(ROOT, definition.file), "utf8");
+  } catch {
+    report(
+      definition.file,
+      "missing-internal-edge-function-source",
+      `${slug} disables Supabase JWT verification but its protected source is missing`,
+    );
+    return;
+  }
+
+  for (const pattern of definition.requiredPatterns) {
+    if (!pattern.test(source)) {
+      report(
+        definition.file,
+        "unprotected-internal-edge-function",
+        `${slug} disables Supabase JWT verification without all required dedicated-secret checks`,
+      );
+      return;
+    }
+  }
+}
+
 async function verifySupabaseConfig() {
   const file = "supabase/config.toml";
   const content = await readFile(path.join(ROOT, file), "utf8");
@@ -136,13 +174,19 @@ async function verifySupabaseConfig() {
     const body = content.slice(bodyStart, bodyEnd);
     if (!/^verify_jwt\s*=\s*false\s*$/m.test(body)) continue;
     publicFunctions.add(slug);
-    if (!PUBLIC_WEBHOOK_FUNCTIONS.has(slug)) {
-      report(
-        file,
-        "unexpected-public-edge-function",
-        `${slug} disables Supabase JWT verification but is not an approved provider webhook`,
-      );
+
+    if (PUBLIC_WEBHOOK_FUNCTIONS.has(slug)) continue;
+    const internalDefinition = INTERNAL_PUBLIC_FUNCTIONS.get(slug);
+    if (internalDefinition) {
+      await verifyInternalPublicFunction(slug, internalDefinition);
+      continue;
     }
+
+    report(
+      file,
+      "unexpected-public-edge-function",
+      `${slug} disables Supabase JWT verification but is not an approved provider webhook or protected internal callback`,
+    );
   }
 
   for (const slug of PUBLIC_WEBHOOK_FUNCTIONS) {
@@ -153,6 +197,18 @@ async function verifySupabaseConfig() {
         `${slug} must disable Supabase JWT verification because the provider authenticates the webhook directly`,
       );
     }
+  }
+
+  for (const [slug, definition] of INTERNAL_PUBLIC_FUNCTIONS) {
+    if (!publicFunctions.has(slug)) {
+      report(
+        file,
+        "internal-callback-jwt-config-drift",
+        `${slug} must match its production deployment and dedicated-secret authentication model`,
+      );
+      continue;
+    }
+    await verifyInternalPublicFunction(slug, definition);
   }
 }
 
