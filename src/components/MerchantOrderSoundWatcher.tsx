@@ -42,8 +42,7 @@ function MerchantOrderSoundWatcher() {
 
   const playOrderAlert = useCallback(async () => {
     const context = audioContextRef.current;
-    if (!context || !audioUnlockedRef.current || document.visibilityState !== "visible")
-      return false;
+    if (!context || !audioUnlockedRef.current) return false;
     try {
       if (context.state === "suspended") await context.resume();
       if (context.state !== "running") return false;
@@ -111,7 +110,7 @@ function MerchantOrderSoundWatcher() {
   }, []);
 
   const flushPending = useCallback(async () => {
-    if (!audioUnlockedRef.current || document.visibilityState !== "visible") return;
+    if (!audioUnlockedRef.current) return;
     for (const [orderId] of Array.from(pendingAlertsRef.current.entries())) {
       if (alertedOrdersRef.current.has(orderId)) {
         pendingAlertsRef.current.delete(orderId);
