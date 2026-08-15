@@ -29,7 +29,10 @@ export function CustomerPushManager() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (disposed) return;
-      if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION")) {
+      if (
+        session &&
+        (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION")
+      ) {
         void ensureCustomerPushRegistration(true).then((result) => {
           if (result.status === "failed") {
             console.warn("customer push registration failed", result.message);
