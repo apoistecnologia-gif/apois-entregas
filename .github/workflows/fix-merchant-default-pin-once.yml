@@ -1,0 +1,74 @@
+name: Fix merchant fallback map pin once
+
+on:
+  push:
+    paths:
+      - ".github/workflows/fix-merchant-default-pin-once.yml"
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Patch merchant map confirmation guard
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/components/GoogleMapsAddressSelector.tsx')
+          s = path.read_text()
+
+          old = '  const [pointConfirmed, setPointConfirmed] = useState(Boolean(initialCenter));\n'
+          assert old in s
+          s = s.replace(old, old + '  const [hasExplicitPoint, setHasExplicitPoint] = useState(Boolean(initialCenter));\n', 1)
+
+          old = '  const confirmCoordinates = async (lat: number, lng: number, successMessage?: string) => {\n'
+          assert old in s
+          new = '''  const confirmCoordinates = async (\n    lat: number,\n    lng: number,\n    successMessage?: string,\n    allowMerchantConfirmation = false,\n  ) => {\n    if (isMerchantProduct && !hasExplicitPoint && !allowMerchantConfirmation) {\n      toast.error(\"Pesquise o endereço da loja ou mova o marcador antes de confirmar.\");\n      return;\n    }\n'''
+          s = s.replace(old, new, 1)
+
+          old = '''    setMarkerPos({ lat, lng });\n    setPointConfirmed(false);\n    void confirmCoordinates(lat, lng);\n'''
+          assert old in s
+          new = '''    setMarkerPos({ lat, lng });\n    setPointConfirmed(false);\n    setHasExplicitPoint(true);\n    void confirmCoordinates(lat, lng, undefined, true);\n'''
+          s = s.replace(old, new, 1)
+
+          old = '''      const { lat, lng } = result.geometry.location;\n      await persistMerchantCoordinates(lat, lng);\n'''
+          assert old in s
+          new = '''      const { lat, lng } = result.geometry.location;\n      setHasExplicitPoint(true);\n      await persistMerchantCoordinates(lat, lng);\n'''
+          s = s.replace(old, new, 1)
+
+          old = '''                setMarkerPos({ lat: latLng.lat, lng: latLng.lng });\n                setPointConfirmed(false);\n'''
+          assert old in s
+          new = '''                setMarkerPos({ lat: latLng.lat, lng: latLng.lng });\n                setPointConfirmed(false);\n                setHasExplicitPoint(true);\n'''
+          s = s.replace(old, new, 1)
+
+          old = '            disabled={isConfirming || !isMapLoaded}\n'
+          assert old in s
+          s = s.replace(old, '            disabled={isConfirming || !isMapLoaded || (isMerchantProduct && !hasExplicitPoint)}\n', 1)
+
+          old = '''                {isMerchantProduct\n                  ? \"Pesquise o endereço físico da loja, ajuste o marcador se necessário e confirme o ponto abaixo.\"\n'''
+          assert old in s
+          new = '''                {isMerchantProduct\n                  ? hasExplicitPoint\n                    ? \"Confira o marcador e confirme o ponto abaixo.\"\n                    : \"Pesquise o endereço físico da loja ou mova o marcador. O ponto inicial é apenas uma referência e não pode ser confirmado.\"\n'''
+          s = s.replace(old, new, 1)
+
+          path.write_text(s)
+          PY
+      - name: Format merchant map component
+        run: npx prettier --write src/components/GoogleMapsAddressSelector.tsx
+      - name: Commit fix and remove helper workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm .github/workflows/fix-merchant-default-pin-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/GoogleMapsAddressSelector.tsx .github/workflows/fix-merchant-default-pin-once.yml
+          git commit -m "fix(merchant): require explicit store map selection"
+          git push origin HEAD:main
+          gh workflow run merchant-web-build.yml --repo "$GITHUB_REPOSITORY" --ref main
