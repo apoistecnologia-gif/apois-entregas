@@ -127,13 +127,40 @@ jobs:
           import json
           from pathlib import Path
 
-          config = json.loads(Path('.vercel/output/config.json').read_text(encoding='utf-8'))
+          config_path = Path('.vercel/output/config.json')
+          config = json.loads(config_path.read_text(encoding='utf-8'))
           routes = config.get('routes')
           if not isinstance(routes, list):
               raise SystemExit('Vercel Build Output routes array is missing')
-          if not any(isinstance(route, dict) and route.get('handle') == 'filesystem' for route in routes):
+
+          filesystem_index = next(
+              (i for i, route in enumerate(routes)
+               if isinstance(route, dict) and route.get('handle') == 'filesystem'),
+              None,
+          )
+          if filesystem_index is None:
               raise SystemExit('Vercel Build Output has no filesystem phase')
-          print('APOIS_ADMIN_ROOT_FILESYSTEM_ENTRY_OK')
+
+          root_route = {'src': '^/$', 'dest': '/index.html'}
+          routes = [
+              route for route in routes
+              if not (
+                  isinstance(route, dict)
+                  and route.get('src') in ('/', '^/$', '^\\/$')
+                  and route.get('dest') == '/index.html'
+              )
+          ]
+          filesystem_index = next(
+              i for i, route in enumerate(routes)
+              if isinstance(route, dict) and route.get('handle') == 'filesystem'
+          )
+          routes.insert(filesystem_index + 1, root_route)
+          config['routes'] = routes
+          config_path.write_text(json.dumps(config, indent=2) + '\n', encoding='utf-8')
+
+          if routes[filesystem_index + 1] != root_route:
+              raise SystemExit('Exact Admin root route was not installed after filesystem phase')
+          print('APOIS_ADMIN_ROOT_ROUTE_OK', json.dumps(root_route, sort_keys=True))
           PY
 
       - name: Detach Git metadata for Hobby CLI deployment
