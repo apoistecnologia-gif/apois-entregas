@@ -1,0 +1,50 @@
+name: Fix customer address confirmation once
+
+on:
+  push:
+    paths:
+      - ".github/workflows/fix-customer-address-confirm-once.yml"
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Patch address confirmation navigation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/routes/enderecos.tsx')
+          s = path.read_text()
+          old = '      await navigate({ to: "/sacola" });'
+          assert old in s, 'confirm navigation not found'
+          s = s.replace(old, '      router.history.back();', 1)
+          old = '          onClick={() => navigate({ to: "/sacola" })}'
+          assert old in s, 'header back navigation not found'
+          s = s.replace(old, '          onClick={() => router.history.back()}', 1)
+          path.write_text(s)
+          PY
+      - uses: oven-sh/setup-bun@v2
+      - name: Validate customer build
+        run: |
+          bun install --frozen-lockfile
+          bunx prettier --write src/routes/enderecos.tsx
+          bun run typecheck
+          bun run build:customer
+      - name: Commit fix and remove helper workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm .github/workflows/fix-customer-address-confirm-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/enderecos.tsx .github/workflows/fix-customer-address-confirm-once.yml
+          git commit -m "fix(customer): return after confirming delivery address"
+          git push origin HEAD:main
+          gh workflow run mobile-android.yml --repo "$GITHUB_REPOSITORY" --ref main -f product=customer
