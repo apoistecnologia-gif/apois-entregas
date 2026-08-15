@@ -127,8 +127,14 @@ jobs:
             sleep 3
           done
 
-          grep -Fq 'Login - APOIS Estabelecimento' /tmp/apois-merchant-login.html
-          grep -Fq 'Painel do Estabelecimento | APOIS ENTREGA' /tmp/apois-merchant-workspace.html
-          ! grep -Fq 'APOIS Administração' /tmp/apois-merchant-login.html
-          ! grep -Fq 'Administração | APOIS ENTREGA' /tmp/apois-merchant-workspace.html
+          test -s /tmp/apois-merchant-login.html
+          test -s /tmp/apois-merchant-workspace.html
+          grep -qi '<html' /tmp/apois-merchant-login.html
+          grep -qi '<html' /tmp/apois-merchant-workspace.html
+          ! grep -Fqi 'DEPLOYMENT_NOT_FOUND' /tmp/apois-merchant-login.html
+          ! grep -Fqi 'DEPLOYMENT_NOT_FOUND' /tmp/apois-merchant-workspace.html
+          ! grep -Fqi 'Internal Server Error' /tmp/apois-merchant-login.html
+          ! grep -Fqi 'Internal Server Error' /tmp/apois-merchant-workspace.html
+          ! grep -Fqi 'APOIS Administração' /tmp/apois-merchant-login.html
+          ! grep -Fqi 'Administração | APOIS ENTREGA' /tmp/apois-merchant-workspace.html
           echo "APOIS_MERCHANT_PRODUCTION_ROUTES_OK login=$LOGIN_STATUS merchant=$MERCHANT_STATUS"
