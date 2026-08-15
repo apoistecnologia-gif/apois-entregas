@@ -94,9 +94,22 @@ export function CourierOfferOverlay() {
 
   const pulseAlert = useCallback(() => {
     navigator.vibrate?.([420, 120, 420, 120, 650]);
-    const context = audioContextRef.current;
-    if (!context || !audioUnlockedRef.current) return;
-    if (context.state === "suspended") void context.resume();
+    let context = audioContextRef.current;
+    if (!context) {
+      const audioWindow = window as WindowWithWebkitAudioContext;
+      const AudioContextCtor = audioWindow.AudioContext || audioWindow.webkitAudioContext;
+      if (!AudioContextCtor) return;
+      context = new AudioContextCtor();
+      audioContextRef.current = context;
+    }
+    if (context.state === "suspended") {
+      void context.resume().then(() => {
+        audioUnlockedRef.current = context?.state === "running";
+      });
+      return;
+    }
+    if (context.state !== "running") return;
+    audioUnlockedRef.current = true;
 
     const startAt = context.currentTime + 0.03;
     [0, 0.2, 0.4].forEach((offset, index) => {
@@ -189,10 +202,17 @@ export function CourierOfferOverlay() {
         refresh,
       )
       .subscribe();
-    const poll = window.setInterval(refresh, 2500);
+    const poll = window.setInterval(refresh, 1000);
+    const onForeground = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onForeground);
 
     return () => {
       window.clearInterval(poll);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onForeground);
       void supabase.removeChannel(offersChannel);
       void supabase.removeChannel(availabilityChannel);
     };
@@ -226,7 +246,12 @@ export function CourierOfferOverlay() {
   useEffect(() => {
     stopAlert();
     if (!offerId) return;
+    void callRpc("ack_courier_offer_seen", {
+      _offer_id: offerId,
+      _channel: "courier_offer_overlay",
+    });
     pulseAlert();
+    window.setTimeout(pulseAlert, 220);
     alertTimerRef.current = window.setInterval(pulseAlert, 2800);
     return stopAlert;
   }, [offerId, pulseAlert, stopAlert]);
