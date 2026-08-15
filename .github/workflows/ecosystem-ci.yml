@@ -1,0 +1,126 @@
+name: Ecosystem CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+  VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+  VITE_GOOGLE_MAPS_BROWSER_KEY: ci-placeholder
+  VITE_GOOGLE_MAPS_MAP_ID: ci-placeholder
+
+jobs:
+  ecosystem-contracts:
+    name: Ecosystem contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Enforce APOIS ENTREGAS infrastructure isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          FORBIDDEN_REFS=(
+            "vqtucstyduxrqjgyigfk"
+            "breaseovgljypnjrqgep"
+          )
+          for ref in "${FORBIDDEN_REFS[@]}"; do
+            if grep -R --exclude-dir=.git --exclude='ecosystem-ci.yml' -Fq "$ref" .; then
+              echo "Forbidden non-Entregas Supabase project reference found: $ref" >&2
+              exit 1
+            fi
+          done
+          grep -Fq 'sbvhdgyuuperszlsllji' .github/workflows/ci.yml
+          echo "APOIS_ENTREGAS_INFRASTRUCTURE_ISOLATION_OK"
+
+      - name: Validate Android product identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'br.com.apois.cliente' capacitor.config.ts
+          grep -Fq 'br.com.apois.entregador' capacitor.config.ts
+          grep -Fq 'br.com.apois.cliente' .github/workflows/mobile-android.yml
+          grep -Fq 'br.com.apois.entregador' .github/workflows/mobile-android.yml
+          echo "APOIS_ANDROID_PACKAGE_IDS_OK"
+
+      - name: Validate migration sequence integrity
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          migrations = sorted(Path('supabase/migrations').glob('*.sql'))
+          if not migrations:
+              raise SystemExit('No Supabase migrations found')
+
+          seen = {}
+          for path in migrations:
+              match = re.match(r'^(\d{14})_(.+)\.sql$', path.name)
+              if not match:
+                  raise SystemExit(f'Invalid migration filename: {path.name}')
+              stamp = match.group(1)
+              if stamp in seen:
+                  raise SystemExit(f'Duplicate migration timestamp {stamp}: {seen[stamp]} and {path.name}')
+              seen[stamp] = path.name
+
+          print(f'APOIS_MIGRATION_SEQUENCE_OK count={len(migrations)}')
+
+      - name: Repository safety audit
+        run: bun run audit:repo
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Tests
+        run: bun run test
+
+  product-isolation:
+    name: Product isolation ${{ matrix.product }}
+    needs: ecosystem-contracts
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        product:
+          - customer
+          - merchant
+          - courier
+          - admin
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build isolated product
+        run: bun run build:${{ matrix.product }}
+
+      - name: Verify product output isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d .output/public
+          test -f .output/server/index.mjs
+          node scripts/verify-product-isolation.mjs "${{ matrix.product }}"
