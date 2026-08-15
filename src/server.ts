@@ -30,6 +30,21 @@ function enforceProductRouteBoundary(request: Request): Response | null {
   const product = getApoisProductMode();
   const landingRoute = getProductLandingRoute(product);
 
+  // The merchant website must always have a public login as its fresh browser
+  // entry point. A remembered /merchant URL, bookmark or page refresh must not
+  // reopen the previous establishment merely because Supabase still has a local
+  // session. After a successful login the SPA can navigate client-side to these
+  // protected routes without hitting this server boundary again.
+  if (
+    product === "merchant" &&
+    (url.pathname === "/merchant" || url.pathname === "/configuracoes-estabelecimento")
+  ) {
+    url.pathname = "/login";
+    url.search = "";
+    url.hash = "";
+    return Response.redirect(url, 307);
+  }
+
   // `/` is intentionally a shared public route. Product-specific builds render a
   // safe product entry there and navigate client-side to their canonical landing
   // route. Do not rewrite it at the server/adapter layer: Nitro/Vercel can scope a
