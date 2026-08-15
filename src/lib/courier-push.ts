@@ -196,13 +196,33 @@ export function ensureCourierPushRegistration(requestPermission = false) {
 export async function removeCourierPushRegistration() {
   if (!isNativeCourierAndroid()) return;
 
-  const { error } = await (supabase.rpc as any)("remove_courier_push_devices");
-  if (error) throw error;
+  let backendRemovalError: unknown = null;
+  try {
+    const { error } = await (supabase.rpc as any)("remove_courier_push_devices");
+    if (error) backendRemovalError = error;
+  } catch (error) {
+    backendRemovalError = error;
+  }
 
+  // Always unregister the local FCM installation, even when the backend is
+  // temporarily unreachable. This prevents a signed-out device from continuing
+  // to present a live local registration while server cleanup is retried later.
   try {
     await PushNotifications.unregister();
-  } catch {
-    // Backend removal is authoritative for user-targeted pushes.
+  } catch (error) {
+    console.warn(
+      "courier local push unregister failed",
+      error instanceof Error ? error.message : "unknown",
+    );
+  }
+
+  await removeCourierPushListeners();
+
+  if (backendRemovalError) {
+    console.warn(
+      "courier backend push cleanup pending",
+      backendRemovalError instanceof Error ? backendRemovalError.message : "unknown",
+    );
   }
 }
 
