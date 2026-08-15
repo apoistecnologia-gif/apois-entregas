@@ -1,13 +1,10 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Bike, MapPin, PackageCheck, Store } from "lucide-react";
+import { useEffect } from "react";
 import { getProductLandingRoute } from "@/lib/product-routing";
 
 export const Route = createFileRoute("/")({
-  beforeLoad: () => {
-    const landingRoute = getProductLandingRoute();
-    if (landingRoute !== "/") throw redirect({ to: landingRoute });
-  },
   component: Index,
   head: () => ({
     title: "APOIS ENTREGA - Seu delivery do seu jeito",
@@ -22,6 +19,21 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const navigate = useNavigate();
+  const landingRoute = getProductLandingRoute();
+
+  useEffect(() => {
+    if (landingRoute !== "/") {
+      void navigate({ to: landingRoute, replace: true });
+    }
+  }, [landingRoute, navigate]);
+
+  if (landingRoute !== "/") {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-black text-sm text-zinc-500">
+        Abrindo o produto correto…
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-[100dvh] w-full overflow-hidden bg-black text-white font-sans">
