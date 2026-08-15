@@ -16,6 +16,7 @@ import { AuthSessionIsolation } from "../components/AuthSessionIsolation";
 import { CourierActiveDeliveryOverlay } from "../components/CourierActiveDeliveryOverlay";
 import { CourierOfferOverlay } from "../components/CourierOfferOverlay";
 import { CourierPendingPayoutProcessor } from "../components/CourierPendingPayoutProcessor";
+import { CustomerPushManager } from "../components/CustomerPushManager";
 import { MerchantOrderSoundWatcher } from "../components/MerchantOrderSoundWatcher";
 import { MerchantPendingPayoutProcessor } from "../components/MerchantPendingPayoutProcessor";
 import { CartProvider } from "../contexts/CartContext";
@@ -180,6 +181,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ApoisLaunchSplash />
+      <CustomerPushManager />
       <MerchantOrderSoundWatcher />
       <CourierOfferOverlay />
       <CourierActiveDeliveryOverlay />
