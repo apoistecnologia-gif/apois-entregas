@@ -351,9 +351,10 @@ jobs:
           fi
 
           "$APKSIGNER" verify --verbose --print-certs "$RELEASE_APK" | tee /tmp/apois-apksigner.txt
-          grep -Fq 'Signer #1 certificate SHA-256 digest:' /tmp/apois-apksigner.txt
-          awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' /tmp/apois-apksigner.txt > /tmp/apois-signer-sha256.txt
+          grep -Fq 'certificate SHA-256 digest:' /tmp/apois-apksigner.txt
+          awk -F': ' '/certificate SHA-256 digest:/ {print $2; exit}' /tmp/apois-apksigner.txt > /tmp/apois-signer-sha256.txt
           test -s /tmp/apois-signer-sha256.txt
+          grep -Eq '^[0-9a-fA-F]{64}$' /tmp/apois-signer-sha256.txt
 
           jarsigner -verify "$RELEASE_AAB" >/tmp/apois-jarsigner.txt 2>&1
           grep -qi 'jar verified' /tmp/apois-jarsigner.txt
