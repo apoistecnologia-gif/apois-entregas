@@ -41,17 +41,15 @@ function merchantFreshLoginResponse(): Response {
 <body>
   <main><div><strong>APOIS</strong><div class="gold">ESTABELECIMENTO</div><p>Abrindo área de acesso…</p></div></main>
   <script>
+    try { localStorage.clear(); } catch {}
+    try { sessionStorage.clear(); } catch {}
     try {
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i) || "";
-        if (key.includes("auth-token") || key.startsWith("sb-")) localStorage.removeItem(key);
-      }
-      for (let i = sessionStorage.length - 1; i >= 0; i--) {
-        const key = sessionStorage.key(i) || "";
-        if (key.includes("auth-token") || key.startsWith("sb-")) sessionStorage.removeItem(key);
-      }
+      document.cookie.split(';').forEach(function(cookie) {
+        const name = cookie.split('=')[0].trim();
+        if (name) document.cookie = name + '=; Max-Age=0; path=/; SameSite=Lax';
+      });
     } catch {}
-    window.location.replace('/login?fresh=1');
+    window.location.replace('/login?fresh=1&t=' + Date.now());
   </script>
 </body>
 </html>`;
@@ -61,6 +59,7 @@ function merchantFreshLoginResponse(): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store, no-cache, must-revalidate, max-age=0",
+      "clear-site-data": '"cache", "cookies", "storage"',
       pragma: "no-cache",
       expires: "0",
     },
@@ -74,14 +73,6 @@ function enforceProductRouteBoundary(request: Request): Response | null {
   const product = getApoisProductMode();
   const landingRoute = getProductLandingRoute(product);
 
-  // The merchant public domain must ALWAYS begin at authentication on a fresh
-  // browser navigation. This includes `/`: previously the root was allowed through
-  // to the SPA, where the client-side sign-out/navigation could race with a restored
-  // Supabase session and the `/login` guard would bounce the user straight back to
-  // the last establishment (for example its under-review onboarding screen).
-  // Clear only local Supabase auth state before entering `/login`; after a successful
-  // login, navigation to `/merchant` happens client-side and does not hit this server
-  // boundary during normal panel use.
   if (
     product === "merchant" &&
     (url.pathname === "/" ||
@@ -91,7 +82,10 @@ function enforceProductRouteBoundary(request: Request): Response | null {
     if (request.method === "HEAD") {
       return new Response(null, {
         status: 200,
-        headers: { "cache-control": "no-store, no-cache, must-revalidate, max-age=0" },
+        headers: {
+          "cache-control": "no-store, no-cache, must-revalidate, max-age=0",
+          "clear-site-data": '"cache", "cookies", "storage"',
+        },
       });
     }
     return merchantFreshLoginResponse();
