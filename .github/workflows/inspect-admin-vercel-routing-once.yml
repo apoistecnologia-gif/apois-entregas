@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bunx vercel routes inspect "$STALE_ROUTE_ID" --token "$VERCEL_TOKEN" | tee /tmp/stale-route.txt
+          bunx vercel routes inspect "$STALE_ROUTE_ID" --token "$VERCEL_TOKEN" 2>&1 | tee /tmp/stale-route.txt
           grep -Eq 'Source:[[:space:]]+/$' /tmp/stale-route.txt
           grep -Eq 'Destination:[[:space:]]+/admin/login$' /tmp/stale-route.txt
           grep -Eq 'HTTP Status:[[:space:]]+307$' /tmp/stale-route.txt
@@ -54,7 +54,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bunx vercel routes list --diff --expand --token "$VERCEL_TOKEN" | tee /tmp/routes-diff.txt
+          bunx vercel routes list --diff --expand --token "$VERCEL_TOKEN" 2>&1 | tee /tmp/routes-diff.txt
           echo 'APOIS_ADMIN_ROUTE_DELETE_STAGED'
 
       - name: Publish routing repair
@@ -64,7 +64,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bunx vercel routes list --production --expand --token "$VERCEL_TOKEN" | tee /tmp/routes-live.txt
+          bunx vercel routes list --production --expand --token "$VERCEL_TOKEN" 2>&1 | tee /tmp/routes-live.txt
           if grep -Fq '/admin/login' /tmp/routes-live.txt; then
             echo 'Stale /admin/login project route is still live' >&2
             exit 1
