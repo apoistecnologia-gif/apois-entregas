@@ -105,3 +105,30 @@ jobs:
 
       - name: Deploy merchant panel to Vercel production
         run: bunx vercel deploy --prebuilt --prod --yes --token "$VERCEL_TOKEN"
+
+      - name: Gate Merchant production routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://parceiros.apoisbrasil.com.br"
+
+          for attempt in $(seq 1 20); do
+            LOGIN_STATUS="$(curl -sS -o /tmp/apois-merchant-login.html -w '%{http_code}' "$BASE/login")"
+            MERCHANT_STATUS="$(curl -sS -o /tmp/apois-merchant-workspace.html -w '%{http_code}' "$BASE/merchant")"
+
+            if [ "$LOGIN_STATUS" = "200" ] && [ "$MERCHANT_STATUS" = "200" ]; then
+              break
+            fi
+
+            if [ "$attempt" -eq 20 ]; then
+              echo "Merchant route gate failed: login=$LOGIN_STATUS merchant=$MERCHANT_STATUS" >&2
+              exit 1
+            fi
+            sleep 3
+          done
+
+          grep -Fq 'Login - APOIS Estabelecimento' /tmp/apois-merchant-login.html
+          grep -Fq 'Painel do Estabelecimento | APOIS ENTREGA' /tmp/apois-merchant-workspace.html
+          ! grep -Fq 'APOIS Administração' /tmp/apois-merchant-login.html
+          ! grep -Fq 'Administração | APOIS ENTREGA' /tmp/apois-merchant-workspace.html
+          echo "APOIS_MERCHANT_PRODUCTION_ROUTES_OK login=$LOGIN_STATUS merchant=$MERCHANT_STATUS"
