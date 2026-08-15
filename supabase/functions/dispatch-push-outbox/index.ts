@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.112.1";
 
 type JsonRecord = Record<string, unknown>;
-type Device = { id: string; platform: string; token: string };
+type Device = { id: string; platform: string; token: string; appProduct?: string };
 type ClaimedPush = {
   outbox_id: string;
   notification_id: string;
@@ -20,7 +20,9 @@ const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 const FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
 const OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const COURIER_PACKAGE = "br.com.apois.entregador";
+const CUSTOMER_PACKAGE = "br.com.apois.cliente";
 const DELIVERY_CHANNEL_ID = "delivery_offers";
+const CUSTOMER_CHANNEL_ID = "order_updates";
 let cachedAccessToken: CachedToken | null = null;
 
 function response(status: number, body: JsonRecord) {
@@ -87,7 +89,7 @@ async function getAccessToken(clientEmail: string, privateKey: string) {
 
   const assertion = await createServiceAccountJwt(clientEmail, privateKey);
   const body = new URLSearchParams({
-    grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+    grant_type: "urn:ietf:params:oauth2:grant-type:jwt-bearer",
     assertion,
   });
   const tokenResponse = await fetch(OAUTH_TOKEN_URL, {
@@ -121,13 +123,21 @@ function stringifyData(value: JsonRecord | null, notificationId: string, notific
   return output;
 }
 
+function androidTarget(device: Device) {
+  if (device.appProduct === "courier") {
+    return { packageName: COURIER_PACKAGE, channelId: DELIVERY_CHANNEL_ID, courier: true };
+  }
+  return { packageName: CUSTOMER_PACKAGE, channelId: CUSTOMER_CHANNEL_ID, courier: false };
+}
+
 async function sendAndroidPush(
   projectId: string,
   accessToken: string,
   push: ClaimedPush,
   device: Device,
 ) {
-  const urgent = push.notification_type === "delivery_offer";
+  const target = androidTarget(device);
+  const urgent = target.courier && push.notification_type === "delivery_offer";
   const providerResponse = await fetch(
     `https://fcm.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/messages:send`,
     {
@@ -147,16 +157,16 @@ async function sendAndroidPush(
           android: {
             priority: urgent ? "high" : "normal",
             ttl: urgent ? "90s" : "3600s",
-            restricted_package_name: COURIER_PACKAGE,
+            restricted_package_name: target.packageName,
             notification: {
-              channel_id: DELIVERY_CHANNEL_ID,
+              channel_id: target.channelId,
               default_sound: true,
               default_vibrate_timings: true,
               notification_priority: urgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
               visibility: "PUBLIC",
               tag: urgent
                 ? `delivery-offer-${push.notification_id}`
-                : `apois-${push.notification_id}`,
+                : `apois-${target.courier ? "courier" : "customer"}-${push.notification_id}`,
             },
           },
         },
@@ -199,13 +209,7 @@ Deno.serve(async (req: Request) => {
   const firebaseProjectId = env("FIREBASE_PROJECT_ID");
   const firebaseClientEmail = env("FIREBASE_CLIENT_EMAIL");
   const firebasePrivateKey = Deno.env.get("FIREBASE_PRIVATE_KEY") ?? "";
-  if (
-    !supabaseUrl ||
-    !serviceRoleKey ||
-    !firebaseProjectId ||
-    !firebaseClientEmail ||
-    !firebasePrivateKey
-  ) {
+  if (!supabaseUrl || !serviceRoleKey || !firebaseProjectId || !firebaseClientEmail || !firebasePrivateKey) {
     return response(503, { error: "firebase_server_credentials_not_configured" });
   }
 
@@ -213,7 +217,7 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: claimed, error: claimError } = await supabase.rpc("claim_notification_push_batch", {
+  const { data: claimed, error: claimError } = await supabase.rpc("claim_notification_push_batch_v2", {
     _limit: 25,
   });
   if (claimError) return response(500, { error: "push_claim_failed", detail: claimError.message });
@@ -247,7 +251,10 @@ Deno.serve(async (req: Request) => {
   for (const push of pushes) {
     const androidDevices = (push.devices ?? []).filter(
       (device) =>
-        device.platform === "android" && typeof device.token === "string" && device.token.trim(),
+        device.platform === "android" &&
+        (device.appProduct === "customer" || device.appProduct === "courier") &&
+        typeof device.token === "string" &&
+        device.token.trim(),
     );
     if (androidDevices.length === 0) {
       await supabase
