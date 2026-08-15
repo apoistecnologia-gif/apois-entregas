@@ -1,3 +1,5 @@
+/// <reference types="@capacitor/push-notifications" />
+
 const variant = String(process.env["APOIS_MOBILE_PRODUCT"] ?? "courier")
   .trim()
   .toLowerCase();
@@ -12,4 +14,11 @@ export default {
   server: {
     androidScheme: "https",
   },
+  plugins: isCustomer
+    ? {}
+    : {
+        PushNotifications: {
+          presentationOptions: ["sound", "alert"],
+        },
+      },
 };
