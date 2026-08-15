@@ -17,6 +17,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppBottomNav } from "@/components/AppBottomNav";
+import { removeCustomerPushRegistration } from "@/lib/customer-push";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/perfil/")({ component: PerfilIndexPage });
@@ -59,6 +60,7 @@ function PerfilIndexPage() {
   }, [getProfile]);
 
   const handleLogout = async () => {
+    await removeCustomerPushRegistration(true);
     const { error } = await supabase.auth.signOut();
     if (error) toast.error("Erro ao sair da conta");
     else navigate({ to: "/login" });
