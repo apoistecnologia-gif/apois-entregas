@@ -1085,7 +1085,7 @@ function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onRevi
     (type) => !docs.some((doc: any) => doc.document_type === type && doc.status === "approved"),
   );
   const approvalReady = missingDocuments.length === 0;
-  const merchantBusy = busyKey === \`merchant:\${merchant.id}\`;
+  const merchantBusy = busyKey === `merchant:${merchant.id}`;
 
   const showDocument = async (doc: any) => {
     setPreviewing(doc.id);
@@ -1185,7 +1185,7 @@ function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onRevi
         </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-3">
           {docs.map((doc: any) => {
-            const docBusy = busyKey === \`doc:\${doc.id}\`;
+            const docBusy = busyKey === `doc:${doc.id}`;
             return (
               <div key={doc.id} className="rounded-2xl border border-zinc-800 bg-black p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -1256,7 +1256,7 @@ function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onRevi
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <Button
               type="button"
-              disabled={busyKey === \`doc:\${preview.doc.id}\` || preview.doc.status === "approved"}
+              disabled={busyKey === `doc:${preview.doc.id}` || preview.doc.status === "approved"}
               onClick={() => void onDocument("merchant", preview.doc.id, "approved")}
               className="bg-emerald-600 text-white hover:bg-emerald-500"
             >
@@ -1265,7 +1265,7 @@ function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onRevi
             <Button
               type="button"
               variant="outline"
-              disabled={busyKey === \`doc:\${preview.doc.id}\`}
+              disabled={busyKey === `doc:${preview.doc.id}`}
               onClick={() => void onDocument("merchant", preview.doc.id, "rejected")}
               className="border-red-500/30 text-red-400"
             >
