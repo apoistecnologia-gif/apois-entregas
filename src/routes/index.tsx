@@ -2,19 +2,35 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Bike, MapPin, PackageCheck, Store } from "lucide-react";
 import { useEffect } from "react";
-import { getProductLandingRoute } from "@/lib/product-routing";
+import { getProductLabel, getProductLandingRoute } from "@/lib/product-routing";
 
 export const Route = createFileRoute("/")({
   component: Index,
-  head: () => ({
-    title: "APOIS ENTREGA - Seu delivery do seu jeito",
-    meta: [
-      {
-        name: "description",
-        content: "Peça comida, mercado, farmácia e lojas com rapidez e segurança.",
-      },
-    ],
-  }),
+  head: () => {
+    const landingRoute = getProductLandingRoute();
+    if (landingRoute !== "/") {
+      const productLabel = getProductLabel();
+      return {
+        title: productLabel,
+        meta: [
+          {
+            name: "description",
+            content: `${productLabel} — acesso seguro ao ecossistema APOIS ENTREGAS.`,
+          },
+        ],
+      };
+    }
+
+    return {
+      title: "APOIS ENTREGA - Seu delivery do seu jeito",
+      meta: [
+        {
+          name: "description",
+          content: "Peça comida, mercado, farmácia e lojas com rapidez e segurança.",
+        },
+      ],
+    };
+  },
 });
 
 function Index() {
@@ -29,8 +45,12 @@ function Index() {
 
   if (landingRoute !== "/") {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-black text-sm text-zinc-500">
-        Abrindo o produto correto…
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-black px-6 text-center">
+        <div className="text-lg font-black tracking-[0.08em] text-white">APOIS</div>
+        <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#FFD700]">
+          {getProductLabel()}
+        </div>
+        <div className="text-sm text-zinc-500">Abrindo o acesso correto…</div>
       </div>
     );
   }
