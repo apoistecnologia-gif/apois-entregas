@@ -85,6 +85,55 @@ jobs:
           APOIS_VERCEL_BUILD: "1"
         run: bunx vercel build --prod --token "$VERCEL_TOKEN"
 
+      - name: Enforce Admin root redirect in Vercel Build Output
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path(".vercel/output/config.json")
+          if not path.is_file():
+              raise SystemExit("Vercel Build Output config.json was not generated")
+
+          config = json.loads(path.read_text(encoding="utf-8"))
+          if config.get("version") != 3:
+              raise SystemExit(f"Unexpected Vercel Build Output version: {config.get('version')!r}")
+
+          routes = config.get("routes")
+          if not isinstance(routes, list):
+              raise SystemExit("Vercel Build Output routes array is missing")
+
+          # Vercel's Build Output API evaluates routes in order. Keep this exact-root
+          # redirect ahead of Nitro's generated filesystem/function fallbacks so `/`
+          # can never be interpreted as a missing admin route.
+          routes = [
+              route
+              for route in routes
+              if not (
+                  isinstance(route, dict)
+                  and route.get("src") in {"/", "^/$", "^\\/$"}
+                  and route.get("status") in {301, 302, 307, 308}
+              )
+          ]
+          routes.insert(
+              0,
+              {
+                  "src": "^/$",
+                  "status": 307,
+                  "headers": {"Location": "/login"},
+              },
+          )
+          config["routes"] = routes
+          path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+
+          first = routes[0]
+          if first.get("src") != "^/$" or first.get("status") != 307:
+              raise SystemExit("Admin root redirect was not installed as the first Vercel route")
+          print("APOIS_ADMIN_ROOT_REDIRECT_OK", json.dumps(first, sort_keys=True))
+          PY
+
       - name: Detach Git metadata for Hobby CLI deployment
         shell: bash
         run: rm -rf .git
