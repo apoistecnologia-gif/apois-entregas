@@ -376,7 +376,7 @@ jobs:
           RELEASE_APK=android/app/build/outputs/apk/release/app-release-signed.apk
           "$APKSIGNER_PATH" verify --verbose --print-certs "$RELEASE_APK" | tee /tmp/apois-apksigner.txt
           grep -Fq 'certificate SHA-256 digest:' /tmp/apois-apksigner.txt
-          awk -F': ' '/certificate SHA-256 digest:/ {print $2; exit}' /tmp/apois-apksigner.txt | tr -d '\r[:space:]' > /tmp/apois-signer-sha256.txt
+          awk -F': ' '/certificate SHA-256 digest:/ {print $NF; exit}' /tmp/apois-apksigner.txt | tr -d '\r[:space:]' > /tmp/apois-signer-sha256.txt
           test -s /tmp/apois-signer-sha256.txt
           grep -Eq '^[0-9a-fA-F]{64}$' /tmp/apois-signer-sha256.txt
           echo "APOIS_ANDROID_APK_SIGNATURE_OK sha256=$(cat /tmp/apois-signer-sha256.txt)"
