@@ -254,6 +254,40 @@ function AdminWorkspace() {
     await loadAll(true);
   };
 
+  const suspendMerchant = async (merchantId: string, suspended: boolean) => {
+    const reason = suspended ? window.prompt("Motivo da suspensão:")?.trim() : null;
+    if (suspended && !reason) return;
+    setBusy(`merchant:${merchantId}`);
+    const { error } = await rpc("admin_suspend_merchant", {
+      _merchant_id: merchantId,
+      _suspended: suspended,
+      _reason: reason,
+    });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success(suspended ? "Estabelecimento suspenso." : "Estabelecimento reativado.");
+    await loadAll(true);
+  };
+
+  const deleteMerchant = async (merchantId: string, merchantName: string) => {
+    const confirmed = window.confirm(
+      `Excluir definitivamente ${merchantName}? Esta ação só será permitida se não houver histórico de pedidos.`,
+    );
+    if (!confirmed) return;
+    const typed = window.prompt(`Digite EXCLUIR para confirmar a exclusão de ${merchantName}:`)?.trim();
+    if (typed !== "EXCLUIR") {
+      toast.error("Exclusão cancelada: confirmação inválida.");
+      return;
+    }
+    setBusy(`merchant:${merchantId}`);
+    const { error } = await rpc("admin_delete_merchant", { _merchant_id: merchantId });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success("Estabelecimento excluído.");
+    if (selectedMerchantId === merchantId) setSelectedMerchantId(null);
+    await loadAll(true);
+  };
+
   const reviewCourier = async (courierId: string, status: "approved" | "rejected" | "blocked") => {
     const reason = status === "approved" ? null : window.prompt("Informe o motivo:")?.trim();
     if (status !== "approved" && !reason) return;
@@ -718,6 +752,8 @@ function AdminWorkspace() {
             busyKey={busy}
             onBack={() => setSelectedMerchantId(null)}
             onReview={reviewMerchant}
+            onSuspend={suspendMerchant}
+            onDelete={deleteMerchant}
             onDocument={reviewDocument}
           />
         ) : (
@@ -730,6 +766,8 @@ function AdminWorkspace() {
                 profile={profileById.get(merchant.owner_user_id)}
                 busy={busy === `merchant:${merchant.id}`}
                 onReview={reviewMerchant}
+                onSuspend={suspendMerchant}
+                onDelete={deleteMerchant}
                 onDocument={reviewDocument}
                 onOpenDocument={openDocument}
                 onOpenDetails={() => setSelectedMerchantId(merchant.id)}
@@ -932,7 +970,7 @@ function Dashboard({
   );
 }
 
-function ApplicationCard({ kind, item, profile, busy, onReview, onDocument, onOpenDocument, onOpenDetails }: any) {
+function ApplicationCard({ kind, item, profile, busy, onReview, onSuspend, onDelete, onDocument, onOpenDocument, onOpenDetails }: any) {
   const isMerchant = kind === "merchant";
   const status = isMerchant ? item.approval_status : item.status;
   const docs = isMerchant ? (item.merchant_documents ?? []) : (item.courier_documents ?? []);
@@ -984,27 +1022,65 @@ function ApplicationCard({ kind, item, profile, busy, onReview, onDocument, onOp
           <Button
             type="button"
             size="sm"
-            disabled={busy || !approvalReady}
+            disabled={busy || !approvalReady || status === "approved"}
             title={
-              approvalReady
-                ? "Aprovar parceiro"
-                : "Aprove primeiro todos os documentos e dados obrigatórios."
+              status === "approved"
+                ? "Estabelecimento já aprovado"
+                : approvalReady
+                  ? "Aprovar parceiro"
+                  : "Aprove primeiro todos os documentos e dados obrigatórios."
             }
             onClick={() => void onReview(item.id, "approved")}
           >
-            Aprovar
+            {status === "approved" ? "Aprovado" : "Aprovar"}
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={busy}
-            onClick={() => void onReview(item.id, "rejected")}
-            className="border-red-500/20 text-red-400"
-          >
-            Reprovar
-          </Button>
-          {status === "approved" ? (
+          {status !== "approved" ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => void onReview(item.id, "rejected")}
+              className="border-red-500/20 text-red-400"
+            >
+              Reprovar
+            </Button>
+          ) : null}
+          {isMerchant && status === "approved" ? (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void onSuspend(item.id, item.is_active)}
+                className="border-amber-500/30 text-amber-300"
+              >
+                {item.is_active ? "Suspender" : "Reativar"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void onReview(item.id, "blocked")}
+                className="border-red-500/30 text-red-400"
+              >
+                Bloquear
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void onDelete(item.id, title)}
+                className="border-red-700/50 text-red-500"
+              >
+                Excluir
+              </Button>
+            </>
+          ) : null}
+          {!isMerchant && status === "approved" ? (
             <Button
               type="button"
               size="sm"
@@ -1076,7 +1152,7 @@ function ApplicationCard({ kind, item, profile, busy, onReview, onDocument, onOp
 }
 
 
-function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onReview, onDocument }: any) {
+function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onReview, onSuspend, onDelete, onDocument }: any) {
   const [preview, setPreview] = useState<{ url: string; doc: any } | null>(null);
   const [previewing, setPreviewing] = useState<string | null>(null);
   const docs = merchant.merchant_documents ?? [];
@@ -1123,21 +1199,59 @@ function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onRevi
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
-            disabled={merchantBusy || !approvalReady}
-            title={approvalReady ? "Aprovar estabelecimento" : "Aprove primeiro todos os documentos obrigatórios."}
+            disabled={merchantBusy || !approvalReady || merchant.approval_status === "approved"}
+            title={
+              merchant.approval_status === "approved"
+                ? "Estabelecimento já aprovado"
+                : approvalReady
+                  ? "Aprovar estabelecimento"
+                  : "Aprove primeiro todos os documentos obrigatórios."
+            }
             onClick={() => void onReview(merchant.id, "approved")}
           >
-            Aprovar estabelecimento
+            {merchant.approval_status === "approved" ? "Estabelecimento aprovado" : "Aprovar estabelecimento"}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={merchantBusy}
-            onClick={() => void onReview(merchant.id, "rejected")}
-            className="border-red-500/30 text-red-400"
-          >
-            Recusar cadastro
-          </Button>
+          {merchant.approval_status !== "approved" ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={merchantBusy}
+              onClick={() => void onReview(merchant.id, "rejected")}
+              className="border-red-500/30 text-red-400"
+            >
+              Recusar cadastro
+            </Button>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={merchantBusy}
+                onClick={() => void onSuspend(merchant.id, merchant.is_active)}
+                className="border-amber-500/30 text-amber-300"
+              >
+                {merchant.is_active ? "Suspender" : "Reativar"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={merchantBusy}
+                onClick={() => void onReview(merchant.id, "blocked")}
+                className="border-red-500/30 text-red-400"
+              >
+                Bloquear
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={merchantBusy}
+                onClick={() => void onDelete(merchant.id, merchant.name)}
+                className="border-red-700/50 text-red-500"
+              >
+                Excluir
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
