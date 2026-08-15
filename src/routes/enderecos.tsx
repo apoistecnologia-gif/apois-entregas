@@ -127,7 +127,7 @@ function EnderecosLayout() {
       }
       sessionStorage.setItem("apois_checkout_address_changed", "1");
       toast.success("Endereço confirmado");
-      await navigate({ to: "/sacola" });
+      router.history.back();
     } catch (error) {
       console.error("Error setting default address:", error);
       toast.error("Não foi possível confirmar este endereço");
@@ -166,7 +166,7 @@ function EnderecosLayout() {
       <header className="sticky top-0 z-50 flex items-center justify-center border-b border-zinc-900 bg-black/90 px-4 py-4 backdrop-blur-lg">
         <button
           type="button"
-          onClick={() => navigate({ to: "/sacola" })}
+          onClick={() => router.history.back()}
           className="absolute left-3 rounded-full p-2 text-primary active:bg-white/10"
           aria-label="Voltar"
         >

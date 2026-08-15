@@ -636,8 +636,8 @@ function MerchantWorkspace() {
       const addressPatch: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
       };
-      if (mappedAddressLine) addressPatch.address_line = mappedAddressLine;
-      if (address.neighborhood) addressPatch.neighborhood = address.neighborhood;
+      if (mappedAddressLine) addressPatch["address_line"] = mappedAddressLine;
+      if (address.neighborhood) addressPatch["neighborhood"] = address.neighborhood;
 
       if (Object.keys(addressPatch).length > 1) {
         const { error } = await from("merchants").update(addressPatch).eq("id", merchant.id);
