@@ -29,48 +29,6 @@ jobs:
           path = Path('src/routes/courier.tsx')
           text = path.read_text()
 
-          old_upload = '''  const uploadDocument = async (documentType: string, file: File) => {
-            if (!courier?.id || !user?.id) return;
-            const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
-            if (!allowedTypes.has(file.type)) {
-              toast.error("Envie uma imagem JPG, PNG, WEBP ou um arquivo PDF.");
-              return;
-            }
-            if (file.size > 15 * 1024 * 1024) {
-              toast.error("O documento deve ter no máximo 15 MB.");
-              return;
-            }
-            setBusy(`doc:${documentType}`);
-            try {
-              const extension = file.name.split(".").pop()?.toLowerCase() || "bin";
-              const path = `${user.id}/${documentType}-${Date.now()}.${extension}`;
-              const upload = await supabase.storage
-                .from("courier-documents")
-                .upload(path, file, { upsert: false });
-              if (upload.error) throw upload.error;
-              const existing = documents.find((doc) => doc.document_type === documentType);
-              const write = existing
-                ? await from("courier_documents")
-                    .update({ storage_path: path, status: "pending" })
-                    .eq("id", existing.id)
-                : await from("courier_documents").insert({
-                    courier_id: courier.id,
-                    document_type: documentType,
-                    storage_path: path,
-                    status: "pending",
-                  });
-              if (write.error) throw write.error;
-              toast.success(
-                "Documento enviado com sucesso. Seu cadastro ficará em análise até a aprovação.",
-              );
-              await loadAll(true);
-            } catch (error: any) {
-              toast.error(error?.message || "Falha ao enviar documento.");
-            } finally {
-              setBusy(null);
-            }
-          };'''
-
           new_upload = '''  const uploadDocument = async (documentType: string, file: File) => {
             if (!courier?.id || !user?.id) return;
             const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
@@ -124,94 +82,15 @@ jobs:
               await loadAll(true);
             } catch (error: any) {
               if (uploadedPath && !metadataCommitted) {
-                await supabase.storage.from("courier-documents").remove([uploadedPath]).catch(() => undefined);
+                await supabase.storage
+                  .from("courier-documents")
+                  .remove([uploadedPath])
+                  .catch(() => undefined);
               }
               toast.error(error?.message || "Falha ao enviar documento.");
             } finally {
               setBusy(null);
             }
-          };'''
-
-          old_toggle = '''  const toggleOnline = async () => {
-            if (!courier?.id) return;
-            const target = !availability?.is_online;
-
-            if (target) {
-              if (isNativeCourierAndroid()) {
-                setBusy("online");
-                const pushState = await ensureCourierPushRegistration(true);
-                if (pushState.status !== "registered") {
-                  setBusy(null);
-                  const message =
-                    pushState.status === "permission-denied"
-                      ? "Ative as notificações para ficar online e receber chamadas de entrega."
-                      : pushState.status === "permission-required"
-                        ? "Autorize as notificações para receber chamadas de entrega."
-                        : pushState.status === "failed"
-                          ? `Não foi possível ativar as chamadas de entrega: ${pushState.message}`
-                          : "As chamadas nativas de entrega não estão disponíveis neste dispositivo.";
-                  toast.error(message);
-                  return;
-                }
-              }
-              if (!navigator.geolocation) {
-                toast.error(
-                  "Este dispositivo não disponibiliza localização. Ative o GPS para ficar online.",
-                );
-                return;
-              }
-              try {
-                const position = await new Promise<GeolocationPosition>((resolve, reject) =>
-                  navigator.geolocation.getCurrentPosition(resolve, reject, {
-                    enableHighAccuracy: true,
-                    timeout: 15000,
-                  }),
-                );
-                setBusy("online");
-                const { error } = await rpc("set_courier_online", { _is_online: true });
-                if (error) throw error;
-
-                const initialPosition: CourierPosition = {
-                  lat: position.coords.latitude,
-                  lng: position.coords.longitude,
-                  accuracy: Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : null,
-                  heading:
-                    position.coords.heading !== null && Number.isFinite(position.coords.heading)
-                      ? position.coords.heading
-                      : null,
-                  speed:
-                    position.coords.speed !== null && Number.isFinite(position.coords.speed)
-                      ? position.coords.speed
-                      : null,
-                  recordedAt: Date.now(),
-                };
-                const { error: locationError } = await rpc("update_courier_location", {
-                  _latitude: initialPosition.lat,
-                  _longitude: initialPosition.lng,
-                  _accuracy_meters: initialPosition.accuracy,
-                  _heading: initialPosition.heading,
-                  _speed_mps: initialPosition.speed,
-                });
-                if (locationError) {
-                  await rpc("set_courier_online", { _is_online: false });
-                  throw locationError;
-                }
-                setCurrentPosition(initialPosition);
-              } catch (error: any) {
-                setBusy(null);
-                return toast.error(error?.message || "Ative a localização para ficar online.");
-              }
-            } else {
-              setBusy("online");
-              const { error } = await rpc("set_courier_online", { _is_online: false });
-              if (error) {
-                setBusy(null);
-                return toast.error(error.message);
-              }
-              setCurrentPosition(null);
-            }
-            setBusy(null);
-            await loadCourierOperations(courier.id);
           };'''
 
           new_toggle = '''  const toggleOnline = async () => {
@@ -274,8 +153,6 @@ jobs:
                 });
                 if (locationError) throw locationError;
 
-                // Persist a fresh position before marking the courier online. This
-                // prevents dispatch from using a previous, merely-recent coordinate.
                 const { error: onlineError } = await rpc("set_courier_online", {
                   _is_online: true,
                 });
@@ -295,14 +172,13 @@ jobs:
             }
           };'''
 
-          for old, new, label in [
-              (old_upload, new_upload, 'uploadDocument'),
-              (old_toggle, new_toggle, 'toggleOnline'),
-          ]:
-              if old not in text:
-                  raise SystemExit(f'expected {label} block not found')
-              text = text.replace(old, new, 1)
+          start = text.index('  const uploadDocument = async (documentType: string, file: File) => {')
+          end = text.index('\n\n  const toggleOnline = async () => {', start)
+          text = text[:start] + new_upload + text[end:]
 
+          start = text.index('  const toggleOnline = async () => {')
+          end = text.index('\n\n  const acceptOffer = async (offerId: string) => {', start)
+          text = text[:start] + new_toggle + text[end:]
           path.write_text(text)
           PY
       - run: bunx prettier --write src/routes/courier.tsx
