@@ -274,7 +274,9 @@ function AdminWorkspace() {
       `Excluir definitivamente ${merchantName}? Esta ação só será permitida se não houver histórico de pedidos.`,
     );
     if (!confirmed) return;
-    const typed = window.prompt(`Digite EXCLUIR para confirmar a exclusão de ${merchantName}:`)?.trim();
+    const typed = window
+      .prompt(`Digite EXCLUIR para confirmar a exclusão de ${merchantName}:`)
+      ?.trim();
     if (typed !== "EXCLUIR") {
       toast.error("Exclusão cancelada: confirmação inválida.");
       return;
@@ -744,8 +746,8 @@ function AdminWorkspace() {
         />
       )}
 
-      {activeTab === "merchants" && (
-        selectedMerchant ? (
+      {activeTab === "merchants" &&
+        (selectedMerchant ? (
           <MerchantApplicationDetails
             merchant={selectedMerchant}
             profile={profileById.get(selectedMerchant.owner_user_id)}
@@ -780,8 +782,7 @@ function AdminWorkspace() {
               />
             ) : null}
           </div>
-        )
-      )}
+        ))}
 
       {activeTab === "couriers" && (
         <div className="space-y-4">
@@ -970,7 +971,18 @@ function Dashboard({
   );
 }
 
-function ApplicationCard({ kind, item, profile, busy, onReview, onSuspend, onDelete, onDocument, onOpenDocument, onOpenDetails }: any) {
+function ApplicationCard({
+  kind,
+  item,
+  profile,
+  busy,
+  onReview,
+  onSuspend,
+  onDelete,
+  onDocument,
+  onOpenDocument,
+  onOpenDetails,
+}: any) {
   const isMerchant = kind === "merchant";
   const status = isMerchant ? item.approval_status : item.status;
   const docs = isMerchant ? (item.merchant_documents ?? []) : (item.courier_documents ?? []);
@@ -1151,8 +1163,16 @@ function ApplicationCard({ kind, item, profile, busy, onReview, onSuspend, onDel
   );
 }
 
-
-function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onReview, onSuspend, onDelete, onDocument }: any) {
+function MerchantApplicationDetails({
+  merchant,
+  profile,
+  busyKey,
+  onBack,
+  onReview,
+  onSuspend,
+  onDelete,
+  onDocument,
+}: any) {
   const [preview, setPreview] = useState<{ url: string; doc: any } | null>(null);
   const [previewing, setPreviewing] = useState<string | null>(null);
   const docs = merchant.merchant_documents ?? [];
@@ -1179,7 +1199,9 @@ function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onRevi
   const field = (label: string, value: unknown) => (
     <div className="rounded-xl border border-zinc-900 bg-black p-3">
       <p className="text-[10px] font-black uppercase tracking-wider text-zinc-600">{label}</p>
-      <p className="mt-1 break-words text-sm font-semibold text-zinc-200">{String(value || "Não informado")}</p>
+      <p className="mt-1 break-words text-sm font-semibold text-zinc-200">
+        {String(value || "Não informado")}
+      </p>
     </div>
   );
 
@@ -1194,7 +1216,9 @@ function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onRevi
             <h2 className="text-2xl font-black">{merchant.name}</h2>
             <Status value={merchant.approval_status} />
           </div>
-          <p className="mt-1 text-sm text-zinc-500">Revisão completa antes da aprovação do parceiro.</p>
+          <p className="mt-1 text-sm text-zinc-500">
+            Revisão completa antes da aprovação do parceiro.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -1209,7 +1233,9 @@ function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onRevi
             }
             onClick={() => void onReview(merchant.id, "approved")}
           >
-            {merchant.approval_status === "approved" ? "Estabelecimento aprovado" : "Aprovar estabelecimento"}
+            {merchant.approval_status === "approved"
+              ? "Estabelecimento aprovado"
+              : "Aprovar estabelecimento"}
           </Button>
           {merchant.approval_status !== "approved" ? (
             <Button
@@ -1257,11 +1283,13 @@ function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onRevi
 
       {!approvalReady ? (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
-          Aprovação bloqueada até revisar: {missingDocuments.map((type) => type.replaceAll("_", " ")).join(", ")}.
+          Aprovação bloqueada até revisar:{" "}
+          {missingDocuments.map((type) => type.replaceAll("_", " ")).join(", ")}.
         </div>
       ) : (
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-300">
-          Todos os documentos obrigatórios estão aprovados. O cadastro pode ser aprovado após a conferência dos dados abaixo.
+          Todos os documentos obrigatórios estão aprovados. O cadastro pode ser aprovado após a
+          conferência dos dados abaixo.
         </div>
       )}
 
@@ -1295,7 +1323,9 @@ function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onRevi
       <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
         <div>
           <h3 className="text-lg font-black">Documentos para conferência</h3>
-          <p className="mt-1 text-sm text-zinc-500">Abra cada documento em tamanho maior e aprove ou recuse individualmente.</p>
+          <p className="mt-1 text-sm text-zinc-500">
+            Abra cada documento em tamanho maior e aprove ou recuse individualmente.
+          </p>
         </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-3">
           {docs.map((doc: any) => {
@@ -1304,12 +1334,18 @@ function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onRevi
               <div key={doc.id} className="rounded-2xl border border-zinc-800 bg-black p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-black capitalize">{doc.document_type.replaceAll("_", " ")}</p>
-                    <div className="mt-2"><Status value={doc.status} /></div>
+                    <p className="font-black capitalize">
+                      {doc.document_type.replaceAll("_", " ")}
+                    </p>
+                    <div className="mt-2">
+                      <Status value={doc.status} />
+                    </div>
                   </div>
                   <FileCheck2 className="h-5 w-5 text-zinc-600" />
                 </div>
-                {doc.rejection_reason ? <p className="mt-3 text-sm text-red-300">{doc.rejection_reason}</p> : null}
+                {doc.rejection_reason ? (
+                  <p className="mt-3 text-sm text-red-300">{doc.rejection_reason}</p>
+                ) : null}
                 <div className="mt-4 grid gap-2">
                   <Button
                     type="button"
@@ -1350,21 +1386,37 @@ function MerchantApplicationDetails({ merchant, profile, busyKey, onBack, onRevi
         <section className="rounded-2xl border border-primary/30 bg-zinc-950 p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="font-black capitalize">{preview.doc.document_type.replaceAll("_", " ")}</p>
+              <p className="font-black capitalize">
+                {preview.doc.document_type.replaceAll("_", " ")}
+              </p>
               <p className="text-xs text-zinc-500">Visualização ampliada para conferência.</p>
             </div>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => window.open(preview.url, "_blank", "noopener,noreferrer")}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => window.open(preview.url, "_blank", "noopener,noreferrer")}
+              >
                 Abrir em nova aba
               </Button>
-              <Button type="button" variant="outline" onClick={() => setPreview(null)}>Fechar</Button>
+              <Button type="button" variant="outline" onClick={() => setPreview(null)}>
+                Fechar
+              </Button>
             </div>
           </div>
           {String(preview.doc.storage_path).toLowerCase().endsWith(".pdf") ? (
-            <iframe title="Documento do estabelecimento" src={preview.url} className="h-[70vh] w-full rounded-xl border border-zinc-800 bg-white" />
+            <iframe
+              title="Documento do estabelecimento"
+              src={preview.url}
+              className="h-[70vh] w-full rounded-xl border border-zinc-800 bg-white"
+            />
           ) : (
             <div className="grid min-h-[420px] place-items-center overflow-auto rounded-xl border border-zinc-800 bg-black p-3">
-              <img src={preview.url} alt="Documento do estabelecimento" className="max-h-[70vh] max-w-full object-contain" />
+              <img
+                src={preview.url}
+                alt="Documento do estabelecimento"
+                className="max-h-[70vh] max-w-full object-contain"
+              />
             </div>
           )}
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
