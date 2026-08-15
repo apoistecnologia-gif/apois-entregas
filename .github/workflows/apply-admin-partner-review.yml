@@ -3,7 +3,7 @@ name: Apply Admin Partner Review UI
 on:
   push:
     paths:
-      - '.github/workflows/apply-admin-partner-review.yml'
+      - ".github/workflows/apply-admin-partner-review.yml"
 
 permissions:
   contents: write
@@ -20,7 +20,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
 
       - name: Apply patch
         run: node scripts/apply-admin-partner-review.mjs
