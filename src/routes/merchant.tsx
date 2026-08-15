@@ -624,29 +624,13 @@ function MerchantWorkspace() {
     longitude?: number | null;
   }) => {
     if (!merchant?.id || address.latitude == null || address.longitude == null) return;
-    const mappedAddressLine = [address.street, address.number].filter(Boolean).join(", ");
+    // GoogleMapsAddressSelector persists the complete, validated merchant address
+    // atomically through confirm_merchant_mapped_address. Reload only after success;
+    // never patch address text independently from its coordinates/city.
     setBusyAction("merchant-map-location");
     try {
-      const { error: coordinateError } = await rpc("set_merchant_mapped_location", {
-        _latitude: address.latitude,
-        _longitude: address.longitude,
-      });
-      if (coordinateError) throw coordinateError;
-
-      const addressPatch: Record<string, unknown> = {
-        updated_at: new Date().toISOString(),
-      };
-      if (mappedAddressLine) addressPatch["address_line"] = mappedAddressLine;
-      if (address.neighborhood) addressPatch["neighborhood"] = address.neighborhood;
-
-      if (Object.keys(addressPatch).length > 1) {
-        const { error } = await from("merchants").update(addressPatch).eq("id", merchant.id);
-        if (error) throw error;
-      }
-
       await loadAll(true);
-    } catch (error: any) {
-      toast.error(error?.message || "Não foi possível salvar o ponto da loja.");
+      toast.success("Endereço físico e ponto da loja atualizados.");
     } finally {
       setBusyAction(null);
     }

@@ -70,11 +70,32 @@ export function GoogleMapsAddressSelector({
     return session.access_token;
   };
 
-  const persistMerchantCoordinates = async (lat: number, lng: number) => {
+  const persistMerchantMappedAddress = async (
+    address: {
+      street: string;
+      number: string;
+      neighborhood: string;
+      city: string;
+      state: string;
+      postal_code: string;
+    },
+    lat: number,
+    lng: number,
+  ) => {
     if (!isMerchantProduct) return;
-    const { error } = await (supabase as any).rpc("set_merchant_mapped_location", {
+    const addressLine = [address.street, address.number].filter(Boolean).join(", ").trim();
+    if (!addressLine || !address.city || !address.state) {
+      throw new Error(
+        "O mapa não retornou endereço, cidade e estado suficientes para confirmar a loja.",
+      );
+    }
+    const { error } = await (supabase as any).rpc("confirm_merchant_mapped_address", {
       _latitude: lat,
       _longitude: lng,
+      _city: address.city,
+      _state: address.state,
+      _address_line: addressLine,
+      _neighborhood: address.neighborhood || null,
     });
     if (error) throw error;
   };
@@ -112,48 +133,54 @@ export function GoogleMapsAddressSelector({
     setIsConfirming(true);
 
     try {
-      await persistMerchantCoordinates(lat, lng);
-    } catch (error) {
-      console.error("Merchant mapped location error:", error);
-      setIsConfirming(false);
-      toast.error("Não foi possível salvar o ponto da loja. Tente novamente pelo mapa.");
-      return;
-    }
-
-    // Coordinates are the authoritative delivery point. Persist them even when reverse
-    // geocoding is unavailable so the checkout never gets stuck behind a decorative pin.
-    onAddressSelected({
-      street: "",
-      number: "",
-      neighborhood: "",
-      city: "",
-      state: "",
-      postal_code: "",
-      latitude: lat,
-      longitude: lng,
-    });
-
-    try {
       const accessToken = await getAccessToken();
       const data = await geocodeFn({ data: { lat, lng, accessToken } });
       const first = data.results[0];
+
+      if (isMerchantProduct) {
+        if (!first) {
+          throw new Error("Não foi possível validar o endereço físico deste ponto.");
+        }
+        const address = parseAddressComponents(first.address_components);
+        await persistMerchantMappedAddress(address, lat, lng);
+        onAddressSelected({ ...address, latitude: lat, longitude: lng });
+        setPointConfirmed(true);
+        toast.success(successMessage || "Ponto e endereço físico da loja confirmados!");
+        return;
+      }
+
+      // For customers, coordinates remain authoritative even if reverse geocoding is
+      // temporarily unavailable. The saved-address flow still validates ownership.
+      onAddressSelected({
+        street: "",
+        number: "",
+        neighborhood: "",
+        city: "",
+        state: "",
+        postal_code: "",
+        latitude: lat,
+        longitude: lng,
+      });
+
       if (first) {
         const address = parseAddressComponents(first.address_components);
         onAddressSelected({ ...address, latitude: lat, longitude: lng });
       }
       setPointConfirmed(true);
-      toast.success(
-        successMessage ||
-          (isMerchantProduct ? "Ponto da loja confirmado!" : "Ponto de entrega confirmado!"),
-      );
+      toast.success(successMessage || "Ponto de entrega confirmado!");
     } catch (error) {
-      console.error("Reverse geocoding error:", error);
-      setPointConfirmed(true);
-      toast.success(
-        isMerchantProduct
-          ? "Ponto da loja confirmado. Revise os dados do endereço antes de salvar."
-          : "Ponto de entrega confirmado. Revise os dados do endereço antes de salvar.",
-      );
+      console.error("Reverse geocoding / merchant address confirmation error:", error);
+      if (isMerchantProduct) {
+        setPointConfirmed(false);
+        toast.error(
+          error instanceof Error && error.message
+            ? error.message
+            : "Não foi possível validar e salvar o endereço físico da loja.",
+        );
+      } else {
+        setPointConfirmed(true);
+        toast.success("Ponto de entrega confirmado. Revise os dados do endereço antes de salvar.");
+      }
     } finally {
       setIsConfirming(false);
     }
@@ -229,9 +256,9 @@ export function GoogleMapsAddressSelector({
 
       const { lat, lng } = result.geometry.location;
       setHasExplicitPoint(true);
-      await persistMerchantCoordinates(lat, lng);
-      setMarkerPos({ lat, lng });
       const address = parseAddressComponents(result.address_components);
+      await persistMerchantMappedAddress(address, lat, lng);
+      setMarkerPos({ lat, lng });
       onAddressSelected({ ...address, latitude: lat, longitude: lng });
       setPointConfirmed(true);
       toast.success(
