@@ -350,6 +350,8 @@ function CourierApp() {
       return;
     }
     setBusy(`doc:${documentType}`);
+    let uploadedPath: string | null = null;
+    let metadataCommitted = false;
     try {
       const extension = file.name.split(".").pop()?.toLowerCase() || "bin";
       const path = `${user.id}/${documentType}-${Date.now()}.${extension}`;
@@ -357,7 +359,10 @@ function CourierApp() {
         .from("courier-documents")
         .upload(path, file, { upsert: false });
       if (upload.error) throw upload.error;
+      uploadedPath = path;
+
       const existing = documents.find((doc) => doc.document_type === documentType);
+      const previousStoragePath = existing?.storage_path ?? null;
       const write = existing
         ? await from("courier_documents")
             .update({ storage_path: path, status: "pending" })
@@ -369,11 +374,28 @@ function CourierApp() {
             status: "pending",
           });
       if (write.error) throw write.error;
+      metadataCommitted = true;
+
+      if (previousStoragePath && previousStoragePath !== path) {
+        const { error: cleanupError } = await supabase.storage
+          .from("courier-documents")
+          .remove([previousStoragePath]);
+        if (cleanupError) {
+          console.warn("courier old document cleanup pending", cleanupError.message);
+        }
+      }
+
       toast.success(
         "Documento enviado com sucesso. Seu cadastro ficará em análise até a aprovação.",
       );
       await loadAll(true);
     } catch (error: any) {
+      if (uploadedPath && !metadataCommitted) {
+        await supabase.storage
+          .from("courier-documents")
+          .remove([uploadedPath])
+          .catch(() => undefined);
+      }
       toast.error(error?.message || "Falha ao enviar documento.");
     } finally {
       setBusy(null);
@@ -381,43 +403,40 @@ function CourierApp() {
   };
 
   const toggleOnline = async () => {
-    if (!courier?.id) return;
+    if (!courier?.id || busy === "online") return;
     const target = !availability?.is_online;
+    setBusy("online");
 
-    if (target) {
-      if (isNativeCourierAndroid()) {
-        setBusy("online");
-        const pushState = await ensureCourierPushRegistration(true);
-        if (pushState.status !== "registered") {
-          setBusy(null);
-          const message =
-            pushState.status === "permission-denied"
-              ? "Ative as notificações para ficar online e receber chamadas de entrega."
-              : pushState.status === "permission-required"
-                ? "Autorize as notificações para receber chamadas de entrega."
-                : pushState.status === "failed"
-                  ? `Não foi possível ativar as chamadas de entrega: ${pushState.message}`
-                  : "As chamadas nativas de entrega não estão disponíveis neste dispositivo.";
-          toast.error(message);
-          return;
+    try {
+      if (target) {
+        if (isNativeCourierAndroid()) {
+          const pushState = await ensureCourierPushRegistration(true);
+          if (pushState.status !== "registered") {
+            const message =
+              pushState.status === "permission-denied"
+                ? "Ative as notificações para ficar online e receber chamadas de entrega."
+                : pushState.status === "permission-required"
+                  ? "Autorize as notificações para receber chamadas de entrega."
+                  : pushState.status === "failed"
+                    ? `Não foi possível ativar as chamadas de entrega: ${pushState.message}`
+                    : "As chamadas nativas de entrega não estão disponíveis neste dispositivo.";
+            throw new Error(message);
+          }
         }
-      }
-      if (!navigator.geolocation) {
-        toast.error(
-          "Este dispositivo não disponibiliza localização. Ative o GPS para ficar online.",
-        );
-        return;
-      }
-      try {
+
+        if (!navigator.geolocation) {
+          throw new Error(
+            "Este dispositivo não disponibiliza localização. Ative o GPS para ficar online.",
+          );
+        }
+
         const position = await new Promise<GeolocationPosition>((resolve, reject) =>
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             enableHighAccuracy: true,
             timeout: 15000,
+            maximumAge: 0,
           }),
         );
-        setBusy("online");
-        const { error } = await rpc("set_courier_online", { _is_online: true });
-        if (error) throw error;
 
         const initialPosition: CourierPosition = {
           lat: position.coords.latitude,
@@ -433,6 +452,7 @@ function CourierApp() {
               : null,
           recordedAt: Date.now(),
         };
+
         const { error: locationError } = await rpc("update_courier_location", {
           _latitude: initialPosition.lat,
           _longitude: initialPosition.lng,
@@ -440,26 +460,25 @@ function CourierApp() {
           _heading: initialPosition.heading,
           _speed_mps: initialPosition.speed,
         });
-        if (locationError) {
-          await rpc("set_courier_online", { _is_online: false });
-          throw locationError;
-        }
+        if (locationError) throw locationError;
+
+        const { error: onlineError } = await rpc("set_courier_online", {
+          _is_online: true,
+        });
+        if (onlineError) throw onlineError;
         setCurrentPosition(initialPosition);
-      } catch (error: any) {
-        setBusy(null);
-        return toast.error(error?.message || "Ative a localização para ficar online.");
+      } else {
+        const { error } = await rpc("set_courier_online", { _is_online: false });
+        if (error) throw error;
+        setCurrentPosition(null);
       }
-    } else {
-      setBusy("online");
-      const { error } = await rpc("set_courier_online", { _is_online: false });
-      if (error) {
-        setBusy(null);
-        return toast.error(error.message);
-      }
-      setCurrentPosition(null);
+
+      await loadCourierOperations(courier.id);
+    } catch (error: any) {
+      toast.error(error?.message || "Não foi possível atualizar sua disponibilidade.");
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
-    await loadCourierOperations(courier.id);
   };
 
   const acceptOffer = async (offerId: string) => {
