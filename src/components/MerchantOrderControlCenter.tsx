@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, PackageCheck, Truck, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getApoisProductMode } from "@/lib/product-routing";
-import { Button } from "@/components/ui/button";
 
 type MerchantOrder = {
   id: string;
@@ -31,6 +31,16 @@ const ACTIVE_STATUSES = [
   "on_the_way",
 ];
 
+const PRE_PICKUP_CANCELLABLE_STATUSES = [
+  "confirmed",
+  "accepted",
+  "preparing",
+  "ready",
+  "searching_driver",
+  "driver_assigned",
+  "driver_arriving_store",
+];
+
 const STATUS_LABELS: Record<string, string> = {
   confirmed: "Novo pedido",
   accepted: "Pedido aceito",
@@ -45,10 +55,86 @@ const STATUS_LABELS: Record<string, string> = {
   on_the_way: "A caminho",
 };
 
+const READY_PROMPT_STORAGE_KEY = "apois_merchant_ready_delivery_prompts";
+
 function money(value: MerchantOrder["total"]) {
   return `R$ ${Number(value ?? 0)
     .toFixed(2)
     .replace(".", ",")}`;
+}
+
+function loadReadyPromptedOrders() {
+  if (typeof window === "undefined") return new Set<string>();
+  try {
+    const parsed = JSON.parse(localStorage.getItem(READY_PROMPT_STORAGE_KEY) ?? "[]");
+    return new Set<string>(
+      Array.isArray(parsed) ? parsed.filter((value) => typeof value === "string") : [],
+    );
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function persistReadyPromptedOrders(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(READY_PROMPT_STORAGE_KEY, JSON.stringify(Array.from(ids).slice(-150)));
+}
+
+function markReadyPrompted(ids: Set<string>, orderId: string) {
+  ids.add(orderId);
+  persistReadyPromptedOrders(ids);
+}
+
+function courierDispatchErrorMessage(message?: string | null) {
+  const normalized = String(message ?? "").toLowerCase();
+  if (normalized.includes("merchant pickup location required")) {
+    return {
+      title: "Confirme a localização da loja.",
+      description:
+        "Antes de solicitar um entregador, abra as configurações do estabelecimento e confirme o ponto exato da loja no mapa.",
+    };
+  }
+  if (normalized.includes("delivery coordinates required")) {
+    return {
+      title: "O endereço de entrega não tem localização válida.",
+      description:
+        "Este pedido não possui coordenadas confirmadas no mapa. Cancele o pedido de teste ou faça um novo pedido com endereço válido.",
+    };
+  }
+  if (normalized.includes("courier dispatch radius required")) {
+    return {
+      title: "Busca de entregadores ainda não configurada para esta cidade.",
+      description:
+        "O administrador precisa definir o raio de busca de entregadores antes de iniciar os chamados.",
+    };
+  }
+  if (normalized.includes("pix payment must be confirmed")) {
+    return {
+      title: "Pagamento ainda não confirmado.",
+      description: "A busca por entregador só pode começar depois da confirmação do pagamento.",
+    };
+  }
+  if (normalized.includes("order must be ready")) {
+    return {
+      title: "O pedido ainda não está pronto para despacho.",
+      description: "Conclua as etapas de aceite e preparo antes de solicitar um entregador.",
+    };
+  }
+  return {
+    title: "Não foi possível solicitar o entregador.",
+    description: message || "Tente novamente em instantes.",
+  };
+}
+
+function cancellationErrorMessage(message?: string | null) {
+  const normalized = String(message ?? "").toLowerCase();
+  if (normalized.includes("order can no longer be rejected")) {
+    return "Este pedido já foi coletado ou avançou além do ponto em que o estabelecimento pode cancelar.";
+  }
+  if (normalized.includes("cancellation reason is required")) {
+    return "Informe o motivo do cancelamento.";
+  }
+  return message || "Não foi possível cancelar o pedido.";
 }
 
 function MerchantOrderControlCenter() {
@@ -57,7 +143,7 @@ function MerchantOrderControlCenter() {
   const [orders, setOrders] = useState<MerchantOrder[]>([]);
   const [open, setOpen] = useState(false);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
-  const readyPromptedRef = useRef<Set<string>>(new Set());
+  const readyPromptedRef = useRef<Set<string>>(loadReadyPromptedOrders());
 
   const loadOrders = useCallback(async (id: string) => {
     const { data, error } = await supabase
@@ -150,9 +236,10 @@ function MerchantOrderControlCenter() {
     );
     if (!readyOrder) return;
 
-    readyPromptedRef.current.add(readyOrder.id);
+    markReadyPrompted(readyPromptedRef.current, readyOrder.id);
     setOpen(true);
     toast.success(`Pedido #${readyOrder.order_number} está pronto.`, {
+      id: `merchant-ready-${readyOrder.id}`,
       description: "Agora solicite um entregador para iniciar a busca.",
       duration: 12_000,
     });
@@ -162,6 +249,7 @@ function MerchantOrderControlCenter() {
     () => orders.filter((order) => order.status === "confirmed").length,
     [orders],
   );
+
   const readyDeliveryOrder = useMemo(
     () =>
       orders.find(
@@ -189,7 +277,10 @@ function MerchantOrderControlCenter() {
     if (status === "accepted") toast.success("Pedido aceito.");
     else if (status === "preparing") toast.success("Preparo iniciado.");
     else if (status === "ready") {
+      markReadyPrompted(readyPromptedRef.current, orderId);
+      setOpen(true);
       toast.success("Pedido marcado como pronto.", {
+        id: `merchant-ready-${orderId}`,
         description: "Agora solicite um entregador para iniciar a busca.",
         duration: 12_000,
       });
@@ -205,12 +296,19 @@ function MerchantOrderControlCenter() {
       _order_id: orderId,
     });
     setBusyOrderId(null);
+
     if (error || !data) {
-      toast.error(error?.message || "Não foi possível solicitar o entregador.");
+      const feedback = courierDispatchErrorMessage(error?.message);
+      toast.error(feedback.title, {
+        description: feedback.description,
+        duration: 14_000,
+      });
       return;
     }
-    toast.success("Entregador solicitado.", {
-      description: "A busca por entregadores próximos foi iniciada.",
+
+    toast.success("Busca por entregador iniciada.", {
+      description:
+        "O sistema continuará procurando entregadores aptos, online e próximos ao estabelecimento.",
       duration: 12_000,
     });
     await loadOrders(merchantId);
@@ -241,7 +339,7 @@ function MerchantOrderControlCenter() {
     }
 
     setBusyOrderId(null);
-    if (error) toast.error(error.message || "Não foi possível cancelar o pedido.");
+    if (error) toast.error(cancellationErrorMessage(error.message));
     await loadOrders(merchantId);
   };
 
@@ -273,7 +371,7 @@ function MerchantOrderControlCenter() {
               const paymentReady =
                 order.payment_method !== "pix" || order.payment_status === "paid";
               const busy = busyOrderId === order.id;
-              const canReject = ["confirmed", "accepted", "preparing"].includes(order.status);
+              const canReject = PRE_PICKUP_CANCELLABLE_STATUSES.includes(order.status);
 
               return (
                 <article key={order.id} className="rounded-2xl border border-zinc-800 bg-black p-4">
@@ -305,6 +403,7 @@ function MerchantOrderControlCenter() {
                         Aceitar pedido
                       </Button>
                     ) : null}
+
                     {order.status === "accepted" ? (
                       <Button
                         type="button"
@@ -316,6 +415,7 @@ function MerchantOrderControlCenter() {
                         Iniciar preparo
                       </Button>
                     ) : null}
+
                     {order.status === "preparing" ? (
                       <Button
                         type="button"
@@ -331,6 +431,7 @@ function MerchantOrderControlCenter() {
                         Pedido pronto
                       </Button>
                     ) : null}
+
                     {order.status === "ready" && order.fulfillment_type === "delivery" ? (
                       <Button
                         type="button"
@@ -346,21 +447,25 @@ function MerchantOrderControlCenter() {
                         Solicitar entregador
                       </Button>
                     ) : null}
+
                     {order.status === "searching_driver" ? (
                       <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-bold text-emerald-300">
-                        Buscando entregador próximo.
+                        Buscando entregador apto, online e próximo.
                       </div>
                     ) : null}
+
                     {["driver_assigned", "driver_arriving_store"].includes(order.status) ? (
                       <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-bold text-emerald-300">
                         Entregador atribuído para este pedido.
                       </div>
                     ) : null}
+
                     {order.status === "ready_for_pickup" ? (
                       <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs font-bold text-primary">
                         Pronto para retirada. Confirme o PIN do cliente na aba Pedidos.
                       </div>
                     ) : null}
+
                     {canReject ? (
                       <Button
                         type="button"
