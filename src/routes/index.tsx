@@ -2,7 +2,12 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Bike, MapPin, PackageCheck, Store } from "lucide-react";
 import { useEffect } from "react";
-import { getProductLabel, getProductLandingRoute } from "@/lib/product-routing";
+import {
+  getApoisProductMode,
+  getProductLabel,
+  getProductLandingRoute,
+} from "@/lib/product-routing";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -38,9 +43,24 @@ function Index() {
   const landingRoute = getProductLandingRoute();
 
   useEffect(() => {
-    if (landingRoute !== "/") {
-      void navigate({ to: landingRoute, replace: true });
-    }
+    if (landingRoute === "/") return;
+
+    let cancelled = false;
+    void (async () => {
+      // O domínio público dos estabelecimentos deve sempre começar na tela de
+      // acesso. Uma sessão antiga do navegador não pode pular essa entrada e
+      // abrir diretamente o cadastro/painel do último estabelecimento usado.
+      if (getApoisProductMode() === "merchant") {
+        await supabase.auth.signOut({ scope: "local" });
+      }
+      if (!cancelled) {
+        await navigate({ to: landingRoute, replace: true });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [landingRoute, navigate]);
 
   if (landingRoute !== "/") {
