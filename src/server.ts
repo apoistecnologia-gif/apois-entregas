@@ -28,9 +28,21 @@ function enforceProductRouteBoundary(request: Request): Response | null {
 
   const url = new URL(request.url);
   const product = getApoisProductMode();
+  const landingRoute = getProductLandingRoute(product);
+
+  // Product-specific deployments must never SSR the shared customer root.
+  // Redirect before TanStack Start handles the request so the HTTP status is
+  // a real redirect instead of a client-side navigation rendered as 404.
+  if (url.pathname === "/" && landingRoute !== "/") {
+    url.pathname = landingRoute;
+    url.search = "";
+    url.hash = "";
+    return Response.redirect(url, 307);
+  }
+
   if (isPathAllowedForProduct(url.pathname, product)) return null;
 
-  url.pathname = getProductLandingRoute(product);
+  url.pathname = landingRoute;
   url.search = "";
   url.hash = "";
 
