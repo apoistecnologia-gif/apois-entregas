@@ -9,6 +9,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
 import { ApoisLaunchSplash } from "../components/ApoisLaunchSplash";
@@ -180,6 +181,19 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <Toaster
+        position="top-center"
+        richColors
+        closeButton
+        duration={4500}
+        toastOptions={{
+          classNames: {
+            toast: "border border-zinc-800 bg-zinc-950 text-zinc-100 shadow-2xl",
+            title: "font-bold",
+            description: "text-zinc-300",
+          },
+        }}
+      />
       <ApoisLaunchSplash />
       <CustomerPushManager />
       <MerchantOrderSoundWatcher />
