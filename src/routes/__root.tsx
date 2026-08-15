@@ -17,6 +17,7 @@ import { CourierActiveDeliveryOverlay } from "../components/CourierActiveDeliver
 import { CourierOfferOverlay } from "../components/CourierOfferOverlay";
 import { CourierPendingPayoutProcessor } from "../components/CourierPendingPayoutProcessor";
 import { MerchantOrderSoundWatcher } from "../components/MerchantOrderSoundWatcher";
+import { MerchantPendingPayoutProcessor } from "../components/MerchantPendingPayoutProcessor";
 import { CartProvider } from "../contexts/CartContext";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import {
@@ -183,6 +184,7 @@ function RootComponent() {
       <CourierOfferOverlay />
       <CourierActiveDeliveryOverlay />
       <CourierPendingPayoutProcessor />
+      <MerchantPendingPayoutProcessor />
       <ProductRouteIsolation>
         <AuthSessionIsolation>
           <CartProvider>
