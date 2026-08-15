@@ -42,9 +42,9 @@ jobs:
         run: |
           set -euo pipefail
           bunx vercel routes inspect "$STALE_ROUTE_ID" --token "$VERCEL_TOKEN" | tee /tmp/stale-route.txt
-          grep -Fq 'Source:  /' /tmp/stale-route.txt
-          grep -Fq 'Dest:    /admin/login' /tmp/stale-route.txt
-          grep -Fq 'Code:    307' /tmp/stale-route.txt
+          grep -Eq 'Source:[[:space:]]+/$' /tmp/stale-route.txt
+          grep -Eq 'Destination:[[:space:]]+/admin/login$' /tmp/stale-route.txt
+          grep -Eq 'HTTP Status:[[:space:]]+307$' /tmp/stale-route.txt
           echo 'APOIS_ADMIN_STALE_ROUTE_CONFIRMED'
 
       - name: Delete only the stale root redirect
