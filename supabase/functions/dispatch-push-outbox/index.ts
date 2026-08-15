@@ -154,7 +154,9 @@ async function sendAndroidPush(
               default_vibrate_timings: true,
               notification_priority: urgent ? "PRIORITY_MAX" : "PRIORITY_HIGH",
               visibility: "PUBLIC",
-              tag: urgent ? `delivery-offer-${push.notification_id}` : `apois-${push.notification_id}`,
+              tag: urgent
+                ? `delivery-offer-${push.notification_id}`
+                : `apois-${push.notification_id}`,
             },
           },
         },
@@ -197,7 +199,13 @@ Deno.serve(async (req: Request) => {
   const firebaseProjectId = env("FIREBASE_PROJECT_ID");
   const firebaseClientEmail = env("FIREBASE_CLIENT_EMAIL");
   const firebasePrivateKey = Deno.env.get("FIREBASE_PRIVATE_KEY") ?? "";
-  if (!supabaseUrl || !serviceRoleKey || !firebaseProjectId || !firebaseClientEmail || !firebasePrivateKey) {
+  if (
+    !supabaseUrl ||
+    !serviceRoleKey ||
+    !firebaseProjectId ||
+    !firebaseClientEmail ||
+    !firebasePrivateKey
+  ) {
     return response(503, { error: "firebase_server_credentials_not_configured" });
   }
 
@@ -238,7 +246,8 @@ Deno.serve(async (req: Request) => {
 
   for (const push of pushes) {
     const androidDevices = (push.devices ?? []).filter(
-      (device) => device.platform === "android" && typeof device.token === "string" && device.token.trim(),
+      (device) =>
+        device.platform === "android" && typeof device.token === "string" && device.token.trim(),
     );
     if (androidDevices.length === 0) {
       await supabase
