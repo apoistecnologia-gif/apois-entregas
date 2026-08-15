@@ -80,62 +80,10 @@ jobs:
       - name: Pull Vercel production configuration
         run: bunx vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
 
-      - name: Write Admin-only Vercel routing config
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat > vercel.json <<'JSON'
-          {
-            "$schema": "https://openapi.vercel.sh/vercel.json",
-            "outputDirectory": null,
-            "redirects": [
-              {
-                "source": "/",
-                "destination": "/login",
-                "permanent": false
-              }
-            ]
-          }
-          JSON
-          python3 -m json.tool vercel.json >/dev/null
-
       - name: Build Vercel production bundle
         env:
           APOIS_VERCEL_BUILD: "1"
         run: bunx vercel build --prod --token "$VERCEL_TOKEN"
-
-      - name: Validate compiled Admin root redirect
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-
-          path = Path(".vercel/output/config.json")
-          if not path.is_file():
-              raise SystemExit("Vercel Build Output config.json was not generated")
-
-          config = json.loads(path.read_text(encoding="utf-8"))
-          if config.get("version") != 3:
-              raise SystemExit(f"Unexpected Vercel Build Output version: {config.get('version')!r}")
-
-          routes = config.get("routes")
-          if not isinstance(routes, list):
-              raise SystemExit("Vercel Build Output routes array is missing")
-
-          candidates = [
-              route for route in routes
-              if isinstance(route, dict)
-              and route.get("status") in {301, 302, 307, 308}
-              and isinstance(route.get("headers"), dict)
-              and route["headers"].get("Location") == "/login"
-          ]
-          if not candidates:
-              raise SystemExit("Vercel did not compile the Admin root redirect")
-
-          print("APOIS_ADMIN_ROOT_REDIRECT_COMPILED", json.dumps(candidates[0], sort_keys=True))
-          PY
 
       - name: Detach Git metadata for Hobby CLI deployment
         shell: bash
@@ -143,3 +91,31 @@ jobs:
 
       - name: Deploy admin to Vercel production
         run: bunx vercel deploy --prebuilt --prod --yes --token "$VERCEL_TOKEN"
+
+      - name: Gate Admin production routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://admin.apoisbrasil.com.br"
+
+          for attempt in $(seq 1 20); do
+            ROOT_STATUS="$(curl -sS -o /tmp/apois-admin-root.html -w '%{http_code}' "$BASE/")"
+            LOGIN_STATUS="$(curl -sS -o /tmp/apois-admin-login.html -w '%{http_code}' "$BASE/login")"
+            ADMIN_STATUS="$(curl -sS -o /tmp/apois-admin-workspace.html -w '%{http_code}' "$BASE/admin")"
+
+            if [ "$ROOT_STATUS" = "200" ] && [ "$LOGIN_STATUS" = "200" ] && [ "$ADMIN_STATUS" = "200" ]; then
+              break
+            fi
+
+            if [ "$attempt" -eq 20 ]; then
+              echo "Admin route gate failed: root=$ROOT_STATUS login=$LOGIN_STATUS admin=$ADMIN_STATUS" >&2
+              exit 1
+            fi
+            sleep 3
+          done
+
+          grep -Fq '<title>APOIS Administração</title>' /tmp/apois-admin-root.html
+          grep -Fq '<title>APOIS Administração</title>' /tmp/apois-admin-login.html
+          grep -Fq '<title>Administração | APOIS ENTREGA</title>' /tmp/apois-admin-workspace.html
+          ! grep -Fq 'Seu delivery do seu jeito' /tmp/apois-admin-root.html
+          echo "APOIS_ADMIN_PRODUCTION_ROUTES_OK root=$ROOT_STATUS login=$LOGIN_STATUS admin=$ADMIN_STATUS"
