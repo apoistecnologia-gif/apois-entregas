@@ -147,7 +147,10 @@ async function registerForPush(requestPermission: boolean): Promise<Registration
       registrationErrorHandle = await PushNotifications.addListener(
         "registrationError",
         ({ error }) => {
-          finish({ status: "failed", message: String(error || "Android push registration failed.") });
+          finish({
+            status: "failed",
+            message: String(error || "Android push registration failed."),
+          });
         },
       );
       timeoutId = window.setTimeout(
