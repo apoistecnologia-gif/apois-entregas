@@ -16,25 +16,35 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Patch address confirmation navigation
+      - name: Patch address confirmation navigation and merchant typecheck blocker
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path('src/routes/enderecos.tsx')
-          s = path.read_text()
+
+          address_path = Path('src/routes/enderecos.tsx')
+          s = address_path.read_text()
           old = '      await navigate({ to: "/sacola" });'
           assert old in s, 'confirm navigation not found'
           s = s.replace(old, '      router.history.back();', 1)
           old = '          onClick={() => navigate({ to: "/sacola" })}'
           assert old in s, 'header back navigation not found'
           s = s.replace(old, '          onClick={() => router.history.back()}', 1)
-          path.write_text(s)
+          address_path.write_text(s)
+
+          merchant_path = Path('src/routes/merchant.tsx')
+          m = merchant_path.read_text()
+          old1 = 'if (mappedAddressLine) addressPatch.address_line = mappedAddressLine;'
+          old2 = 'if (address.neighborhood) addressPatch.neighborhood = address.neighborhood;'
+          assert old1 in m and old2 in m, 'merchant typecheck lines not found'
+          m = m.replace(old1, 'if (mappedAddressLine) addressPatch["address_line"] = mappedAddressLine;', 1)
+          m = m.replace(old2, 'if (address.neighborhood) addressPatch["neighborhood"] = address.neighborhood;', 1)
+          merchant_path.write_text(m)
           PY
       - uses: oven-sh/setup-bun@v2
-      - name: Validate customer build
+      - name: Validate builds
         run: |
           bun install --frozen-lockfile
-          bunx prettier --write src/routes/enderecos.tsx
+          bunx prettier --write src/routes/enderecos.tsx src/routes/merchant.tsx
           bun run typecheck
           bun run build:customer
       - name: Commit fix and remove helper workflow
@@ -44,7 +54,7 @@ jobs:
           rm .github/workflows/fix-customer-address-confirm-once.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/routes/enderecos.tsx .github/workflows/fix-customer-address-confirm-once.yml
-          git commit -m "fix(customer): return after confirming delivery address"
+          git add src/routes/enderecos.tsx src/routes/merchant.tsx .github/workflows/fix-customer-address-confirm-once.yml
+          git commit -m "fix(customer): confirm delivery address and unblock builds"
           git push origin HEAD:main
           gh workflow run mobile-android.yml --repo "$GITHUB_REPOSITORY" --ref main -f product=customer
