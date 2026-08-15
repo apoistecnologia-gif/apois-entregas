@@ -44,27 +44,6 @@ jobs:
               raise SystemExit("offer alert effect not found")
           s = s.replace(old, new, 1)
           path.write_text(s, encoding="utf-8")
-
-          wf = Path(".github/workflows/mobile-android.yml")
-          w = wf.read_text(encoding="utf-8")
-          old = "              '    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />\\n'\n              '    <uses-feature android:name=\"android.hardware.location.gps\" android:required=\"false\" />\\n'"
-          new = "              '    <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />\\n'\n              '    <uses-permission android:name=\"android.permission.VIBRATE\" />\\n'\n              '    <uses-feature android:name=\"android.hardware.location.gps\" android:required=\"false\" />\\n'"
-          if old not in w:
-              raise SystemExit("manifest permission block not found")
-          w = w.replace(old, new, 1)
-
-          old = "          if not package_path.exists():\n              raise SystemExit(f\"Expected Android package directory not found: {package_path}\")\n"
-          new = old + "\n          if product == \"courier\":\n              main_activity = package_path / \"MainActivity.java\"\n              java_text = (\n                  \"package \" + expected_package + \";\\n\\n\"\n                  \"import android.os.Bundle;\\n\"\n                  \"import com.getcapacitor.BridgeActivity;\\n\\n\"\n                  \"public class MainActivity extends BridgeActivity {\\n\"\n                  \"    @Override\\n\"\n                  \"    protected void onCreate(Bundle savedInstanceState) {\\n\"\n                  \"        super.onCreate(savedInstanceState);\\n\"\n                  \"        if (getBridge() != null && getBridge().getWebView() != null) {\\n\"\n                  \"            getBridge().getWebView().getSettings().setMediaPlaybackRequiresUserGesture(false);\\n\"\n                  \"        }\\n\"\n                  \"    }\\n\"\n                  \"}\\n\"\n              )\n              main_activity.write_text(java_text, encoding=\"utf-8\")\n"
-          if old not in w:
-              raise SystemExit("package validation block not found")
-          w = w.replace(old, new, 1)
-
-          old = "          grep -q 'android.permission.ACCESS_FINE_LOCATION' \"$MANIFEST\"\n          ! grep -q 'android.permission.ACCESS_BACKGROUND_LOCATION' \"$MANIFEST\""
-          new = "          grep -q 'android.permission.ACCESS_FINE_LOCATION' \"$MANIFEST\"\n          grep -q 'android.permission.VIBRATE' \"$MANIFEST\"\n          ! grep -q 'android.permission.ACCESS_BACKGROUND_LOCATION' \"$MANIFEST\""
-          if old not in w:
-              raise SystemExit("manifest validation block not found")
-          w = w.replace(old, new, 1)
-          wf.write_text(w, encoding="utf-8")
           PY
 
       - uses: oven-sh/setup-bun@v2
@@ -83,7 +62,7 @@ jobs:
           rm .github/workflows/fix-courier-alert-v2.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/components/CourierOfferOverlay.tsx .github/workflows/mobile-android.yml .github/workflows/fix-courier-alert-v2.yml
+          git add src/components/CourierOfferOverlay.tsx .github/workflows/fix-courier-alert-v2.yml
           git commit -m "fix(courier): make incoming delivery alert reliable"
           git push origin HEAD:main
           gh workflow run mobile-android.yml --repo "$GITHUB_REPOSITORY" --ref main -f product=courier
