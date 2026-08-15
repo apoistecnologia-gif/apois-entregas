@@ -209,7 +209,13 @@ Deno.serve(async (req: Request) => {
   const firebaseProjectId = env("FIREBASE_PROJECT_ID");
   const firebaseClientEmail = env("FIREBASE_CLIENT_EMAIL");
   const firebasePrivateKey = Deno.env.get("FIREBASE_PRIVATE_KEY") ?? "";
-  if (!supabaseUrl || !serviceRoleKey || !firebaseProjectId || !firebaseClientEmail || !firebasePrivateKey) {
+  if (
+    !supabaseUrl ||
+    !serviceRoleKey ||
+    !firebaseProjectId ||
+    !firebaseClientEmail ||
+    !firebasePrivateKey
+  ) {
     return response(503, { error: "firebase_server_credentials_not_configured" });
   }
 
@@ -217,9 +223,12 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: claimed, error: claimError } = await supabase.rpc("claim_notification_push_batch_v2", {
-    _limit: 25,
-  });
+  const { data: claimed, error: claimError } = await supabase.rpc(
+    "claim_notification_push_batch_v2",
+    {
+      _limit: 25,
+    },
+  );
   if (claimError) return response(500, { error: "push_claim_failed", detail: claimError.message });
 
   const pushes = Array.isArray(claimed) ? (claimed as ClaimedPush[]) : [];
