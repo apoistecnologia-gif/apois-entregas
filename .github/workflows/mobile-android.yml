@@ -38,6 +38,7 @@ jobs:
       VITE_GOOGLE_MAPS_BROWSER_KEY: ${{ secrets.VITE_GOOGLE_MAPS_BROWSER_KEY || 'ci-placeholder' }}
       VITE_GOOGLE_MAPS_MAP_ID: ${{ secrets.VITE_GOOGLE_MAPS_MAP_ID || 'ci-placeholder' }}
       FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64 }}
+      FIREBASE_CUSTOMER_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.FIREBASE_CUSTOMER_GOOGLE_SERVICES_JSON_BASE64 }}
       ANDROID_COURIER_KEYSTORE_BASE64: ${{ secrets.ANDROID_COURIER_KEYSTORE_BASE64 }}
       ANDROID_COURIER_STORE_PASSWORD: ${{ secrets.ANDROID_COURIER_STORE_PASSWORD }}
       ANDROID_COURIER_KEY_ALIAS: ${{ secrets.ANDROID_COURIER_KEY_ALIAS }}
@@ -78,11 +79,15 @@ jobs:
             STORE_PASS="$ANDROID_COURIER_STORE_PASSWORD"
             KEY_ALIAS="$ANDROID_COURIER_KEY_ALIAS"
             KEY_PASS="$ANDROID_COURIER_KEY_PASSWORD"
+            FIREBASE_B64="$FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64"
+            FIREBASE_SECRET_NAME="FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64"
           else
             KS_B64="$ANDROID_CUSTOMER_KEYSTORE_BASE64"
             STORE_PASS="$ANDROID_CUSTOMER_STORE_PASSWORD"
             KEY_ALIAS="$ANDROID_CUSTOMER_KEY_ALIAS"
             KEY_PASS="$ANDROID_CUSTOMER_KEY_PASSWORD"
+            FIREBASE_B64="$FIREBASE_CUSTOMER_GOOGLE_SERVICES_JSON_BASE64"
+            FIREBASE_SECRET_NAME="FIREBASE_CUSTOMER_GOOGLE_SERVICES_JSON_BASE64"
           fi
 
           if [ -z "$KS_B64" ] || [ -z "$STORE_PASS" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASS" ]; then
@@ -90,8 +95,8 @@ jobs:
             exit 1
           fi
 
-          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ] && [ -z "$FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64" ]; then
-            echo "FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64 is required for APOIS Entregador." >&2
+          if [ -z "$FIREBASE_B64" ]; then
+            echo "$FIREBASE_SECRET_NAME is required for native push in APOIS $APOIS_MOBILE_PRODUCT." >&2
             exit 1
           fi
 
@@ -152,29 +157,37 @@ jobs:
       - name: Create Android native project
         run: npx cap add android
 
-      - name: Install and validate courier Firebase configuration
-        if: matrix.product == 'courier'
+      - name: Install and validate Firebase configuration
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s' "$FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
-          python - <<'PY'
+          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
+            FIREBASE_B64="$FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64"
+            EXPECTED_PACKAGE="br.com.apois.entregador"
+          else
+            FIREBASE_B64="$FIREBASE_CUSTOMER_GOOGLE_SERVICES_JSON_BASE64"
+            EXPECTED_PACKAGE="br.com.apois.cliente"
+          fi
+          printf '%s' "$FIREBASE_B64" | base64 --decode > android/app/google-services.json
+          EXPECTED_PACKAGE="$EXPECTED_PACKAGE" python - <<'PY'
           import json
+          import os
           from pathlib import Path
 
+          expected = os.environ["EXPECTED_PACKAGE"]
           path = Path("android/app/google-services.json")
           data = json.loads(path.read_text(encoding="utf-8"))
           packages = {
               str(client.get("client_info", {}).get("android_client_info", {}).get("package_name", ""))
               for client in (data.get("client") or [])
           }
-          if "br.com.apois.entregador" not in packages:
-              raise SystemExit("google-services.json is not registered for br.com.apois.entregador")
+          if expected not in packages:
+              raise SystemExit(f"google-services.json is not registered for {expected}")
           project_id = str(data.get("project_info", {}).get("project_id", "")).strip()
           project_number = str(data.get("project_info", {}).get("project_number", "")).strip()
           if not project_id or not project_number:
               raise SystemExit("google-services.json is missing Firebase project identity")
-          print("Firebase configuration validated for br.com.apois.entregador")
+          print(f"Firebase configuration validated for {expected}")
           PY
 
       - name: Configure Android identity, monotonic version, permissions and branding
@@ -201,7 +214,7 @@ jobs:
               additions.append('    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />')
           if "android.permission.ACCESS_FINE_LOCATION" not in text:
               additions.append('    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />')
-          if product == "courier" and "android.permission.VIBRATE" not in text:
+          if "android.permission.VIBRATE" not in text:
               additions.append('    <uses-permission android:name="android.permission.VIBRATE" />')
           if "android.hardware.location.gps" not in text:
               additions.append('    <uses-feature android:name="android.hardware.location.gps" android:required="false" />')
@@ -266,10 +279,8 @@ jobs:
           set -euo pipefail
           PLUGINS=android/app/src/main/assets/capacitor.plugins.json
           test -s "$PLUGINS"
-          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
-            test -s android/app/google-services.json
-            grep -qi 'pushnotifications' "$PLUGINS"
-          fi
+          test -s android/app/google-services.json
+          grep -qi 'pushnotifications' "$PLUGINS"
 
       - name: Build installable debug APK
         working-directory: android
@@ -361,12 +372,10 @@ jobs:
           grep -Fq 'android.permission.INTERNET' /tmp/apois-release-permissions.txt
           grep -Fq 'android.permission.ACCESS_COARSE_LOCATION' /tmp/apois-release-permissions.txt
           grep -Fq 'android.permission.ACCESS_FINE_LOCATION' /tmp/apois-release-permissions.txt
+          grep -Fq 'android.permission.POST_NOTIFICATIONS' /tmp/apois-release-permissions.txt
+          grep -Fq 'android.permission.VIBRATE' /tmp/apois-release-permissions.txt
           ! grep -Fq 'android.permission.ACCESS_BACKGROUND_LOCATION' /tmp/apois-release-permissions.txt
           ! grep -Fq 'android.permission.MANAGE_EXTERNAL_STORAGE' /tmp/apois-release-permissions.txt
-          if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
-            grep -Fq 'android.permission.POST_NOTIFICATIONS' /tmp/apois-release-permissions.txt
-            grep -Fq 'android.permission.VIBRATE' /tmp/apois-release-permissions.txt
-          fi
           echo "APOIS_ANDROID_PERMISSIONS_OK"
 
       - name: Validate APK signature and certificate SHA-256
@@ -408,10 +417,8 @@ jobs:
           MANIFEST="android/artifact-manifest-${APOIS_MOBILE_PRODUCT}.txt"
           if [ "$APOIS_MOBILE_PRODUCT" = "courier" ]; then
             PACKAGE_ID="br.com.apois.entregador"
-            PUSH_CONFIGURED="true"
           else
             PACKAGE_ID="br.com.apois.cliente"
-            PUSH_CONFIGURED="false"
           fi
           {
             echo "product=${APOIS_MOBILE_PRODUCT}"
@@ -419,7 +426,7 @@ jobs:
             echo "version_code=${GITHUB_RUN_NUMBER}"
             echo "version_name=1.0.${GITHUB_RUN_NUMBER}"
             echo "package_id=${PACKAGE_ID}"
-            echo "native_push_configured=${PUSH_CONFIGURED}"
+            echo "native_push_configured=true"
             echo "signed=true"
             echo "signer_certificate_sha256=$(cat /tmp/apois-signer-sha256.txt)"
             for FILE in \
