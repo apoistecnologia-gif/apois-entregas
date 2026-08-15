@@ -180,7 +180,7 @@ function MerchantOrderControlCenter() {
         return;
       }
 
-      const { data } = await supabase
+      const { data: membership } = await supabase
         .from("merchant_members" as any)
         .select("merchant_id")
         .eq("user_id", user.id)
@@ -189,10 +189,34 @@ function MerchantOrderControlCenter() {
         .limit(1)
         .maybeSingle();
 
-      const id = typeof data?.merchant_id === "string" ? data.merchant_id : null;
+      const candidateId =
+        typeof membership?.merchant_id === "string" ? membership.merchant_id : null;
+      if (!candidateId || disposed) {
+        if (!disposed) {
+          setMerchantId(null);
+          setOrders([]);
+        }
+        return;
+      }
+
+      const { data: merchant } = await supabase
+        .from("merchants" as any)
+        .select("id,approval_status,is_active")
+        .eq("id", candidateId)
+        .maybeSingle();
+
+      const operationalId =
+        merchant?.approval_status === "approved" && merchant?.is_active === true
+          ? candidateId
+          : null;
       if (disposed) return;
-      setMerchantId(id);
-      if (id) await loadOrders(id);
+      setMerchantId(operationalId);
+      if (!operationalId) {
+        setOrders([]);
+        setOpen(false);
+        return;
+      }
+      await loadOrders(operationalId);
     };
 
     void resolveMerchant();
