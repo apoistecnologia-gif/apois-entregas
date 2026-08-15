@@ -1,16 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "outputDirectory": null,
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/login",
-      "has": [
-        {
-          "type": "host",
-          "value": "admin.apoisbrasil.com.br"
-        }
-      ]
-    }
-  ]
+  "outputDirectory": null
 }
