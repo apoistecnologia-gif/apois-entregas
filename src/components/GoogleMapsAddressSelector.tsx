@@ -55,6 +55,7 @@ export function GoogleMapsAddressSelector({
   const [isConfirming, setIsConfirming] = useState(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [pointConfirmed, setPointConfirmed] = useState(Boolean(initialCenter));
+  const [hasExplicitPoint, setHasExplicitPoint] = useState(Boolean(initialCenter));
 
   const geocodeFn = useServerFn(geocodeAddress);
   const autocompleteFn = useServerFn(autocompleteAddress);
@@ -97,7 +98,16 @@ export function GoogleMapsAddressSelector({
     };
   };
 
-  const confirmCoordinates = async (lat: number, lng: number, successMessage?: string) => {
+  const confirmCoordinates = async (
+    lat: number,
+    lng: number,
+    successMessage?: string,
+    allowMerchantConfirmation = false,
+  ) => {
+    if (isMerchantProduct && !hasExplicitPoint && !allowMerchantConfirmation) {
+      toast.error("Pesquise o endereço da loja ou mova o marcador antes de confirmar.");
+      return;
+    }
     setMarkerPos({ lat, lng });
     setIsConfirming(true);
 
@@ -133,7 +143,8 @@ export function GoogleMapsAddressSelector({
       }
       setPointConfirmed(true);
       toast.success(
-        successMessage || (isMerchantProduct ? "Ponto da loja confirmado!" : "Ponto de entrega confirmado!"),
+        successMessage ||
+          (isMerchantProduct ? "Ponto da loja confirmado!" : "Ponto de entrega confirmado!"),
       );
     } catch (error) {
       console.error("Reverse geocoding error:", error);
@@ -154,7 +165,8 @@ export function GoogleMapsAddressSelector({
     const lng = event.latLng.lng();
     setMarkerPos({ lat, lng });
     setPointConfirmed(false);
-    void confirmCoordinates(lat, lng);
+    setHasExplicitPoint(true);
+    void confirmCoordinates(lat, lng, undefined, true);
   };
 
   const handleGetCurrentLocation = () => {
@@ -216,12 +228,15 @@ export function GoogleMapsAddressSelector({
       }
 
       const { lat, lng } = result.geometry.location;
+      setHasExplicitPoint(true);
       await persistMerchantCoordinates(lat, lng);
       setMarkerPos({ lat, lng });
       const address = parseAddressComponents(result.address_components);
       onAddressSelected({ ...address, latitude: lat, longitude: lng });
       setPointConfirmed(true);
-      toast.success(isMerchantProduct ? "Endereço da loja localizado no mapa!" : "Endereço localizado no mapa!");
+      toast.success(
+        isMerchantProduct ? "Endereço da loja localizado no mapa!" : "Endereço localizado no mapa!",
+      );
     } catch (error) {
       console.error("Place details error:", error);
       toast.error(
@@ -290,8 +305,8 @@ export function GoogleMapsAddressSelector({
         </Button>
       ) : (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs leading-relaxed text-amber-200">
-          O GPS deste computador ou celular não será usado como endereço da loja. Pesquise o endereço
-          físico real do estabelecimento e confirme o ponto no mapa.
+          O GPS deste computador ou celular não será usado como endereço da loja. Pesquise o
+          endereço físico real do estabelecimento e confirme o ponto no mapa.
         </div>
       )}
 
@@ -310,6 +325,7 @@ export function GoogleMapsAddressSelector({
                 if (!latLng) return;
                 setMarkerPos({ lat: latLng.lat, lng: latLng.lng });
                 setPointConfirmed(false);
+                setHasExplicitPoint(true);
               }}
             >
               <AdvancedMarker position={markerPos} draggable onDragEnd={handleMarkerDragEnd} />
@@ -347,7 +363,9 @@ export function GoogleMapsAddressSelector({
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <p>
                 {isMerchantProduct
-                  ? "Pesquise o endereço físico da loja, ajuste o marcador se necessário e confirme o ponto abaixo."
+                  ? hasExplicitPoint
+                    ? "Confira o marcador e confirme o ponto abaixo."
+                    : "Pesquise o endereço físico da loja ou mova o marcador. O ponto inicial é apenas uma referência e não pode ser confirmado."
                   : "Toque no mapa ou arraste o marcador até o ponto exato da entrega e confirme abaixo."}
               </p>
             </div>
@@ -356,7 +374,7 @@ export function GoogleMapsAddressSelector({
           <Button
             type="button"
             onClick={() => void confirmCoordinates(markerPos.lat, markerPos.lng)}
-            disabled={isConfirming || !isMapLoaded}
+            disabled={isConfirming || !isMapLoaded || (isMerchantProduct && !hasExplicitPoint)}
             className="h-12 w-full rounded-xl bg-primary font-black text-black disabled:opacity-50"
           >
             {isConfirming ? (
