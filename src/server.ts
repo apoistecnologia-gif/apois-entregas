@@ -74,13 +74,19 @@ function enforceProductRouteBoundary(request: Request): Response | null {
   const product = getApoisProductMode();
   const landingRoute = getProductLandingRoute(product);
 
-  // A fresh browser entry, bookmark or reload of a protected merchant route must
-  // never reuse a stale Supabase session. Clear only local Supabase auth state and
-  // then open the public login screen. Successful login still navigates client-side
-  // to /merchant normally, so everyday operation inside the panel is unaffected.
+  // The merchant public domain must ALWAYS begin at authentication on a fresh
+  // browser navigation. This includes `/`: previously the root was allowed through
+  // to the SPA, where the client-side sign-out/navigation could race with a restored
+  // Supabase session and the `/login` guard would bounce the user straight back to
+  // the last establishment (for example its under-review onboarding screen).
+  // Clear only local Supabase auth state before entering `/login`; after a successful
+  // login, navigation to `/merchant` happens client-side and does not hit this server
+  // boundary during normal panel use.
   if (
     product === "merchant" &&
-    (url.pathname === "/merchant" || url.pathname === "/configuracoes-estabelecimento")
+    (url.pathname === "/" ||
+      url.pathname === "/merchant" ||
+      url.pathname === "/configuracoes-estabelecimento")
   ) {
     if (request.method === "HEAD") {
       return new Response(null, {
