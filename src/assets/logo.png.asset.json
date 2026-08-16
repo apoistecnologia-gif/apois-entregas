@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "asset_id": "apois-entregas-brand-2026",
+  "asset_id": "apois-entregas-user-logo-2026",
   "project_id": "apois-entregas",
-  "url": "/apois-logo.svg",
-  "r2_key": "local/public/apois-logo.svg",
-  "original_filename": "apois-logo.svg",
-  "size": 0,
-  "content_type": "image/svg+xml",
-  "created_at": "2026-08-16T20:50:00Z"
+  "url": "/apois-logo.jpg",
+  "r2_key": "local/public/apois-logo.jpg",
+  "original_filename": "apois-logo-from-user.jpg",
+  "size": 3985,
+  "content_type": "image/jpeg",
+  "created_at": "2026-08-16T21:05:00Z"
 }
