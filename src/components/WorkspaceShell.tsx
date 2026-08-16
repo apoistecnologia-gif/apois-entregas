@@ -2,6 +2,7 @@ import { LogOut, Menu, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import logoAsset from "@/assets/logo.png.asset.json";
 
 export type WorkspaceTab = {
   id: string;
@@ -142,9 +143,18 @@ export function WorkspaceShell({
       <div className="flex min-h-dvh">
         <aside className="hidden w-72 shrink-0 border-r border-zinc-900 bg-zinc-950 lg:flex lg:flex-col">
           <div className="border-b border-zinc-900 p-6">
-            <p className="text-2xl font-black tracking-tight text-primary">APOIS</p>
-            <p className="mt-1 text-sm font-bold text-white">{brand}</p>
-            <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>
+            <div className="flex items-center gap-3">
+              <img
+                src={logoAsset.url}
+                alt="APOIS"
+                className="h-11 w-11 rounded-xl object-contain"
+              />
+              <div className="min-w-0">
+                <p className="text-lg font-black tracking-tight text-primary">APOIS</p>
+                <p className="truncate text-sm font-bold text-white">{brand}</p>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-zinc-500">{subtitle}</p>
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-4">
             {tabs.map((tab) => {
@@ -196,9 +206,16 @@ export function WorkspaceShell({
           className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-zinc-900 bg-zinc-950 transition-transform lg:hidden ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
         >
           <div className="flex items-start justify-between border-b border-zinc-900 p-5">
-            <div>
-              <p className="text-xl font-black text-primary">APOIS</p>
-              <p className="text-sm font-bold">{brand}</p>
+            <div className="flex items-center gap-3">
+              <img
+                src={logoAsset.url}
+                alt="APOIS"
+                className="h-10 w-10 rounded-xl object-contain"
+              />
+              <div>
+                <p className="text-lg font-black text-primary">APOIS</p>
+                <p className="text-sm font-bold">{brand}</p>
+              </div>
             </div>
             <button
               type="button"
@@ -258,11 +275,21 @@ export function WorkspaceShell({
                 </h1>
               </div>
             </div>
-            {userLabel ? (
-              <span className="hidden max-w-xs truncate text-xs text-zinc-500 sm:block">
-                {userLabel}
-              </span>
-            ) : null}
+            <div className="flex items-center gap-2">
+              {userLabel ? (
+                <span className="hidden max-w-xs truncate text-xs text-zinc-500 sm:block">
+                  {userLabel}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                onClick={onLogout}
+                className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-400 transition hover:bg-red-500/20"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Sair</span>
+              </button>
+            </div>
           </header>
           <main className="mx-auto w-full max-w-[1600px] p-4 md:p-6 lg:p-8">{children}</main>
         </div>
