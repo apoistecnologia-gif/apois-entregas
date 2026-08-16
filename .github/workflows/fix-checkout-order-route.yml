@@ -32,3 +32,5 @@ jobs:
           git commit -m "fix(customer): use typed order details route after payment"
           git pull --rebase origin main
           git push origin HEAD:main
+
+# Triggered by Android checkout homologation.
