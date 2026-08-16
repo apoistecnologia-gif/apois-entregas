@@ -26,8 +26,8 @@ const INTERNAL_PUBLIC_FUNCTIONS = new Map([
       file: "supabase/functions/dispatch-push-outbox/index.ts",
       requiredPatterns: [
         /x-apois-push-dispatch-key/,
-        /PUSH_DISPATCH_WEBHOOK_SECRET/,
-        /suppliedDispatchKey\s*!==\s*expectedDispatchKey/,
+        /verify_push_dispatch_runtime_key/,
+        /dispatchKeyValid\s*!==\s*true/,
       ],
     },
   ],
