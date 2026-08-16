@@ -204,12 +204,8 @@ function retryAt(attempt: number) {
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return response(405, { error: "method_not_allowed" });
 
-  const expectedDispatchKey = env("PUSH_DISPATCH_WEBHOOK_SECRET");
   const suppliedDispatchKey = req.headers.get("x-apois-push-dispatch-key")?.trim() ?? "";
-  if (!expectedDispatchKey) return response(503, { error: "push_dispatch_secret_not_configured" });
-  if (!suppliedDispatchKey || suppliedDispatchKey !== expectedDispatchKey) {
-    return response(401, { error: "invalid_dispatch_key" });
-  }
+  if (!suppliedDispatchKey) return response(401, { error: "invalid_dispatch_key" });
 
   const supabaseUrl = env("SUPABASE_URL");
   const serviceRoleKey = env("SUPABASE_SERVICE_ROLE_KEY");
@@ -229,6 +225,14 @@ Deno.serve(async (req: Request) => {
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  const { data: dispatchKeyValid, error: dispatchKeyError } = await supabase.rpc(
+    "verify_push_dispatch_runtime_key",
+    { _candidate: suppliedDispatchKey },
+  );
+  if (dispatchKeyError || dispatchKeyValid !== true) {
+    return response(401, { error: "invalid_dispatch_key" });
+  }
 
   const { data: claimed, error: claimError } = await supabase.rpc(
     "claim_notification_push_batch_v2",
