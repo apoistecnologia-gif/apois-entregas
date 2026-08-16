@@ -1,5 +1,5 @@
 name: Admin Web Build
-# Audited production redeploy after the complete source/backend review. Review workspace gate 2026-08-15.
+# Validate/deploy after manual merchant registration was added to Admin.
 
 on:
   push:
