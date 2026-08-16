@@ -20,6 +20,9 @@ type RouteMetrics = {
   durationSeconds: number;
 };
 
+const BRAND_GREEN = "#39B54A";
+const BRAND_PURPLE = "#6A1B9A";
+
 const parseCoordinate = (value: unknown) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
@@ -106,7 +109,7 @@ function RouteMapContent({
         clearRoute();
         polylinesRef.current = route.createPolylines({
           polylineOptions: {
-            strokeColor: "#FFD54A",
+            strokeColor: BRAND_PURPLE,
             strokeOpacity: 0.98,
             strokeWeight: 7,
           },
@@ -160,7 +163,7 @@ function RouteMapContent({
           map,
           path: [origin, target],
           geodesic: true,
-          strokeColor: "#FFD54A",
+          strokeColor: BRAND_PURPLE,
           strokeOpacity: 0.78,
           strokeWeight: 5,
         });
@@ -193,13 +196,13 @@ function RouteMapContent({
       {currentPosition ? (
         <AdvancedMarker position={{ lat: currentPosition.lat, lng: currentPosition.lng }}>
           <div className="grid h-10 w-10 place-items-center rounded-full border-[3px] border-white bg-primary shadow-[0_8px_25px_rgba(0,0,0,0.65)] ring-4 ring-primary/20">
-            <Navigation className="h-5 w-5 fill-black text-black" />
+            <Navigation className="h-5 w-5 fill-white text-white" />
           </div>
         </AdvancedMarker>
       ) : null}
       <AdvancedMarker position={target}>
-        <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-black bg-primary text-black shadow-[0_10px_28px_rgba(0,0,0,0.7)] ring-4 ring-primary/20">
-          <MapPin className="h-7 w-7 fill-black/10" />
+        <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-white bg-accent text-white shadow-[0_10px_28px_rgba(0,0,0,0.7)] ring-4 ring-accent/25">
+          <MapPin className="h-7 w-7 fill-white/10" />
         </div>
       </AdvancedMarker>
       {routeState === "fallback" ? (
@@ -229,7 +232,7 @@ function RecenterControl({ position }: { position: LatLng }) {
         map?.setZoom(15);
       }}
       aria-label="Recentralizar mapa"
-      className="absolute right-3 top-3 z-20 grid h-11 w-11 place-items-center rounded-full border border-zinc-700 bg-black/90 text-white shadow-xl backdrop-blur active:scale-95"
+      className="absolute right-3 top-3 z-20 grid h-11 w-11 place-items-center rounded-full border border-accent/40 bg-black/90 text-white shadow-xl backdrop-blur active:scale-95"
     >
       <Crosshair className="h-5 w-5" />
     </button>
@@ -271,9 +274,9 @@ export function CourierLiveMap({
   }, [activeOfferSet, currentPosition, merchants]);
 
   return (
-    <section className="overflow-hidden rounded-[1.9rem] border border-primary/20 bg-zinc-950 shadow-[0_24px_65px_rgba(0,0,0,0.5)]">
-      <div className="border-b border-primary/10 bg-black/70 px-4 py-3.5">
-        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">
+    <section className="overflow-hidden rounded-[1.9rem] border border-accent/25 bg-zinc-950 shadow-[0_24px_65px_rgba(0,0,0,0.5)]">
+      <div className="border-b border-accent/20 bg-black/70 px-4 py-3.5">
+        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-accent">
           Mapa em tempo real
         </p>
         <p className="mt-1 text-xs text-zinc-500">
@@ -300,7 +303,7 @@ export function CourierLiveMap({
                   title={merchant.name}
                 >
                   <div
-                    className={`grid h-9 w-9 place-items-center rounded-full border-2 border-black ${merchant.hasActiveOffer ? "bg-primary" : "bg-zinc-200"} text-black shadow-xl`}
+                    className={`grid h-9 w-9 place-items-center rounded-full border-2 border-black ${merchant.hasActiveOffer ? "bg-primary text-white" : "bg-zinc-200 text-black"} shadow-xl`}
                   >
                     {merchant.hasActiveOffer ? (
                       <PackageCheck className="h-4 w-4" />
@@ -311,7 +314,7 @@ export function CourierLiveMap({
                 </AdvancedMarker>
               ))}
               <AdvancedMarker position={{ lat: currentPosition.lat, lng: currentPosition.lng }}>
-                <div className="grid h-11 w-11 place-items-center rounded-full border-4 border-white bg-[#178BFF] text-white shadow-2xl">
+                <div className="grid h-11 w-11 place-items-center rounded-full border-4 border-white bg-primary text-white shadow-2xl ring-4 ring-primary/20">
                   <Navigation className="h-5 w-5 fill-white text-white" />
                 </div>
               </AdvancedMarker>
@@ -380,10 +383,10 @@ export function CourierRouteMap({
   const expanded = goingToDelivery;
 
   return (
-    <section className="overflow-hidden rounded-[1.9rem] border border-primary/25 bg-black shadow-[0_22px_60px_rgba(0,0,0,0.5)]">
-      <div className="flex items-center justify-between gap-3 border-b border-primary/10 bg-black/95 p-3">
+    <section className="overflow-hidden rounded-[1.9rem] border border-accent/25 bg-black shadow-[0_22px_60px_rgba(0,0,0,0.5)]">
+      <div className="flex items-center justify-between gap-3 border-b border-accent/15 bg-black/95 p-3">
         <div className="min-w-0">
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-primary">
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-accent">
             {goingToDelivery ? "Rota até o cliente" : "Rota até o estabelecimento"}
           </p>
           <p className="mt-0.5 truncate text-xs text-zinc-500">
@@ -395,7 +398,7 @@ export function CourierRouteMap({
         <button
           type="button"
           onClick={openNavigation}
-          className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-primary/40 bg-primary px-3 text-[11px] font-black text-black shadow-[0_8px_22px_rgba(250,204,21,0.16)] active:scale-95"
+          className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-accent/40 bg-gradient-to-br from-primary to-accent px-3 text-[11px] font-black text-white shadow-[0_8px_22px_rgba(106,27,154,0.24)] active:scale-95"
         >
           <ExternalLink className="h-4 w-4" /> Rotas
         </button>
