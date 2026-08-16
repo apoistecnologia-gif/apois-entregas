@@ -270,28 +270,50 @@
  * present in older screens. Semantic amber/red warning states are intentionally
  * not touched; only former APOIS brand-gold decoration is remapped.
  */
-[class~="bg-[#FFD700]"] {
+[class~="bg-[#FFD700]"],
+[class~="bg-[#F6B900]"],
+[class~="bg-[#FACC15]"] {
   background: linear-gradient(135deg, #39b54a 0%, #6a1b9a 100%) !important;
   color: #fff !important;
 }
 
-[class~="border-[#FFD700]"] {
+[class~="text-[#FFD700]"],
+[class~="text-[#F6B900]"],
+[class~="text-[#FACC15]"] {
+  color: #6a1b9a !important;
+}
+
+[class~="border-[#FFD700]"],
+[class~="border-[#F6B900]"],
+[class~="border-[#FACC15]"] {
   border-color: #6a1b9a !important;
 }
 
-[class*="shadow-"][class*="250,204,21"] {
+[class~="ring-[#FFD700]"],
+[class~="ring-[#F6B900]"],
+[class~="ring-[#FACC15]"] {
+  --tw-ring-color: rgb(106 27 154 / 0.45) !important;
+}
+
+[class*="shadow-"][class*="250,204,21"],
+[class*="shadow-"][class*="255,215,0"],
+[class*="shadow-"][class*="246,185,0"] {
   box-shadow:
     0 12px 34px rgb(106 27 154 / 0.24),
     0 0 24px rgb(57 181 74 / 0.12) !important;
 }
 
-[class*="bg-[radial-gradient"][class*="250,204,21"] {
+[class*="bg-[radial-gradient"][class*="250,204,21"],
+[class*="bg-[radial-gradient"][class*="255,215,0"],
+[class*="bg-[radial-gradient"][class*="246,185,0"] {
   background-image:
     radial-gradient(circle at top right, rgb(106 27 154 / 0.18), transparent 38%),
     linear-gradient(145deg, #111, #070707) !important;
 }
 
-[class*="bg-[linear-gradient"][class*="250,204,21"] {
+[class*="bg-[linear-gradient"][class*="250,204,21"],
+[class*="bg-[linear-gradient"][class*="255,215,0"],
+[class*="bg-[linear-gradient"][class*="246,185,0"] {
   background-image: linear-gradient(
     135deg,
     rgb(106 27 154 / 0.18),
