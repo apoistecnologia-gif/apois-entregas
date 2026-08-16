@@ -17,5 +17,5 @@ jobs:
       - name: Dispatch courier Android build
         env:
           GH_TOKEN: ${{ github.token }}
-        # Triggered after courier RPC + audible delivery-call + dispatcher security fixes.
+        # Triggered after Android GPS startup/recovery hardening.
         run: gh workflow run mobile-android.yml --repo "${{ github.repository }}" --ref main -f product=courier
