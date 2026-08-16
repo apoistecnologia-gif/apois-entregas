@@ -26,6 +26,7 @@ import { AdminSupportPanel } from "@/components/AdminSupportPanel";
 import { AdminRealtimeOperationsPanel } from "@/components/AdminRealtimeOperationsPanel";
 import { AdminReviewsPanel } from "@/components/AdminReviewsPanel";
 import { AdminOrdersPanel } from "@/components/AdminOrdersPanel";
+import { AdminMerchantCreateDialog } from "@/components/AdminMerchantCreateDialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -130,6 +131,7 @@ function AdminWorkspace() {
   const [settingsRows, setSettingsRows] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [selectedMerchantId, setSelectedMerchantId] = useState<string | null>(null);
+  const [createMerchantOpen, setCreateMerchantOpen] = useState(false);
 
   const loadAll = useCallback(async (quiet = false) => {
     quiet ? setRefreshing(true) : setLoading(true);
@@ -828,6 +830,15 @@ function AdminWorkspace() {
         />
       )}
 
+      <AdminMerchantCreateDialog
+        open={createMerchantOpen}
+        onOpenChange={setCreateMerchantOpen}
+        onCreated={async (merchantId) => {
+          await loadAll(true);
+          setSelectedMerchantId(merchantId);
+        }}
+      />
+
       {activeTab === "merchants" &&
         (selectedMerchant ? (
           <MerchantApplicationDetails
@@ -853,7 +864,7 @@ function AdminWorkspace() {
               <Button
                 type="button"
                 disabled={busy === "merchant:new"}
-                onClick={() => void createMerchantManually()}
+                onClick={() => setCreateMerchantOpen(true)}
                 className="font-black"
               >
                 {busy === "merchant:new" ? (

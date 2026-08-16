@@ -220,34 +220,83 @@ export function AdminMerchantCreateDialog({ open, onOpenChange, onCreated }: Pro
         <DialogHeader>
           <DialogTitle>Cadastrar estabelecimento</DialogTitle>
           <DialogDescription className="text-zinc-400">
-            Cadastre o responsável e o estabelecimento no mesmo fluxo, ou vincule uma conta que já existe.
+            Cadastre o responsável e o estabelecimento no mesmo fluxo, ou vincule uma conta que já
+            existe.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           <section className="space-y-3 rounded-2xl border border-zinc-800 p-4">
-            <div className="flex items-center gap-2 font-black"><UserPlus className="h-4 w-4 text-primary" /> Responsável</div>
+            <div className="flex items-center gap-2 font-black">
+              <UserPlus className="h-4 w-4 text-primary" /> Responsável
+            </div>
             <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant={ownerMode === "new" ? "default" : "outline"} onClick={() => setOwnerMode("new")}>Criar conta do responsável</Button>
-              <Button type="button" variant={ownerMode === "existing" ? "default" : "outline"} onClick={() => setOwnerMode("existing")}>Responsável já cadastrado</Button>
+              <Button
+                type="button"
+                variant={ownerMode === "new" ? "default" : "outline"}
+                onClick={() => setOwnerMode("new")}
+              >
+                Criar conta do responsável
+              </Button>
+              <Button
+                type="button"
+                variant={ownerMode === "existing" ? "default" : "outline"}
+                onClick={() => setOwnerMode("existing")}
+              >
+                Responsável já cadastrado
+              </Button>
             </div>
 
             {ownerMode === "new" ? (
               <div className="grid gap-3 md:grid-cols-2">
-                <Input value={form.ownerName} onChange={(e) => update("ownerName", e.target.value)} placeholder="Nome completo do responsável" />
-                <Input value={form.ownerPhone} onChange={(e) => update("ownerPhone", e.target.value)} placeholder="Telefone do responsável" />
-                <Input value={form.ownerCpf} onChange={(e) => update("ownerCpf", e.target.value)} placeholder="CPF do responsável" />
-                <Input value={form.ownerEmail} onChange={(e) => update("ownerEmail", e.target.value)} placeholder="E-mail do responsável" type="email" />
-                <Input className="md:col-span-2" value={form.ownerPassword} onChange={(e) => update("ownerPassword", e.target.value)} placeholder="Senha provisória (mínimo 8 caracteres)" type="password" />
+                <Input
+                  value={form.ownerName}
+                  onChange={(e) => update("ownerName", e.target.value)}
+                  placeholder="Nome completo do responsável"
+                />
+                <Input
+                  value={form.ownerPhone}
+                  onChange={(e) => update("ownerPhone", e.target.value)}
+                  placeholder="Telefone do responsável"
+                />
+                <Input
+                  value={form.ownerCpf}
+                  onChange={(e) => update("ownerCpf", e.target.value)}
+                  placeholder="CPF do responsável"
+                />
+                <Input
+                  value={form.ownerEmail}
+                  onChange={(e) => update("ownerEmail", e.target.value)}
+                  placeholder="E-mail do responsável"
+                  type="email"
+                />
+                <Input
+                  className="md:col-span-2"
+                  value={form.ownerPassword}
+                  onChange={(e) => update("ownerPassword", e.target.value)}
+                  placeholder="Senha provisória (mínimo 8 caracteres)"
+                  type="password"
+                />
               </div>
             ) : (
               <div className="space-y-2">
-                <Input value={ownerSearch} onChange={(e) => setOwnerSearch(e.target.value)} placeholder="Busque por nome, telefone ou ID do responsável" />
+                <Input
+                  value={ownerSearch}
+                  onChange={(e) => setOwnerSearch(e.target.value)}
+                  placeholder="Busque por nome, telefone ou ID do responsável"
+                />
                 <div className="max-h-44 space-y-2 overflow-y-auto">
                   {matches.map((profile) => (
-                    <button key={profile.id} type="button" onClick={() => setExistingOwnerId(profile.id)} className={`w-full rounded-xl border p-3 text-left ${existingOwnerId === profile.id ? "border-primary bg-primary/10" : "border-zinc-800 bg-black"}`}>
+                    <button
+                      key={profile.id}
+                      type="button"
+                      onClick={() => setExistingOwnerId(profile.id)}
+                      className={`w-full rounded-xl border p-3 text-left ${existingOwnerId === profile.id ? "border-primary bg-primary/10" : "border-zinc-800 bg-black"}`}
+                    >
                       <div className="font-bold">{profile.full_name || "Usuário sem nome"}</div>
-                      <div className="text-xs text-zinc-500">{profile.phone || "Sem telefone"} · {profile.id}</div>
+                      <div className="text-xs text-zinc-500">
+                        {profile.phone || "Sem telefone"} · {profile.id}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -256,33 +305,101 @@ export function AdminMerchantCreateDialog({ open, onOpenChange, onCreated }: Pro
           </section>
 
           <section className="space-y-3 rounded-2xl border border-primary/25 bg-primary/5 p-4">
-            <div className="flex items-center gap-2 font-black"><Store className="h-4 w-4 text-primary" /> Estabelecimento</div>
+            <div className="flex items-center gap-2 font-black">
+              <Store className="h-4 w-4 text-primary" /> Estabelecimento
+            </div>
             <div className="grid gap-3 md:grid-cols-2">
-              <Input value={form.merchantName} onChange={(e) => update("merchantName", e.target.value)} placeholder="Nome do estabelecimento" />
-              <select value={form.categoryId} onChange={(e) => update("categoryId", e.target.value)} className="h-10 rounded-md border border-zinc-800 bg-zinc-900 px-3 text-sm text-white">
+              <Input
+                value={form.merchantName}
+                onChange={(e) => update("merchantName", e.target.value)}
+                placeholder="Nome do estabelecimento"
+              />
+              <select
+                value={form.categoryId}
+                onChange={(e) => update("categoryId", e.target.value)}
+                className="h-10 rounded-md border border-zinc-800 bg-zinc-900 px-3 text-sm text-white"
+              >
                 <option value="">Categoria</option>
-                {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
               </select>
-              <Input value={form.legalName} onChange={(e) => update("legalName", e.target.value)} placeholder="Razão social" />
-              <Input value={form.document} onChange={(e) => update("document", e.target.value)} placeholder="CNPJ/CPF" />
-              <Input value={form.contactPhone} onChange={(e) => update("contactPhone", e.target.value)} placeholder="Telefone do estabelecimento" />
-              <Input value={form.contactEmail} onChange={(e) => update("contactEmail", e.target.value)} placeholder="E-mail do estabelecimento" />
-              <Input className="md:col-span-2" value={form.addressLine} onChange={(e) => update("addressLine", e.target.value)} placeholder="Rua, número e complemento" />
-              <Input value={form.neighborhood} onChange={(e) => update("neighborhood", e.target.value)} placeholder="Bairro" />
-              <Input value={form.city} onChange={(e) => update("city", e.target.value)} placeholder="Cidade" />
-              <Input value={form.state} onChange={(e) => update("state", e.target.value.toUpperCase().slice(0, 2))} placeholder="UF" maxLength={2} />
+              <Input
+                value={form.legalName}
+                onChange={(e) => update("legalName", e.target.value)}
+                placeholder="Razão social"
+              />
+              <Input
+                value={form.document}
+                onChange={(e) => update("document", e.target.value)}
+                placeholder="CNPJ/CPF"
+              />
+              <Input
+                value={form.contactPhone}
+                onChange={(e) => update("contactPhone", e.target.value)}
+                placeholder="Telefone do estabelecimento"
+              />
+              <Input
+                value={form.contactEmail}
+                onChange={(e) => update("contactEmail", e.target.value)}
+                placeholder="E-mail do estabelecimento"
+              />
+              <Input
+                className="md:col-span-2"
+                value={form.addressLine}
+                onChange={(e) => update("addressLine", e.target.value)}
+                placeholder="Rua, número e complemento"
+              />
+              <Input
+                value={form.neighborhood}
+                onChange={(e) => update("neighborhood", e.target.value)}
+                placeholder="Bairro"
+              />
+              <Input
+                value={form.city}
+                onChange={(e) => update("city", e.target.value)}
+                placeholder="Cidade"
+              />
+              <Input
+                value={form.state}
+                onChange={(e) => update("state", e.target.value.toUpperCase().slice(0, 2))}
+                placeholder="UF"
+                maxLength={2}
+              />
             </div>
             <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-800 bg-black p-3 text-sm">
-              <input type="checkbox" checked={form.approve} onChange={(e) => update("approve", e.target.checked)} />
-              <span><strong>Liberar imediatamente</strong><span className="block text-xs text-zinc-500">Já deixa o estabelecimento aprovado e ativo.</span></span>
+              <input
+                type="checkbox"
+                checked={form.approve}
+                onChange={(e) => update("approve", e.target.checked)}
+              />
+              <span>
+                <strong>Liberar imediatamente</strong>
+                <span className="block text-xs text-zinc-500">
+                  Já deixa o estabelecimento aprovado e ativo.
+                </span>
+              </span>
             </label>
           </section>
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" disabled={busy} onClick={() => close(false)}>Cancelar</Button>
-          <Button type="button" disabled={busy} onClick={() => void submit()} className="font-black">
-            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Store className="mr-2 h-4 w-4" />}
+          <Button type="button" variant="outline" disabled={busy} onClick={() => close(false)}>
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            disabled={busy}
+            onClick={() => void submit()}
+            className="font-black"
+          >
+            {busy ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Store className="mr-2 h-4 w-4" />
+            )}
             Cadastrar e salvar
           </Button>
         </DialogFooter>
