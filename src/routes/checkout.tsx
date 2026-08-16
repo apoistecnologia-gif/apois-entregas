@@ -904,17 +904,18 @@ function PixPaymentScreen({
   useEffect(() => {
     let disposed = false;
     let completed = false;
-    let redirectTimer: number | undefined;
 
     const finishPayment = () => {
       if (disposed || completed) return;
       completed = true;
       setPaymentStatus("paid");
-      onPaymentConfirmed();
       toast.success("Pagamento confirmado!");
-      redirectTimer = window.setTimeout(() => {
-        navigate({ to: "/pedido/confirmado", search: { orderId: pixData.orderId } });
-      }, 650);
+      void navigate({
+        to: "/pedido/$orderId/",
+        params: { orderId: pixData.orderId },
+        replace: true,
+      });
+      onPaymentConfirmed();
     };
 
     const readDatabaseStatus = async () => {
@@ -975,7 +976,6 @@ function PixPaymentScreen({
 
     return () => {
       disposed = true;
-      if (redirectTimer !== undefined) window.clearTimeout(redirectTimer);
       if (reconcileTimer !== undefined) window.clearInterval(reconcileTimer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       void supabase.removeChannel(channel);

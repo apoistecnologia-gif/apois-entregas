@@ -118,7 +118,7 @@ function RouteMapContent({
         bounds.extend(origin);
         bounds.extend(target);
         route.path?.forEach((point: google.maps.LatLngLiteral) => bounds.extend(point));
-        map.fitBounds(bounds, 42);
+        map.fitBounds(bounds, { top: 64, right: 38, bottom: 72, left: 38 });
 
         const metrics: RouteMetrics = {
           distanceMeters: Math.max(0, Math.round(Number(route.distanceMeters ?? 0))),
@@ -160,7 +160,7 @@ function RouteMapContent({
         const bounds = new google.maps.LatLngBounds();
         bounds.extend(origin);
         bounds.extend(target);
-        map.fitBounds(bounds, 42);
+        map.fitBounds(bounds, { top: 64, right: 38, bottom: 72, left: 38 });
         lastRouteRef.current = { origin, target, at: Date.now() };
         setRouteState("fallback");
       }
@@ -374,7 +374,7 @@ export function CourierRouteMap({
 
   return (
     <section className="overflow-hidden rounded-[1.9rem] border border-primary/25 bg-black shadow-[0_22px_60px_rgba(0,0,0,0.5)]">
-      <div className="flex items-center justify-between gap-3 border-b border-primary/10 bg-zinc-950/95 p-3.5">
+      <div className="flex items-center justify-between gap-3 border-b border-primary/10 bg-black/95 p-3">
         <div className="min-w-0">
           <p className="text-[9px] font-black uppercase tracking-[0.18em] text-primary">
             {goingToDelivery ? "Rota até o cliente" : "Rota até o estabelecimento"}
@@ -394,7 +394,7 @@ export function CourierRouteMap({
         </button>
       </div>
 
-      <div className="grid grid-cols-2 divide-x divide-zinc-800 border-b border-zinc-900 bg-black/95">
+      <div className="grid grid-cols-2 divide-x divide-zinc-800 border-b border-zinc-900 bg-black">
         <div className="px-4 py-3">
           <p className="text-[9px] font-black uppercase text-zinc-600">Distância restante</p>
           <p className="mt-1 text-lg font-black text-white">
@@ -412,7 +412,7 @@ export function CourierRouteMap({
       {browserKey && mapId ? (
         <APIProvider apiKey={browserKey}>
           <div
-            className={`relative w-full bg-zinc-900 ${expanded ? "h-[31rem] min-h-[64vh] max-h-[38rem]" : "h-[23rem] min-h-[50vh] max-h-[29rem]"}`}
+            className={`relative w-full bg-zinc-900 ${expanded ? "h-[36rem] min-h-[72vh] max-h-[44rem]" : "h-[29rem] min-h-[62vh] max-h-[36rem]"}`}
           >
             <Map
               defaultCenter={

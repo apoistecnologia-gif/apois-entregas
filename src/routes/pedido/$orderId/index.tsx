@@ -70,13 +70,25 @@ function OrderDetailsPage() {
     setOrder(nextOrder);
 
     if (nextOrder.fulfillment_type === "delivery") {
-      const { data, error } = await (supabase.from as any)("delivery_jobs")
+      const { data: jobData, error } = await (supabase.from as any)("delivery_jobs")
         .select("id,courier_id,status,delivery_latitude,delivery_longitude")
         .eq("order_id", orderId)
         .maybeSingle();
       if (error) console.warn("Não foi possível carregar o rastreamento da entrega:", error.code);
-      setDeliveryJob(data ?? null);
-      setPickupPin(null);
+      setDeliveryJob(jobData ?? null);
+
+      if (jobData?.status === "arrived_destination") {
+        const { data: secretData, error: secretError } = await (supabase.from as any)(
+          "delivery_confirmation_secrets",
+        )
+          .select("pin_code,locked_until")
+          .eq("order_id", orderId)
+          .maybeSingle();
+        if (secretError) console.warn("PIN de entrega indisponível:", secretError.code);
+        setPickupPin(secretData?.pin_code ?? null);
+      } else {
+        setPickupPin(null);
+      }
     } else {
       const { data, error } = await (supabase.from as any)("delivery_confirmation_secrets")
         .select("pin_code,locked_until")
@@ -344,6 +356,37 @@ function OrderDetailsPage() {
 
         {!isPickup && !isCancelled && !isRefunded ? (
           <CustomerDeliveryMap job={deliveryJob} />
+        ) : null}
+
+        {!isPickup && deliveryJob?.status === "arrived_destination" ? (
+          <section className="rounded-3xl border border-primary/30 bg-primary/5 p-5">
+            <div className="flex items-start gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary text-black">
+                <KeyRound className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-primary">
+                  Entregador chegou
+                </p>
+                <h2 className="mt-1 text-lg font-black">Informe este PIN ao entregador</h2>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                  Só informe o código quando estiver com o pedido em mãos. Ele confirma a conclusão
+                  da entrega.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 rounded-2xl border border-zinc-800 bg-black p-5 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">
+                Código de entrega
+              </p>
+              <p className="mt-2 text-4xl font-black tracking-[0.35em] text-primary">
+                {pickupPin ?? "••••"}
+              </p>
+              {!pickupPin ? (
+                <p className="mt-2 text-xs text-zinc-500">Atualizando seu PIN com segurança...</p>
+              ) : null}
+            </div>
+          </section>
         ) : null}
 
         {pickupReady ? (
