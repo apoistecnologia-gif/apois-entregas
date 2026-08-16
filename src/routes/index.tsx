@@ -67,7 +67,7 @@ function Index() {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-black px-6 text-center">
         <div className="text-lg font-black tracking-[0.08em] text-white">APOIS</div>
-        <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#FFD700]">
+        <div className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
           {getProductLabel()}
         </div>
         <div className="text-sm text-zinc-500">Abrindo o acesso correto…</div>
@@ -78,15 +78,15 @@ function Index() {
   return (
     <div className="relative min-h-[100dvh] w-full overflow-hidden bg-black text-white font-sans">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-24 -top-28 h-72 w-72 rounded-full bg-[#FFD700]/8 blur-[110px]" />
-        <div className="absolute -right-20 top-[28%] h-64 w-64 rounded-full bg-[#FFD700]/10 blur-[110px]" />
-        <div className="absolute bottom-0 left-1/2 h-48 w-[90%] -translate-x-1/2 rounded-full bg-[#FFD700]/5 blur-[120px]" />
+        <div className="absolute -left-24 -top-28 h-72 w-72 rounded-full bg-primary/10 blur-[110px]" />
+        <div className="absolute -right-20 top-[28%] h-64 w-64 rounded-full bg-accent/15 blur-[110px]" />
+        <div className="absolute bottom-0 left-1/2 h-48 w-[90%] -translate-x-1/2 rounded-full bg-primary/8 blur-[120px]" />
       </div>
 
       <div className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-[480px] flex-col px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]">
         <header className="flex shrink-0 flex-col items-center text-center">
           <div className="mb-5 flex items-center gap-3" aria-label="APOIS ENTREGA">
-            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-[14px] border border-[#FFD700]/30 bg-[#0b0b0b] shadow-[0_0_30px_rgba(255,215,0,0.12)]">
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-[14px] border border-accent/35 bg-[#0b0b0b] shadow-[0_0_30px_rgba(106,27,154,0.18)]">
               <img
                 src="/favicon.png"
                 alt=""
@@ -105,7 +105,10 @@ function Index() {
           </div>
 
           <h1 className="text-[27px] font-black leading-tight tracking-[-0.04em] sm:text-[30px]">
-            Seu delivery <span className="text-[#FFD700]">do seu jeito</span>
+            Seu delivery{" "}
+            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              do seu jeito
+            </span>
           </h1>
           <p className="mt-2 text-[14px] font-medium text-zinc-500">
             Pediu, chegou. Apois, vamo comer?
@@ -118,7 +121,7 @@ function Index() {
               className="pointer-events-none absolute inset-0 opacity-[0.14]"
               style={{
                 backgroundImage:
-                  "linear-gradient(rgba(255,215,0,.28) 1px, transparent 1px), linear-gradient(90deg, rgba(255,215,0,.28) 1px, transparent 1px)",
+                  "linear-gradient(rgba(106,27,154,.26) 1px, transparent 1px), linear-gradient(90deg, rgba(57,181,74,.22) 1px, transparent 1px)",
                 backgroundSize: "34px 34px",
                 maskImage: "radial-gradient(circle at center, black 20%, transparent 78%)",
                 WebkitMaskImage: "radial-gradient(circle at center, black 20%, transparent 78%)",
@@ -130,7 +133,7 @@ function Index() {
                 <Store className="h-6 w-6 text-white" strokeWidth={1.8} />
               </div>
 
-              <div className="absolute right-3 top-[45%] flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FFD700] text-black shadow-[0_0_35px_rgba(255,215,0,0.28)]">
+              <div className="absolute right-3 top-[45%] flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent text-white shadow-[0_0_35px_rgba(106,27,154,0.3)]">
                 <PackageCheck className="h-7 w-7" strokeWidth={2.2} />
               </div>
 
@@ -142,25 +145,25 @@ function Index() {
               >
                 <path
                   d="M54 43 C 104 38, 86 118, 148 118 S 222 70, 278 110"
-                  stroke="rgba(255,215,0,.25)"
+                  stroke="rgba(106,27,154,.28)"
                   strokeWidth="10"
                   strokeLinecap="round"
                 />
                 <path
                   d="M54 43 C 104 38, 86 118, 148 118 S 222 70, 278 110"
-                  stroke="#FFD700"
+                  stroke="#39B54A"
                   strokeWidth="3"
                   strokeLinecap="round"
                   strokeDasharray="8 11"
                 />
               </svg>
 
-              <div className="absolute left-[40%] top-[47%] flex h-11 w-11 items-center justify-center rounded-full border border-[#FFD700]/25 bg-black shadow-[0_0_22px_rgba(255,215,0,0.15)]">
-                <Bike className="h-5 w-5 text-[#FFD700]" strokeWidth={2} />
+              <div className="absolute left-[40%] top-[47%] flex h-11 w-11 items-center justify-center rounded-full border border-accent/35 bg-black shadow-[0_0_22px_rgba(57,181,74,0.18)]">
+                <Bike className="h-5 w-5 text-primary" strokeWidth={2} />
               </div>
 
               <div className="absolute bottom-1 left-3 flex items-center gap-2 rounded-full border border-white/[0.06] bg-black/80 px-3 py-2 backdrop-blur">
-                <MapPin className="h-4 w-4 text-[#FFD700]" fill="#FFD700" strokeWidth={1.5} />
+                <MapPin className="h-4 w-4 text-accent" fill="#6A1B9A" strokeWidth={1.5} />
                 <span className="text-[11px] font-semibold text-zinc-300">
                   Entrega acompanhada em tempo real
                 </span>
@@ -173,7 +176,7 @@ function Index() {
           <Button
             type="button"
             onClick={() => navigate({ to: "/register" })}
-            className="group relative flex h-[58px] w-full items-center justify-between overflow-hidden rounded-[20px] bg-[#FFD700] px-6 text-[16px] font-black text-black shadow-[0_10px_35px_rgba(255,215,0,0.22)] transition-all hover:bg-[#FFC800] active:scale-[0.985]"
+            className="group relative flex h-[58px] w-full items-center justify-between overflow-hidden rounded-[20px] bg-gradient-to-r from-primary to-accent px-6 text-[16px] font-black text-white shadow-[0_10px_35px_rgba(106,27,154,0.28)] transition-all hover:brightness-110 active:scale-[0.985]"
           >
             <div className="absolute inset-0 -translate-x-full skew-x-[-20deg] bg-white/15 transition-transform duration-700 ease-out group-hover:translate-x-full" />
             <span className="relative z-10">Criar minha conta</span>
@@ -184,7 +187,7 @@ function Index() {
             type="button"
             onClick={() => navigate({ to: "/login" })}
             variant="outline"
-            className="h-[58px] w-full rounded-[20px] border-zinc-800 bg-zinc-950/80 text-[16px] font-bold text-white backdrop-blur transition-all hover:bg-zinc-900 active:scale-[0.985]"
+            className="h-[58px] w-full rounded-[20px] border-zinc-800 bg-zinc-950/80 text-[16px] font-bold text-white backdrop-blur transition-all hover:border-accent/40 hover:bg-zinc-900 active:scale-[0.985]"
           >
             Entrar
           </Button>
