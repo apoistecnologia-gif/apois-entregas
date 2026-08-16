@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# Touch to trigger the workspace branding/logout patch workflow.
 p = Path('src/components/WorkspaceShell.tsx')
 s = p.read_text()
 
