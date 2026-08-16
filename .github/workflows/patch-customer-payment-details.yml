@@ -38,3 +38,5 @@ jobs:
           git commit -m "fix(customer): render OpenPix QR reliably and preserve order details"
           git pull --rebase origin main
           git push origin HEAD:main
+
+# Triggered after Android homologation exposed sandbox QR rendering and order relation loading issues.
