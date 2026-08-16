@@ -14,8 +14,10 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
-      - name: Dispatch customer Android build
+      - name: Dispatch final CI and Android builds
         env:
           GH_TOKEN: ${{ github.token }}
-        # Final homologation build after Pix, address, tracking and PIN validation.
-        run: gh workflow run mobile-android.yml --repo "${{ github.repository }}" --ref main -f product=customer
+        run: |
+          gh workflow run ci.yml --repo "${{ github.repository }}" --ref main
+          gh workflow run mobile-android.yml --repo "${{ github.repository }}" --ref main -f product=customer
+          gh workflow run mobile-android.yml --repo "${{ github.repository }}" --ref main -f product=courier
