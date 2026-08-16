@@ -15,7 +15,6 @@ import {
   Search,
   ChevronRight,
   ChevronDown,
-  Bell,
   Bike,
   Store,
   Star,
@@ -23,7 +22,6 @@ import {
 } from "lucide-react";
 import { AppBottomNav } from "@/components/AppBottomNav";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
 import logoAsset from "@/assets/logo.png.asset.json";
 import catRestaurantes from "@/assets/cat-restaurantes.png";
 import catMercados from "@/assets/cat-mercados.png";
@@ -118,11 +116,11 @@ function Inicio() {
           } else {
             setMerchantsHours([]);
             setMerchantsSpecialHours([]);
-            setMerchantsSpecialHours([]);
           }
         } else {
           setMerchants([]);
           setMerchantsHours([]);
+          setMerchantsSpecialHours([]);
         }
       }
     } catch (err: any) {
@@ -143,9 +141,8 @@ function Inicio() {
   const firstName = profile?.full_name?.split(" ")[0]?.toUpperCase();
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-black text-white relative">
-      {/* Header */}
-      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-zinc-900/80 px-4 pb-3 pt-6">
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-accent/15 px-4 pb-3 pt-6">
         <img
           src={logoAsset.url}
           alt="APOIS ENTREGA"
@@ -158,18 +155,17 @@ function Inicio() {
         >
           <ShoppingBag className="h-5 w-5" />
           {totalItems > 0 && (
-            <span className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-primary text-[10px] font-bold text-black flex items-center justify-center ring-2 ring-zinc-950">
+            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white ring-2 ring-zinc-950">
               {totalItems}
             </span>
           )}
         </button>
       </header>
 
-      <main className="flex-1 overflow-y-auto space-y-4 px-4 pb-20 pt-4 scrollbar-none">
-        {/* Entregar em */}
+      <main className="scrollbar-none flex-1 space-y-4 overflow-y-auto px-4 pb-20 pt-4">
         <button
           onClick={() => navigate({ to: "/enderecos" })}
-          className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-primary/30 bg-gradient-to-r from-zinc-950 to-black px-3 py-3 text-left shadow-[0_6px_24px_-12px_rgba(255,215,0,0.45)] transition-transform active:scale-[0.99]"
+          className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-accent/30 bg-gradient-to-r from-zinc-950 to-black px-3 py-3 text-left shadow-[0_6px_24px_-12px_rgba(106,27,154,0.45)] transition-transform active:scale-[0.99]"
         >
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/15 ring-1 ring-primary/25">
             <MapPin className="h-5 w-5 text-primary" />
@@ -188,40 +184,39 @@ function Inicio() {
               )}
             </span>
           </span>
-          <ChevronDown className="h-5 w-5 shrink-0 text-primary" />
+          <ChevronDown className="h-5 w-5 shrink-0 text-accent" />
         </button>
 
-        {/* Busca */}
-        <div className="relative group">
-          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-primary group-focus-within:text-white transition-colors" />
+        <div className="group relative">
+          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-accent transition-colors group-focus-within:text-primary" />
           <Input
             type="text"
             readOnly
             onClick={() => navigate({ to: "/buscar" })}
             placeholder="O que você quer pedir?"
-            className="h-13 cursor-pointer rounded-2xl border-zinc-800 bg-zinc-950/90 pl-12 text-[15px] text-white shadow-inner shadow-black/60 placeholder:text-zinc-500 focus-visible:border-primary/50 focus-visible:ring-primary/40"
+            className="h-13 cursor-pointer rounded-2xl border-zinc-800 bg-zinc-950/90 pl-12 text-[15px] text-white shadow-inner shadow-black/60 placeholder:text-zinc-500 focus-visible:border-accent/50 focus-visible:ring-accent/30"
           />
         </div>
 
-        {/* Saudação */}
         <div className="flex min-w-0 items-center gap-3 pt-0.5">
-          <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-primary/40 bg-zinc-950 shadow-[0_0_0_3px_rgba(255,215,0,0.06)]">
+          <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-primary/40 bg-zinc-950 shadow-[0_0_0_3px_rgba(57,181,74,0.08)]">
             <img src={logoAsset.url} alt="" className="h-7 w-7 object-contain" />
           </span>
           <div className="min-w-0">
             <h1 className="truncate text-[22px] font-extrabold leading-tight tracking-tight">
               Olá,{" "}
-              <span className="text-primary">{isLoading ? "..." : firstName || "BEM-VINDO"}!</span>
+              <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                {isLoading ? "..." : firstName || "BEM-VINDO"}!
+              </span>
             </h1>
             <p className="truncate text-[13px] text-zinc-400">O que vamos comer hoje?</p>
           </div>
         </div>
 
-        {/* Categorias */}
         <div className="grid grid-cols-4 gap-2.5">
           {isLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex flex-col items-center gap-2 animate-pulse">
+              <div key={i} className="flex animate-pulse flex-col items-center gap-2">
                 <div className="aspect-[3/3.4] w-full rounded-[1.25rem] bg-zinc-900" />
                 <div className="h-2 w-12 rounded bg-zinc-900" />
               </div>
@@ -289,11 +284,10 @@ function Inicio() {
           ) : null}
         </div>
 
-        {/* Perto de você */}
         <section className="space-y-3 pt-1">
           <div className="flex items-center justify-between gap-2">
             <h2 className="flex min-w-0 items-center gap-2 text-lg font-bold tracking-tight">
-              <MapPin className="h-5 w-5 shrink-0 text-primary" />
+              <MapPin className="h-5 w-5 shrink-0 text-accent" />
               <span className="truncate">Perto de você</span>
             </h2>
             <button
@@ -321,9 +315,9 @@ function Inicio() {
                         params: { merchantId: merchant.id },
                       })
                     }
-                    className="group grid grid-cols-[84px_1fr] items-center gap-4 rounded-3xl border border-zinc-900 bg-zinc-950/50 p-3 text-left transition-all hover:bg-zinc-900/50 active:scale-[0.98] active:bg-zinc-900"
+                    className="group grid grid-cols-[84px_1fr] items-center gap-4 rounded-3xl border border-zinc-900 bg-zinc-950/50 p-3 text-left transition-all hover:border-accent/20 hover:bg-zinc-900/50 active:scale-[0.98] active:bg-zinc-900"
                   >
-                    <div className="relative aspect-square w-full overflow-hidden rounded-2xl ring-1 ring-white/10 bg-zinc-900">
+                    <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-white/10">
                       {merchant.logo_url ? (
                         <img
                           src={merchant.logo_url}
@@ -342,7 +336,7 @@ function Inicio() {
                       </div>
                     </div>
 
-                    <div className="flex flex-col justify-center gap-1.5 min-w-0">
+                    <div className="flex min-w-0 flex-col justify-center gap-1.5">
                       <div className="flex items-center gap-2">
                         <h3 className="truncate text-base font-extrabold text-white">
                           {merchant.name}
@@ -352,7 +346,7 @@ function Inicio() {
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-400">
                           <span className="flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5 text-primary" />
+                            <Clock className="h-3.5 w-3.5 text-accent" />
                             {merchant.delivery_min_minutes && merchant.delivery_max_minutes
                               ? `${merchant.delivery_min_minutes}-${merchant.delivery_max_minutes} min`
                               : "Prazo não informado"}
@@ -397,7 +391,7 @@ function Inicio() {
                       </div>
 
                       {merchant.description && (
-                        <p className="truncate text-[11px] text-zinc-500 italic">
+                        <p className="truncate text-[11px] italic text-zinc-500">
                           {merchant.description}
                         </p>
                       )}
@@ -415,7 +409,7 @@ function Inicio() {
                 </div>
               )
             ) : (
-              <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-primary/20 bg-primary/5 px-6 py-10 text-center">
+              <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-accent/25 bg-accent/5 px-6 py-10 text-center">
                 <span className="grid h-12 w-12 place-items-center rounded-full bg-zinc-900 ring-1 ring-primary/30">
                   <MapPin className="h-6 w-6 text-primary" />
                 </span>
@@ -425,7 +419,7 @@ function Inicio() {
                 </p>
                 <button
                   onClick={() => navigate({ to: "/enderecos" })}
-                  className="rounded-full bg-primary px-6 py-2 text-[13px] font-bold text-black shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+                  className="rounded-full bg-gradient-to-r from-primary to-accent px-6 py-2 text-[13px] font-bold text-white shadow-[0_10px_28px_rgba(106,27,154,0.22)] transition-transform active:scale-95"
                 >
                   Selecionar endereço
                 </button>
