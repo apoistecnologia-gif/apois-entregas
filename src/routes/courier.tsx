@@ -212,7 +212,14 @@ function CourierApp() {
 
   useEffect(() => {
     if (!courier?.id || courier.status !== "approved" || !courier.is_active) return;
-    void installCourierPushListeners().then(() => ensureCourierPushRegistration(false));
+    void installCourierPushListeners().then(async () => {
+      const result = await ensureCourierPushRegistration(true);
+      if (result.status === "permission-denied") {
+        toast.error("Ative as notificações para receber chamadas de novas entregas.");
+      } else if (result.status === "failed") {
+        console.warn("courier push registration failed", result.message);
+      }
+    });
   }, [courier?.id, courier?.is_active, courier?.status]);
 
   useEffect(() => {

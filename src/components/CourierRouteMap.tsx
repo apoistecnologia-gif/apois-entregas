@@ -124,6 +124,13 @@ function RouteMapContent({
           distanceMeters: Math.max(0, Math.round(Number(route.distanceMeters ?? 0))),
           durationSeconds: Math.max(0, Math.round(Number(route.durationMillis ?? 0) / 1000)),
         };
+        if (metrics.distanceMeters > 5000) {
+          map.panTo(origin);
+          map.setZoom(13);
+        } else if (metrics.distanceMeters > 1800) {
+          map.panTo(origin);
+          map.setZoom(14);
+        }
         if (metrics.distanceMeters > 0 && metrics.durationSeconds > 0) {
           onMetrics(metrics);
           const previousPersisted = lastPersistedRef.current;
