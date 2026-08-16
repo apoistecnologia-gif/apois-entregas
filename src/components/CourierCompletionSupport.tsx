@@ -18,31 +18,31 @@ export function CourierCompletionSheet({ job, onDone }: { job: any; onDone: () =
     <section
       role="status"
       aria-live="polite"
-      className="relative -mt-8 overflow-hidden rounded-t-[2rem] rounded-b-[1.8rem] border border-primary/35 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.13),transparent_40%),linear-gradient(180deg,#10100d,#070707)] px-5 pb-5 pt-3 text-center shadow-[0_-18px_45px_rgba(0,0,0,0.65)]"
+      className="relative -mt-8 overflow-hidden rounded-t-[2rem] rounded-b-[1.8rem] border border-accent/35 bg-[radial-gradient(circle_at_top,rgba(106,27,154,0.2),transparent_42%),linear-gradient(180deg,#10100d,#070707)] px-5 pb-5 pt-3 text-center shadow-[0_-18px_45px_rgba(0,0,0,0.65)]"
     >
       <div className="mx-auto h-1.5 w-12 rounded-full bg-zinc-700" />
-      <div className="mx-auto mt-6 grid h-16 w-16 place-items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_35px_rgba(34,197,94,0.1)]">
+      <div className="mx-auto mt-6 grid h-16 w-16 place-items-center rounded-full border border-primary/35 bg-primary/10 text-primary shadow-[0_0_35px_rgba(57,181,74,0.16)]">
         <CheckCircle2 className="h-9 w-9" />
       </div>
-      <p className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-primary">
+      <p className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-accent">
         Entrega concluída
       </p>
       <h2 className="mt-1 text-2xl font-black">Tudo certo!</h2>
       <p className="mx-auto mt-2 max-w-xs text-sm leading-5 text-zinc-500">
         O pedido #{job?.orders?.order_number ?? "—"} foi confirmado com o PIN do cliente.
       </p>
-      <div className="mx-auto mt-5 flex max-w-xs items-center justify-between rounded-2xl border border-primary/20 bg-black/65 p-4 text-left">
+      <div className="mx-auto mt-5 flex max-w-xs items-center justify-between rounded-2xl border border-accent/20 bg-black/65 p-4 text-left">
         <div>
           <p className="text-[9px] font-black uppercase text-zinc-600">Ganho estimado</p>
           <p className="mt-1 text-xl font-black text-primary">{money(job?.estimated_earnings)}</p>
         </div>
-        <div className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-black">
+        <div className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-white shadow-[0_0_20px_rgba(57,181,74,0.2)]">
           <CircleDollarSign className="h-5 w-5" />
         </div>
       </div>
       <Button
         onClick={onDone}
-        className="mt-5 h-14 w-full rounded-2xl font-black uppercase tracking-[0.05em]"
+        className="mt-5 h-14 w-full rounded-2xl bg-gradient-to-r from-primary to-accent font-black uppercase tracking-[0.05em] text-white shadow-[0_10px_30px_rgba(106,27,154,0.18)]"
       >
         Voltar ao início
       </Button>
@@ -73,7 +73,7 @@ export function CourierSupportSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby="courier-support-title"
-        className="w-full max-w-lg rounded-[2rem] border border-primary/30 bg-[#090909] p-4 pb-[max(env(safe-area-inset-bottom),1rem)] text-white shadow-[0_-20px_70px_rgba(0,0,0,0.75)]"
+        className="w-full max-w-lg rounded-[2rem] border border-accent/30 bg-[#090909] p-4 pb-[max(env(safe-area-inset-bottom),1rem)] text-white shadow-[0_-20px_70px_rgba(0,0,0,0.75)]"
       >
         <div className="mx-auto h-1.5 w-12 rounded-full bg-zinc-700" />
         <div className="mt-4 flex items-start justify-between gap-4">
@@ -82,7 +82,7 @@ export function CourierSupportSheet({
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-accent">
                 Ajuda durante a entrega
               </p>
               <h2 id="courier-support-title" className="mt-1 text-lg font-black">
@@ -111,7 +111,7 @@ export function CourierSupportSheet({
           rows={5}
           autoFocus
           placeholder="Descreva o problema com pelo menos 10 caracteres..."
-          className="mt-4 w-full resize-none rounded-2xl border border-zinc-800 bg-black p-4 text-sm leading-5 text-white outline-none placeholder:text-zinc-600 focus:border-primary focus:ring-2 focus:ring-primary/10"
+          className="mt-4 w-full resize-none rounded-2xl border border-zinc-800 bg-black p-4 text-sm leading-5 text-white outline-none placeholder:text-zinc-600 focus:border-accent focus:ring-2 focus:ring-accent/15"
         />
         <div className="mt-2 flex items-center justify-between px-1 text-[10px] text-zinc-600">
           <span>Não inclua senhas ou dados bancários.</span>
@@ -121,7 +121,7 @@ export function CourierSupportSheet({
           type="button"
           onClick={onSubmit}
           disabled={busy || value.trim().length < 10}
-          className="mt-4 h-14 w-full rounded-2xl font-black uppercase tracking-[0.04em]"
+          className="mt-4 h-14 w-full rounded-2xl bg-gradient-to-r from-primary to-accent font-black uppercase tracking-[0.04em] text-white"
         >
           {busy ? (
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
