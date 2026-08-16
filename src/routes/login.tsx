@@ -205,7 +205,8 @@ function Login() {
             className="h-full w-full scale-105 object-cover object-center opacity-55 saturate-[0.8]"
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.12)_0%,rgba(0,0,0,0.62)_54%,#000_100%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_18%,rgba(250,204,21,0.18),transparent_28%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_18%,rgba(106,27,154,0.28),transparent_30%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_24%_30%,rgba(57,181,74,0.12),transparent_24%)]" />
         </div>
 
         <header className="relative z-10 mx-auto flex w-full max-w-md items-center justify-between px-5 pt-[max(env(safe-area-inset-top),1rem)]">
@@ -216,8 +217,8 @@ function Login() {
           >
             <ChevronLeft className="h-5 w-5 text-white" />
           </button>
-          <span className="flex items-center gap-1.5 rounded-full border border-primary/25 bg-black/45 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-primary backdrop-blur-md">
-            <Bike className="h-3.5 w-3.5" /> Entregador
+          <span className="flex items-center gap-1.5 rounded-full border border-accent/35 bg-black/45 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-white backdrop-blur-md">
+            <Bike className="h-3.5 w-3.5 text-primary" /> Entregador
           </span>
         </header>
 
@@ -230,9 +231,9 @@ function Login() {
             />
           </div>
 
-          <section className="mt-1 rounded-[2rem] border border-primary/25 bg-[#090909]/94 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.7),0_0_45px_rgba(250,204,21,0.06)] backdrop-blur-xl sm:p-6">
+          <section className="mt-1 rounded-[2rem] border border-accent/30 bg-[#090909]/94 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.7),0_0_45px_rgba(106,27,154,0.14)] backdrop-blur-xl sm:p-6">
             <div className="text-center">
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-primary">
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">
                 APOIS ENTREGADOR
               </p>
               <h1 className="mt-2 text-[1.75rem] font-black leading-tight text-white">
@@ -247,7 +248,7 @@ function Login() {
               <div className="space-y-2">
                 <label className="ml-1 text-xs font-bold text-zinc-400">E-mail</label>
                 <div className="relative">
-                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-primary" />
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-accent" />
                   <Input
                     type="email"
                     placeholder="Digite seu e-mail"
@@ -258,7 +259,7 @@ function Login() {
                     }}
                     required
                     autoComplete="email"
-                    className="h-14 rounded-2xl border-zinc-800 bg-black/65 pl-11 pr-4 text-base text-white placeholder:text-zinc-600 focus:border-primary focus:ring-primary"
+                    className="h-14 rounded-2xl border-zinc-800 bg-black/65 pl-11 pr-4 text-base text-white placeholder:text-zinc-600 focus:border-accent focus:ring-accent"
                   />
                 </div>
               </div>
@@ -266,7 +267,7 @@ function Login() {
               <div className="space-y-2">
                 <label className="ml-1 text-xs font-bold text-zinc-400">Senha</label>
                 <div className="relative">
-                  <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-primary" />
+                  <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-accent" />
                   <Input
                     type={showPassword ? "text" : "password"}
                     placeholder="Sua senha"
@@ -277,7 +278,7 @@ function Login() {
                     }}
                     required
                     autoComplete="current-password"
-                    className="h-14 rounded-2xl border-zinc-800 bg-black/65 pl-11 pr-12 text-base text-white placeholder:text-zinc-600 focus:border-primary focus:ring-primary"
+                    className="h-14 rounded-2xl border-zinc-800 bg-black/65 pl-11 pr-12 text-base text-white placeholder:text-zinc-600 focus:border-accent focus:ring-accent"
                   />
                   <button
                     type="button"
@@ -312,7 +313,7 @@ function Login() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="h-14 w-full rounded-2xl bg-primary text-base font-black uppercase tracking-[0.06em] text-black shadow-[0_12px_35px_rgba(250,204,21,0.2)] transition-transform active:scale-[0.985]"
+                className="h-14 w-full rounded-2xl bg-gradient-to-r from-primary to-accent text-base font-black uppercase tracking-[0.06em] text-white shadow-[0_12px_35px_rgba(57,181,74,0.22),0_0_30px_rgba(106,27,154,0.15)] transition-transform active:scale-[0.985]"
               >
                 {isLoading ? (
                   <>
@@ -364,7 +365,7 @@ function Login() {
             alt="APOIS ENTREGA"
             className="mb-5 h-20 w-auto object-contain"
           />
-          <p className="text-sm font-black uppercase tracking-[0.24em] text-primary">
+          <p className="text-sm font-black uppercase tracking-[0.24em] text-accent">
             {productLabel}
           </p>
           <h1 className="mt-3 text-3xl font-black leading-tight text-white">
@@ -385,7 +386,7 @@ function Login() {
               }}
               required
               autoComplete="email"
-              className="h-14 rounded-2xl border-zinc-800 bg-zinc-900/50 px-4 text-base text-white placeholder:text-zinc-600 focus:border-primary focus:ring-primary"
+              className="h-14 rounded-2xl border-zinc-800 bg-zinc-900/50 px-4 text-base text-white placeholder:text-zinc-600 focus:border-accent focus:ring-accent"
             />
           </div>
 
@@ -402,7 +403,7 @@ function Login() {
                 }}
                 required
                 autoComplete="current-password"
-                className="h-14 rounded-2xl border-zinc-800 bg-zinc-900/50 px-4 pr-12 text-base text-white placeholder:text-zinc-600 focus:border-primary focus:ring-primary"
+                className="h-14 rounded-2xl border-zinc-800 bg-zinc-900/50 px-4 pr-12 text-base text-white placeholder:text-zinc-600 focus:border-accent focus:ring-accent"
               />
               <button
                 type="button"
@@ -437,7 +438,7 @@ function Login() {
           <Button
             type="submit"
             disabled={isLoading}
-            className="h-14 w-full rounded-2xl bg-primary text-lg font-black text-black transition-transform hover:bg-primary/90 active:scale-[0.98]"
+            className="h-14 w-full rounded-2xl bg-gradient-to-r from-primary to-accent text-lg font-black text-white shadow-[0_12px_35px_rgba(57,181,74,0.18)] transition-transform hover:opacity-95 active:scale-[0.98]"
           >
             {isLoading ? (
               <>
