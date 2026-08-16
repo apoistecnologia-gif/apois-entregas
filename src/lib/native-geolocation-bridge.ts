@@ -91,7 +91,9 @@ const toWebError = (error: unknown): GeolocationPositionError => {
 const ensureNativeLocationPermission = async () => {
   let permission = await NativeGeolocation.checkPermissions();
   if (permission.location !== "granted") {
-    permission = await NativeGeolocation.requestPermissions({ permissions: ["location"] });
+    permission = await NativeGeolocation.requestPermissions({
+      permissions: ["location", "coarseLocation"],
+    });
   }
   if (permission.location !== "granted") {
     throw { code: "OS-PLUG-GLOC-0003", message: "Permissão de localização negada." };
@@ -113,9 +115,6 @@ const getBestCurrentPosition = async (options?: PositionOptions) => {
   } catch (firstError) {
     if (!highAccuracy) throw firstError;
 
-    // Some Android devices temporarily fail a fresh high-accuracy fix indoors even
-    // while location permission/services are enabled. Fall back to the fused/network
-    // provider instead of declaring GPS unavailable immediately.
     return NativeGeolocation.getCurrentPosition({
       enableHighAccuracy: false,
       timeout: Math.max(10000, Math.min(timeout, 15000)),
@@ -123,6 +122,31 @@ const getBestCurrentPosition = async (options?: PositionOptions) => {
       enableLocationFallback: true,
     });
   }
+};
+
+const primeCourierLocationPermission = () => {
+  const productMode = String((import.meta as any).env?.VITE_APOIS_PRODUCT_MODE ?? "");
+  if (productMode !== "courier" || typeof window === "undefined") return;
+
+  // Solicita no primeiro uso do app do entregador, já com a Activity visível.
+  // O atraso curto evita pedir permissão enquanto o WebView ainda está inicializando.
+  window.setTimeout(() => {
+    void NativeGeolocation.checkPermissions()
+      .then((permission) => {
+        if (
+          permission.location === "prompt" ||
+          permission.location === "prompt-with-rationale"
+        ) {
+          return NativeGeolocation.requestPermissions({
+            permissions: ["location", "coarseLocation"],
+          });
+        }
+        return permission;
+      })
+      .catch((error) => {
+        console.warn("Não foi possível solicitar a localização na abertura:", error);
+      });
+  }, 900);
 };
 
 export const installNativeGeolocationBridge = () => {
@@ -133,6 +157,8 @@ export const installNativeGeolocationBridge = () => {
   ) {
     return;
   }
+
+  primeCourierLocationPermission();
 
   let nextWatchId = 1;
   const watches = new Map<
@@ -166,9 +192,6 @@ export const installNativeGeolocationBridge = () => {
         try {
           await ensureNativeLocationPermission();
 
-          // Prime the tracker with a one-shot fix. This avoids a common Android state
-          // where watchPosition starts before the fused provider has produced a fix and
-          // immediately reports POSITION_UNAVAILABLE.
           try {
             const initial = await getBestCurrentPosition({
               enableHighAccuracy: options?.enableHighAccuracy ?? true,
@@ -218,15 +241,11 @@ export const installNativeGeolocationBridge = () => {
                 return;
               }
 
-              // POSITION_UNAVAILABLE/TIMEOUT may be transient on Android. If we already
-              // have a valid fix, keep it and let the native watch recover instead of
-              // turning the courier tracker red/offline.
               if (state.hasPosition) {
                 console.warn("Falha transitória no rastreamento nativo:", error.code);
                 return;
               }
 
-              // Before surfacing an error, try one fused/network fallback fix.
               void getBestCurrentPosition({
                 enableHighAccuracy: false,
                 timeout: 10000,
