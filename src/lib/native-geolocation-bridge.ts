@@ -20,7 +20,9 @@ type NativeGeolocationPlugin = {
     location: NativePermissionState;
     coarseLocation: NativePermissionState;
   }>;
-  requestPermissions: (options?: { permissions?: Array<"location" | "coarseLocation"> }) => Promise<{
+  requestPermissions: (options?: {
+    permissions?: Array<"location" | "coarseLocation">;
+  }) => Promise<{
     location: NativePermissionState;
     coarseLocation: NativePermissionState;
   }>;
@@ -39,7 +41,10 @@ type NativeGeolocationPlugin = {
       interval?: number;
       enableLocationFallback?: boolean;
     },
-    callback: (position: NativePosition | null, error?: { code?: string; message?: string }) => void,
+    callback: (
+      position: NativePosition | null,
+      error?: { code?: string; message?: string },
+    ) => void,
   ) => Promise<string>;
   clearWatch: (options: { id: string }) => Promise<void>;
 };
