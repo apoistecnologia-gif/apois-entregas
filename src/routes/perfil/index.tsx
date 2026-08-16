@@ -106,8 +106,8 @@ function PerfilIndexPage() {
       </header>
 
       <main className="scrollbar-none flex-1 overflow-y-auto p-4 pb-20">
-        <div className="mb-8 flex flex-col items-center rounded-3xl border border-zinc-900/50 bg-zinc-900/40 p-6 backdrop-blur-sm">
-          <div className="mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-zinc-900 shadow-[0_0_15px_rgba(255,215,0,0.3)]">
+        <div className="mb-8 flex flex-col items-center rounded-3xl border border-accent/15 bg-gradient-to-br from-zinc-900/60 via-zinc-950 to-accent/5 p-6 backdrop-blur-sm">
+          <div className="mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-zinc-900 shadow-[0_0_20px_rgba(57,181,74,0.24)] ring-4 ring-accent/10">
             {profile?.avatar_url ? (
               <img
                 src={profile.avatar_url}
