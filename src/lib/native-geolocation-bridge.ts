@@ -88,6 +88,43 @@ const toWebError = (error: unknown): GeolocationPositionError => {
   } as GeolocationPositionError;
 };
 
+const ensureNativeLocationPermission = async () => {
+  let permission = await NativeGeolocation.checkPermissions();
+  if (permission.location !== "granted") {
+    permission = await NativeGeolocation.requestPermissions({ permissions: ["location"] });
+  }
+  if (permission.location !== "granted") {
+    throw { code: "OS-PLUG-GLOC-0003", message: "Permissão de localização negada." };
+  }
+};
+
+const getBestCurrentPosition = async (options?: PositionOptions) => {
+  const highAccuracy = options?.enableHighAccuracy ?? true;
+  const timeout = options?.timeout ?? 20000;
+  const maximumAge = options?.maximumAge ?? 0;
+
+  try {
+    return await NativeGeolocation.getCurrentPosition({
+      enableHighAccuracy: highAccuracy,
+      timeout,
+      maximumAge,
+      enableLocationFallback: true,
+    });
+  } catch (firstError) {
+    if (!highAccuracy) throw firstError;
+
+    // Some Android devices temporarily fail a fresh high-accuracy fix indoors even
+    // while location permission/services are enabled. Fall back to the fused/network
+    // provider instead of declaring GPS unavailable immediately.
+    return NativeGeolocation.getCurrentPosition({
+      enableHighAccuracy: false,
+      timeout: Math.max(10000, Math.min(timeout, 15000)),
+      maximumAge: Math.max(maximumAge, 60000),
+      enableLocationFallback: true,
+    });
+  }
+};
+
 export const installNativeGeolocationBridge = () => {
   if (
     typeof navigator === "undefined" ||
@@ -98,25 +135,17 @@ export const installNativeGeolocationBridge = () => {
   }
 
   let nextWatchId = 1;
-  const watches = new Map<number, { nativeId: string | undefined; cancelled: boolean }>();
+  const watches = new Map<
+    number,
+    { nativeId: string | undefined; cancelled: boolean; hasPosition: boolean }
+  >();
 
   const adapter: Geolocation = {
     getCurrentPosition(success, failure, options) {
       void (async () => {
         try {
-          let permission = await NativeGeolocation.checkPermissions();
-          if (permission.location !== "granted") {
-            permission = await NativeGeolocation.requestPermissions({ permissions: ["location"] });
-          }
-          if (permission.location !== "granted") {
-            throw { code: "OS-PLUG-GLOC-0003", message: "Permissão de localização negada." };
-          }
-          const position = await NativeGeolocation.getCurrentPosition({
-            enableHighAccuracy: options?.enableHighAccuracy ?? true,
-            timeout: options?.timeout ?? 20000,
-            maximumAge: options?.maximumAge ?? 0,
-            enableLocationFallback: true,
-          });
+          await ensureNativeLocationPermission();
+          const position = await getBestCurrentPosition(options);
           success(toWebPosition(position));
         } catch (error) {
           failure?.(toWebError(error));
@@ -126,35 +155,96 @@ export const installNativeGeolocationBridge = () => {
 
     watchPosition(success, failure, options) {
       const webId = nextWatchId++;
-      const state = { cancelled: false as boolean, nativeId: undefined as string | undefined };
+      const state = {
+        cancelled: false as boolean,
+        nativeId: undefined as string | undefined,
+        hasPosition: false,
+      };
       watches.set(webId, state);
+
       void (async () => {
         try {
-          let permission = await NativeGeolocation.checkPermissions();
-          if (permission.location !== "granted") {
-            permission = await NativeGeolocation.requestPermissions({ permissions: ["location"] });
+          await ensureNativeLocationPermission();
+
+          // Prime the tracker with a one-shot fix. This avoids a common Android state
+          // where watchPosition starts before the fused provider has produced a fix and
+          // immediately reports POSITION_UNAVAILABLE.
+          try {
+            const initial = await getBestCurrentPosition({
+              enableHighAccuracy: options?.enableHighAccuracy ?? true,
+              timeout: options?.timeout ?? 20000,
+              maximumAge: Math.max(options?.maximumAge ?? 0, 30000),
+            });
+            if (!state.cancelled) {
+              state.hasPosition = true;
+              success(toWebPosition(initial));
+            }
+          } catch (initialError) {
+            const webError = toWebError(initialError);
+            if (webError.code === webError.PERMISSION_DENIED) {
+              throw initialError;
+            }
+            console.warn("Posição inicial nativa indisponível; iniciando rastreamento contínuo.");
           }
-          if (permission.location !== "granted") {
-            throw { code: "OS-PLUG-GLOC-0003", message: "Permissão de localização negada." };
+
+          if (state.cancelled) {
+            watches.delete(webId);
+            return;
           }
+
           const nativeId = await NativeGeolocation.watchPosition(
             {
               enableHighAccuracy: options?.enableHighAccuracy ?? true,
               timeout: options?.timeout ?? 20000,
-              maximumAge: options?.maximumAge ?? 0,
+              maximumAge: Math.max(options?.maximumAge ?? 0, 30000),
               minimumUpdateInterval: 5000,
               interval: 10000,
               enableLocationFallback: true,
             },
             (position, error) => {
               if (state.cancelled) return;
-              if (error) {
-                failure?.(toWebError(error));
+
+              if (position) {
+                state.hasPosition = true;
+                success(toWebPosition(position));
                 return;
               }
-              if (position) success(toWebPosition(position));
+
+              if (!error) return;
+              const webError = toWebError(error);
+
+              if (webError.code === webError.PERMISSION_DENIED) {
+                failure?.(webError);
+                return;
+              }
+
+              // POSITION_UNAVAILABLE/TIMEOUT may be transient on Android. If we already
+              // have a valid fix, keep it and let the native watch recover instead of
+              // turning the courier tracker red/offline.
+              if (state.hasPosition) {
+                console.warn("Falha transitória no rastreamento nativo:", error.code);
+                return;
+              }
+
+              // Before surfacing an error, try one fused/network fallback fix.
+              void getBestCurrentPosition({
+                enableHighAccuracy: false,
+                timeout: 10000,
+                maximumAge: 60000,
+              })
+                .then((fallbackPosition) => {
+                  if (state.cancelled) return;
+                  state.hasPosition = true;
+                  success(toWebPosition(fallbackPosition));
+                })
+                .catch((fallbackError) => {
+                  if (!state.cancelled && !state.hasPosition) {
+                    failure?.(toWebError(fallbackError));
+                  }
+                });
             },
           );
+
           state.nativeId = nativeId;
           if (state.cancelled) {
             await NativeGeolocation.clearWatch({ id: nativeId });
@@ -165,6 +255,7 @@ export const installNativeGeolocationBridge = () => {
           watches.delete(webId);
         }
       })();
+
       return webId;
     },
 
@@ -174,6 +265,8 @@ export const installNativeGeolocationBridge = () => {
       state.cancelled = true;
       if (state.nativeId) {
         void NativeGeolocation.clearWatch({ id: state.nativeId }).finally(() => watches.delete(id));
+      } else {
+        watches.delete(id);
       }
     },
   };
