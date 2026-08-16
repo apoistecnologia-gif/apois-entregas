@@ -1,0 +1,105 @@
+name: Final APOIS Entregas Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/release-final-apois-entregas.yml"
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  finalize-and-dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Final branding cleanup
+        shell: python
+        run: |
+          from pathlib import Path
+
+          # These values are legacy decorative gold shadows only. Semantic amber
+          # warning states are intentionally preserved.
+          for path in Path('src').rglob('*'):
+              if not path.is_file() or path.suffix.lower() not in {'.ts', '.tsx', '.css'}:
+                  continue
+              text = path.read_text(encoding='utf-8')
+              original = text
+              text = text.replace('rgba(255,215,0,', 'rgba(57,181,74,')
+              text = text.replace('rgba(250,204,21,', 'rgba(57,181,74,')
+              text = text.replace('rgba(246,185,0,', 'rgba(106,27,154,')
+              if text != original:
+                  path.write_text(text, encoding='utf-8')
+
+          index = Path('src/routes/index.tsx')
+          if index.exists():
+              text = index.read_text(encoding='utf-8').replace('src="/favicon.png"', 'src="/apois-app-icon.png"')
+              index.write_text(text, encoding='utf-8')
+
+          asset = Path('src/assets/logo.png.asset.json')
+          if asset.exists():
+              text = asset.read_text(encoding='utf-8').replace('"size": 3985', '"size": 6451')
+              asset.write_text(text, encoding='utf-8')
+
+          workflow = Path('.github/workflows/mobile-android.yml')
+          text = workflow.read_text(encoding='utf-8')
+          text = text.replace('icon_source = Path("public/favicon.png")', 'icon_source = Path("public/apois-app-icon.png")')
+          text = text.replace('public/favicon.png is required for Android branding', 'public/apois-app-icon.png is required for Android branding')
+          text = text.replace('<color name="apois_black">#000000</color>\\n    <color name="apois_gold">#F6B900</color>', '<color name="apois_black">#111111</color>\\n    <color name="apois_green">#39B54A</color>\\n    <color name="apois_purple">#6A1B9A</color>')
+          workflow.write_text(text, encoding='utf-8')
+
+      - name: Format touched source
+        run: bunx prettier --write src/routes/index.tsx src/routes/buscar.tsx 'src/routes/estabelecimento.$merchantId.tsx' src/routes/apois-plus.tsx src/routes/sacola.tsx src/routes/perfil/index.tsx src/components/ProductCustomizationSheet.tsx src/components/GoogleMapsAddressSelector.tsx src/assets/logo.png.asset.json .github/workflows/mobile-android.yml
+
+      - name: Validate final source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s public/apois-logo.jpg
+          test -s public/apois-app-icon.png
+          grep -Fq '"url": "/apois-logo.jpg"' src/assets/logo.png.asset.json
+          grep -Fq 'const BRAND_GREEN = "#39B54A"' src/components/CourierRouteMap.tsx
+          grep -Fq 'const BRAND_PURPLE = "#6A1B9A"' src/components/CourierRouteMap.tsx
+          grep -Fq 'public/apois-app-icon.png' .github/workflows/mobile-android.yml
+          bun run typecheck
+          bun run lint
+          bun run build:customer
+          bun run build:courier
+
+      - name: Commit final release source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add src .github/workflows/mobile-android.yml
+            git commit -m 'release: finalize APOIS Entregas purple green branding'
+            git push origin HEAD:main
+          fi
+
+      - name: Dispatch CI and signed Android releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run ci.yml --repo "${{ github.repository }}" --ref main
+          gh workflow run mobile-android.yml --repo "${{ github.repository }}" --ref main -f product=customer
+          gh workflow run mobile-android.yml --repo "${{ github.repository }}" --ref main -f product=courier
