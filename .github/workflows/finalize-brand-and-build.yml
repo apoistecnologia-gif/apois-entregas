@@ -1,0 +1,137 @@
+name: Finalize Entregas Brand And Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/finalize-brand-and-build.yml"
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Apply final Entregas branding cleanup
+        shell: python
+        run: |
+          from pathlib import Path
+
+          replacements = {
+              '#FFD700': '#39B54A',
+              '#F6B900': '#39B54A',
+              '#FACC15': '#39B54A',
+              '#FFD54A': '#6A1B9A',
+              'rgba(255,215,0,': 'rgba(57,181,74,',
+              'rgba(250,204,21,': 'rgba(57,181,74,',
+              'rgba(246,185,0,': 'rgba(106,27,154,',
+              '/apois-logo.svg': '/apois-logo.jpg',
+          }
+
+          text_suffixes = {'.ts', '.tsx', '.js', '.mjs', '.css', '.json', '.md', '.yml', '.yaml'}
+          for root in [Path('src'), Path('scripts')]:
+              if not root.exists():
+                  continue
+              for path in root.rglob('*'):
+                  if not path.is_file() or path.suffix.lower() not in text_suffixes:
+                      continue
+                  text = path.read_text(encoding='utf-8')
+                  original = text
+                  for old, new in replacements.items():
+                      text = text.replace(old, new)
+                  if text != original:
+                      path.write_text(text, encoding='utf-8')
+
+          workflow = Path('.github/workflows/mobile-android.yml')
+          text = workflow.read_text(encoding='utf-8')
+          text = text.replace('icon_source = Path("public/favicon.png")', 'icon_source = Path("public/apois-app-icon.png")')
+          text = text.replace('public/favicon.png is required for Android branding', 'public/apois-app-icon.png is required for Android branding')
+          text = text.replace(
+              '<color name="apois_black">#000000</color>\\n    <color name="apois_gold">#39B54A</color>',
+              '<color name="apois_black">#111111</color>\\n    <color name="apois_green">#39B54A</color>\\n    <color name="apois_purple">#6A1B9A</color>',
+          )
+          text = text.replace(
+              '<color name="apois_black">#000000</color>\\n    <color name="apois_gold">#F6B900</color>',
+              '<color name="apois_black">#111111</color>\\n    <color name="apois_green">#39B54A</color>\\n    <color name="apois_purple">#6A1B9A</color>',
+          )
+          workflow.write_text(text, encoding='utf-8')
+
+          index = Path('src/routes/index.tsx')
+          if index.exists():
+              text = index.read_text(encoding='utf-8').replace('src="/favicon.png"', 'src="/apois-app-icon.png"')
+              index.write_text(text, encoding='utf-8')
+
+          asset = Path('src/assets/logo.png.asset.json')
+          if asset.exists():
+              text = asset.read_text(encoding='utf-8')
+              text = text.replace('"size": 3985', '"size": 6451')
+              asset.write_text(text, encoding='utf-8')
+
+      - name: Remove obsolete one-off workflows
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f \
+            .github/workflows/apply-admin-partner-review.yml \
+            .github/workflows/fix-checkout-order-route.yml \
+            .github/workflows/format-admin-review-workflow.yml \
+            .github/workflows/format-courier-admin-fix.yml \
+            .github/workflows/patch-admin-manual-merchant.yml \
+            .github/workflows/patch-admin-merchant-dialog.yml \
+            .github/workflows/patch-customer-local-qr.yml \
+            .github/workflows/patch-customer-payment-details.yml \
+            .github/workflows/patch-final-homologation-round2.yml \
+            .github/workflows/patch-final-homologation-ux.yml \
+            .github/workflows/patch-push-dispatch-db-key.yml \
+            .github/workflows/patch-workspace-brand-logout.yml \
+            .github/workflows/trigger-courier-android-geolocation-build.yml \
+            .github/workflows/trigger-customer-android-final-homologation.yml \
+            .github/workflows/finalize-brand-and-build.yml
+
+      - name: Brand sanity check
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s public/apois-logo.jpg
+          test -s public/apois-app-icon.png
+          grep -Fq '"url": "/apois-logo.jpg"' src/assets/logo.png.asset.json
+          grep -Fq 'const BRAND_GREEN = "#39B54A"' src/components/CourierRouteMap.tsx
+          grep -Fq 'const BRAND_PURPLE = "#6A1B9A"' src/components/CourierRouteMap.tsx
+          grep -Fq 'public/apois-app-icon.png' .github/workflows/mobile-android.yml
+          if grep -RInE '#FFD700|#F6B900|#FACC15|#FFD54A|rgba\(255,215,0|rgba\(250,204,21|rgba\(246,185,0' src --exclude=styles.css; then
+            echo 'Legacy fixed brand color remains outside compatibility CSS.' >&2
+            exit 1
+          fi
+
+      - name: Commit final release state
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'No final release changes to commit.'
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -A
+            git commit -m 'release: finalize APOIS Entregas brand and workflows'
+            git push origin HEAD:main
+          fi
+
+      - name: Dispatch final CI and signed Android builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 3
+          gh workflow run ci.yml --repo "${{ github.repository }}" --ref main
+          gh workflow run mobile-android.yml --repo "${{ github.repository }}" --ref main -f product=customer
+          gh workflow run mobile-android.yml --repo "${{ github.repository }}" --ref main -f product=courier
