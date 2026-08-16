@@ -290,7 +290,7 @@ function SacolaPage() {
                   PIX habilitado
                 </span>
               </div>
-              <div className="rounded-xl border border-primary bg-primary/5 p-4 text-primary shadow-[0_0_15px_rgba(255,215,0,0.15)] ring-1 ring-primary/30">
+              <div className="rounded-xl border border-primary bg-primary/5 p-4 text-primary shadow-[0_0_18px_rgba(57,181,74,0.16)] ring-1 ring-primary/30">
                 <div className="flex items-center gap-3">
                   <CircleDollarSign className="h-6 w-6" />
                   <div>
@@ -316,7 +316,7 @@ function SacolaPage() {
           <button
             type="button"
             onClick={handleFinishOrder}
-            className="flex w-full items-center justify-between rounded-xl bg-primary px-6 py-4 text-black shadow-[0_8px_30px_rgba(255,215,0,0.3)] transition-transform active:scale-95"
+            className="flex w-full items-center justify-between rounded-xl bg-primary px-6 py-4 text-black shadow-[0_8px_30px_rgba(57,181,74,0.30)] transition-transform active:scale-95"
           >
             <span className="text-lg font-black uppercase tracking-tight">
               {items.length === 0 ? "Escolher produtos" : "Fazer pedido"}
