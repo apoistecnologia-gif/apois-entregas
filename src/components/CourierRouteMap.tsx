@@ -266,9 +266,13 @@ export function CourierLiveMap({
   return (
     <section className="overflow-hidden rounded-[1.9rem] border border-primary/20 bg-zinc-950 shadow-[0_24px_65px_rgba(0,0,0,0.5)]">
       <div className="border-b border-primary/10 bg-black/70 px-4 py-3.5">
-        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Mapa em tempo real</p>
+        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">
+          Mapa em tempo real
+        </p>
         <p className="mt-1 text-xs text-zinc-500">
-          {currentPosition ? `${nearbyMerchants.length} parceiros APOIS em até 8 km` : "Obtendo sua localização..."}
+          {currentPosition
+            ? `${nearbyMerchants.length} parceiros APOIS em até 8 km`
+            : "Obtendo sua localização..."}
         </p>
       </div>
       {browserKey && mapId && currentPosition ? (
@@ -283,9 +287,19 @@ export function CourierLiveMap({
               colorScheme={ColorScheme.DARK}
             >
               {nearbyMerchants.map((merchant: any) => (
-                <AdvancedMarker key={merchant.id} position={merchant.position} title={merchant.name}>
-                  <div className={`grid h-9 w-9 place-items-center rounded-full border-2 border-black ${merchant.hasActiveOffer ? "bg-primary" : "bg-zinc-200"} text-black shadow-xl`}>
-                    {merchant.hasActiveOffer ? <PackageCheck className="h-4 w-4" /> : <Store className="h-4 w-4" />}
+                <AdvancedMarker
+                  key={merchant.id}
+                  position={merchant.position}
+                  title={merchant.name}
+                >
+                  <div
+                    className={`grid h-9 w-9 place-items-center rounded-full border-2 border-black ${merchant.hasActiveOffer ? "bg-primary" : "bg-zinc-200"} text-black shadow-xl`}
+                  >
+                    {merchant.hasActiveOffer ? (
+                      <PackageCheck className="h-4 w-4" />
+                    ) : (
+                      <Store className="h-4 w-4" />
+                    )}
                   </div>
                 </AdvancedMarker>
               ))}
@@ -300,7 +314,9 @@ export function CourierLiveMap({
         </APIProvider>
       ) : (
         <div className="grid h-64 place-items-center px-6 text-center text-sm text-zinc-500">
-          {browserKey && mapId ? "Aguardando o GPS retornar sua posição atual." : "Mapa indisponível: configuração do Google Maps não foi carregada."}
+          {browserKey && mapId
+            ? "Aguardando o GPS retornar sua posição atual."
+            : "Mapa indisponível: configuração do Google Maps não foi carregada."}
         </div>
       )}
     </section>
@@ -323,20 +339,33 @@ export function CourierRouteMap({
   });
   const target = useMemo(() => {
     const latitude = parseCoordinate(goingToDelivery ? job.delivery_latitude : job.pickup_latitude);
-    const longitude = parseCoordinate(goingToDelivery ? job.delivery_longitude : job.pickup_longitude);
+    const longitude = parseCoordinate(
+      goingToDelivery ? job.delivery_longitude : job.pickup_longitude,
+    );
     return latitude === null || longitude === null ? null : { lat: latitude, lng: longitude };
-  }, [goingToDelivery, job.delivery_latitude, job.delivery_longitude, job.pickup_latitude, job.pickup_longitude]);
+  }, [
+    goingToDelivery,
+    job.delivery_latitude,
+    job.delivery_longitude,
+    job.pickup_latitude,
+    job.pickup_longitude,
+  ]);
 
   const openNavigation = () => {
     if (!target) return;
     const destination = `${target.lat},${target.lng}`;
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`, "_blank", "noopener,noreferrer");
+    window.open(
+      `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   };
 
   if (!target) {
     return (
       <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-200">
-        A localização geográfica desta etapa não está disponível. Confira o endereço antes de seguir.
+        A localização geográfica desta etapa não está disponível. Confira o endereço antes de
+        seguir.
       </div>
     );
   }
@@ -351,7 +380,9 @@ export function CourierRouteMap({
             {goingToDelivery ? "Rota até o cliente" : "Rota até o estabelecimento"}
           </p>
           <p className="mt-0.5 truncate text-xs text-zinc-500">
-            {currentPosition ? "Rota atualizada pela sua localização" : "Aguardando sua localização para traçar a rota"}
+            {currentPosition
+              ? "Rota atualizada pela sua localização"
+              : "Aguardando sua localização para traçar a rota"}
           </p>
         </div>
         <button
@@ -366,19 +397,27 @@ export function CourierRouteMap({
       <div className="grid grid-cols-2 divide-x divide-zinc-800 border-b border-zinc-900 bg-black/95">
         <div className="px-4 py-3">
           <p className="text-[9px] font-black uppercase text-zinc-600">Distância restante</p>
-          <p className="mt-1 text-lg font-black text-white">{formatDistance(metrics.distanceMeters)}</p>
+          <p className="mt-1 text-lg font-black text-white">
+            {formatDistance(metrics.distanceMeters)}
+          </p>
         </div>
         <div className="px-4 py-3">
           <p className="text-[9px] font-black uppercase text-zinc-600">Tempo estimado</p>
-          <p className="mt-1 text-lg font-black text-primary">{formatDuration(metrics.durationSeconds)}</p>
+          <p className="mt-1 text-lg font-black text-primary">
+            {formatDuration(metrics.durationSeconds)}
+          </p>
         </div>
       </div>
 
       {browserKey && mapId ? (
         <APIProvider apiKey={browserKey}>
-          <div className={`relative w-full bg-zinc-900 ${expanded ? "h-[31rem] min-h-[64vh] max-h-[38rem]" : "h-[23rem] min-h-[50vh] max-h-[29rem]"}`}>
+          <div
+            className={`relative w-full bg-zinc-900 ${expanded ? "h-[31rem] min-h-[64vh] max-h-[38rem]" : "h-[23rem] min-h-[50vh] max-h-[29rem]"}`}
+          >
             <Map
-              defaultCenter={currentPosition ? { lat: currentPosition.lat, lng: currentPosition.lng } : target}
+              defaultCenter={
+                currentPosition ? { lat: currentPosition.lat, lng: currentPosition.lng } : target
+              }
               defaultZoom={14}
               gestureHandling="greedy"
               disableDefaultUI
@@ -391,7 +430,11 @@ export function CourierRouteMap({
                 jobId={String(job.id)}
                 onMetrics={setMetrics}
               />
-              {currentPosition ? <RecenterControl position={{ lat: currentPosition.lat, lng: currentPosition.lng }} /> : null}
+              {currentPosition ? (
+                <RecenterControl
+                  position={{ lat: currentPosition.lat, lng: currentPosition.lng }}
+                />
+              ) : null}
             </Map>
           </div>
         </APIProvider>

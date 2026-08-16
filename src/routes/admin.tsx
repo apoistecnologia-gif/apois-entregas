@@ -260,13 +260,17 @@ function AdminWorkspace() {
     const categories = categoriesRes.data ?? [];
     if (!categories.length) return toast.error("Nenhuma categoria de estabelecimento ativa.");
     const categoryName = window
-      .prompt(`Categoria do estabelecimento:\n${categories.map((item: any) => `• ${item.name}`).join("\n")}`)
+      .prompt(
+        `Categoria do estabelecimento:\n${categories.map((item: any) => `• ${item.name}`).join("\n")}`,
+      )
       ?.trim();
     if (!categoryName) return;
     const category = categories.find(
-      (item: any) => item.name.toLocaleLowerCase("pt-BR") === categoryName.toLocaleLowerCase("pt-BR"),
+      (item: any) =>
+        item.name.toLocaleLowerCase("pt-BR") === categoryName.toLocaleLowerCase("pt-BR"),
     );
-    if (!category) return toast.error("Categoria não encontrada. Digite exatamente um nome da lista.");
+    if (!category)
+      return toast.error("Categoria não encontrada. Digite exatamente um nome da lista.");
 
     const name = window.prompt("Nome do estabelecimento:")?.trim();
     if (!name) return;
@@ -305,7 +309,11 @@ function AdminWorkspace() {
     });
     setBusy(null);
     if (error) return toast.error(error.message);
-    toast.success(approve ? "Estabelecimento cadastrado e liberado." : "Estabelecimento cadastrado para análise.");
+    toast.success(
+      approve
+        ? "Estabelecimento cadastrado e liberado."
+        : "Estabelecimento cadastrado para análise.",
+    );
     await loadAll(true);
     if (data) setSelectedMerchantId(String(data));
   };
@@ -838,7 +846,8 @@ function AdminWorkspace() {
               <div>
                 <p className="font-black">Cadastro administrativo</p>
                 <p className="mt-1 text-xs text-zinc-500">
-                  Cadastre um estabelecimento manualmente e, se necessário, já deixe a conta aprovada e ativa.
+                  Cadastre um estabelecimento manualmente e, se necessário, já deixe a conta
+                  aprovada e ativa.
                 </p>
               </div>
               <Button
@@ -847,7 +856,11 @@ function AdminWorkspace() {
                 onClick={() => void createMerchantManually()}
                 className="font-black"
               >
-                {busy === "merchant:new" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Building2 className="mr-2 h-4 w-4" />}
+                {busy === "merchant:new" ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Building2 className="mr-2 h-4 w-4" />
+                )}
                 Cadastrar estabelecimento
               </Button>
             </div>
