@@ -1,3 +1,4 @@
+# One-shot patch for the production Admin merchant registration flow.
 from pathlib import Path
 p=Path('src/routes/admin.tsx')
 s=p.read_text()
