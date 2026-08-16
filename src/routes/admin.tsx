@@ -236,6 +236,80 @@ function AdminWorkspace() {
     navigate({ to: "/login" });
   };
 
+  const createMerchantManually = async () => {
+    const ownerLookup = window
+      .prompt("Telefone ou ID do usuário que será dono do estabelecimento:")
+      ?.trim();
+    if (!ownerLookup) return;
+    const digits = ownerLookup.replace(/\D/g, "");
+    const owner = profiles.find(
+      (profile) =>
+        profile.id === ownerLookup ||
+        (digits.length >= 8 && String(profile.phone ?? "").replace(/\D/g, "") === digits),
+    );
+    if (!owner) {
+      toast.error("Usuário não encontrado. Cadastre a conta do responsável primeiro.");
+      return;
+    }
+
+    const categoriesRes = await from("merchant_categories")
+      .select("id,name")
+      .eq("is_active", true)
+      .order("name");
+    if (categoriesRes.error) return toast.error(categoriesRes.error.message);
+    const categories = categoriesRes.data ?? [];
+    if (!categories.length) return toast.error("Nenhuma categoria de estabelecimento ativa.");
+    const categoryName = window
+      .prompt(`Categoria do estabelecimento:\n${categories.map((item: any) => `• ${item.name}`).join("\n")}`)
+      ?.trim();
+    if (!categoryName) return;
+    const category = categories.find(
+      (item: any) => item.name.toLocaleLowerCase("pt-BR") === categoryName.toLocaleLowerCase("pt-BR"),
+    );
+    if (!category) return toast.error("Categoria não encontrada. Digite exatamente um nome da lista.");
+
+    const name = window.prompt("Nome do estabelecimento:")?.trim();
+    if (!name) return;
+    const legalName = window.prompt("Razão social (opcional):")?.trim() ?? "";
+    const document = window.prompt("CNPJ/CPF do estabelecimento:")?.trim() ?? "";
+    const phone = window.prompt("Telefone do estabelecimento:", owner.phone ?? "")?.trim() ?? "";
+    const email = window.prompt("E-mail do estabelecimento (opcional):")?.trim() ?? "";
+    const addressLine = window.prompt("Endereço (rua, número e complemento):")?.trim() ?? "";
+    const neighborhood = window.prompt("Bairro:")?.trim() ?? "";
+    const city = window.prompt("Cidade:")?.trim() ?? "";
+    const state = window.prompt("UF:")?.trim().toUpperCase() ?? "";
+    if (!addressLine || !city || state.length !== 2) {
+      toast.error("Informe endereço, cidade e UF para cadastrar o estabelecimento.");
+      return;
+    }
+    const approve = window.confirm(
+      "Deseja cadastrar e JÁ APROVAR/LIBERAR este estabelecimento?\n\nOK = aprovado e ativo agora\nCancelar = enviar para análise",
+    );
+
+    setBusy("merchant:new");
+    const { data, error } = await rpc("admin_create_merchant", {
+      _owner_user_id: owner.id,
+      _category_id: category.id,
+      _name: name,
+      _legal_name: legalName,
+      _document: document,
+      _contact_phone: phone,
+      _contact_email: email,
+      _address_line: addressLine,
+      _neighborhood: neighborhood,
+      _city: city,
+      _state: state,
+      _latitude: null,
+      _longitude: null,
+      _approve: approve,
+    });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success(approve ? "Estabelecimento cadastrado e liberado." : "Estabelecimento cadastrado para análise.");
+    await loadAll(true);
+    if (data) setSelectedMerchantId(String(data));
+  };
+
   const reviewMerchant = async (
     merchantId: string,
     status: "approved" | "rejected" | "blocked",
@@ -760,6 +834,23 @@ function AdminWorkspace() {
           />
         ) : (
           <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4">
+              <div>
+                <p className="font-black">Cadastro administrativo</p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Cadastre um estabelecimento manualmente e, se necessário, já deixe a conta aprovada e ativa.
+                </p>
+              </div>
+              <Button
+                type="button"
+                disabled={busy === "merchant:new"}
+                onClick={() => void createMerchantManually()}
+                className="font-black"
+              >
+                {busy === "merchant:new" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Building2 className="mr-2 h-4 w-4" />}
+                Cadastrar estabelecimento
+              </Button>
+            </div>
             {merchants.map((merchant) => (
               <ApplicationCard
                 key={merchant.id}
