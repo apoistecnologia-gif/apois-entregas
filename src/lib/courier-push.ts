@@ -4,7 +4,7 @@ import { PushNotifications, type PushNotificationSchema } from "@capacitor/push-
 import { supabase } from "@/integrations/supabase/client";
 import { getApoisProductMode } from "@/lib/product-routing";
 
-const DELIVERY_CHANNEL_ID = "delivery_offers";
+const DELIVERY_CHANNEL_ID = "delivery_offers_v2";
 const REGISTRATION_TIMEOUT_MS = 12_000;
 
 type RegistrationState =
@@ -42,10 +42,11 @@ async function ensureNotificationChannel() {
   await PushNotifications.createChannel({
     id: DELIVERY_CHANNEL_ID,
     name: "Chamadas de entrega",
-    description: "Alertas de novas entregas disponíveis",
+    description: "Alertas sonoros de novas entregas disponíveis",
     importance: 5,
     visibility: 1,
     vibration: true,
+    sound: "default",
   });
 }
 
