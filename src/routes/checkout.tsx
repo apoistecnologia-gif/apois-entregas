@@ -911,7 +911,7 @@ function PixPaymentScreen({
       setPaymentStatus("paid");
       toast.success("Pagamento confirmado!");
       void navigate({
-        to: "/pedido/$orderId/",
+        to: "/pedido/$orderId",
         params: { orderId: pixData.orderId },
         replace: true,
       });
