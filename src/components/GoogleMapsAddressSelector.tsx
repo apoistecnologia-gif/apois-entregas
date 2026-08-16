@@ -328,7 +328,7 @@ export function GoogleMapsAddressSelector({
           type="button"
           onClick={handleGetCurrentLocation}
           disabled={isLocating || isConfirming}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFD700] font-bold text-black shadow-lg active:scale-[0.98]"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary font-bold text-black shadow-[0_8px_24px_rgba(57,181,74,0.28)] active:scale-[0.98]"
         >
           {isLocating ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -374,7 +374,7 @@ export function GoogleMapsAddressSelector({
                   handleGetCurrentLocation();
                 }}
                 disabled={isLocating || isConfirming}
-                className="absolute bottom-4 right-4 z-[150] flex h-12 w-12 items-center justify-center rounded-full border-2 border-black bg-[#FFD700] text-black shadow-lg active:scale-90"
+                className="absolute bottom-4 right-4 z-[150] flex h-12 w-12 items-center justify-center rounded-full border-2 border-black bg-primary text-black shadow-[0_8px_24px_rgba(57,181,74,0.32)] active:scale-90"
                 aria-label="Usar minha localização atual"
               >
                 {isLocating ? (
