@@ -169,8 +169,7 @@ export function CourierLocationTracker({
     const startNativeTracking = async () => {
       let permission = await Geolocation.checkPermissions();
       if (permission.location !== "granted") {
-        // Chamada direta ao plugin nativo. Isso é o que abre o diálogo de permissão
-        // do Android; não dependemos do navigator.geolocation do WebView.
+        // Chamada direta ao plugin nativo: é ela que abre o diálogo de permissão do Android.
         permission = await Geolocation.requestPermissions({
           permissions: ["location", "coarseLocation"],
         });
@@ -186,7 +185,6 @@ export function CourierLocationTracker({
           enableHighAccuracy: true,
           timeout: 20_000,
           maximumAge: 0,
-          enableLocationFallback: true,
         });
         receivePosition(initial);
       } catch (error) {
@@ -198,7 +196,6 @@ export function CourierLocationTracker({
           enableHighAccuracy: false,
           timeout: 15_000,
           maximumAge: 60_000,
-          enableLocationFallback: true,
         });
         receivePosition(fallback);
       }
@@ -210,8 +207,6 @@ export function CourierLocationTracker({
           timeout: 20_000,
           maximumAge: 30_000,
           minimumUpdateInterval: 5_000,
-          interval: 10_000,
-          enableLocationFallback: true,
         },
         (position, error) => {
           if (position) {
@@ -241,7 +236,7 @@ export function CourierLocationTracker({
       startWebTracking();
     }
 
-    // Keep the server-side courier heartbeat fresh even when the device is stationary.
+    // Mantém o heartbeat do entregador fresco mesmo parado.
     const heartbeatId = window.setInterval(() => {
       const latest = latestPositionRef.current;
       if (!latest || disposed) return;
