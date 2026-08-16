@@ -238,7 +238,7 @@ export const ProductCustomizationSheet: React.FC<ProductCustomizationSheetProps>
           <Button
             onClick={handleConfirm}
             disabled={!isAllValid}
-            className={`h-14 px-8 rounded-2xl font-black uppercase tracking-tight transition-all active:scale-95 ${isAllValid ? "bg-primary text-black shadow-[0_8px_20px_rgba(255,215,0,0.3)]" : "bg-zinc-800 text-zinc-500"}`}
+            className={`h-14 px-8 rounded-2xl font-black uppercase tracking-tight transition-all active:scale-95 ${isAllValid ? "bg-primary text-black shadow-[0_8px_20px_rgba(57,181,74,0.3)]" : "bg-zinc-800 text-zinc-500"}`}
           >
             Confirmar
           </Button>
