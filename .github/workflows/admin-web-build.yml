@@ -1,5 +1,5 @@
 name: Admin Web Build
-# Revalidate/deploy after formatter fixed courier route and manual merchant admin flow.
+# Revalidate/deploy after unified owner + merchant administrative registration flow.
 
 on:
   push:
