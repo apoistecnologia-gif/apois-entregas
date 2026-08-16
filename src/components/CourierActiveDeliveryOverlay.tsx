@@ -272,11 +272,11 @@ export function CourierActiveDeliveryOverlay() {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 top-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[1250] flex items-end justify-center p-3">
-      <section className="pointer-events-auto w-full max-w-[390px] overflow-hidden rounded-[2rem] border border-primary/40 bg-[#080808]/98 text-white shadow-[0_-24px_80px_rgba(0,0,0,0.75)] backdrop-blur-xl">
+      <section className="pointer-events-auto w-full max-w-[390px] overflow-hidden rounded-[2rem] border border-accent/40 bg-[#080808]/98 text-white shadow-[0_-24px_80px_rgba(0,0,0,0.75),0_0_35px_rgba(106,27,154,0.1)] backdrop-blur-xl">
         <div className="max-h-[68dvh] overflow-y-auto p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-accent">
                 Entrega em andamento
               </p>
               <p className="mt-1 text-xl font-black">Pedido #{job.orders?.order_number ?? "—"}</p>
@@ -296,7 +296,7 @@ export function CourierActiveDeliveryOverlay() {
                   <span
                     className={`h-3 w-3 shrink-0 rounded-full border ${
                       index <= currentStage
-                        ? "border-primary bg-primary shadow-[0_0_14px_rgba(250,204,21,0.4)]"
+                        ? "border-primary bg-primary shadow-[0_0_14px_rgba(57,181,74,0.4)]"
                         : "border-zinc-700 bg-zinc-950"
                     }`}
                   />
@@ -319,9 +319,9 @@ export function CourierActiveDeliveryOverlay() {
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-zinc-800 bg-black">
             <div className="flex gap-3 border-b border-zinc-900 p-4">
-              <Store className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <Store className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
               <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase text-primary">Retirada</p>
+                <p className="text-[10px] font-black uppercase text-accent">Retirada</p>
                 <p className="mt-1 text-sm font-bold">{pickup.title}</p>
                 <p className="mt-1 text-xs text-zinc-500">{pickup.detail}</p>
               </div>
@@ -339,7 +339,7 @@ export function CourierActiveDeliveryOverlay() {
           <div className="mt-3 grid grid-cols-2 gap-2">
             <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-3">
               <div className="flex items-center gap-2 text-zinc-500">
-                <RouteIcon className="h-4 w-4 text-primary" />
+                <RouteIcon className="h-4 w-4 text-accent" />
                 <span className="text-[9px] font-black uppercase">Distância</span>
               </div>
               <p className="mt-1 text-sm font-black">
@@ -366,7 +366,7 @@ export function CourierActiveDeliveryOverlay() {
               type="button"
               disabled={Boolean(busy)}
               onClick={() => void transition(action.target)}
-              className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-black shadow-[0_14px_40px_rgba(250,204,21,0.24)] disabled:opacity-60"
+              className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-accent text-sm font-black text-white shadow-[0_14px_40px_rgba(57,181,74,0.2)] disabled:opacity-60"
             >
               {busy === "transition" ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -378,7 +378,7 @@ export function CourierActiveDeliveryOverlay() {
           ) : null}
 
           {job.status === "arrived_destination" ? (
-            <div className="mt-4 rounded-2xl border border-primary/25 bg-primary/5 p-4">
+            <div className="mt-4 rounded-2xl border border-accent/25 bg-accent/5 p-4">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-primary" />
                 <div>
@@ -395,13 +395,13 @@ export function CourierActiveDeliveryOverlay() {
                 autoComplete="one-time-code"
                 placeholder="0000"
                 aria-label="PIN de entrega"
-                className="mt-3 h-14 w-full rounded-2xl border border-zinc-800 bg-black px-4 text-center text-2xl font-black tracking-[0.5em] outline-none focus:border-primary/60"
+                className="mt-3 h-14 w-full rounded-2xl border border-zinc-800 bg-black px-4 text-center text-2xl font-black tracking-[0.5em] outline-none focus:border-accent/60"
               />
               <button
                 type="button"
                 disabled={Boolean(busy) || pin.length !== 4}
                 onClick={() => void complete()}
-                className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-black disabled:opacity-50"
+                className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-white shadow-[0_10px_30px_rgba(57,181,74,0.18)] disabled:opacity-50"
               >
                 {busy === "complete" ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -421,18 +421,18 @@ export function CourierActiveDeliveryOverlay() {
             {supportOpen ? (
               <X className="h-4 w-4" />
             ) : (
-              <Headphones className="h-4 w-4 text-primary" />
+              <Headphones className="h-4 w-4 text-accent" />
             )}
             {supportOpen ? "Fechar suporte" : "Ajuda / Problema"}
           </button>
 
           {supportOpen ? (
-            <div className="mt-3 space-y-3 rounded-2xl border border-zinc-800 bg-black p-4">
+            <div className="mt-3 space-y-3 rounded-2xl border border-accent/20 bg-black p-4">
               <select
                 value={supportCategory}
                 onChange={(event) => setSupportCategory(event.target.value)}
                 aria-label="Categoria do problema"
-                className="h-11 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 text-sm text-white outline-none focus:border-primary/60"
+                className="h-11 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 text-sm text-white outline-none focus:border-accent/60"
               >
                 <option value="delivery">Problema na entrega</option>
                 <option value="pickup">Problema na retirada</option>
@@ -447,13 +447,13 @@ export function CourierActiveDeliveryOverlay() {
                 maxLength={1000}
                 placeholder="Descreva o que aconteceu..."
                 aria-label="Descrição do problema"
-                className="w-full resize-none rounded-xl border border-zinc-800 bg-zinc-950 p-3 text-sm text-white outline-none placeholder:text-zinc-700 focus:border-primary/60"
+                className="w-full resize-none rounded-xl border border-zinc-800 bg-zinc-950 p-3 text-sm text-white outline-none placeholder:text-zinc-700 focus:border-accent/60"
               />
               <button
                 type="button"
                 disabled={Boolean(busy) || supportDescription.trim().length < 10}
                 onClick={() => void reportProblem()}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 text-sm font-black text-primary disabled:opacity-50"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-accent/30 bg-accent/10 text-sm font-black text-accent disabled:opacity-50"
               >
                 {busy === "support" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
