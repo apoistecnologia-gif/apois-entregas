@@ -14,7 +14,6 @@ import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 import { ApoisLaunchSplash } from "../components/ApoisLaunchSplash";
 import { AuthSessionIsolation } from "../components/AuthSessionIsolation";
-import { CourierActiveDeliveryOverlay } from "../components/CourierActiveDeliveryOverlay";
 import { CourierOfferOverlay } from "../components/CourierOfferOverlay";
 import { CourierPendingPayoutProcessor } from "../components/CourierPendingPayoutProcessor";
 import { CustomerPushManager } from "../components/CustomerPushManager";
@@ -198,7 +197,6 @@ function RootComponent() {
       <CustomerPushManager />
       <MerchantOrderSoundWatcher />
       <CourierOfferOverlay />
-      <CourierActiveDeliveryOverlay />
       <CourierPendingPayoutProcessor />
       <MerchantPendingPayoutProcessor />
       <ProductRouteIsolation>
