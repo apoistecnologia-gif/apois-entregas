@@ -62,6 +62,26 @@ async function readJson(providerResponse: Response): Promise<unknown> {
     return null;
   }
 }
+async function qrImageAsDataUrl(url: string | null): Promise<string | null> {
+  if (!url) return null;
+  if (url.startsWith("data:image/")) return url;
+  try {
+    const imageResponse = await fetch(url, { headers: { Accept: "image/png,image/*" } });
+    if (!imageResponse.ok) return url;
+    const contentType =
+      imageResponse.headers.get("content-type")?.split(";")[0]?.trim() || "image/png";
+    const bytes = new Uint8Array(await imageResponse.arrayBuffer());
+    if (!bytes.length) return url;
+    let binary = "";
+    const chunk = 0x8000;
+    for (let index = 0; index < bytes.length; index += chunk) {
+      binary += String.fromCharCode(...bytes.subarray(index, index + chunk));
+    }
+    return `data:${contentType};base64,${btoa(binary)}`;
+  } catch {
+    return url;
+  }
+}
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest))
@@ -379,7 +399,7 @@ Deno.serve(async (request: Request) => {
 
   const providerChargeId = text(charge.globalID) ?? text(charge.id) ?? correlationID;
   const qrCodeText = text(charge.brCode);
-  const qrCodeImageUrl = text(charge.qrCodeImage);
+  const qrCodeImageUrl = await qrImageAsDataUrl(text(charge.qrCodeImage));
   const expiresAt = text(charge.expiresDate) ?? text(charge.expiresAt);
   const providerStatus = (text(charge.status) ?? "ACTIVE").toUpperCase();
   const paid = providerStatus === "COMPLETED";

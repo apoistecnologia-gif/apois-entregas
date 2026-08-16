@@ -51,13 +51,14 @@ function OrderDetailsPage() {
   const [cancelling, setCancelling] = useState(false);
 
   const fetchOrder = useCallback(async () => {
-    const orderResult = await supabase
-      .from("orders")
-      .select("*, merchants (*), order_items (*)")
-      .eq("id", orderId)
-      .single();
+    const orderResult = await supabase.from("orders").select("*").eq("id", orderId).maybeSingle();
 
     if (orderResult.error || !orderResult.data) {
+      console.warn(
+        "customer order lookup failed",
+        orderResult.error?.code,
+        orderResult.error?.message,
+      );
       toast.error("Não foi possível carregar os detalhes deste pedido.");
       setOrder(null);
       setDeliveryJob(null);
@@ -66,7 +67,21 @@ function OrderDetailsPage() {
       return;
     }
 
-    const nextOrder: any = orderResult.data;
+    const baseOrder: any = orderResult.data;
+    const [merchantResult, itemsResult] = await Promise.all([
+      supabase.from("merchants").select("*").eq("id", baseOrder.merchant_id).maybeSingle(),
+      supabase.from("order_items").select("*").eq("order_id", orderId).order("created_at"),
+    ]);
+    if (merchantResult.error)
+      console.warn("customer merchant relation lookup failed", merchantResult.error.code);
+    if (itemsResult.error)
+      console.warn("customer order items lookup failed", itemsResult.error.code);
+
+    const nextOrder: any = {
+      ...baseOrder,
+      merchants: merchantResult.data ?? null,
+      order_items: itemsResult.data ?? [],
+    };
     setOrder(nextOrder);
 
     if (nextOrder.fulfillment_type === "delivery") {
