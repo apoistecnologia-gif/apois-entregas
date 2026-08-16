@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -900,6 +901,19 @@ function PixPaymentScreen({
 }) {
   const navigate = useNavigate();
   const [paymentStatus, setPaymentStatus] = useState<string>("pending");
+  const [localQrImage, setLocalQrImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let disposed = false;
+    void QRCode.toDataURL(pixData.qrCodeText, { width: 512, margin: 2, errorCorrectionLevel: "M" })
+      .then((value) => {
+        if (!disposed) setLocalQrImage(value);
+      })
+      .catch((error) => console.warn("pix local qr generation failed", error));
+    return () => {
+      disposed = true;
+    };
+  }, [pixData.qrCodeText]);
 
   useEffect(() => {
     let disposed = false;
@@ -999,7 +1013,15 @@ function PixPaymentScreen({
 
       <main className="flex flex-1 flex-col items-center space-y-8">
         <div className="rounded-3xl bg-white p-4 shadow-[0_0_40px_rgba(255,215,0,0.2)]">
-          <img src={pixData.qrCodeImageUrl} alt="QR Code PIX" className="h-64 w-64" />
+          {localQrImage ? (
+            <img src={localQrImage} alt="QR Code PIX" className="h-64 w-64" />
+          ) : pixData.qrCodeImageUrl ? (
+            <img src={pixData.qrCodeImageUrl} alt="QR Code PIX" className="h-64 w-64" />
+          ) : (
+            <div className="grid h-64 w-64 place-items-center bg-white text-center text-sm font-bold text-black">
+              Gerando QR Code PIX...
+            </div>
+          )}
         </div>
 
         <div className="w-full space-y-4">
