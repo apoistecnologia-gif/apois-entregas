@@ -93,7 +93,7 @@ export const installNativeGeolocationBridge = () => {
   }
 
   let nextWatchId = 1;
-  const watches = new Map<number, { nativeId?: string; cancelled: boolean }>();
+  const watches = new Map<number, { nativeId: string | undefined; cancelled: boolean }>();
 
   const adapter: Geolocation = {
     getCurrentPosition(success, failure, options) {
