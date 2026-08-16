@@ -303,15 +303,15 @@ export function CourierOfferOverlay() {
 
   return (
     <div className="fixed inset-x-0 top-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[1400] flex items-end justify-center bg-black/85 p-3 backdrop-blur-md">
-      <section className="w-full max-w-[390px] overflow-hidden rounded-[2rem] border border-primary/45 bg-[#080808] text-white shadow-[0_0_90px_rgba(250,204,21,0.2)]">
-        <div className="border-b border-primary/20 bg-[linear-gradient(135deg,rgba(250,204,21,0.16),rgba(0,0,0,0.95)_58%)] px-5 pb-4 pt-5">
+      <section className="w-full max-w-[390px] overflow-hidden rounded-[2rem] border border-accent/45 bg-[#080808] text-white shadow-[0_0_90px_rgba(106,27,154,0.24)]">
+        <div className="border-b border-accent/25 bg-[linear-gradient(135deg,rgba(106,27,154,0.26),rgba(57,181,74,0.08)_42%,rgba(0,0,0,0.95)_70%)] px-5 pb-4 pt-5">
           <div className="flex items-center justify-between gap-3">
             <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-11 w-auto object-contain" />
             <span
               className={`rounded-full border px-3 py-2 text-sm font-black ${
                 remaining <= 15
                   ? "border-red-500/35 bg-red-500/10 text-red-300"
-                  : "border-primary/30 bg-black/70 text-primary"
+                  : "border-accent/35 bg-black/70 text-accent-foreground"
               }`}
             >
               {remaining}s
@@ -319,11 +319,11 @@ export function CourierOfferOverlay() {
           </div>
           <div className="mt-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-black">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-white shadow-[0_0_20px_rgba(57,181,74,0.3)]">
                 <Truck className="h-4 w-4" />
               </span>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-accent">
                   Nova entrega
                 </p>
                 <p className="text-sm font-black">Pedido #{offer.order_number ?? "—"}</p>
@@ -339,7 +339,7 @@ export function CourierOfferOverlay() {
 
         <div className="max-h-[72dvh] space-y-4 overflow-y-auto p-5">
           <div className="flex items-center gap-3">
-            <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+            <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl border border-accent/20 bg-zinc-900">
               {offer.merchant_logo_url ? (
                 <img
                   src={offer.merchant_logo_url}
@@ -348,7 +348,7 @@ export function CourierOfferOverlay() {
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <Store className="h-5 w-5 text-primary" />
+                <Store className="h-5 w-5 text-accent" />
               )}
             </div>
             <div className="min-w-0 flex-1">
@@ -368,9 +368,9 @@ export function CourierOfferOverlay() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-black">
+          <div className="overflow-hidden rounded-2xl border border-accent/15 bg-black">
             <OfferStop
-              icon={<Store className="h-5 w-5 text-primary" />}
+              icon={<Store className="h-5 w-5 text-accent" />}
               label="Retirada"
               title={pickup.address_line || pickup.name || "Estabelecimento parceiro"}
               detail={[pickup.neighborhood, pickup.city, pickup.state].filter(Boolean).join(" · ")}
@@ -388,12 +388,12 @@ export function CourierOfferOverlay() {
 
           <div className="grid grid-cols-3 gap-2">
             <OfferMetric
-              icon={<RouteIcon className="h-4 w-4 text-primary" />}
+              icon={<RouteIcon className="h-4 w-4 text-accent" />}
               label="Total"
               value={distance(offer.total_distance_meters)}
             />
             <OfferMetric
-              icon={<Clock3 className="h-4 w-4 text-primary" />}
+              icon={<Clock3 className="h-4 w-4 text-accent" />}
               label="Tempo"
               value={duration(offer.estimated_duration_seconds)}
             />
@@ -423,7 +423,7 @@ export function CourierOfferOverlay() {
               type="button"
               disabled={Boolean(busy)}
               onClick={() => void respond("accept")}
-              className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-black shadow-[0_12px_35px_rgba(250,204,21,0.25)] transition active:scale-[0.98] disabled:opacity-60"
+              className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-white shadow-[0_12px_35px_rgba(57,181,74,0.3)] ring-1 ring-primary/30 transition active:scale-[0.98] disabled:opacity-60"
             >
               {busy === "accept" ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -458,7 +458,7 @@ function OfferStop({
     <div className={`flex gap-3 p-4 ${last ? "" : "border-b border-zinc-900"}`}>
       <div className="mt-0.5 shrink-0">{icon}</div>
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-black uppercase text-primary">{label}</p>
+        <p className="text-[10px] font-black uppercase text-accent">{label}</p>
         <p className="mt-1 text-sm font-bold text-zinc-100">{title}</p>
         <p className="mt-1 text-[11px] leading-4 text-zinc-500">{detail}</p>
       </div>
@@ -481,7 +481,7 @@ function OfferMetric({
   return (
     <div
       className={`rounded-2xl border p-3 text-center ${
-        accent ? "border-primary/20 bg-primary/5" : "border-zinc-800 bg-zinc-950"
+        accent ? "border-primary/25 bg-primary/5" : "border-accent/15 bg-zinc-950"
       }`}
     >
       <div className="flex justify-center">{icon}</div>
