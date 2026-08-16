@@ -39,3 +39,5 @@ jobs:
           git commit -m "fix(courier): register push on fresh install and improve route camera"
           git pull --rebase origin main
           git push origin HEAD:main
+
+# Triggered after production homologation found fresh-install FCM registration gap.
