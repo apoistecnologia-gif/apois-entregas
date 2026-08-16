@@ -265,21 +265,6 @@
   animation: apois-launch-pulse 1.6s ease-in-out infinite;
 }
 
-/* Courier live map locator follows the APOIS Entregas green action color. */
-[class~="bg-[#178BFF]"] {
-  background-color: var(--color-primary) !important;
-  color: #fff !important;
-  border-color: #fff !important;
-  box-shadow:
-    0 10px 30px rgb(0 0 0 / 0.7),
-    0 0 0 5px rgb(57 181 74 / 0.18) !important;
-}
-
-[class~="bg-[#178BFF]"] svg {
-  color: #fff !important;
-  fill: #fff !important;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .apois-launch,
   .apois-launch-mark,
