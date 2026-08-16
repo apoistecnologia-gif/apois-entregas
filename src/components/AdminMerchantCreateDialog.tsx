@@ -145,8 +145,8 @@ export function AdminMerchantCreateDialog({ open, onOpenChange, onCreated }: Pro
           throw new Error("A senha provisória deve ter pelo menos 8 caracteres.");
 
         const authClient = createClient(
-          import.meta.env.VITE_SUPABASE_URL,
-          import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          import.meta.env["VITE_SUPABASE_URL"],
+          import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"],
           {
             auth: {
               persistSession: false,
