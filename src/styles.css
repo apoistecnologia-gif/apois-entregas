@@ -265,6 +265,41 @@
   animation: apois-launch-pulse 1.6s ease-in-out infinite;
 }
 
+/*
+ * Compatibility layer for legacy hard-coded gold utilities that are still
+ * present in older screens. Semantic amber/red warning states are intentionally
+ * not touched; only former APOIS brand-gold decoration is remapped.
+ */
+[class~="bg-[#FFD700]"] {
+  background: linear-gradient(135deg, #39b54a 0%, #6a1b9a 100%) !important;
+  color: #fff !important;
+}
+
+[class~="border-[#FFD700]"] {
+  border-color: #6a1b9a !important;
+}
+
+[class*="shadow-"][class*="250,204,21"] {
+  box-shadow:
+    0 12px 34px rgb(106 27 154 / 0.24),
+    0 0 24px rgb(57 181 74 / 0.12) !important;
+}
+
+[class*="bg-[radial-gradient"][class*="250,204,21"] {
+  background-image:
+    radial-gradient(circle at top right, rgb(106 27 154 / 0.18), transparent 38%),
+    linear-gradient(145deg, #111, #070707) !important;
+}
+
+[class*="bg-[linear-gradient"][class*="250,204,21"] {
+  background-image: linear-gradient(
+    135deg,
+    rgb(106 27 154 / 0.18),
+    rgb(57 181 74 / 0.08) 46%,
+    transparent 76%
+  ) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .apois-launch,
   .apois-launch-mark,
