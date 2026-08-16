@@ -26,4 +26,10 @@ type RuntimeAwareClient = Omit<typeof client, "from" | "rpc"> & {
   rpc: (...args: any[]) => any;
 };
 
-export const supabase = client as RuntimeAwareClient;
+const runtimeAwareClient = client as RuntimeAwareClient;
+// Some courier overlays keep a local reference to `supabase.rpc`. Supabase's rpc
+// method relies on the client instance as `this`, so extracting it without binding
+// can throw before any HTTP request is sent and leave the UI stuck in a loading state.
+runtimeAwareClient.rpc = client.rpc.bind(client) as RuntimeAwareClient["rpc"];
+
+export const supabase = runtimeAwareClient;
