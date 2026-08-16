@@ -17,5 +17,5 @@ jobs:
       - name: Dispatch customer Android build
         env:
           GH_TOKEN: ${{ github.token }}
-        # Triggered after local Pix QR, typed payment redirect and resilient order details fixes.
+        # Final homologation build after Pix, address, tracking and PIN validation.
         run: gh workflow run mobile-android.yml --repo "${{ github.repository }}" --ref main -f product=customer
