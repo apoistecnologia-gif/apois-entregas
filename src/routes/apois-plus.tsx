@@ -64,8 +64,8 @@ function ApoisPlusPage() {
         {/* Hero Section */}
         <section className="flex flex-col items-center text-center space-y-4 py-6">
           <div className="relative">
-            <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
-            <div className="relative w-24 h-24 rounded-full bg-zinc-900 border-2 border-primary flex items-center justify-center shadow-[0_0_30px_rgba(255,215,0,0.3)]">
+            <div className="absolute inset-0 bg-accent/20 blur-3xl rounded-full" />
+            <div className="relative w-24 h-24 rounded-full bg-zinc-900 border-2 border-accent flex items-center justify-center shadow-[0_0_34px_rgba(106,27,154,0.34)]">
               <Crown className="w-12 h-12 text-primary" />
             </div>
           </div>
@@ -81,14 +81,14 @@ function ApoisPlusPage() {
 
         {/* Benefits */}
         <section className="space-y-4">
-          <h3 className="text-xs font-bold text-primary uppercase tracking-widest ml-1">
+          <h3 className="text-xs font-bold text-accent uppercase tracking-widest ml-1">
             Benefícios Premium
           </h3>
           <div className="grid gap-3">
             {benefits.map((benefit, i) => (
               <div
                 key={i}
-                className="flex items-center gap-4 p-4 rounded-3xl bg-zinc-900/40 border border-zinc-900/50"
+                className="flex items-center gap-4 p-4 rounded-3xl bg-zinc-900/40 border border-accent/15"
               >
                 <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-primary">
                   <benefit.icon className="w-6 h-6" />
@@ -103,8 +103,8 @@ function ApoisPlusPage() {
         </section>
 
         {/* Status */}
-        <section className="bg-primary/5 border border-primary/20 rounded-3xl p-8 flex flex-col items-center text-center space-y-4 shadow-[0_10px_40px_-15px_rgba(255,215,0,0.15)]">
-          <div className="px-3 py-1 bg-primary text-black text-[10px] font-black uppercase tracking-widest rounded-full">
+        <section className="bg-gradient-to-br from-accent/10 via-zinc-950 to-primary/5 border border-accent/25 rounded-3xl p-8 flex flex-col items-center text-center space-y-4 shadow-[0_10px_40px_-15px_rgba(106,27,154,0.28)]">
+          <div className="px-3 py-1 bg-primary text-black text-[10px] font-black uppercase tracking-widest rounded-full shadow-[0_0_20px_rgba(57,181,74,0.18)]">
             Em Breve
           </div>
           <p className="text-zinc-300 text-sm font-medium leading-relaxed">
