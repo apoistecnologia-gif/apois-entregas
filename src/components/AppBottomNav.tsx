@@ -31,7 +31,7 @@ export function AppBottomNav({ activeTab }: AppBottomNavProps) {
           <button
             type="button"
             onClick={() => navigate({ to: "/buscar" })}
-            className="grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-primary via-primary to-accent text-white shadow-[0_8px_22px_-4px_rgba(57,181,74,0.5)] ring-4 ring-black transition-transform active:scale-90"
+            className="grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-primary via-primary to-accent text-white shadow-[0_8px_22px_-4px_rgba(57,181,74,0.5)] ring-4 ring-accent/30 transition-transform active:scale-90"
             aria-label="Buscar"
           >
             <Bike className="h-7 w-7" />
