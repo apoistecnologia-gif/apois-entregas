@@ -1,4 +1,3 @@
-import { Bike, ShoppingBag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { getApoisProductMode } from "../lib/product-routing";
@@ -10,7 +9,6 @@ export function ApoisLaunchSplash() {
   const isMobileProduct = product === "customer" || product === "courier";
   const [visible, setVisible] = useState(isMobileProduct);
   const label = product === "courier" ? "ENTREGADOR" : "CLIENTE";
-  const Icon = product === "courier" ? Bike : ShoppingBag;
 
   const prefersReducedMotion = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -40,10 +38,14 @@ export function ApoisLaunchSplash() {
       <div className="apois-launch-orbit apois-launch-orbit-2 absolute h-52 w-52 rounded-full border border-primary/25" />
 
       <div className="relative flex flex-col items-center">
-        <div className="apois-launch-mark relative grid h-28 w-28 place-items-center rounded-[2rem] border border-accent/35 bg-zinc-950 shadow-[0_0_70px_rgba(106,27,154,0.26)]">
-          <div className="absolute inset-2 rounded-[1.6rem] border border-primary/15" />
-          <Icon className="h-12 w-12 text-primary" strokeWidth={2.2} />
-          <span className="apois-launch-pulse absolute -right-1 -top-1 h-4 w-4 rounded-full bg-primary shadow-[0_0_22px_rgba(57,181,74,0.92)]" />
+        <div className="apois-launch-mark relative grid h-28 w-28 place-items-center overflow-hidden rounded-[2rem] border border-accent/40 bg-[#111111] shadow-[0_0_70px_rgba(106,27,154,0.28)]">
+          <img
+            src="/apois-app-icon.png"
+            alt=""
+            aria-hidden="true"
+            className="h-full w-full object-cover"
+          />
+          <span className="apois-launch-pulse absolute right-2 top-2 h-3.5 w-3.5 rounded-full bg-primary shadow-[0_0_22px_rgba(57,181,74,0.92)]" />
         </div>
 
         <div className="mt-8 text-center">
