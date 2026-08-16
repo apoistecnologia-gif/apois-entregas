@@ -262,6 +262,19 @@
   animation: apois-launch-pulse 1.6s ease-in-out infinite;
 }
 
+/* Courier live map must use APOIS brand gold instead of Google's blue locator. */
+[class~="bg-[#178BFF]"] {
+  background-color: var(--color-primary) !important;
+  color: #000 !important;
+  border-color: #000 !important;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.7), 0 0 0 5px rgb(250 204 21 / 0.15) !important;
+}
+
+[class~="bg-[#178BFF]"] svg {
+  color: #000 !important;
+  fill: #000 !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .apois-launch,
   .apois-launch-mark,
