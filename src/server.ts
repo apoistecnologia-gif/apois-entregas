@@ -32,14 +32,15 @@ function merchantFreshLoginResponse(): Response {
   <meta name="robots" content="noindex" />
   <title>APOIS Estabelecimento</title>
   <style>
-    html,body{margin:0;background:#000;color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    html,body{margin:0;background:#111111;color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
     main{min-height:100dvh;display:grid;place-items:center;padding:24px;text-align:center}
-    strong{display:block;font-size:22px;letter-spacing:.04em}.gold{color:#ffd700;font-size:12px;font-weight:800;letter-spacing:.18em;margin-top:8px}
-    p{color:#71717a;font-size:14px;margin-top:16px}
+    strong{display:block;font-size:22px;letter-spacing:.04em}.brand{color:#6A1B9A;font-size:12px;font-weight:800;letter-spacing:.18em;margin-top:8px}
+    .brand::after{content:"";display:block;width:52px;height:3px;border-radius:99px;margin:10px auto 0;background:#39B54A}
+    p{color:#a1a1aa;font-size:14px;margin-top:16px}
   </style>
 </head>
 <body>
-  <main><div><strong>APOIS</strong><div class="gold">ESTABELECIMENTO</div><p>Abrindo área de acesso…</p></div></main>
+  <main><div><strong>APOIS</strong><div class="brand">ESTABELECIMENTO</div><p>Abrindo área de acesso…</p></div></main>
   <script>
     try { localStorage.clear(); } catch {}
     try { sessionStorage.clear(); } catch {}
