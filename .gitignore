@@ -17,6 +17,11 @@ dist-ssr
 .nitro
 *.local
 
+# Local Android build cache/output
+.local-build/
+dist-apk/
+android/
+
 # Environment
 .env
 .env.*
