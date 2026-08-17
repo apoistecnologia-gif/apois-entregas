@@ -1,0 +1,198 @@
+workflows:
+  android-customer-debug:
+    name: APOIS Cliente - APK Debug
+    instance_type: linux_x2
+    max_build_duration: 45
+    environment:
+      groups:
+        - apois_android
+      vars:
+        APOIS_MOBILE_PRODUCT: customer
+        APOIS_MOBILE_BUILD: "1"
+        VITE_APOIS_PRODUCT_MODE: customer
+        APP_ROUTE: "/"
+        APP_PACKAGE: "br.com.apois.cliente"
+        APP_LABEL: "APOIS Cliente"
+        FIREBASE_ENV_NAME: "FIREBASE_CUSTOMER_GOOGLE_SERVICES_JSON_BASE64"
+    scripts:
+      - name: Install Bun and dependencies
+        script: |
+          set -euo pipefail
+          curl -fsSL https://bun.sh/install | bash
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          bun --version
+          bun install --frozen-lockfile
+
+      - name: Validate required environment
+        script: |
+          set -euo pipefail
+          : "${VITE_SUPABASE_URL:?VITE_SUPABASE_URL is required in Codemagic group apois_android}"
+          : "${VITE_SUPABASE_PUBLISHABLE_KEY:?VITE_SUPABASE_PUBLISHABLE_KEY is required in Codemagic group apois_android}"
+          : "${FIREBASE_CUSTOMER_GOOGLE_SERVICES_JSON_BASE64:?FIREBASE_CUSTOMER_GOOGLE_SERVICES_JSON_BASE64 is required in Codemagic group apois_android}"
+
+      - name: Build isolated web app
+        script: |
+          set -euo pipefail
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          bun run build
+
+      - name: Render Capacitor index.html
+        script: |
+          set -euo pipefail
+          HOST=127.0.0.1 PORT=4173 node .output/server/index.mjs >/tmp/apois-mobile-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --location "http://127.0.0.1:4173${APP_ROUTE}" -o .output/public/index.html; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              cat /tmp/apois-mobile-server.log
+              exit 1
+            fi
+            sleep 1
+          done
+          test -s .output/public/index.html
+          grep -qi '<html' .output/public/index.html
+
+      - name: Create and configure Android project
+        script: |
+          set -euo pipefail
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          rm -rf android
+          npm install --no-save @capacitor/core@8.4.2 @capacitor/cli@8.4.2 @capacitor/android@8.4.2 @capacitor/geolocation@8.2.0 @capacitor/push-notifications@8.1.2
+          npx cap add android
+          printf '%s' "$FIREBASE_CUSTOMER_GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
+          grep -Fq "$APP_PACKAGE" android/app/google-services.json
+          npx cap sync android
+          bun run android:configure
+
+      - name: Apply APOIS Android branding
+        script: |
+          set -euo pipefail
+          test -s public/apois-app-icon.png
+          cp public/apois-app-icon.png android/app/src/main/res/drawable/apois_app_icon.png
+          python3 - <<'PY'
+          from pathlib import Path
+          manifest = Path('android/app/src/main/AndroidManifest.xml')
+          text = manifest.read_text(encoding='utf-8')
+          text = text.replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@drawable/apois_app_icon"')
+          text = text.replace('android:roundIcon="@mipmap/ic_launcher_round"', 'android:roundIcon="@drawable/apois_app_icon"')
+          manifest.write_text(text, encoding='utf-8')
+          PY
+          grep -Fq '@drawable/apois_app_icon' android/app/src/main/AndroidManifest.xml
+
+      - name: Build APK
+        script: |
+          set -euo pipefail
+          cd android
+          ./gradlew assembleDebug --no-daemon
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk "$CM_BUILD_DIR/APOIS-Cliente-debug.apk"
+
+    artifacts:
+      - APOIS-Cliente-debug.apk
+      - android/app/build/outputs/apk/debug/*.apk
+
+  android-courier-debug:
+    name: APOIS Entregador - APK Debug
+    instance_type: linux_x2
+    max_build_duration: 45
+    environment:
+      groups:
+        - apois_android
+      vars:
+        APOIS_MOBILE_PRODUCT: courier
+        APOIS_MOBILE_BUILD: "1"
+        VITE_APOIS_PRODUCT_MODE: courier
+        APP_ROUTE: "/courier"
+        APP_PACKAGE: "br.com.apois.entregador"
+        APP_LABEL: "APOIS Entregador"
+        FIREBASE_ENV_NAME: "FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64"
+    scripts:
+      - name: Install Bun and dependencies
+        script: |
+          set -euo pipefail
+          curl -fsSL https://bun.sh/install | bash
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          bun --version
+          bun install --frozen-lockfile
+
+      - name: Validate required environment
+        script: |
+          set -euo pipefail
+          : "${VITE_SUPABASE_URL:?VITE_SUPABASE_URL is required in Codemagic group apois_android}"
+          : "${VITE_SUPABASE_PUBLISHABLE_KEY:?VITE_SUPABASE_PUBLISHABLE_KEY is required in Codemagic group apois_android}"
+          : "${FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64:?FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64 is required in Codemagic group apois_android}"
+
+      - name: Build isolated web app
+        script: |
+          set -euo pipefail
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          bun run build
+
+      - name: Render Capacitor index.html
+        script: |
+          set -euo pipefail
+          HOST=127.0.0.1 PORT=4173 node .output/server/index.mjs >/tmp/apois-mobile-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --location "http://127.0.0.1:4173${APP_ROUTE}" -o .output/public/index.html; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              cat /tmp/apois-mobile-server.log
+              exit 1
+            fi
+            sleep 1
+          done
+          test -s .output/public/index.html
+          grep -qi '<html' .output/public/index.html
+
+      - name: Create and configure Android project
+        script: |
+          set -euo pipefail
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          rm -rf android
+          npm install --no-save @capacitor/core@8.4.2 @capacitor/cli@8.4.2 @capacitor/android@8.4.2 @capacitor/geolocation@8.2.0 @capacitor/push-notifications@8.1.2
+          npx cap add android
+          printf '%s' "$FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
+          grep -Fq "$APP_PACKAGE" android/app/google-services.json
+          npx cap sync android
+          bun run android:configure
+
+      - name: Apply APOIS Android branding
+        script: |
+          set -euo pipefail
+          test -s public/apois-app-icon.png
+          cp public/apois-app-icon.png android/app/src/main/res/drawable/apois_app_icon.png
+          python3 - <<'PY'
+          from pathlib import Path
+          manifest = Path('android/app/src/main/AndroidManifest.xml')
+          text = manifest.read_text(encoding='utf-8')
+          text = text.replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@drawable/apois_app_icon"')
+          text = text.replace('android:roundIcon="@mipmap/ic_launcher_round"', 'android:roundIcon="@drawable/apois_app_icon"')
+          manifest.write_text(text, encoding='utf-8')
+          PY
+          grep -Fq '@drawable/apois_app_icon' android/app/src/main/AndroidManifest.xml
+          grep -Fq 'android.permission.ACCESS_FINE_LOCATION' android/app/src/main/AndroidManifest.xml
+          grep -Fq 'android.permission.ACCESS_COARSE_LOCATION' android/app/src/main/AndroidManifest.xml
+
+      - name: Build APK
+        script: |
+          set -euo pipefail
+          cd android
+          ./gradlew assembleDebug --no-daemon
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk "$CM_BUILD_DIR/APOIS-Entregador-debug.apk"
+
+    artifacts:
+      - APOIS-Entregador-debug.apk
+      - android/app/build/outputs/apk/debug/*.apk
