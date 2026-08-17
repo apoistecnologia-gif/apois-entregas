@@ -4,6 +4,7 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 45
     environment:
+      java: 21
       groups:
         - apois_android
       vars:
@@ -22,6 +23,7 @@ workflows:
           export BUN_INSTALL="$HOME/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
           bun --version
+          java -version
           bun install --frozen-lockfile
 
       - name: Validate required environment
@@ -65,6 +67,7 @@ workflows:
           rm -rf android
           npm install --no-save @capacitor/core@8.4.2 @capacitor/cli@8.4.2 @capacitor/android@8.4.2 @capacitor/geolocation@8.2.0 @capacitor/push-notifications@8.1.2
           npx cap add android
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
           printf '%s' "$FIREBASE_CUSTOMER_GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
           grep -Fq "$APP_PACKAGE" android/app/google-services.json
           npx cap sync android
@@ -89,7 +92,7 @@ workflows:
         script: |
           set -euo pipefail
           cd android
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew clean assembleDebug --no-daemon --stacktrace
           test -s app/build/outputs/apk/debug/app-debug.apk
           cp app/build/outputs/apk/debug/app-debug.apk "$CM_BUILD_DIR/APOIS-Cliente-debug.apk"
 
@@ -102,6 +105,7 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 45
     environment:
+      java: 21
       groups:
         - apois_android
       vars:
@@ -120,6 +124,7 @@ workflows:
           export BUN_INSTALL="$HOME/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
           bun --version
+          java -version
           bun install --frozen-lockfile
 
       - name: Validate required environment
@@ -163,6 +168,7 @@ workflows:
           rm -rf android
           npm install --no-save @capacitor/core@8.4.2 @capacitor/cli@8.4.2 @capacitor/android@8.4.2 @capacitor/geolocation@8.2.0 @capacitor/push-notifications@8.1.2
           npx cap add android
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
           printf '%s' "$FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
           grep -Fq "$APP_PACKAGE" android/app/google-services.json
           npx cap sync android
@@ -189,7 +195,7 @@ workflows:
         script: |
           set -euo pipefail
           cd android
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew clean assembleDebug --no-daemon --stacktrace
           test -s app/build/outputs/apk/debug/app-debug.apk
           cp app/build/outputs/apk/debug/app-debug.apk "$CM_BUILD_DIR/APOIS-Entregador-debug.apk"
 
