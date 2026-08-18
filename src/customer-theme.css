@@ -35,6 +35,11 @@
   background-color: oklch(0.105 0.01 235);
 }
 
+/* Customer-only logo: same APOIS mark, without the former green/purple palette. */
+.apois-customer-theme img[alt="APOIS ENTREGA"] {
+  content: url("/apois-logo-customer.svg");
+}
+
 /* Remove the former green/purple brand treatment from customer surfaces. */
 .apois-customer-theme [class*="from-primary"][class*="to-accent"] {
   background-image: linear-gradient(135deg, oklch(0.57 0.105 220), oklch(0.47 0.085 220)) !important;
@@ -49,6 +54,26 @@
   --tw-shadow-color: oklch(0.55 0.1 220 / 0.28) !important;
 }
 
+/* Legacy hard-coded brand decoration is converted only inside the customer build. */
+.apois-customer-theme [class~="bg-[#FFD700]"],
+.apois-customer-theme [class~="bg-[#F6B900]"],
+.apois-customer-theme [class~="bg-[#FACC15]"] {
+  background: oklch(0.57 0.105 220) !important;
+  color: white !important;
+}
+
+.apois-customer-theme [class~="text-[#FFD700]"],
+.apois-customer-theme [class~="text-[#F6B900]"],
+.apois-customer-theme [class~="text-[#FACC15]"] {
+  color: oklch(0.66 0.115 220) !important;
+}
+
+.apois-customer-theme [class~="border-[#FFD700]"],
+.apois-customer-theme [class~="border-[#F6B900]"],
+.apois-customer-theme [class~="border-[#FACC15]"] {
+  border-color: oklch(0.52 0.09 220) !important;
+}
+
 /* Customer cards: quieter charcoal surfaces and restrained borders. */
 .apois-customer-theme .apois-customer-card {
   background: linear-gradient(145deg, oklch(0.18 0.012 235), oklch(0.145 0.01 235));
@@ -60,7 +85,9 @@
   box-shadow: 0 10px 30px oklch(0.53 0.1 220 / 0.2);
 }
 
-/* Make legacy brand-green/purple decorative utilities read as one coherent blue family. */
+/* Make legacy brand-green decorative utilities read as the approved blue family.
+ * Status colors (open/closed/success/error) remain semantic where they are explicitly marked.
+ */
 .apois-customer-theme [class~="text-green-500"]:not([data-status]),
 .apois-customer-theme [class~="text-green-400"]:not([data-status]) {
   color: oklch(0.66 0.115 220);
@@ -69,4 +96,17 @@
 .apois-customer-theme [class~="bg-green-500"]:not([data-status]),
 .apois-customer-theme [class~="bg-green-400"]:not([data-status]) {
   background-color: oklch(0.62 0.115 220);
+}
+
+/* Softer, more adult customer inputs/cards throughout the app. */
+.apois-customer-theme input,
+.apois-customer-theme textarea,
+.apois-customer-theme select {
+  border-color: oklch(0.27 0.014 235);
+}
+
+.apois-customer-theme input:focus,
+.apois-customer-theme textarea:focus,
+.apois-customer-theme select:focus {
+  border-color: oklch(0.58 0.105 220);
 }
