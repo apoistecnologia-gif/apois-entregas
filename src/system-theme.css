@@ -1,0 +1,129 @@
+/* APOIS ENTREGAS — system-wide premium graphite + petrol blue identity.
+ * Applied to customer, courier, merchant and admin products.
+ * Semantic success/warning/error states remain independent from the brand palette.
+ */
+.apois-system-theme {
+  --background: oklch(0.125 0.012 235);
+  --foreground: oklch(0.985 0.003 240);
+  --card: oklch(0.175 0.012 235);
+  --card-foreground: oklch(0.985 0.003 240);
+  --popover: oklch(0.175 0.012 235);
+  --popover-foreground: oklch(0.985 0.003 240);
+  --primary: oklch(0.625 0.115 220);
+  --primary-foreground: oklch(0.985 0.003 240);
+  --secondary: oklch(0.205 0.014 235);
+  --secondary-foreground: oklch(0.94 0.004 240);
+  --muted: oklch(0.205 0.014 235);
+  --muted-foreground: oklch(0.69 0.012 235);
+  --accent: oklch(0.51 0.105 220);
+  --accent-foreground: oklch(0.985 0.003 240);
+  --border: oklch(0.275 0.014 235);
+  --input: oklch(0.245 0.014 235);
+  --ring: oklch(0.625 0.115 220);
+  --sidebar: oklch(0.155 0.012 235);
+  --sidebar-foreground: oklch(0.985 0.003 240);
+  --sidebar-primary: oklch(0.625 0.115 220);
+  --sidebar-primary-foreground: oklch(0.985 0.003 240);
+  --sidebar-accent: oklch(0.205 0.014 235);
+  --sidebar-accent-foreground: oklch(0.94 0.004 240);
+  --sidebar-border: oklch(0.275 0.014 235);
+  --sidebar-ring: oklch(0.625 0.115 220);
+  --chart-1: oklch(0.625 0.115 220);
+  --chart-2: oklch(0.72 0.085 205);
+  --chart-3: oklch(0.55 0.08 235);
+  --chart-4: oklch(0.78 0.065 215);
+  --chart-5: oklch(0.46 0.065 225);
+}
+
+.apois-system-theme body,
+.apois-system-theme body > div,
+.apois-system-theme [class~="bg-black"] {
+  background-color: oklch(0.105 0.01 235);
+}
+
+/* One unified APOIS logo treatment across all products. */
+.apois-system-theme img[alt="APOIS ENTREGA"],
+.apois-system-theme img[alt="APOIS ENTREGAS"] {
+  content: url("/apois-logo-customer.svg");
+}
+
+/* Collapse former green/purple brand gradients into a restrained blue family. */
+.apois-system-theme [class*="from-primary"][class*="to-accent"] {
+  background-image: linear-gradient(135deg, oklch(0.57 0.105 220), oklch(0.47 0.085 220)) !important;
+}
+
+.apois-system-theme [class*="from-primary"][class*="via-primary"][class*="to-accent"] {
+  background-image: linear-gradient(135deg, oklch(0.64 0.12 220), oklch(0.5 0.1 220)) !important;
+}
+
+.apois-system-theme [class*="rgba(57,181,74"],
+.apois-system-theme [class*="rgba(106,27,154"] {
+  --tw-shadow-color: oklch(0.55 0.1 220 / 0.28) !important;
+}
+
+/* Legacy gold brand utilities become petrol-blue. */
+.apois-system-theme [class~="bg-[#FFD700]"],
+.apois-system-theme [class~="bg-[#F6B900]"],
+.apois-system-theme [class~="bg-[#FACC15]"] {
+  background: oklch(0.57 0.105 220) !important;
+  color: white !important;
+}
+
+.apois-system-theme [class~="text-[#FFD700]"],
+.apois-system-theme [class~="text-[#F6B900]"],
+.apois-system-theme [class~="text-[#FACC15]"] {
+  color: oklch(0.66 0.115 220) !important;
+}
+
+.apois-system-theme [class~="border-[#FFD700]"],
+.apois-system-theme [class~="border-[#F6B900]"],
+.apois-system-theme [class~="border-[#FACC15]"] {
+  border-color: oklch(0.52 0.09 220) !important;
+}
+
+.apois-system-theme [class~="ring-[#FFD700]"],
+.apois-system-theme [class~="ring-[#F6B900]"],
+.apois-system-theme [class~="ring-[#FACC15]"] {
+  --tw-ring-color: oklch(0.52 0.09 220 / 0.42) !important;
+}
+
+/* Explicit old APOIS green/purple arbitrary utilities are brand decoration, not status states. */
+.apois-system-theme [class~="text-[#39B54A]"],
+.apois-system-theme [class~="text-[#6A1B9A]"] {
+  color: oklch(0.66 0.115 220) !important;
+}
+
+.apois-system-theme [class~="bg-[#39B54A]"],
+.apois-system-theme [class~="bg-[#6A1B9A]"] {
+  background-color: oklch(0.57 0.105 220) !important;
+}
+
+.apois-system-theme [class~="border-[#39B54A]"],
+.apois-system-theme [class~="border-[#6A1B9A]"] {
+  border-color: oklch(0.52 0.09 220) !important;
+}
+
+/* More restrained surfaces and form controls across the system. */
+.apois-system-theme input,
+.apois-system-theme textarea,
+.apois-system-theme select {
+  border-color: oklch(0.27 0.014 235);
+}
+
+.apois-system-theme input:focus,
+.apois-system-theme textarea:focus,
+.apois-system-theme select:focus {
+  border-color: oklch(0.58 0.105 220);
+}
+
+.apois-system-theme .apois-customer-card,
+.apois-system-theme .apois-system-card {
+  background: linear-gradient(145deg, oklch(0.18 0.012 235), oklch(0.145 0.01 235));
+  border-color: oklch(0.29 0.014 235);
+  box-shadow: 0 12px 34px oklch(0.05 0.01 235 / 0.38);
+}
+
+.apois-system-theme .apois-customer-soft-glow,
+.apois-system-theme .apois-system-soft-glow {
+  box-shadow: 0 10px 30px oklch(0.53 0.1 220 / 0.2);
+}
