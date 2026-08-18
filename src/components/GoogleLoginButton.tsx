@@ -1,33 +1,27 @@
 import { useEffect, useRef, useState } from "react";
-import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
+import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
+import { App } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const CUSTOMER_OAUTH_CALLBACK = "br.com.apois.cliente://auth/callback";
 
-type AppUrlOpenEvent = { url: string };
-type AppPlugin = {
-  addListener(
-    eventName: "appUrlOpen",
-    listener: (event: AppUrlOpenEvent) => void,
-  ): Promise<PluginListenerHandle>;
-};
-type BrowserPlugin = {
-  open(options: { url: string }): Promise<void>;
-  close(): Promise<void>;
-};
-
-const NativeApp = registerPlugin<AppPlugin>("App");
-const NativeBrowser = registerPlugin<BrowserPlugin>("Browser");
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string") return error;
+  return "Erro desconhecido";
+}
 
 async function completeNativeGoogleLogin(callbackUrl: string) {
   const url = new URL(callbackUrl);
+  const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
   const providerError =
     url.searchParams.get("error_description") ||
     url.searchParams.get("error") ||
-    new URLSearchParams(url.hash.replace(/^#/, "")).get("error_description") ||
-    new URLSearchParams(url.hash.replace(/^#/, "")).get("error");
+    hashParams.get("error_description") ||
+    hashParams.get("error");
 
   if (providerError) throw new Error(providerError);
 
@@ -36,10 +30,8 @@ async function completeNativeGoogleLogin(callbackUrl: string) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) throw error;
   } else {
-    const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
-    const accessToken = hash.get("access_token");
-    const refreshToken = hash.get("refresh_token");
-
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
     if (accessToken && refreshToken) {
       const { error } = await supabase.auth.setSession({
         access_token: accessToken,
@@ -74,14 +66,15 @@ export function GoogleLoginButton() {
     if (!callbackUrl.startsWith(CUSTOMER_OAUTH_CALLBACK)) return;
 
     try {
-      await NativeBrowser.close().catch(() => undefined);
+      await Browser.close().catch(() => undefined);
       await completeNativeGoogleLogin(callbackUrl);
       await appListenerRef.current?.remove();
       appListenerRef.current = null;
       window.location.replace("/inicio");
     } catch (error) {
+      const message = getErrorMessage(error);
       console.error("Google native callback failed:", error);
-      toast.error("Não foi possível concluir o acesso com Google.");
+      toast.error(`Não foi possível concluir o acesso com Google: ${message}`);
       setLoading(false);
     }
   };
@@ -92,13 +85,9 @@ export function GoogleLoginButton() {
 
     try {
       const isNative = Capacitor.isNativePlatform();
-      const redirectTo = isNative ? CUSTOMER_OAUTH_CALLBACK : `${window.location.origin}/auth/callback`;
-
-      if (isNative && !appListenerRef.current) {
-        appListenerRef.current = await NativeApp.addListener("appUrlOpen", ({ url }) => {
-          void handleNativeCallback(url);
-        });
-      }
+      const redirectTo = isNative
+        ? CUSTOMER_OAUTH_CALLBACK
+        : `${window.location.origin}/auth/callback`;
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -116,11 +105,19 @@ export function GoogleLoginButton() {
 
       if (isNative) {
         if (!data.url) throw new Error("O Google não retornou a URL de autenticação.");
-        await NativeBrowser.open({ url: data.url });
+
+        if (!appListenerRef.current) {
+          appListenerRef.current = await App.addListener("appUrlOpen", ({ url }) => {
+            void handleNativeCallback(url);
+          });
+        }
+
+        await Browser.open({ url: data.url });
       }
     } catch (error) {
+      const message = getErrorMessage(error);
       console.error("Google sign-in failed:", error);
-      toast.error("Não foi possível entrar com Google agora.");
+      toast.error(`Não foi possível entrar com Google: ${message}`);
       setLoading(false);
     }
   };
