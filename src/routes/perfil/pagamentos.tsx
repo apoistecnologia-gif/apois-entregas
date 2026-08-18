@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, CreditCard, Landmark, Wallet } from "lucide-react";
+import { ArrowLeft, CreditCard, Landmark } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/perfil/pagamentos")({
@@ -40,32 +40,24 @@ function PagamentosPage() {
       color: "text-blue-400",
       enabled: false,
     },
-    {
-      id: "money",
-      label: "Dinheiro",
-      icon: Wallet,
-      description: "Ainda não habilitado",
-      color: "text-primary",
-      enabled: false,
-    },
   ];
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
-      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 p-4 backdrop-blur-lg">
+      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 px-4 pb-4 pt-[max(env(safe-area-inset-top),1.35rem)] backdrop-blur-lg">
         <button
           type="button"
           onClick={() => navigate({ to: "/perfil" })}
-          className="rounded-full bg-zinc-900 p-2 shadow-lg"
+          className="grid h-11 w-11 place-items-center rounded-full bg-zinc-900 shadow-lg"
           aria-label="Voltar para o perfil"
         >
-          <ArrowLeft className="h-5 w-5 text-zinc-300" />
+          <ArrowLeft className="h-6 w-6 text-zinc-300" />
         </button>
         <h1 className="flex-1 text-center text-xl font-bold text-primary">Pagamentos</h1>
-        <div className="w-9" />
+        <div className="w-11" />
       </header>
 
-      <main className="scrollbar-none flex-1 space-y-8 overflow-y-auto p-6">
+      <main className="scrollbar-none flex-1 space-y-8 overflow-y-auto p-6 pb-10">
         <section className="space-y-4">
           <h2 className="ml-1 text-xs font-bold uppercase tracking-widest text-primary">
             Métodos de pagamento
