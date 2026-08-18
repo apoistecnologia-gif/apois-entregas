@@ -46,7 +46,30 @@ function NovoEndereco() {
     longitude: null as number | null,
   });
 
-  useEffect(() => window.scrollTo(0, 0), []);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+
+    if (sessionStorage.getItem("apois_auto_locate_new_address") !== "1") return;
+    sessionStorage.removeItem("apois_auto_locate_new_address");
+
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>("button"));
+      const locationButton = buttons.find((button) =>
+        button.textContent?.includes("Usar minha localização atual"),
+      );
+      if (locationButton) {
+        window.clearInterval(timer);
+        locationButton.click();
+      } else if (attempts >= 20) {
+        window.clearInterval(timer);
+        toast.error("Toque em “Usar minha localização atual” para preencher o endereço.");
+      }
+    }, 150);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   const hasPreciseLocation = formData.latitude !== null && formData.longitude !== null;
 
