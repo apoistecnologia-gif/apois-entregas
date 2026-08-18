@@ -335,3 +335,19 @@
     animation: none !important;
   }
 }
+
+/* Customer mobile safe-area normalization. Keeps controls out of the Android status bar. */
+@media (max-width: 767px) {
+  header img[alt="APOIS ENTREGA"] {
+    transform: translateY(7px);
+  }
+
+  header button[aria-label="Sacola"],
+  header button[aria-label="Abrir sacola"] {
+    transform: translateY(7px);
+  }
+
+  header button[aria-label^="Voltar"] {
+    transform: translateY(4px);
+  }
+}
