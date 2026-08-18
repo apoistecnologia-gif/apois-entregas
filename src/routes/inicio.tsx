@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchMerchantCategories, fetchMerchants } from "@/lib/catalog";
 import {
@@ -7,7 +7,6 @@ import {
   fetchMerchantsSpecialHoursBatch,
   calculateMerchantStatus,
 } from "@/lib/merchant-hours";
-
 import { useCart } from "@/contexts/CartContext";
 import { ShoppingBag } from "lucide-react";
 import {
@@ -19,6 +18,7 @@ import {
   Store,
   Star,
   Clock,
+  User,
 } from "lucide-react";
 import { AppBottomNav } from "@/components/AppBottomNav";
 import { Input } from "@/components/ui/input";
@@ -37,9 +37,7 @@ export const Route = createFileRoute("/inicio")({
     if (!session) {
       throw redirect({
         to: "/login",
-        search: {
-          redirect: location.href,
-        },
+        search: { redirect: location.href },
       });
     }
     return { session };
@@ -75,74 +73,105 @@ function Inicio() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-        if (profileData) setProfile(profileData);
-        const { data: addrData, error: addrError } = await supabase
-          .from("customer_addresses" as any)
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("is_default", true)
-          .maybeSingle();
+      if (!user) return;
 
-        if (addrError) throw addrError;
-        setDefaultAddress(addrData);
+      const [{ data: profileData, error: profileError }, { data: addrData, error: addrError }] =
+        await Promise.all([
+          supabase
+            .from("profiles")
+            .select("full_name,avatar_url")
+            .eq("id", user.id)
+            .single(),
+          supabase
+            .from("customer_addresses" as any)
+            .select("*")
+            .eq("user_id", user.id)
+            .eq("is_default", true)
+            .maybeSingle(),
+        ]);
 
-        const [cats] = await Promise.all([fetchMerchantCategories()]);
-        setCategories(cats);
+      if (profileError) throw profileError;
+      if (addrError) throw addrError;
+      setProfile(profileData);
+      setDefaultAddress(addrData);
 
-        if (addrData) {
-          const mers = await fetchMerchants((addrData as any).city, (addrData as any).state);
-          setMerchants(mers);
-          if (mers.length > 0) {
-            const merchantIds = mers.map((m) => m.id);
-            const [hours, specialHours] = await Promise.all([
-              fetchMerchantsHoursBatch(merchantIds),
-              fetchMerchantsSpecialHoursBatch(merchantIds),
-            ]);
-            setMerchantsHours(hours);
-            setMerchantsSpecialHours(specialHours);
-          } else {
-            setMerchantsHours([]);
-            setMerchantsSpecialHours([]);
-          }
+      const cats = await fetchMerchantCategories();
+      setCategories(cats);
+
+      if (addrData) {
+        const mers = await fetchMerchants((addrData as any).city, (addrData as any).state);
+        setMerchants(mers);
+        if (mers.length > 0) {
+          const merchantIds = mers.map((merchant) => merchant.id);
+          const [hours, specialHours] = await Promise.all([
+            fetchMerchantsHoursBatch(merchantIds),
+            fetchMerchantsSpecialHoursBatch(merchantIds),
+          ]);
+          setMerchantsHours(hours);
+          setMerchantsSpecialHours(specialHours);
         } else {
-          setMerchants([]);
           setMerchantsHours([]);
           setMerchantsSpecialHours([]);
         }
+      } else {
+        setMerchants([]);
+        setMerchantsHours([]);
+        setMerchantsSpecialHours([]);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error fetching data:", err);
       setError("Ocorreu um erro ao carregar o catálogo.");
     } finally {
       setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchData();
-    const handleFocus = () => fetchData();
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
+  useEffect(() => {
+    void fetchData();
+
+    const handleFocus = () => void fetchData();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") void fetchData();
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "apois_selected_address_id") void fetchData();
+    };
+    const handleAddressChanged = () => void fetchData();
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("apois:address-changed", handleAddressChanged);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("apois:address-changed", handleAddressChanged);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [fetchData]);
+
+  useEffect(() => {
+    const changed = sessionStorage.getItem("apois_checkout_address_changed");
+    if (changed === "1") {
+      sessionStorage.removeItem("apois_checkout_address_changed");
+      void fetchData();
+    }
+  }, [fetchData]);
+
   const firstName = profile?.full_name?.split(" ")[0]?.toUpperCase();
+  const avatarUrl = profile?.avatar_url || "";
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
-      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-accent/15 px-4 pb-3 pt-6">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-accent/15 px-4 pb-3 pt-[max(env(safe-area-inset-top),1.25rem)]">
         <img
           src={logoAsset.url}
           alt="APOIS ENTREGA"
@@ -150,7 +179,7 @@ function Inicio() {
         />
         <button
           onClick={() => navigate({ to: "/sacola" })}
-          className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full border border-zinc-800 bg-zinc-950 text-white"
+          className="relative mt-1 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-zinc-800 bg-zinc-950 text-white"
           aria-label="Sacola"
         >
           <ShoppingBag className="h-5 w-5" />
@@ -162,10 +191,10 @@ function Inicio() {
         </button>
       </header>
 
-      <main className="scrollbar-none flex-1 space-y-4 overflow-y-auto px-4 pb-20 pt-4">
+      <main className="scrollbar-none flex-1 space-y-4 overflow-y-auto px-4 pb-20 pt-5">
         <button
           onClick={() => navigate({ to: "/enderecos" })}
-          className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-accent/30 bg-gradient-to-r from-zinc-950 to-black px-3 py-3 text-left shadow-[0_6px_24px_-12px_rgba(106,27,154,0.45)] transition-transform active:scale-[0.99]"
+          className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-accent/30 bg-gradient-to-r from-zinc-950 to-black px-3 py-3.5 text-left shadow-[0_6px_24px_-12px_rgba(106,27,154,0.45)] transition-transform active:scale-[0.99]"
         >
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/15 ring-1 ring-primary/25">
             <MapPin className="h-5 w-5 text-primary" />
@@ -184,7 +213,7 @@ function Inicio() {
               )}
             </span>
           </span>
-          <ChevronDown className="h-5 w-5 shrink-0 text-accent" />
+          <ChevronDown className="h-5 w-5 shrink-0 self-center text-accent" />
         </button>
 
         <div className="group relative">
@@ -198,10 +227,19 @@ function Inicio() {
           />
         </div>
 
-        <div className="flex min-w-0 items-center gap-3 pt-0.5">
-          <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-primary/40 bg-zinc-950 shadow-[0_0_0_3px_rgba(57,181,74,0.08)]">
-            <img src={logoAsset.url} alt="" className="h-7 w-7 object-contain" />
-          </span>
+        <div className="flex min-w-0 items-center gap-3 py-1">
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/perfil/dados-pessoais" })}
+            className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-primary/40 bg-zinc-950 shadow-[0_0_0_3px_rgba(57,181,74,0.08)]"
+            aria-label="Abrir dados pessoais"
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Foto de perfil" className="h-full w-full object-cover" />
+            ) : (
+              <User className="h-6 w-6 text-primary" />
+            )}
+          </button>
           <div className="min-w-0">
             <h1 className="truncate text-[22px] font-extrabold leading-tight tracking-tight">
               Olá,{" "}
@@ -215,8 +253,8 @@ function Inicio() {
 
         <div className="grid grid-cols-4 gap-2.5">
           {isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex animate-pulse flex-col items-center gap-2">
+            Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="flex animate-pulse flex-col items-center gap-2">
                 <div className="aspect-[3/3.4] w-full rounded-[1.25rem] bg-zinc-900" />
                 <div className="h-2 w-12 rounded bg-zinc-900" />
               </div>
@@ -242,43 +280,20 @@ function Inicio() {
               >
                 <span className="relative grid aspect-[3/3.4] w-full place-items-center overflow-hidden rounded-[1.25rem] bg-zinc-900 ring-1 ring-white/10 transition-transform group-active:scale-95">
                   {cat.image_url ? (
-                    <img
-                      src={cat.image_url}
-                      alt={cat.name}
-                      loading="lazy"
-                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
-                    />
+                    <img src={cat.image_url} alt={cat.name} loading="lazy" className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
                   ) : cat.slug === "restaurantes" ? (
-                    <img
-                      src={catRestaurantes}
-                      alt={cat.name}
-                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
-                    />
+                    <img src={catRestaurantes} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
                   ) : cat.slug === "mercados" ? (
-                    <img
-                      src={catMercados}
-                      alt={cat.name}
-                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
-                    />
+                    <img src={catMercados} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
                   ) : cat.slug === "farmacias" ? (
-                    <img
-                      src={catFarmacias}
-                      alt={cat.name}
-                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
-                    />
+                    <img src={catFarmacias} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
                   ) : cat.slug === "lojas" ? (
-                    <img
-                      src={catLojas}
-                      alt={cat.name}
-                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
-                    />
+                    <img src={catLojas} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
                   ) : (
                     <Store className="h-8 w-8 text-zinc-700" />
                   )}
                 </span>
-                <span className="w-full truncate text-center text-[11px] font-medium text-zinc-300">
-                  {cat.name}
-                </span>
+                <span className="w-full truncate text-center text-[11px] font-medium text-zinc-300">{cat.name}</span>
               </button>
             ))
           ) : null}
@@ -301,8 +316,8 @@ function Inicio() {
 
           <div className="flex flex-col gap-3">
             {isLoading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-24 w-full animate-pulse rounded-3xl bg-zinc-900" />
+              Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="h-24 w-full animate-pulse rounded-3xl bg-zinc-900" />
               ))
             ) : defaultAddress ? (
               merchants.length > 0 ? (
@@ -319,11 +334,7 @@ function Inicio() {
                   >
                     <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-white/10">
                       {merchant.logo_url ? (
-                        <img
-                          src={merchant.logo_url}
-                          alt={merchant.name}
-                          className="h-full w-full object-cover transition-transform group-hover:scale-110"
-                        />
+                        <img src={merchant.logo_url} alt={merchant.name} className="h-full w-full object-cover transition-transform group-hover:scale-110" />
                       ) : (
                         <div className="grid h-full w-full place-items-center">
                           <Store className="h-8 w-8 text-zinc-700" />
@@ -338,9 +349,7 @@ function Inicio() {
 
                     <div className="flex min-w-0 flex-col justify-center gap-1.5">
                       <div className="flex items-center gap-2">
-                        <h3 className="truncate text-base font-extrabold text-white">
-                          {merchant.name}
-                        </h3>
+                        <h3 className="truncate text-base font-extrabold text-white">{merchant.name}</h3>
                       </div>
 
                       <div className="flex flex-col gap-1">
@@ -361,17 +370,9 @@ function Inicio() {
                         </div>
                         <div className="flex items-center gap-1 text-[10px] font-bold">
                           {(() => {
-                            const mHours = merchantsHours.filter(
-                              (h) => h.merchant_id === merchant.id,
-                            );
-                            const mSpecialHours = merchantsSpecialHours.filter(
-                              (h) => h.merchant_id === merchant.id,
-                            );
-                            const status = calculateMerchantStatus(
-                              mHours,
-                              undefined,
-                              mSpecialHours,
-                            );
+                            const mHours = merchantsHours.filter((hour) => hour.merchant_id === merchant.id);
+                            const mSpecialHours = merchantsSpecialHours.filter((hour) => hour.merchant_id === merchant.id);
+                            const status = calculateMerchantStatus(mHours, undefined, mSpecialHours);
                             const colorClass =
                               status.status === "open"
                                 ? "text-green-500"
@@ -380,9 +381,7 @@ function Inicio() {
                                   : "text-zinc-500";
                             return (
                               <>
-                                <span
-                                  className={`h-1.5 w-1.5 rounded-full ${status.status === "open" ? "bg-green-500" : status.status === "closed" ? "bg-red-500" : "bg-zinc-500"}`}
-                                />
+                                <span className={`h-1.5 w-1.5 rounded-full ${status.status === "open" ? "bg-green-500" : status.status === "closed" ? "bg-red-500" : "bg-zinc-500"}`} />
                                 <span className={colorClass}>{status.message}</span>
                               </>
                             );
@@ -391,9 +390,7 @@ function Inicio() {
                       </div>
 
                       {merchant.description && (
-                        <p className="truncate text-[11px] italic text-zinc-500">
-                          {merchant.description}
-                        </p>
+                        <p className="truncate text-[11px] italic text-zinc-500">{merchant.description}</p>
                       )}
                     </div>
                   </button>
@@ -403,9 +400,7 @@ function Inicio() {
                   <span className="grid h-12 w-12 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800">
                     <Store className="h-6 w-6 text-zinc-700" />
                   </span>
-                  <p className="max-w-[200px] text-[12px] leading-relaxed text-zinc-500">
-                    Nenhum estabelecimento disponível nesta região.
-                  </p>
+                  <p className="max-w-[200px] text-[12px] leading-relaxed text-zinc-500">Nenhum estabelecimento disponível nesta região.</p>
                 </div>
               )
             ) : (
@@ -414,8 +409,7 @@ function Inicio() {
                   <MapPin className="h-6 w-6 text-primary" />
                 </span>
                 <p className="max-w-[220px] text-[13px] font-medium leading-relaxed text-zinc-300">
-                  Informe um endereço de entrega para ver os estabelecimentos disponíveis na sua
-                  região.
+                  Informe um endereço de entrega para ver os estabelecimentos disponíveis na sua região.
                 </p>
                 <button
                   onClick={() => navigate({ to: "/enderecos" })}
