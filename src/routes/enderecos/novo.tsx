@@ -5,7 +5,7 @@ import { Briefcase, CheckCircle2, ChevronLeft, Home, Loader2, MapPin, Save } fro
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { GoogleMapsAddressSelector } from "@/components/GoogleMapsAddressSelector";
+import { CustomerLocationAddressSelector } from "@/components/CustomerLocationAddressSelector";
 
 export const Route = createFileRoute("/enderecos/novo")({
   ssr: false,
@@ -32,6 +32,7 @@ const locationFields = new Set([
 function NovoEndereco() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [autoLocate, setAutoLocate] = useState(false);
   const [formData, setFormData] = useState({
     label: "Casa",
     postal_code: "",
@@ -48,27 +49,10 @@ function NovoEndereco() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-
-    if (sessionStorage.getItem("apois_auto_locate_new_address") !== "1") return;
-    sessionStorage.removeItem("apois_auto_locate_new_address");
-
-    let attempts = 0;
-    const timer = window.setInterval(() => {
-      attempts += 1;
-      const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>("button"));
-      const locationButton = buttons.find((button) =>
-        button.textContent?.includes("Usar minha localização atual"),
-      );
-      if (locationButton) {
-        window.clearInterval(timer);
-        locationButton.click();
-      } else if (attempts >= 20) {
-        window.clearInterval(timer);
-        toast.error("Toque em “Usar minha localização atual” para preencher o endereço.");
-      }
-    }, 150);
-
-    return () => window.clearInterval(timer);
+    if (sessionStorage.getItem("apois_auto_locate_new_address") === "1") {
+      sessionStorage.removeItem("apois_auto_locate_new_address");
+      setAutoLocate(true);
+    }
   }, []);
 
   const hasPreciseLocation = formData.latitude !== null && formData.longitude !== null;
@@ -102,8 +86,6 @@ function NovoEndereco() {
           neighborhood: data.bairro || previous.neighborhood,
           city: data.localidade || previous.city,
           state: data.uf || previous.state,
-          latitude: null,
-          longitude: null,
         }));
       }
     } catch (error) {
@@ -129,7 +111,7 @@ function NovoEndereco() {
       return;
     }
     if (!hasPreciseLocation) {
-      toast.error("Confirme o ponto exato da entrega no mapa antes de salvar.");
+      toast.error("Use sua localização ou busque o endereço antes de salvar.");
       return;
     }
 
@@ -197,18 +179,17 @@ function NovoEndereco() {
             )}
             <div>
               <p className="text-sm font-black">
-                {hasPreciseLocation
-                  ? "Localização preenchida"
-                  : "Use sua localização para preencher o endereço"}
+                {hasPreciseLocation ? "Localização encontrada" : "Preencha pelo GPS"}
               </p>
               <p className="mt-1 text-xs leading-relaxed opacity-80">
                 {hasPreciseLocation
-                  ? "Confira os dados abaixo e preencha somente o que o GPS não conseguiu identificar, como número, complemento ou referência."
-                  : "Toque em usar minha localização. Vamos buscar rua, bairro, cidade, UF, CEP e número quando estiver disponível."}
+                  ? "Os dados encontrados aparecem abaixo. Complete somente o que estiver vazio."
+                  : "Toque em usar minha localização para preencher automaticamente rua, bairro, cidade, UF, CEP e número quando disponível."}
               </p>
             </div>
           </div>
-          <GoogleMapsAddressSelector
+          <CustomerLocationAddressSelector
+            autoLocate={autoLocate}
             onAddressSelected={(address) => {
               setFormData((previous) => ({
                 ...previous,
@@ -260,38 +241,17 @@ function NovoEndereco() {
           <div className="grid grid-cols-3 gap-3">
             <Field label="Número*" name="number" value={formData.number} onChange={handleChange} />
             <div className="col-span-2">
-              <Field
-                label="Complemento"
-                name="complement"
-                value={formData.complement}
-                onChange={handleChange}
-              />
+              <Field label="Complemento" name="complement" value={formData.complement} onChange={handleChange} />
             </div>
           </div>
-          <Field
-            label="Bairro*"
-            name="neighborhood"
-            value={formData.neighborhood}
-            onChange={handleChange}
-          />
+          <Field label="Bairro*" name="neighborhood" value={formData.neighborhood} onChange={handleChange} />
           <div className="grid grid-cols-4 gap-3">
             <div className="col-span-3">
               <Field label="Cidade*" name="city" value={formData.city} onChange={handleChange} />
             </div>
-            <Field
-              label="UF*"
-              name="state"
-              value={formData.state}
-              onChange={handleChange}
-              maxLength={2}
-            />
+            <Field label="UF*" name="state" value={formData.state} onChange={handleChange} maxLength={2} />
           </div>
-          <Field
-            label="Ponto de referência"
-            name="reference"
-            value={formData.reference}
-            onChange={handleChange}
-          />
+          <Field label="Ponto de referência" name="reference" value={formData.reference} onChange={handleChange} />
         </form>
       </main>
 
@@ -316,10 +276,7 @@ function NovoEndereco() {
   );
 }
 
-function Field({
-  label,
-  ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+function Field({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
     <div className="space-y-2">
       <label className="ml-1 text-xs font-medium text-zinc-500">{label}</label>
