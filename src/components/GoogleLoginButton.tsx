@@ -1,27 +1,123 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+const CUSTOMER_OAUTH_CALLBACK = "br.com.apois.cliente://auth/callback";
+
+type AppUrlOpenEvent = { url: string };
+type AppPlugin = {
+  addListener(
+    eventName: "appUrlOpen",
+    listener: (event: AppUrlOpenEvent) => void,
+  ): Promise<PluginListenerHandle>;
+};
+type BrowserPlugin = {
+  open(options: { url: string }): Promise<void>;
+  close(): Promise<void>;
+};
+
+const NativeApp = registerPlugin<AppPlugin>("App");
+const NativeBrowser = registerPlugin<BrowserPlugin>("Browser");
+
+async function completeNativeGoogleLogin(callbackUrl: string) {
+  const url = new URL(callbackUrl);
+  const providerError =
+    url.searchParams.get("error_description") ||
+    url.searchParams.get("error") ||
+    new URLSearchParams(url.hash.replace(/^#/, "")).get("error_description") ||
+    new URLSearchParams(url.hash.replace(/^#/, "")).get("error");
+
+  if (providerError) throw new Error(providerError);
+
+  const code = url.searchParams.get("code");
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) throw error;
+  } else {
+    const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
+    const accessToken = hash.get("access_token");
+    const refreshToken = hash.get("refresh_token");
+
+    if (accessToken && refreshToken) {
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (error) throw error;
+    }
+  }
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error || !session) {
+    throw error ?? new Error("A sessão do Google não foi criada.");
+  }
+}
+
 export function GoogleLoginButton() {
   const [loading, setLoading] = useState(false);
+  const appListenerRef = useRef<PluginListenerHandle | null>(null);
+
+  useEffect(() => {
+    return () => {
+      void appListenerRef.current?.remove();
+      appListenerRef.current = null;
+    };
+  }, []);
+
+  const handleNativeCallback = async (callbackUrl: string) => {
+    if (!callbackUrl.startsWith(CUSTOMER_OAUTH_CALLBACK)) return;
+
+    try {
+      await NativeBrowser.close().catch(() => undefined);
+      await completeNativeGoogleLogin(callbackUrl);
+      await appListenerRef.current?.remove();
+      appListenerRef.current = null;
+      window.location.replace("/inicio");
+    } catch (error) {
+      console.error("Google native callback failed:", error);
+      toast.error("Não foi possível concluir o acesso com Google.");
+      setLoading(false);
+    }
+  };
 
   const handleGoogleLogin = async () => {
     if (loading) return;
     setLoading(true);
+
     try {
-      const redirectTo = `${window.location.origin}/inicio`;
-      const { error } = await supabase.auth.signInWithOAuth({
+      const isNative = Capacitor.isNativePlatform();
+      const redirectTo = isNative ? CUSTOMER_OAUTH_CALLBACK : `${window.location.origin}/auth/callback`;
+
+      if (isNative && !appListenerRef.current) {
+        appListenerRef.current = await NativeApp.addListener("appUrlOpen", ({ url }) => {
+          void handleNativeCallback(url);
+        });
+      }
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo,
+          skipBrowserRedirect: isNative,
           queryParams: {
             access_type: "offline",
             prompt: "select_account",
           },
         },
       });
+
       if (error) throw error;
+
+      if (isNative) {
+        if (!data.url) throw new Error("O Google não retornou a URL de autenticação.");
+        await NativeBrowser.open({ url: data.url });
+      }
     } catch (error) {
       console.error("Google sign-in failed:", error);
       toast.error("Não foi possível entrar com Google agora.");
