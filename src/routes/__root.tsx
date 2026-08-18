@@ -153,9 +153,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootShell({ children }: { children: ReactNode }) {
   const product = getApoisProductMode();
   const isBackofficeProduct = product === "admin" || product === "merchant";
+  const documentThemeClass = product === "customer" ? "dark apois-customer-theme" : "dark";
 
   return (
-    <html lang="pt-BR" className="dark">
+    <html lang="pt-BR" className={documentThemeClass}>
       <head>
         <HeadContent />
       </head>
