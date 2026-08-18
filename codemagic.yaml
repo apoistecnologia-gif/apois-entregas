@@ -26,8 +26,7 @@ workflows:
           export PATH="$BUN_INSTALL/bin:$PATH"
           bun --version
           java -version
-          bun install --frozen-lockfile
-          npm install --no-save @capacitor/app@8 @capacitor/browser@8
+          bun install
       - name: Validate required environment
         script: |
           set -euo pipefail
@@ -63,7 +62,7 @@ workflows:
           export BUN_INSTALL="$HOME/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
           rm -rf android
-          npm install --no-save @capacitor/core@8.4.2 @capacitor/cli@8.4.2 @capacitor/android@8.4.2 @capacitor/geolocation@8.2.0 @capacitor/push-notifications@8.1.2 @capacitor/app@8 @capacitor/browser@8
+          npm install --no-save @capacitor/core@8.4.2 @capacitor/cli@8.4.2 @capacitor/android@8.4.2 @capacitor/geolocation@8.2.0 @capacitor/push-notifications@8.1.2 @capacitor/app@8.0.0 @capacitor/browser@8.0.0
           npx cap add android
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
           printf '%s' "$FIREBASE_CUSTOMER_GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > android/app/google-services.json
@@ -143,7 +142,7 @@ workflows:
           export PATH="$BUN_INSTALL/bin:$PATH"
           bun --version
           java -version
-          bun install --frozen-lockfile
+          bun install
       - name: Validate required environment
         script: |
           set -euo pipefail
