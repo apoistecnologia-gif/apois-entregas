@@ -12,7 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
-import customerThemeCss from "../customer-theme.css?url";
+import systemThemeCss from "../system-theme.css?url";
 import { ApoisLaunchSplash } from "../components/ApoisLaunchSplash";
 import { AuthSessionIsolation } from "../components/AuthSessionIsolation";
 import { CourierOfferOverlay } from "../components/CourierOfferOverlay";
@@ -141,7 +141,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       ],
       links: [
         { rel: "stylesheet", href: appCss },
-        { rel: "stylesheet", href: customerThemeCss },
+        { rel: "stylesheet", href: systemThemeCss },
         { rel: "icon", href: "/favicon.png", type: "image/png" },
       ],
     };
@@ -155,10 +155,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootShell({ children }: { children: ReactNode }) {
   const product = getApoisProductMode();
   const isBackofficeProduct = product === "admin" || product === "merchant";
-  const documentThemeClass = product === "customer" ? "dark apois-customer-theme" : "dark";
 
   return (
-    <html lang="pt-BR" className={documentThemeClass}>
+    <html lang="pt-BR" className="dark apois-system-theme">
       <head>
         <HeadContent />
       </head>
