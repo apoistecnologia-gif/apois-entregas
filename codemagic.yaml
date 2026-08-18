@@ -27,6 +27,7 @@ workflows:
           bun --version
           java -version
           bun install --frozen-lockfile
+          npm install --no-save @capacitor/app@8 @capacitor/browser@8
       - name: Validate required environment
         script: |
           set -euo pipefail
@@ -106,7 +107,10 @@ workflows:
             --out "$SIGNED" \
             "$ALIGNED"
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$SIGNED" | tee /tmp/apois-signing.txt
-          grep -Fq "$EXPECTED_SIGNING_SHA1" /tmp/apois-signing.txt
+          EXPECTED_NORMALIZED="$(printf '%s' "$EXPECTED_SIGNING_SHA1" | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          ACTUAL_NORMALIZED="$(awk -F': ' '/Signer #1 certificate SHA-1 digest:/ {print $2}' /tmp/apois-signing.txt | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          test -n "$ACTUAL_NORMALIZED"
+          test "$ACTUAL_NORMALIZED" = "$EXPECTED_NORMALIZED"
           rm -f "$ALIGNED"
           test -s "$SIGNED"
     artifacts:
