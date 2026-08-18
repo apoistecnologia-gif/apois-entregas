@@ -1,10 +1,12 @@
 workflows:
   android-customer-debug:
-    name: APOIS Cliente - APK Debug
+    name: APOIS Cliente - APK Assinado
     instance_type: mac_mini_m2
     max_build_duration: 45
     environment:
       java: 21
+      android_signing:
+        - apois_entregas_release
       groups:
         - apois_android
       vars:
@@ -14,6 +16,7 @@ workflows:
         APP_ROUTE: "/"
         APP_PACKAGE: "br.com.apois.cliente"
         APP_LABEL: "APOIS Cliente"
+        EXPECTED_SIGNING_SHA1: "98:7C:6A:7A:BE:26:9C:1E:5A:01:B5:B7:98:A9:6D:56:66:D8:5E:69"
     scripts:
       - name: Install Bun and dependencies
         script: |
@@ -30,6 +33,11 @@ workflows:
           : "${VITE_SUPABASE_URL:?VITE_SUPABASE_URL is required in Codemagic group apois_android}"
           : "${VITE_SUPABASE_PUBLISHABLE_KEY:?VITE_SUPABASE_PUBLISHABLE_KEY is required in Codemagic group apois_android}"
           : "${FIREBASE_CUSTOMER_GOOGLE_SERVICES_JSON_BASE64:?FIREBASE_CUSTOMER_GOOGLE_SERVICES_JSON_BASE64 is required in Codemagic group apois_android}"
+          : "${CM_KEYSTORE_PATH:?Codemagic permanent keystore was not loaded}"
+          : "${CM_KEYSTORE_PASSWORD:?Codemagic keystore password is missing}"
+          : "${CM_KEY_ALIAS:?Codemagic key alias is missing}"
+          : "${CM_KEY_PASSWORD:?Codemagic key password is missing}"
+          test -s "$CM_KEYSTORE_PATH"
       - name: Build isolated web app
         script: |
           set -euo pipefail
@@ -66,23 +74,51 @@ workflows:
           set -euo pipefail
           node scripts/apply-android-branding.mjs
           grep -Fq '@drawable/apois_launcher' android/app/src/main/AndroidManifest.xml
-      - name: Build APK
+      - name: Build and sign APK
         script: |
           set -euo pipefail
           cd android
-          ./gradlew clean assembleDebug --no-daemon --stacktrace
-          test -s app/build/outputs/apk/debug/app-debug.apk
-          cp app/build/outputs/apk/debug/app-debug.apk "$CM_BUILD_DIR/APOIS-Cliente-debug.apk"
+          ./gradlew clean assembleRelease --no-daemon --stacktrace
+          UNSIGNED="app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -s "$UNSIGNED"
+          BUILD_TOOLS="$(python3 - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ['ANDROID_SDK_ROOT']) / 'build-tools'
+          def ver(p):
+              out=[]
+              for part in p.name.split('.'):
+                  try: out.append(int(part))
+                  except ValueError: out.append(0)
+              return tuple(out)
+          print(max((p for p in root.iterdir() if p.is_dir()), key=ver))
+          PY
+          )"
+          ALIGNED="$CM_BUILD_DIR/APOIS-Cliente-release-aligned.apk"
+          SIGNED="$CM_BUILD_DIR/APOIS-Cliente.apk"
+          "$BUILD_TOOLS/zipalign" -f -p 4 "$UNSIGNED" "$ALIGNED"
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks "$CM_KEYSTORE_PATH" \
+            --ks-key-alias "$CM_KEY_ALIAS" \
+            --ks-pass "pass:$CM_KEYSTORE_PASSWORD" \
+            --key-pass "pass:$CM_KEY_PASSWORD" \
+            --out "$SIGNED" \
+            "$ALIGNED"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$SIGNED" | tee /tmp/apois-signing.txt
+          grep -Fq "$EXPECTED_SIGNING_SHA1" /tmp/apois-signing.txt
+          rm -f "$ALIGNED"
+          test -s "$SIGNED"
     artifacts:
-      - APOIS-Cliente-debug.apk
-      - android/app/build/outputs/apk/debug/*.apk
+      - APOIS-Cliente.apk
 
   android-courier-debug:
-    name: APOIS Entregador - APK Debug
+    name: APOIS Entregador - APK Assinado
     instance_type: mac_mini_m2
     max_build_duration: 45
     environment:
       java: 21
+      android_signing:
+        - apois_entregas_release
       groups:
         - apois_android
       vars:
@@ -92,6 +128,7 @@ workflows:
         APP_ROUTE: "/courier"
         APP_PACKAGE: "br.com.apois.entregador"
         APP_LABEL: "APOIS Entregador"
+        EXPECTED_SIGNING_SHA1: "98:7C:6A:7A:BE:26:9C:1E:5A:01:B5:B7:98:A9:6D:56:66:D8:5E:69"
     scripts:
       - name: Install Bun and dependencies
         script: |
@@ -108,6 +145,11 @@ workflows:
           : "${VITE_SUPABASE_URL:?VITE_SUPABASE_URL is required in Codemagic group apois_android}"
           : "${VITE_SUPABASE_PUBLISHABLE_KEY:?VITE_SUPABASE_PUBLISHABLE_KEY is required in Codemagic group apois_android}"
           : "${FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64:?FIREBASE_COURIER_GOOGLE_SERVICES_JSON_BASE64 is required in Codemagic group apois_android}"
+          : "${CM_KEYSTORE_PATH:?Codemagic permanent keystore was not loaded}"
+          : "${CM_KEYSTORE_PASSWORD:?Codemagic keystore password is missing}"
+          : "${CM_KEY_ALIAS:?Codemagic key alias is missing}"
+          : "${CM_KEY_PASSWORD:?Codemagic key password is missing}"
+          test -s "$CM_KEYSTORE_PATH"
       - name: Build isolated web app
         script: |
           set -euo pipefail
@@ -146,13 +188,39 @@ workflows:
           grep -Fq '@drawable/apois_launcher' android/app/src/main/AndroidManifest.xml
           grep -Fq 'android.permission.ACCESS_FINE_LOCATION' android/app/src/main/AndroidManifest.xml
           grep -Fq 'android.permission.ACCESS_COARSE_LOCATION' android/app/src/main/AndroidManifest.xml
-      - name: Build APK
+      - name: Build and sign APK
         script: |
           set -euo pipefail
           cd android
-          ./gradlew clean assembleDebug --no-daemon --stacktrace
-          test -s app/build/outputs/apk/debug/app-debug.apk
-          cp app/build/outputs/apk/debug/app-debug.apk "$CM_BUILD_DIR/APOIS-Entregador-debug.apk"
+          ./gradlew clean assembleRelease --no-daemon --stacktrace
+          UNSIGNED="app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -s "$UNSIGNED"
+          BUILD_TOOLS="$(python3 - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ['ANDROID_SDK_ROOT']) / 'build-tools'
+          def ver(p):
+              out=[]
+              for part in p.name.split('.'):
+                  try: out.append(int(part))
+                  except ValueError: out.append(0)
+              return tuple(out)
+          print(max((p for p in root.iterdir() if p.is_dir()), key=ver))
+          PY
+          )"
+          ALIGNED="$CM_BUILD_DIR/APOIS-Entregador-release-aligned.apk"
+          SIGNED="$CM_BUILD_DIR/APOIS-Entregador.apk"
+          "$BUILD_TOOLS/zipalign" -f -p 4 "$UNSIGNED" "$ALIGNED"
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks "$CM_KEYSTORE_PATH" \
+            --ks-key-alias "$CM_KEY_ALIAS" \
+            --ks-pass "pass:$CM_KEYSTORE_PASSWORD" \
+            --key-pass "pass:$CM_KEY_PASSWORD" \
+            --out "$SIGNED" \
+            "$ALIGNED"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$SIGNED" | tee /tmp/apois-signing.txt
+          grep -Fq "$EXPECTED_SIGNING_SHA1" /tmp/apois-signing.txt
+          rm -f "$ALIGNED"
+          test -s "$SIGNED"
     artifacts:
-      - APOIS-Entregador-debug.apk
-      - android/app/build/outputs/apk/debug/*.apk
+      - APOIS-Entregador.apk
