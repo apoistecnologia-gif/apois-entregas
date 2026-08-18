@@ -36,6 +36,31 @@ if (!manifest.includes('android:usesCleartextTraffic="false"')) {
   manifest = manifest.replace("<application", '<application android:usesCleartextTraffic="false"');
 }
 
+const mobileProduct = String(process.env.APOIS_MOBILE_PRODUCT ?? "courier")
+  .trim()
+  .toLowerCase();
+
+const customerOauthIntentFilter = `
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="br.com.apois.cliente"
+                    android:host="auth"
+                    android:pathPrefix="/callback" />
+            </intent-filter>`;
+
+if (mobileProduct === "customer" && !manifest.includes('android:scheme="br.com.apois.cliente"')) {
+  const activityCloseIndex = manifest.indexOf("</activity>");
+  if (activityCloseIndex === -1) {
+    console.error("Main Android activity not found while configuring OAuth deep link.");
+    process.exit(1);
+  }
+
+  manifest = `${manifest.slice(0, activityCloseIndex)}${customerOauthIntentFilter}\n        ${manifest.slice(activityCloseIndex)}`;
+}
+
 writeFileSync(manifestPath, manifest, "utf8");
 
 const hasFine = manifest.includes("android.permission.ACCESS_FINE_LOCATION");
@@ -46,9 +71,17 @@ if (!hasFine || !hasCoarse) {
   process.exit(1);
 }
 
+if (mobileProduct === "customer" && !manifest.includes('android:scheme="br.com.apois.cliente"')) {
+  console.error("Failed to configure the customer Google OAuth deep link.");
+  process.exit(1);
+}
+
 console.log("Android native configuration updated:");
 console.log("- ACCESS_FINE_LOCATION");
 console.log("- ACCESS_COARSE_LOCATION");
 console.log("- VIBRATE");
 console.log("- optional GPS feature");
 console.log("- cleartext traffic disabled");
+if (mobileProduct === "customer") {
+  console.log("- customer OAuth deep link: br.com.apois.cliente://auth/callback");
+}
