@@ -85,19 +85,6 @@
   box-shadow: 0 10px 30px oklch(0.53 0.1 220 / 0.2);
 }
 
-/* Make legacy brand-green decorative utilities read as the approved blue family.
- * Status colors (open/closed/success/error) remain semantic where they are explicitly marked.
- */
-.apois-customer-theme [class~="text-green-500"]:not([data-status]),
-.apois-customer-theme [class~="text-green-400"]:not([data-status]) {
-  color: oklch(0.66 0.115 220);
-}
-
-.apois-customer-theme [class~="bg-green-500"]:not([data-status]),
-.apois-customer-theme [class~="bg-green-400"]:not([data-status]) {
-  background-color: oklch(0.62 0.115 220);
-}
-
 /* Softer, more adult customer inputs/cards throughout the app. */
 .apois-customer-theme input,
 .apois-customer-theme textarea,
