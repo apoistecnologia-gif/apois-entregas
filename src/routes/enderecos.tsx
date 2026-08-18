@@ -160,8 +160,7 @@ function EnderecosLayout() {
       );
       toast.success("Endereço confirmado");
       await new Promise((resolve) => window.setTimeout(resolve, 250));
-      if (window.history.length > 1) router.history.back();
-      else await navigate({ to: "/inicio" });
+      await navigate({ to: "/inicio", replace: true });
     } catch (error) {
       console.error("Error setting default address:", error);
       toast.error("Não foi possível confirmar este endereço. Tente novamente.");
@@ -205,9 +204,9 @@ function EnderecosLayout() {
       <header className="sticky top-0 z-50 flex items-center justify-center border-b border-zinc-900 bg-black/90 px-4 pb-4 pt-8 backdrop-blur-lg">
         <button
           type="button"
-          onClick={() => router.history.back()}
+          onClick={() => void navigate({ to: "/inicio", replace: true })}
           className="absolute left-3 rounded-full p-2 text-primary active:bg-white/10"
-          aria-label="Voltar"
+          aria-label="Voltar ao início"
         >
           <ChevronLeft className="h-7 w-7" />
         </button>
@@ -224,11 +223,7 @@ function EnderecosLayout() {
         ) : loadError ? (
           <div className="space-y-4 rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-center">
             <p className="text-sm text-red-300">{loadError}</p>
-            <Button
-              variant="outline"
-              onClick={() => void fetchAddresses()}
-              className="border-zinc-800"
-            >
+            <Button variant="outline" onClick={() => void fetchAddresses()} className="border-zinc-800">
               <RefreshCw className="mr-2 h-4 w-4" /> Tentar novamente
             </Button>
           </div>
@@ -253,8 +248,7 @@ function EnderecosLayout() {
                   tabIndex={0}
                   onClick={() => setSelectedAddressId(address.id)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ")
-                      setSelectedAddressId(address.id);
+                    if (event.key === "Enter" || event.key === " ") setSelectedAddressId(address.id);
                   }}
                   className={`rounded-3xl border p-4 ${selected ? "border-primary bg-primary/5" : "border-zinc-800 bg-zinc-950"}`}
                 >
