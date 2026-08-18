@@ -63,7 +63,7 @@ function LegalPage() {
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
-      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 p-4 backdrop-blur-lg">
+      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 px-4 pb-3 pt-8 backdrop-blur-lg">
         <button
           type="button"
           onClick={() => navigate({ to: "/perfil" })}
