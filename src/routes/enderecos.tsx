@@ -109,6 +109,36 @@ function EnderecosLayout() {
   const selectedAddress = addresses.find((address) => address.id === selectedAddressId) ?? null;
   const selectedLocated = selectedAddress ? hasCoordinates(selectedAddress) : false;
 
+  const setDefaultWithFallback = async (addressId: string) => {
+    const rpcResult = await (supabase.rpc as any)("set_default_customer_address", {
+      _address_id: addressId,
+    });
+    if (!rpcResult.error) return;
+
+    console.warn("RPC set_default_customer_address failed, using RLS fallback:", rpcResult.error);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) throw userError ?? new Error("Sessão não encontrada");
+
+    const clearResult = await supabase
+      .from("customer_addresses")
+      .update({ is_default: false })
+      .eq("user_id", user.id)
+      .eq("is_default", true);
+    if (clearResult.error) throw clearResult.error;
+
+    const selectResult = await supabase
+      .from("customer_addresses")
+      .update({ is_default: true })
+      .eq("id", addressId)
+      .eq("user_id", user.id)
+      .select("id")
+      .single();
+    if (selectResult.error) throw selectResult.error;
+  };
+
   const handleConfirmAddress = async () => {
     if (!selectedAddress || isConfirming) return;
     if (!hasCoordinates(selectedAddress)) {
@@ -120,17 +150,20 @@ function EnderecosLayout() {
     setIsConfirming(true);
     try {
       if (!selectedAddress.is_default) {
-        const { error } = await (supabase.rpc as any)("set_default_customer_address", {
-          _address_id: selectedAddress.id,
-        });
-        if (error) throw error;
+        await setDefaultWithFallback(selectedAddress.id);
       }
       sessionStorage.setItem("apois_checkout_address_changed", "1");
+      sessionStorage.setItem("apois_selected_address_id", selectedAddress.id);
+      setAddresses((current) =>
+        current.map((address) => ({ ...address, is_default: address.id === selectedAddress.id })),
+      );
       toast.success("Endereço confirmado");
-      router.history.back();
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+      if (window.history.length > 1) router.history.back();
+      else await navigate({ to: "/inicio" });
     } catch (error) {
       console.error("Error setting default address:", error);
-      toast.error("Não foi possível confirmar este endereço");
+      toast.error("Não foi possível confirmar este endereço. Tente novamente.");
     } finally {
       setIsConfirming(false);
     }
@@ -163,7 +196,7 @@ function EnderecosLayout() {
 
   return (
     <div className="flex min-h-full w-full flex-col overflow-x-hidden bg-black text-white">
-      <header className="sticky top-0 z-50 flex items-center justify-center border-b border-zinc-900 bg-black/90 px-4 py-4 backdrop-blur-lg">
+      <header className="sticky top-0 z-50 flex items-center justify-center border-b border-zinc-900 bg-black/90 px-4 pb-4 pt-8 backdrop-blur-lg">
         <button
           type="button"
           onClick={() => router.history.back()}
