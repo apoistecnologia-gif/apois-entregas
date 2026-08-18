@@ -83,20 +83,20 @@ function PerfilIndexPage() {
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
-      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 px-4 pb-3 pt-8 backdrop-blur-lg">
+      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 px-4 pb-3 pt-[max(env(safe-area-inset-top),1.25rem)] backdrop-blur-lg">
         <button
           type="button"
           onClick={() => navigate({ to: "/inicio" })}
-          className="rounded-full bg-zinc-900 p-2 shadow-lg"
+          className="mt-1 rounded-full bg-zinc-900 p-2 shadow-lg"
           aria-label="Voltar"
         >
           <ArrowLeft className="h-5 w-5 text-zinc-300" />
         </button>
-        <h1 className="text-xl font-bold text-primary">Conta</h1>
+        <h1 className="pt-1 text-xl font-bold text-primary">Conta</h1>
         <button
           type="button"
           onClick={() => navigate({ to: "/sacola" })}
-          className="relative rounded-full bg-zinc-900 p-2 shadow-lg"
+          className="relative mt-1 rounded-full bg-zinc-900 p-2 shadow-lg"
           aria-label="Sacola"
         >
           <ShoppingBag className="h-5 w-5 text-zinc-300" />
@@ -108,7 +108,7 @@ function PerfilIndexPage() {
         </button>
       </header>
 
-      <main className="scrollbar-none flex-1 overflow-y-auto p-4 pb-20">
+      <main className="scrollbar-none flex-1 overflow-y-auto p-4 pb-20 pt-5">
         <div className="mb-6 flex flex-col items-center rounded-3xl border border-accent/15 bg-gradient-to-br from-zinc-900/60 via-zinc-950 to-accent/5 p-5 backdrop-blur-sm">
           <button
             type="button"
