@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="270" viewBox="0 0 900 270" role="img" aria-labelledby="title desc">
+  <title id="title">APOIS Entregas</title>
+  <desc id="desc">Logomarca APOIS Entregas em azul petróleo e branco sobre fundo transparente</desc>
+  <g fill="none" fill-rule="evenodd">
+    <g transform="translate(28 30)">
+      <circle cx="105" cy="96" r="76" stroke="#1F7894" stroke-width="30"/>
+      <path d="M105 58c-25 0-45 20-45 45 0 34 45 90 45 90s45-56 45-90c0-25-20-45-45-45zm0 62a18 18 0 1 1 0-36 18 18 0 0 1 0 36z" fill="#35A9C9"/>
+      <rect x="0" y="62" width="42" height="12" rx="6" fill="#35A9C9"/>
+      <rect x="0" y="92" width="32" height="12" rx="6" fill="#35A9C9"/>
+      <rect x="0" y="122" width="22" height="12" rx="6" fill="#35A9C9"/>
+    </g>
+    <text x="225" y="135" fill="#FFFFFF" font-family="Arial Black, Arial, sans-serif" font-size="112" font-weight="900" letter-spacing="-7">APOIS</text>
+    <path d="M604 44c8-12 22-18 39-15-3 16-14 27-32 32z" fill="#35A9C9"/>
+    <text x="260" y="188" fill="#35A9C9" font-family="Arial, sans-serif" font-size="34" font-weight="800" letter-spacing="15">ENTREGAS</text>
+    <text x="287" y="232" fill="#C9D0D5" font-family="Arial, sans-serif" font-size="22" font-weight="600">Pediu? </text>
+    <text x="365" y="232" fill="#35A9C9" font-family="Arial, sans-serif" font-size="22" font-weight="700">Apois, chegou.</text>
+  </g>
+</svg>
