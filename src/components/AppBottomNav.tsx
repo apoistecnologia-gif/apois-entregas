@@ -16,8 +16,8 @@ export function AppBottomNav({ activeTab }: AppBottomNavProps) {
   ];
 
   return (
-    <nav className="absolute bottom-0 left-0 right-0 z-50 border-t border-zinc-900/50 bg-black/90 backdrop-blur-xl">
-      <div className="flex items-center justify-around px-2 pt-2 pb-[max(env(safe-area-inset-bottom),2.5rem)] md:pb-2">
+    <nav className="absolute bottom-0 left-0 right-0 z-50 border-t border-zinc-900/50 bg-black/95 backdrop-blur-xl">
+      <div className="flex items-end justify-around px-2 pb-[max(env(safe-area-inset-bottom),0.45rem)] pt-1.5 md:pb-2">
         {navItems.slice(0, 2).map((item) => (
           <NavButton
             key={item.id}
@@ -27,14 +27,14 @@ export function AppBottomNav({ activeTab }: AppBottomNavProps) {
           />
         ))}
 
-        <div className="-mt-8 flex justify-center">
+        <div className="-mt-4 flex justify-center pb-0.5">
           <button
             type="button"
             onClick={() => navigate({ to: "/buscar" })}
-            className="grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-primary via-primary to-accent text-white shadow-[0_8px_22px_-4px_rgba(57,181,74,0.5)] ring-4 ring-accent/30 transition-transform active:scale-90"
+            className="grid h-13 w-13 place-items-center rounded-full bg-gradient-to-br from-primary via-primary to-accent text-white shadow-[0_7px_18px_-5px_rgba(57,181,74,0.45)] ring-3 ring-accent/25 transition-transform active:scale-90"
             aria-label="Buscar"
           >
-            <Bike className="h-7 w-7" />
+            <Bike className="h-6 w-6" />
           </button>
         </div>
 
@@ -64,18 +64,18 @@ function NavButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex min-w-[64px] flex-col items-center justify-center gap-0.5 transition-all active:scale-95"
+      className="flex min-w-[62px] flex-col items-center justify-center gap-0 transition-all active:scale-95"
     >
       <item.icon
         className={`h-5 w-5 transition-colors ${active ? "text-primary" : "text-zinc-500"}`}
       />
       <span
-        className={`text-[10px] transition-colors ${active ? "font-bold text-primary" : "text-zinc-500"}`}
+        className={`mt-0.5 text-[9px] leading-none transition-colors ${active ? "font-bold text-primary" : "text-zinc-500"}`}
       >
         {item.name}
       </span>
       <div
-        className={`mt-0.5 h-1 w-1 rounded-full transition-all ${active ? "scale-100 bg-accent" : "scale-0 bg-transparent"}`}
+        className={`mt-1 h-0.5 w-3 rounded-full transition-all ${active ? "scale-100 bg-accent" : "scale-0 bg-transparent"}`}
       />
     </button>
   );
