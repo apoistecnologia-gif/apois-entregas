@@ -139,7 +139,7 @@ function NovoEndereco() {
 
       sessionStorage.setItem("apois_checkout_address_changed", "1");
       toast.success("Endereço salvo com localização confirmada!");
-      await navigate({ to: "/enderecos" });
+      await navigate({ to: "/inicio", replace: true });
     } catch (error: any) {
       toast.error(`Erro ao salvar: ${error.message}`);
     } finally {
@@ -158,9 +158,9 @@ function NovoEndereco() {
       <header className="sticky top-0 z-50 flex items-center border-b border-white/10 bg-black/90 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur-xl">
         <button
           type="button"
-          onClick={() => navigate({ to: "/enderecos" })}
+          onClick={() => void navigate({ to: "/enderecos", replace: true })}
           className="-ml-1 grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-primary"
-          aria-label="Voltar"
+          aria-label="Voltar aos endereços"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -226,14 +226,7 @@ function NovoEndereco() {
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <Field
-              label="CEP*"
-              name="postal_code"
-              value={formData.postal_code}
-              onChange={handleChange}
-              onBlur={handleCEPBlur}
-              inputMode="numeric"
-            />
+            <Field label="CEP*" name="postal_code" value={formData.postal_code} onChange={handleChange} onBlur={handleCEPBlur} inputMode="numeric" />
             <div className="col-span-2">
               <Field label="Rua*" name="street" value={formData.street} onChange={handleChange} />
             </div>
