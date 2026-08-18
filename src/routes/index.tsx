@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { GoogleLoginButton } from "@/components/GoogleLoginButton";
 import { ArrowRight, Clock3, MapPin, ShieldCheck } from "lucide-react";
 import { useEffect } from "react";
 import {
@@ -77,7 +78,7 @@ function Index() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,rgba(106,27,154,0.16),transparent_60%)]" />
       <div className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-[#39B54A]/[0.08] blur-[110px]" />
 
-      <div className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-[460px] flex-col px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]">
+      <div className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-[460px] flex-col px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
         <header className="flex justify-center pt-1">
           <img
             src="/apois-logo.svg"
@@ -86,7 +87,7 @@ function Index() {
           />
         </header>
 
-        <main className="flex-none py-7">
+        <main className="flex-none py-5">
           <div className="mx-auto w-full max-w-[390px] text-center">
             <p className="mb-3 text-[12px] font-bold uppercase tracking-[0.28em] text-[#39B54A]">
               Delivery simples. Do seu jeito.
@@ -98,20 +99,20 @@ function Index() {
               <span className="text-[#8E3AC0]">chegou.</span>
             </h1>
 
-            <p className="mx-auto mt-5 max-w-[320px] text-[15px] leading-6 text-zinc-400">
+            <p className="mx-auto mt-4 max-w-[320px] text-[15px] leading-6 text-zinc-400">
               Seus restaurantes, mercados e lojas favoritos em um só lugar, com entrega acompanhada em tempo real.
             </p>
 
-            <div className="mt-7 grid grid-cols-3 gap-2">
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-2 py-3.5">
+            <div className="mt-6 grid grid-cols-3 gap-2">
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-2 py-3">
                 <Clock3 className="mx-auto h-5 w-5 text-[#39B54A]" strokeWidth={1.9} />
                 <span className="mt-2 block text-[10px] font-semibold text-zinc-300">Rápido</span>
               </div>
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-2 py-3.5">
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-2 py-3">
                 <MapPin className="mx-auto h-5 w-5 text-[#8E3AC0]" strokeWidth={1.9} />
                 <span className="mt-2 block text-[10px] font-semibold text-zinc-300">Em tempo real</span>
               </div>
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-2 py-3.5">
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-2 py-3">
                 <ShieldCheck className="mx-auto h-5 w-5 text-[#39B54A]" strokeWidth={1.9} />
                 <span className="mt-2 block text-[10px] font-semibold text-zinc-300">Seguro</span>
               </div>
@@ -119,11 +120,11 @@ function Index() {
           </div>
         </main>
 
-        <div className="w-full shrink-0 space-y-3">
+        <div className="w-full shrink-0 space-y-2.5">
           <Button
             type="button"
             onClick={() => navigate({ to: "/register" })}
-            className="flex h-[56px] w-full items-center justify-between rounded-[18px] border-0 bg-[#39B54A] px-6 text-[16px] font-black text-black shadow-[0_12px_35px_rgba(57,181,74,0.18)] transition-all hover:bg-[#45c557] active:scale-[0.985]"
+            className="flex h-[54px] w-full items-center justify-between rounded-[18px] border-0 bg-[#39B54A] px-6 text-[16px] font-black text-black shadow-[0_12px_35px_rgba(57,181,74,0.18)] transition-all hover:bg-[#45c557] active:scale-[0.985]"
           >
             <span>Criar minha conta</span>
             <ArrowRight className="h-5 w-5" />
@@ -133,12 +134,14 @@ function Index() {
             type="button"
             onClick={() => navigate({ to: "/login" })}
             variant="outline"
-            className="h-[56px] w-full rounded-[18px] border-white/10 bg-white/[0.03] text-[16px] font-bold text-white hover:border-[#8E3AC0]/50 hover:bg-white/[0.06] active:scale-[0.985]"
+            className="h-[54px] w-full rounded-[18px] border-white/10 bg-white/[0.03] text-[16px] font-bold text-white hover:border-[#8E3AC0]/50 hover:bg-white/[0.06] active:scale-[0.985]"
           >
             Já tenho conta
           </Button>
 
-          <p className="px-5 pt-1 text-center text-[10px] leading-relaxed text-zinc-600">
+          <GoogleLoginButton />
+
+          <p className="px-5 pt-0.5 text-center text-[10px] leading-relaxed text-zinc-600">
             Ao continuar, você concorda com nossos{" "}
             <button
               type="button"
