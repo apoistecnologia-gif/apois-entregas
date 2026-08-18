@@ -16,8 +16,8 @@ export function AppBottomNav({ activeTab }: AppBottomNavProps) {
   ];
 
   return (
-    <nav className="absolute bottom-0 left-0 right-0 z-50 border-t border-zinc-900/50 bg-black/95 backdrop-blur-xl">
-      <div className="flex min-h-[78px] items-center justify-around px-2 pb-[max(env(safe-area-inset-bottom),0.85rem)] pt-2.5 md:pb-3">
+    <nav className="absolute bottom-0 left-0 right-0 z-50 border-t border-border/80 bg-background/95 backdrop-blur-xl">
+      <div className="flex min-h-[82px] items-center justify-around px-2 pb-[max(env(safe-area-inset-bottom),0.95rem)] pt-2.5 md:pb-3">
         {navItems.slice(0, 2).map((item) => (
           <NavButton
             key={item.id}
@@ -31,7 +31,7 @@ export function AppBottomNav({ activeTab }: AppBottomNavProps) {
           <button
             type="button"
             onClick={() => navigate({ to: "/buscar" })}
-            className="grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-primary via-primary to-accent text-white shadow-[0_10px_24px_-6px_rgba(57,181,74,0.5)] ring-4 ring-accent/25 transition-transform active:scale-90"
+            className="apois-customer-soft-glow grid h-16 w-16 place-items-center rounded-full border border-primary/35 bg-primary text-white ring-4 ring-background transition-transform active:scale-90"
             aria-label="Buscar"
           >
             <Bike className="h-7 w-7" />
@@ -64,7 +64,7 @@ function NavButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex min-h-[54px] min-w-[68px] flex-col items-center justify-center gap-1 px-1 transition-all active:scale-95"
+      className="flex min-h-[56px] min-w-[68px] flex-col items-center justify-center gap-1 px-1 transition-all active:scale-95"
     >
       <item.icon
         className={`h-7 w-7 transition-colors ${active ? "text-primary" : "text-zinc-500"}`}
@@ -75,7 +75,7 @@ function NavButton({
         {item.name}
       </span>
       <div
-        className={`mt-0.5 h-0.5 w-4 rounded-full transition-all ${active ? "scale-100 bg-accent" : "scale-0 bg-transparent"}`}
+        className={`mt-0.5 h-0.5 rounded-full transition-all ${active ? "w-5 scale-100 bg-primary" : "w-0 scale-0 bg-transparent"}`}
       />
     </button>
   );
