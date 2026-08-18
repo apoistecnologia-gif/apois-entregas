@@ -10,6 +10,7 @@ import {
   Loader2,
   Map as MapIcon,
   MapPin,
+  Navigation,
   Plus,
   RefreshCw,
   Star,
@@ -183,6 +184,11 @@ function EnderecosLayout() {
     }
   };
 
+  const handleUseCurrentLocation = () => {
+    sessionStorage.setItem("apois_auto_locate_new_address", "1");
+    void navigate({ to: "/enderecos/novo" });
+  };
+
   const getLabelIcon = (label: string) => {
     switch (label?.toLowerCase()) {
       case "casa":
@@ -231,7 +237,7 @@ function EnderecosLayout() {
             <MapPin className="mx-auto h-10 w-10 text-zinc-700" />
             <h2 className="mt-4 font-bold">Nenhum endereço salvo</h2>
             <p className="mt-1 text-sm text-zinc-500">
-              Cadastre um endereço e confirme o ponto exato no mapa.
+              Use sua localização para preencher automaticamente o máximo possível do endereço.
             </p>
           </div>
         ) : (
@@ -341,10 +347,18 @@ function EnderecosLayout() {
 
         <Button
           type="button"
-          onClick={() => navigate({ to: "/enderecos/novo" })}
-          className="mt-4 h-14 w-full rounded-2xl bg-zinc-900 font-extrabold text-primary ring-1 ring-zinc-800"
+          onClick={handleUseCurrentLocation}
+          className="mt-4 h-14 w-full rounded-2xl bg-primary font-extrabold text-black shadow-[0_8px_24px_rgba(57,181,74,0.25)]"
         >
-          <Plus className="mr-2 h-5 w-5" /> Adicionar endereço
+          <Navigation className="mr-2 h-5 w-5 fill-current" /> Usar minha localização atual
+        </Button>
+
+        <Button
+          type="button"
+          onClick={() => navigate({ to: "/enderecos/novo" })}
+          className="mt-3 h-13 w-full rounded-2xl bg-zinc-900 font-extrabold text-zinc-300 ring-1 ring-zinc-800"
+        >
+          <Plus className="mr-2 h-5 w-5" /> Adicionar endereço manualmente
         </Button>
       </main>
 
