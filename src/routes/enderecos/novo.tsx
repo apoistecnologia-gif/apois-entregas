@@ -52,11 +52,17 @@ function NovoEndereco() {
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
-    setFormData((previous) => ({
-      ...previous,
-      [name]: value,
-      ...(locationFields.has(name) ? { latitude: null, longitude: null } : {}),
-    }));
+    setFormData((previous) => {
+      const previousValue = String(previous[name as keyof typeof previous] ?? "").trim();
+      const isCompletingMissingField = locationFields.has(name) && previousValue.length === 0;
+      const mustReconfirmPoint = locationFields.has(name) && !isCompletingMissingField;
+
+      return {
+        ...previous,
+        [name]: value,
+        ...(mustReconfirmPoint ? { latitude: null, longitude: null } : {}),
+      };
+    });
   };
 
   const handleCEPBlur = async () => {
@@ -87,7 +93,7 @@ function NovoEndereco() {
     const required = ["postal_code", "street", "number", "neighborhood", "city", "state"];
     for (const field of required) {
       if (!formData[field as keyof typeof formData]) {
-        toast.error("Preencha todos os campos obrigatórios do endereço.");
+        toast.error("Preencha apenas os dados obrigatórios que a localização não conseguiu identificar.");
         return;
       }
     }
@@ -169,13 +175,13 @@ function NovoEndereco() {
             <div>
               <p className="text-sm font-black">
                 {hasPreciseLocation
-                  ? "Ponto de entrega confirmado"
-                  : "Confirme o ponto exato da entrega"}
+                  ? "Localização preenchida"
+                  : "Use sua localização para preencher o endereço"}
               </p>
               <p className="mt-1 text-xs leading-relaxed opacity-80">
                 {hasPreciseLocation
-                  ? "Se alterar rua, número, bairro, cidade, UF ou CEP, confirme novamente o ponto no mapa."
-                  : "Pesquise o endereço, use sua localização ou toque/arraste o marcador e confirme o ponto no mapa."}
+                  ? "Confira os dados abaixo e preencha somente o que o GPS não conseguiu identificar, como número, complemento ou referência."
+                  : "Toque em usar minha localização. Vamos buscar rua, bairro, cidade, UF, CEP e número quando estiver disponível."}
               </p>
             </div>
           </div>
@@ -278,7 +284,7 @@ function NovoEndereco() {
           ) : (
             <>
               <Save className="mr-2 h-5 w-5" />
-              {hasPreciseLocation ? "Salvar endereço" : "Confirme o ponto no mapa"}
+              {hasPreciseLocation ? "Salvar endereço" : "Use sua localização primeiro"}
             </>
           )}
         </Button>
