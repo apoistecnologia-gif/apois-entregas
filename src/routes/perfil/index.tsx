@@ -12,6 +12,7 @@ import {
   HelpCircle,
   FileText,
   LogOut,
+  Camera,
 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -82,11 +83,12 @@ function PerfilIndexPage() {
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
-      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 p-4 backdrop-blur-lg">
+      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 px-4 pb-3 pt-8 backdrop-blur-lg">
         <button
           type="button"
           onClick={() => navigate({ to: "/inicio" })}
           className="rounded-full bg-zinc-900 p-2 shadow-lg"
+          aria-label="Voltar"
         >
           <ArrowLeft className="h-5 w-5 text-zinc-300" />
         </button>
@@ -95,6 +97,7 @@ function PerfilIndexPage() {
           type="button"
           onClick={() => navigate({ to: "/sacola" })}
           className="relative rounded-full bg-zinc-900 p-2 shadow-lg"
+          aria-label="Sacola"
         >
           <ShoppingBag className="h-5 w-5 text-zinc-300" />
           {totalItems > 0 ? (
@@ -106,18 +109,35 @@ function PerfilIndexPage() {
       </header>
 
       <main className="scrollbar-none flex-1 overflow-y-auto p-4 pb-20">
-        <div className="mb-8 flex flex-col items-center rounded-3xl border border-accent/15 bg-gradient-to-br from-zinc-900/60 via-zinc-950 to-accent/5 p-6 backdrop-blur-sm">
-          <div className="mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-zinc-900 shadow-[0_0_20px_rgba(57,181,74,0.24)] ring-4 ring-accent/10">
-            {profile?.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt="Foto de perfil"
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <User className="h-10 w-10 text-primary" />
-            )}
-          </div>
+        <div className="mb-6 flex flex-col items-center rounded-3xl border border-accent/15 bg-gradient-to-br from-zinc-900/60 via-zinc-950 to-accent/5 p-5 backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/perfil/dados-pessoais" })}
+            className="group relative mb-3"
+            aria-label={profile?.avatar_url ? "Alterar foto de perfil" : "Adicionar foto de perfil"}
+          >
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-zinc-900 shadow-[0_0_20px_rgba(57,181,74,0.24)] ring-4 ring-accent/10">
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt="Foto de perfil"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <User className="h-10 w-10 text-primary" />
+              )}
+            </div>
+            <span className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-4 border-black bg-primary text-black shadow-lg">
+              <Camera className="h-3.5 w-3.5" />
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/perfil/dados-pessoais" })}
+            className="mb-3 text-xs font-bold text-primary"
+          >
+            {profile?.avatar_url ? "Alterar foto" : "Adicionar foto de perfil"}
+          </button>
           <h2 className="mb-1 text-xl font-bold">
             {loading ? "Carregando..." : profile?.full_name || "Usuário"}
           </h2>
