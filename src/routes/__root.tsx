@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
+import customerThemeCss from "../customer-theme.css?url";
 import { ApoisLaunchSplash } from "../components/ApoisLaunchSplash";
 import { AuthSessionIsolation } from "../components/AuthSessionIsolation";
 import { CourierOfferOverlay } from "../components/CourierOfferOverlay";
@@ -140,6 +141,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       ],
       links: [
         { rel: "stylesheet", href: appCss },
+        { rel: "stylesheet", href: customerThemeCss },
         { rel: "icon", href: "/favicon.png", type: "image/png" },
       ],
     };
