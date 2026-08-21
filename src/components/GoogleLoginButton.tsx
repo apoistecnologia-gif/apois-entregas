@@ -4,9 +4,22 @@ import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getApoisProductMode, getProductHomeRoute } from "@/lib/product-routing";
 import { toast } from "sonner";
 
-const CUSTOMER_OAUTH_CALLBACK = "br.com.apois.cliente://auth/callback";
+const DEFAULT_NATIVE_SCHEMES = {
+  customer: "br.com.apois.cliente",
+  merchant: "br.com.apois.estabelecimento",
+  courier: "br.com.apois.entregador",
+  admin: "br.com.apois.admin",
+} as const;
+
+function getNativeAuthCallback() {
+  const product = getApoisProductMode();
+  const configured = String(import.meta.env.VITE_APOIS_NATIVE_SCHEME ?? "").trim();
+  const scheme = configured || DEFAULT_NATIVE_SCHEMES[product];
+  return `${scheme}://auth/callback`;
+}
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message) return error.message;
@@ -30,8 +43,8 @@ async function completeNativeGoogleLogin(callbackUrl: string) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) throw error;
   } else {
-    const accessToken = hashParams.get("access_token");
-    const refreshToken = hashParams.get("refresh_token");
+    const accessToken = hashParams.get("access_token") || url.searchParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token") || url.searchParams.get("refresh_token");
     if (accessToken && refreshToken) {
       const { error } = await supabase.auth.setSession({
         access_token: accessToken,
@@ -54,6 +67,7 @@ async function completeNativeGoogleLogin(callbackUrl: string) {
 export function GoogleLoginButton() {
   const [loading, setLoading] = useState(false);
   const appListenerRef = useRef<PluginListenerHandle | null>(null);
+  const nativeCallback = getNativeAuthCallback();
 
   useEffect(() => {
     return () => {
@@ -63,14 +77,15 @@ export function GoogleLoginButton() {
   }, []);
 
   const handleNativeCallback = async (callbackUrl: string) => {
-    if (!callbackUrl.startsWith(CUSTOMER_OAUTH_CALLBACK)) return;
+    if (!callbackUrl.startsWith(nativeCallback)) return;
 
     try {
       await Browser.close().catch(() => undefined);
       await completeNativeGoogleLogin(callbackUrl);
       await appListenerRef.current?.remove();
       appListenerRef.current = null;
-      window.location.replace("/inicio");
+      const home = getProductHomeRoute();
+      window.location.replace(`#${home}`);
     } catch (error) {
       const message = getErrorMessage(error);
       console.error("Google native callback failed:", error);
@@ -85,9 +100,7 @@ export function GoogleLoginButton() {
 
     try {
       const isNative = Capacitor.isNativePlatform();
-      const redirectTo = isNative
-        ? CUSTOMER_OAUTH_CALLBACK
-        : `${window.location.origin}/auth/callback`;
+      const redirectTo = isNative ? nativeCallback : `${window.location.origin}/auth/callback`;
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
