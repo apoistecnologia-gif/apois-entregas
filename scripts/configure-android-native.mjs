@@ -40,25 +40,31 @@ const mobileProduct = String(process.env.APOIS_MOBILE_PRODUCT ?? "courier")
   .trim()
   .toLowerCase();
 
-const customerOauthIntentFilter = `
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="br.com.apois.cliente"
-                    android:host="auth"
-                    android:pathPrefix="/callback" />
-            </intent-filter>`;
+const defaultSchemes = {
+  customer: "br.com.apois.cliente",
+  courier: "br.com.apois.entregador",
+  merchant: "br.com.apois.estabelecimento",
+  admin: "br.com.apois.admin",
+};
+const configuredScheme = String(process.env.VITE_APOIS_NATIVE_SCHEME ?? "").trim();
+const nativeAuthScheme = configuredScheme || defaultSchemes[mobileProduct] || "";
 
-if (mobileProduct === "customer" && !manifest.includes('android:scheme="br.com.apois.cliente"')) {
+if (nativeAuthScheme && !manifest.includes(`android:scheme="${nativeAuthScheme}"`)) {
   const activityCloseIndex = manifest.indexOf("</activity>");
   if (activityCloseIndex === -1) {
-    console.error("Main Android activity not found while configuring OAuth deep link.");
+    console.error("Main Android activity not found while configuring auth deep link.");
     process.exit(1);
   }
 
-  manifest = `${manifest.slice(0, activityCloseIndex)}${customerOauthIntentFilter}\n        ${manifest.slice(activityCloseIndex)}`;
+  const authIntentFilter = `
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="${nativeAuthScheme}" android:host="auth" />
+            </intent-filter>`;
+
+  manifest = `${manifest.slice(0, activityCloseIndex)}${authIntentFilter}\n        ${manifest.slice(activityCloseIndex)}`;
 }
 
 writeFileSync(manifestPath, manifest, "utf8");
@@ -71,8 +77,8 @@ if (!hasFine || !hasCoarse) {
   process.exit(1);
 }
 
-if (mobileProduct === "customer" && !manifest.includes('android:scheme="br.com.apois.cliente"')) {
-  console.error("Failed to configure the customer Google OAuth deep link.");
+if (nativeAuthScheme && !manifest.includes(`android:scheme="${nativeAuthScheme}"`)) {
+  console.error(`Failed to configure auth deep link for ${nativeAuthScheme}.`);
   process.exit(1);
 }
 
@@ -82,6 +88,6 @@ console.log("- ACCESS_COARSE_LOCATION");
 console.log("- VIBRATE");
 console.log("- optional GPS feature");
 console.log("- cleartext traffic disabled");
-if (mobileProduct === "customer") {
-  console.log("- customer OAuth deep link: br.com.apois.cliente://auth/callback");
+if (nativeAuthScheme) {
+  console.log(`- auth deep link: ${nativeAuthScheme}://auth/*`);
 }
