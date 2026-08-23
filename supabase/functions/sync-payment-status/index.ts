@@ -137,7 +137,7 @@ Deno.serve(async (request: Request) => {
 
   const { data: payment, error: paymentError } = await admin
     .from("payments")
-    .select("id,provider,provider_charge_id,status,amount,paid_at")
+    .select("id,provider,provider_charge_id,status,amount,paid_at,merchant_mercadopago_account_id")
     .eq("order_id", order.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -219,6 +219,8 @@ Deno.serve(async (request: Request) => {
     else if (payment.provider === "asaas") provider = await getAsaasState(order, payment);
     else if (payment.provider === "mercadopago")
       provider = await getMercadoPagoState(order, payment);
+    else if (payment.provider === "mercadopago_merchant")
+      provider = await getMercadoPagoMerchantState(admin, order, payment);
     else
       return reply(409, {
         error: "Provedor deste pagamento não suportado para conciliação.",
@@ -476,6 +478,87 @@ async function getMercadoPagoState(order: any, payment: any): Promise<ProviderSt
     refunded: status === "refunded" || detail === "refunded",
     failed: ["canceled", "expired", "failed"].includes(status),
     processing: status === "processing",
+    payload: resource,
+  };
+}
+
+// Reconciliation for orders paid through the merchant's own connected Mercado Pago
+// account (OAuth marketplace flow — see create-merchant-mercadopago-pix and
+// merchant-mercadopago-webhook). This intentionally never reads
+// MERCADO_PAGO_ACCESS_TOKEN_*: those platform-level credentials belong only to the
+// legacy getMercadoPagoState() above (provider "mercadopago") and must stay out of
+// this function's scope so payment lookups always run under the merchant's own
+// OAuth grant, never the APOIS account.
+function mercadoPagoMerchantFromB64(value: string) {
+  return Uint8Array.from(atob(value), (c) => c.charCodeAt(0));
+}
+
+async function mercadoPagoMerchantKeyFromEnv() {
+  const raw = Deno.env.get("MERCADO_PAGO_OAUTH_TOKEN_KEY_BASE64")?.trim();
+  if (!raw) throw new Error("missing_token_key");
+  const bytes = mercadoPagoMerchantFromB64(raw);
+  if (bytes.byteLength !== 32) throw new Error("invalid_token_key");
+  return crypto.subtle.importKey("raw", bytes, "AES-GCM", false, ["decrypt"]);
+}
+
+async function mercadoPagoMerchantDecrypt(value: string, iv: string, key: CryptoKey) {
+  const clear = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: mercadoPagoMerchantFromB64(iv) },
+    key,
+    mercadoPagoMerchantFromB64(value),
+  );
+  return new TextDecoder().decode(clear);
+}
+
+async function getMercadoPagoMerchantState(
+  admin: ReturnType<typeof createClient>,
+  order: any,
+  payment: any,
+): Promise<ProviderState> {
+  const accountId = payment.merchant_mercadopago_account_id;
+  if (!accountId) throw new Error("provider_not_configured");
+
+  const { data: account, error: accountError } = await admin
+    .from("merchant_mercadopago_accounts")
+    .select("status,encrypted_access_token,token_iv")
+    .eq("id", accountId)
+    .maybeSingle();
+  if (accountError || !account || account.status !== "connected" || !account.encrypted_access_token || !account.token_iv) {
+    throw new Error("provider_not_configured");
+  }
+
+  let token: string;
+  try {
+    const key = await mercadoPagoMerchantKeyFromEnv();
+    token = await mercadoPagoMerchantDecrypt(account.encrypted_access_token, account.token_iv, key);
+  } catch {
+    throw new Error("provider_not_configured");
+  }
+
+  const res = await fetch(
+    `https://api.mercadopago.com/v1/payments/${encodeURIComponent(payment.provider_charge_id)}`,
+    { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } },
+  );
+  const resource = await readJson(res);
+  if (!res.ok || !isRecord(resource)) throw new Error("provider_lookup_failed");
+  if (text(resource.id) !== payment.provider_charge_id)
+    throw new Error("conflict:PROVIDER_RESOURCE_MISMATCH");
+  if (text(resource.external_reference) !== `apois-entregas-order-${order.id}`)
+    throw new Error("conflict:EXTERNAL_REFERENCE_MISMATCH");
+  const amount = Number(resource.transaction_amount);
+  if (
+    !Number.isFinite(amount) ||
+    Math.round(amount * 100) !== Math.round(Number(payment.amount) * 100)
+  )
+    throw new Error("conflict:AMOUNT_MISMATCH");
+
+  const status = (text(resource.status) ?? "unknown").toLowerCase();
+  return {
+    status,
+    paid: status === "approved",
+    refunded: status === "refunded",
+    failed: ["cancelled", "rejected", "charged_back"].includes(status),
+    processing: ["pending", "in_process", "in_mediation", "authorized"].includes(status),
     payload: resource,
   };
 }
