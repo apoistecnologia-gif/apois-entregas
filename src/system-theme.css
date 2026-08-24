@@ -87,22 +87,6 @@
   --tw-ring-color: oklch(0.52 0.09 220 / 0.42) !important;
 }
 
-/* Explicit old APOIS green/purple arbitrary utilities are brand decoration, not status states. */
-.apois-system-theme [class~="text-[#39B54A]"],
-.apois-system-theme [class~="text-[#6A1B9A]"] {
-  color: oklch(0.66 0.115 220) !important;
-}
-
-.apois-system-theme [class~="bg-[#39B54A]"],
-.apois-system-theme [class~="bg-[#6A1B9A]"] {
-  background-color: oklch(0.57 0.105 220) !important;
-}
-
-.apois-system-theme [class~="border-[#39B54A]"],
-.apois-system-theme [class~="border-[#6A1B9A]"] {
-  border-color: oklch(0.52 0.09 220) !important;
-}
-
 /* More restrained surfaces and form controls across the system. */
 .apois-system-theme input,
 .apois-system-theme textarea,
@@ -158,18 +142,20 @@
 .apois-system-theme [class*="rgba(106,27,154"] {
   --tw-shadow-color: rgba(246,190,28,.26) !important;
 }
-.apois-system-theme [class~="text-[#39B54A]"],
-.apois-system-theme [class~="text-[#6A1B9A]"],
+/* Literal-utility catches for the old green/purple brand hex values are
+ * intentionally omitted here: the source-level brand sweep script already
+ * eliminates every such usage at the .tsx source, and duplicating those
+ * same literal hex substrings in a CSS selector only gives that sweep's
+ * blind find-and-replace a selector string to corrupt (it can't tell a
+ * color value from a class-attribute selector). The legacy-gold family
+ * below predates that green/purple pivot and isn't part of the sweep's
+ * vocabulary, so it's safe to keep as written. */
 .apois-system-theme [class~="text-[#FFD700]"],
 .apois-system-theme [class~="text-[#F6B900]"],
 .apois-system-theme [class~="text-[#FACC15]"] { color: #f6be1c !important; }
-.apois-system-theme [class~="bg-[#39B54A]"],
-.apois-system-theme [class~="bg-[#6A1B9A]"],
 .apois-system-theme [class~="bg-[#FFD700]"],
 .apois-system-theme [class~="bg-[#F6B900]"],
 .apois-system-theme [class~="bg-[#FACC15]"] { background-color: #f6be1c !important; color: #070707 !important; }
-.apois-system-theme [class~="border-[#39B54A]"],
-.apois-system-theme [class~="border-[#6A1B9A]"],
 .apois-system-theme [class~="border-[#FFD700]"],
 .apois-system-theme [class~="border-[#F6B900]"],
 .apois-system-theme [class~="border-[#FACC15]"] { border-color: #f6be1c !important; }

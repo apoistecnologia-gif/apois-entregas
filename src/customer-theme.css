@@ -146,24 +146,19 @@
 .apois-customer-theme [class*="rgba(53,169,201"] {
   --tw-shadow-color:rgba(246,190,28,.26) !important;
 }
-.apois-customer-theme [class~="text-[#39B54A]"],
-.apois-customer-theme [class~="text-[#6A1B9A]"],
-.apois-customer-theme [class~="text-[#1F7894]"],
-.apois-customer-theme [class~="text-[#35A9C9]"],
+/* Literal-utility catches for the old green/purple/teal brand hex values
+ * are intentionally omitted here: the source-level brand sweep script
+ * already eliminates every such usage at the .tsx source, and duplicating
+ * those same literal hex substrings in a CSS selector only gives that
+ * sweep's blind find-and-replace a selector string to corrupt. The
+ * legacy-gold family below predates that pivot and isn't part of the
+ * sweep's vocabulary, so it's safe to keep as written. */
 .apois-customer-theme [class~="text-[#FFD700]"],
 .apois-customer-theme [class~="text-[#F6B900]"],
 .apois-customer-theme [class~="text-[#FACC15]"] { color:#f6be1c !important; }
-.apois-customer-theme [class~="bg-[#39B54A]"],
-.apois-customer-theme [class~="bg-[#6A1B9A]"],
-.apois-customer-theme [class~="bg-[#1F7894]"],
-.apois-customer-theme [class~="bg-[#35A9C9]"],
 .apois-customer-theme [class~="bg-[#FFD700]"],
 .apois-customer-theme [class~="bg-[#F6B900]"],
 .apois-customer-theme [class~="bg-[#FACC15]"] { background-color:#f6be1c !important; color:#070707 !important; }
-.apois-customer-theme [class~="border-[#39B54A]"],
-.apois-customer-theme [class~="border-[#6A1B9A]"],
-.apois-customer-theme [class~="border-[#1F7894]"],
-.apois-customer-theme [class~="border-[#35A9C9]"],
 .apois-customer-theme [class~="border-[#FFD700]"],
 .apois-customer-theme [class~="border-[#F6B900]"],
 .apois-customer-theme [class~="border-[#FACC15]"] { border-color:#f6be1c !important; }
