@@ -303,8 +303,8 @@ export function CourierOfferOverlay() {
 
   return (
     <div className="fixed inset-x-0 top-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[1400] flex items-end justify-center bg-black/85 p-3 backdrop-blur-md">
-      <section className="w-full max-w-[390px] overflow-hidden rounded-[2rem] border border-accent/45 bg-[#080808] text-white shadow-[0_0_90px_rgba(106,27,154,0.24)]">
-        <div className="border-b border-accent/25 bg-[linear-gradient(135deg,rgba(106,27,154,0.26),rgba(57,181,74,0.08)_42%,rgba(0,0,0,0.95)_70%)] px-5 pb-4 pt-5">
+      <section className="w-full max-w-[390px] overflow-hidden rounded-[2rem] border border-accent/45 bg-[#080808] text-white shadow-[0_0_90px_rgba(200,138,8,0.24)]">
+        <div className="border-b border-accent/25 bg-[linear-gradient(135deg,rgba(200,138,8,0.26),rgba(246,190,28,0.08)_42%,rgba(0,0,0,0.95)_70%)] px-5 pb-4 pt-5">
           <div className="flex items-center justify-between gap-3">
             <img src={logoAsset.url} alt="APOIS ENTREGA" className="h-11 w-auto object-contain" />
             <span
@@ -319,7 +319,7 @@ export function CourierOfferOverlay() {
           </div>
           <div className="mt-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-white shadow-[0_0_20px_rgba(57,181,74,0.3)]">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-white shadow-[0_0_20px_rgba(246,190,28,0.3)]">
                 <Truck className="h-4 w-4" />
               </span>
               <div>
@@ -423,7 +423,7 @@ export function CourierOfferOverlay() {
               type="button"
               disabled={Boolean(busy)}
               onClick={() => void respond("accept")}
-              className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-white shadow-[0_12px_35px_rgba(57,181,74,0.3)] ring-1 ring-primary/30 transition active:scale-[0.98] disabled:opacity-60"
+              className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-white shadow-[0_12px_35px_rgba(246,190,28,0.3)] ring-1 ring-primary/30 transition active:scale-[0.98] disabled:opacity-60"
             >
               {busy === "accept" ? (
                 <Loader2 className="h-5 w-5 animate-spin" />

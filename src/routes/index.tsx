@@ -75,8 +75,8 @@ function Index() {
 
   return (
     <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#050505] text-white">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,rgba(106,27,154,0.16),transparent_60%)]" />
-      <div className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-[#39B54A]/[0.08] blur-[110px]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,rgba(200,138,8,0.16),transparent_60%)]" />
+      <div className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-[#F6BE1C]/[0.08] blur-[110px]" />
 
       <div className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-[460px] flex-col px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
         <header className="flex justify-center pt-1">
@@ -89,14 +89,14 @@ function Index() {
 
         <main className="flex-none py-5">
           <div className="mx-auto w-full max-w-[390px] text-center">
-            <p className="mb-3 text-[12px] font-bold uppercase tracking-[0.28em] text-[#39B54A]">
+            <p className="mb-3 text-[12px] font-bold uppercase tracking-[0.28em] text-[#F6BE1C]">
               Delivery simples. Do seu jeito.
             </p>
 
             <h1 className="text-[38px] font-black leading-[1.03] tracking-[-0.045em] text-white">
-              Pediu? <span className="text-[#39B54A]">Apois,</span>
+              Pediu? <span className="text-[#F6BE1C]">Apois,</span>
               <br />
-              <span className="text-[#8E3AC0]">chegou.</span>
+              <span className="text-[#C88A08]">chegou.</span>
             </h1>
 
             <p className="mx-auto mt-4 max-w-[320px] text-[15px] leading-6 text-zinc-400">
@@ -105,15 +105,15 @@ function Index() {
 
             <div className="mt-6 grid grid-cols-3 gap-2">
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-2 py-3">
-                <Clock3 className="mx-auto h-5 w-5 text-[#39B54A]" strokeWidth={1.9} />
+                <Clock3 className="mx-auto h-5 w-5 text-[#F6BE1C]" strokeWidth={1.9} />
                 <span className="mt-2 block text-[10px] font-semibold text-zinc-300">Rápido</span>
               </div>
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-2 py-3">
-                <MapPin className="mx-auto h-5 w-5 text-[#8E3AC0]" strokeWidth={1.9} />
+                <MapPin className="mx-auto h-5 w-5 text-[#C88A08]" strokeWidth={1.9} />
                 <span className="mt-2 block text-[10px] font-semibold text-zinc-300">Em tempo real</span>
               </div>
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-2 py-3">
-                <ShieldCheck className="mx-auto h-5 w-5 text-[#39B54A]" strokeWidth={1.9} />
+                <ShieldCheck className="mx-auto h-5 w-5 text-[#F6BE1C]" strokeWidth={1.9} />
                 <span className="mt-2 block text-[10px] font-semibold text-zinc-300">Seguro</span>
               </div>
             </div>
@@ -124,7 +124,7 @@ function Index() {
           <Button
             type="button"
             onClick={() => navigate({ to: "/register" })}
-            className="flex h-[54px] w-full items-center justify-between rounded-[18px] border-0 bg-[#39B54A] px-6 text-[16px] font-black text-black shadow-[0_12px_35px_rgba(57,181,74,0.18)] transition-all hover:bg-[#45c557] active:scale-[0.985]"
+            className="flex h-[54px] w-full items-center justify-between rounded-[18px] border-0 bg-[#F6BE1C] px-6 text-[16px] font-black text-black shadow-[0_12px_35px_rgba(246,190,28,0.18)] transition-all hover:bg-[#f7ca48] active:scale-[0.985]"
           >
             <span>Criar minha conta</span>
             <ArrowRight className="h-5 w-5" />
@@ -134,7 +134,7 @@ function Index() {
             type="button"
             onClick={() => navigate({ to: "/login" })}
             variant="outline"
-            className="h-[54px] w-full rounded-[18px] border-white/10 bg-white/[0.03] text-[16px] font-bold text-white hover:border-[#8E3AC0]/50 hover:bg-white/[0.06] active:scale-[0.985]"
+            className="h-[54px] w-full rounded-[18px] border-white/10 bg-white/[0.03] text-[16px] font-bold text-white hover:border-[#C88A08]/50 hover:bg-white/[0.06] active:scale-[0.985]"
           >
             Já tenho conta
           </Button>

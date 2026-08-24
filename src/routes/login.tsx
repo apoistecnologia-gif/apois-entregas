@@ -205,8 +205,8 @@ function Login() {
             className="h-full w-full scale-105 object-cover object-center opacity-55 saturate-[0.8]"
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.12)_0%,rgba(0,0,0,0.62)_54%,#000_100%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_18%,rgba(106,27,154,0.28),transparent_30%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_24%_30%,rgba(57,181,74,0.12),transparent_24%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_18%,rgba(200,138,8,0.28),transparent_30%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_24%_30%,rgba(246,190,28,0.12),transparent_24%)]" />
         </div>
 
         <header className="relative z-10 mx-auto flex w-full max-w-md items-center justify-between px-5 pt-[max(env(safe-area-inset-top),1rem)]">
@@ -231,7 +231,7 @@ function Login() {
             />
           </div>
 
-          <section className="mt-1 rounded-[2rem] border border-accent/30 bg-[#090909]/94 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.7),0_0_45px_rgba(106,27,154,0.14)] backdrop-blur-xl sm:p-6">
+          <section className="mt-1 rounded-[2rem] border border-accent/30 bg-[#090909]/94 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.7),0_0_45px_rgba(200,138,8,0.14)] backdrop-blur-xl sm:p-6">
             <div className="text-center">
               <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">
                 APOIS ENTREGADOR
@@ -313,7 +313,7 @@ function Login() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="h-14 w-full rounded-2xl bg-gradient-to-r from-primary to-accent text-base font-black uppercase tracking-[0.06em] text-white shadow-[0_12px_35px_rgba(57,181,74,0.22),0_0_30px_rgba(106,27,154,0.15)] transition-transform active:scale-[0.985]"
+                className="h-14 w-full rounded-2xl bg-gradient-to-r from-primary to-accent text-base font-black uppercase tracking-[0.06em] text-white shadow-[0_12px_35px_rgba(246,190,28,0.22),0_0_30px_rgba(200,138,8,0.15)] transition-transform active:scale-[0.985]"
               >
                 {isLoading ? (
                   <>
@@ -438,7 +438,7 @@ function Login() {
           <Button
             type="submit"
             disabled={isLoading}
-            className="h-14 w-full rounded-2xl bg-gradient-to-r from-primary to-accent text-lg font-black text-white shadow-[0_12px_35px_rgba(57,181,74,0.18)] transition-transform hover:opacity-95 active:scale-[0.98]"
+            className="h-14 w-full rounded-2xl bg-gradient-to-r from-primary to-accent text-lg font-black text-white shadow-[0_12px_35px_rgba(200,138,8,0.18)] transition-transform hover:opacity-95 active:scale-[0.98]"
           >
             {isLoading ? (
               <>

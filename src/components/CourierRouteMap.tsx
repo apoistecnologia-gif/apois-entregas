@@ -20,8 +20,7 @@ type RouteMetrics = {
   durationSeconds: number;
 };
 
-const BRAND_GREEN = "#39B54A";
-const BRAND_PURPLE = "#6A1B9A";
+const BRAND_GOLD = "#F6BE1C";
 
 const parseCoordinate = (value: unknown) => {
   const number = Number(value);
@@ -109,7 +108,7 @@ function RouteMapContent({
         clearRoute();
         polylinesRef.current = route.createPolylines({
           polylineOptions: {
-            strokeColor: BRAND_PURPLE,
+            strokeColor: BRAND_GOLD,
             strokeOpacity: 0.98,
             strokeWeight: 7,
           },
@@ -163,7 +162,7 @@ function RouteMapContent({
           map,
           path: [origin, target],
           geodesic: true,
-          strokeColor: BRAND_PURPLE,
+          strokeColor: BRAND_GOLD,
           strokeOpacity: 0.78,
           strokeWeight: 5,
         });
@@ -398,7 +397,7 @@ export function CourierRouteMap({
         <button
           type="button"
           onClick={openNavigation}
-          className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-accent/40 bg-gradient-to-br from-primary to-accent px-3 text-[11px] font-black text-white shadow-[0_8px_22px_rgba(106,27,154,0.24)] active:scale-95"
+          className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-accent/40 bg-gradient-to-br from-primary to-accent px-3 text-[11px] font-black text-white shadow-[0_8px_22px_rgba(200,138,8,0.24)] active:scale-95"
         >
           <ExternalLink className="h-4 w-4" /> Rotas
         </button>

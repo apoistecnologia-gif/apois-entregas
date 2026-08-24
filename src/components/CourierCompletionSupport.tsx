@@ -18,10 +18,10 @@ export function CourierCompletionSheet({ job, onDone }: { job: any; onDone: () =
     <section
       role="status"
       aria-live="polite"
-      className="relative -mt-8 overflow-hidden rounded-t-[2rem] rounded-b-[1.8rem] border border-accent/35 bg-[radial-gradient(circle_at_top,rgba(106,27,154,0.2),transparent_42%),linear-gradient(180deg,#10100d,#070707)] px-5 pb-5 pt-3 text-center shadow-[0_-18px_45px_rgba(0,0,0,0.65)]"
+      className="relative -mt-8 overflow-hidden rounded-t-[2rem] rounded-b-[1.8rem] border border-accent/35 bg-[radial-gradient(circle_at_top,rgba(200,138,8,0.2),transparent_42%),linear-gradient(180deg,#10100d,#070707)] px-5 pb-5 pt-3 text-center shadow-[0_-18px_45px_rgba(0,0,0,0.65)]"
     >
       <div className="mx-auto h-1.5 w-12 rounded-full bg-zinc-700" />
-      <div className="mx-auto mt-6 grid h-16 w-16 place-items-center rounded-full border border-primary/35 bg-primary/10 text-primary shadow-[0_0_35px_rgba(57,181,74,0.16)]">
+      <div className="mx-auto mt-6 grid h-16 w-16 place-items-center rounded-full border border-primary/35 bg-primary/10 text-primary shadow-[0_0_35px_rgba(246,190,28,0.16)]">
         <CheckCircle2 className="h-9 w-9" />
       </div>
       <p className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-accent">
@@ -36,13 +36,13 @@ export function CourierCompletionSheet({ job, onDone }: { job: any; onDone: () =
           <p className="text-[9px] font-black uppercase text-zinc-600">Ganho estimado</p>
           <p className="mt-1 text-xl font-black text-primary">{money(job?.estimated_earnings)}</p>
         </div>
-        <div className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-white shadow-[0_0_20px_rgba(57,181,74,0.2)]">
+        <div className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-white shadow-[0_0_20px_rgba(246,190,28,0.2)]">
           <CircleDollarSign className="h-5 w-5" />
         </div>
       </div>
       <Button
         onClick={onDone}
-        className="mt-5 h-14 w-full rounded-2xl bg-gradient-to-r from-primary to-accent font-black uppercase tracking-[0.05em] text-white shadow-[0_10px_30px_rgba(106,27,154,0.18)]"
+        className="mt-5 h-14 w-full rounded-2xl bg-gradient-to-r from-primary to-accent font-black uppercase tracking-[0.05em] text-white shadow-[0_10px_30px_rgba(200,138,8,0.18)]"
       >
         Voltar ao início
       </Button>

@@ -34,8 +34,8 @@ function merchantFreshLoginResponse(): Response {
   <style>
     html,body{margin:0;background:#111111;color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
     main{min-height:100dvh;display:grid;place-items:center;padding:24px;text-align:center}
-    strong{display:block;font-size:22px;letter-spacing:.04em}.brand{color:#6A1B9A;font-size:12px;font-weight:800;letter-spacing:.18em;margin-top:8px}
-    .brand::after{content:"";display:block;width:52px;height:3px;border-radius:99px;margin:10px auto 0;background:#39B54A}
+    strong{display:block;font-size:22px;letter-spacing:.04em}.brand{color:#f6be1c;font-size:12px;font-weight:800;letter-spacing:.18em;margin-top:8px}
+    .brand::after{content:"";display:block;width:52px;height:3px;border-radius:99px;margin:10px auto 0;background:#c88a08}
     p{color:#a1a1aa;font-size:14px;margin-top:16px}
   </style>
 </head>

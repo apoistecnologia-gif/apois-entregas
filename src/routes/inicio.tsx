@@ -194,7 +194,7 @@ function Inicio() {
       <main className="scrollbar-none flex-1 space-y-4 overflow-y-auto px-4 pb-20 pt-5">
         <button
           onClick={() => navigate({ to: "/enderecos" })}
-          className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-accent/30 bg-gradient-to-r from-zinc-950 to-black px-3 py-3.5 text-left shadow-[0_6px_24px_-12px_rgba(106,27,154,0.45)] transition-transform active:scale-[0.99]"
+          className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-accent/30 bg-gradient-to-r from-zinc-950 to-black px-3 py-3.5 text-left shadow-[0_6px_24px_-12px_rgba(200,138,8,0.45)] transition-transform active:scale-[0.99]"
         >
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/15 ring-1 ring-primary/25">
             <MapPin className="h-5 w-5 text-primary" />
@@ -231,7 +231,7 @@ function Inicio() {
           <button
             type="button"
             onClick={() => navigate({ to: "/perfil/dados-pessoais" })}
-            className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-primary/40 bg-zinc-950 shadow-[0_0_0_3px_rgba(57,181,74,0.08)]"
+            className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-primary/40 bg-zinc-950 shadow-[0_0_0_3px_rgba(246,190,28,0.08)]"
             aria-label="Abrir dados pessoais"
           >
             {avatarUrl ? (
@@ -413,7 +413,7 @@ function Inicio() {
                 </p>
                 <button
                   onClick={() => navigate({ to: "/enderecos" })}
-                  className="rounded-full bg-gradient-to-r from-primary to-accent px-6 py-2 text-[13px] font-bold text-white shadow-[0_10px_28px_rgba(106,27,154,0.22)] transition-transform active:scale-95"
+                  className="rounded-full bg-gradient-to-r from-primary to-accent px-6 py-2 text-[13px] font-bold text-white shadow-[0_10px_28px_rgba(200,138,8,0.22)] transition-transform active:scale-95"
                 >
                   Selecionar endereço
                 </button>

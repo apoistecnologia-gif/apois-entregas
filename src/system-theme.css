@@ -127,3 +127,52 @@
 .apois-system-theme .apois-system-soft-glow {
   box-shadow: 0 10px 30px oklch(0.53 0.1 220 / 0.2);
 }
+
+/* APOIS_ENTREGAS_SYSTEM_GOLD_V1 */
+/* .apois-system-theme é a classe realmente aplicada ao <html> em __root.tsx.
+ * Sobrescreve a identidade petrol-blue antiga do arquivo por preto + dourado. */
+.apois-system-theme {
+  --primary: oklch(0.82 0.16 84);
+  --primary-foreground: oklch(0.11 0.006 85);
+  --accent: oklch(0.72 0.145 78);
+  --accent-foreground: oklch(0.11 0.006 85);
+  --ring: oklch(0.82 0.16 84);
+  --sidebar-primary: oklch(0.82 0.16 84);
+  --sidebar-primary-foreground: oklch(0.11 0.006 85);
+  --sidebar-ring: oklch(0.82 0.16 84);
+}
+.apois-system-theme [class*="from-primary"][class*="to-accent"],
+.apois-system-theme [class*="from-primary"][class*="via-primary"][class*="to-accent"] {
+  background-image: linear-gradient(135deg, #f6be1c, #c88a08) !important;
+  color: #070707 !important;
+}
+/* bg-clip-text usages (e.g. "APOIS" wordmark, "Olá, {name}!") keep the text
+ * itself transparent so the gold gradient shows through the glyphs — the
+ * general rule above forces a solid #070707 text color, which fights
+ * text-transparent and renders a ghosted double image instead of gold text. */
+.apois-system-theme [class*="from-primary"][class*="to-accent"][class*="text-transparent"],
+.apois-system-theme [class*="from-primary"][class*="via-primary"][class*="to-accent"][class*="text-transparent"] {
+  color: transparent !important;
+}
+.apois-system-theme [class*="rgba(57,181,74"],
+.apois-system-theme [class*="rgba(106,27,154"] {
+  --tw-shadow-color: rgba(246,190,28,.26) !important;
+}
+.apois-system-theme [class~="text-[#39B54A]"],
+.apois-system-theme [class~="text-[#6A1B9A]"],
+.apois-system-theme [class~="text-[#FFD700]"],
+.apois-system-theme [class~="text-[#F6B900]"],
+.apois-system-theme [class~="text-[#FACC15]"] { color: #f6be1c !important; }
+.apois-system-theme [class~="bg-[#39B54A]"],
+.apois-system-theme [class~="bg-[#6A1B9A]"],
+.apois-system-theme [class~="bg-[#FFD700]"],
+.apois-system-theme [class~="bg-[#F6B900]"],
+.apois-system-theme [class~="bg-[#FACC15]"] { background-color: #f6be1c !important; color: #070707 !important; }
+.apois-system-theme [class~="border-[#39B54A]"],
+.apois-system-theme [class~="border-[#6A1B9A]"],
+.apois-system-theme [class~="border-[#FFD700]"],
+.apois-system-theme [class~="border-[#F6B900]"],
+.apois-system-theme [class~="border-[#FACC15]"] { border-color: #f6be1c !important; }
+.apois-system-theme input:focus,
+.apois-system-theme textarea:focus,
+.apois-system-theme select:focus { border-color: #f6be1c; }

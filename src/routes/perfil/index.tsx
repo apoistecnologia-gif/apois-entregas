@@ -116,7 +116,7 @@ function PerfilIndexPage() {
             className="group relative mb-3"
             aria-label={profile?.avatar_url ? "Alterar foto de perfil" : "Adicionar foto de perfil"}
           >
-            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-zinc-900 shadow-[0_0_20px_rgba(57,181,74,0.24)] ring-4 ring-accent/10">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-zinc-900 shadow-[0_0_20px_rgba(246,190,28,0.24)] ring-4 ring-accent/10">
               {profile?.avatar_url ? (
                 <img
                   src={profile.avatar_url}

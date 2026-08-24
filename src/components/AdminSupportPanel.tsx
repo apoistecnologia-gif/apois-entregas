@@ -23,7 +23,7 @@ const openSupportAttachment = async (path: string) => {
 
 const statusClass: Record<string, string> = {
   open: "bg-amber-500/10 text-amber-300",
-  in_progress: "bg-blue-500/10 text-blue-300",
+  in_progress: "bg-primary/10 text-primary",
   resolved: "bg-emerald-500/10 text-emerald-300",
   closed: "bg-zinc-800 text-zinc-400",
 };

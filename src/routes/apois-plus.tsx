@@ -65,7 +65,7 @@ function ApoisPlusPage() {
         <section className="flex flex-col items-center text-center space-y-4 py-6">
           <div className="relative">
             <div className="absolute inset-0 bg-accent/20 blur-3xl rounded-full" />
-            <div className="relative w-24 h-24 rounded-full bg-zinc-900 border-2 border-accent flex items-center justify-center shadow-[0_0_34px_rgba(106,27,154,0.34)]">
+            <div className="relative w-24 h-24 rounded-full bg-zinc-900 border-2 border-accent flex items-center justify-center shadow-[0_0_34px_rgba(200,138,8,0.34)]">
               <Crown className="w-12 h-12 text-primary" />
             </div>
           </div>
@@ -103,8 +103,8 @@ function ApoisPlusPage() {
         </section>
 
         {/* Status */}
-        <section className="bg-gradient-to-br from-accent/10 via-zinc-950 to-primary/5 border border-accent/25 rounded-3xl p-8 flex flex-col items-center text-center space-y-4 shadow-[0_10px_40px_-15px_rgba(106,27,154,0.28)]">
-          <div className="px-3 py-1 bg-primary text-black text-[10px] font-black uppercase tracking-widest rounded-full shadow-[0_0_20px_rgba(57,181,74,0.18)]">
+        <section className="bg-gradient-to-br from-accent/10 via-zinc-950 to-primary/5 border border-accent/25 rounded-3xl p-8 flex flex-col items-center text-center space-y-4 shadow-[0_10px_40px_-15px_rgba(200,138,8,0.28)]">
+          <div className="px-3 py-1 bg-primary text-black text-[10px] font-black uppercase tracking-widest rounded-full shadow-[0_0_20px_rgba(246,190,28,0.18)]">
             Em Breve
           </div>
           <p className="text-zinc-300 text-sm font-medium leading-relaxed">

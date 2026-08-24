@@ -38,14 +38,14 @@ export function ApoisLaunchSplash() {
       <div className="apois-launch-orbit apois-launch-orbit-2 absolute h-52 w-52 rounded-full border border-primary/25" />
 
       <div className="relative flex flex-col items-center">
-        <div className="apois-launch-mark relative grid h-28 w-28 place-items-center overflow-hidden rounded-[2rem] border border-accent/40 bg-[#111111] shadow-[0_0_70px_rgba(106,27,154,0.28)]">
+        <div className="apois-launch-mark relative grid h-28 w-28 place-items-center overflow-hidden rounded-[2rem] border border-accent/40 bg-[#111111] shadow-[0_0_70px_rgba(200,138,8,0.28)]">
           <img
             src="/apois-app-icon.png"
             alt=""
             aria-hidden="true"
             className="h-full w-full object-cover"
           />
-          <span className="apois-launch-pulse absolute right-2 top-2 h-3.5 w-3.5 rounded-full bg-primary shadow-[0_0_22px_rgba(57,181,74,0.92)]" />
+          <span className="apois-launch-pulse absolute right-2 top-2 h-3.5 w-3.5 rounded-full bg-primary shadow-[0_0_22px_rgba(246,190,28,0.92)]" />
         </div>
 
         <div className="mt-8 text-center">

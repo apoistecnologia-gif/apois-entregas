@@ -342,7 +342,7 @@ function EnderecosLayout() {
         <Button
           type="button"
           onClick={handleUseCurrentLocation}
-          className="mt-4 h-14 w-full rounded-2xl bg-primary font-extrabold text-black shadow-[0_8px_24px_rgba(57,181,74,0.25)]"
+          className="mt-4 h-14 w-full rounded-2xl bg-primary font-extrabold text-black shadow-[0_8px_24px_rgba(246,190,28,0.25)]"
         >
           <Navigation className="mr-2 h-5 w-5 fill-current" /> Usar minha localização atual
         </Button>

@@ -96,7 +96,7 @@ function OrderConfirmedPage() {
         <button
           type="button"
           onClick={() => navigate({ to: "/pedidos" })}
-          className="rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-3 font-bold uppercase text-white shadow-[0_10px_28px_rgba(106,27,154,0.24)] transition-transform active:scale-95"
+          className="rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-3 font-bold uppercase text-white shadow-[0_10px_28px_rgba(200,138,8,0.24)] transition-transform active:scale-95"
         >
           Voltar para Meus Pedidos
         </button>
@@ -155,7 +155,7 @@ function OrderConfirmedPage() {
         className={`mb-6 flex h-20 w-20 items-center justify-center rounded-full ${
           isUnavailable
             ? "bg-red-500/10 text-red-400"
-            : "bg-primary/15 text-primary shadow-[0_0_34px_rgba(57,181,74,0.28)] ring-1 ring-accent/25"
+            : "bg-primary/15 text-primary shadow-[0_0_34px_rgba(246,190,28,0.28)] ring-1 ring-accent/25"
         }`}
       >
         {isUnavailable ? <XCircle className="h-12 w-12" /> : <CheckCircle2 className="h-12 w-12" />}
@@ -164,7 +164,7 @@ function OrderConfirmedPage() {
       <h1 className="mb-2 text-2xl font-black uppercase tracking-tight text-white">{title}</h1>
       <p className="mb-8 text-zinc-500">{description}</p>
 
-      <div className="mb-10 w-full space-y-4 rounded-2xl border border-accent/20 bg-zinc-950 p-6 text-left shadow-[0_18px_48px_rgba(106,27,154,0.08)]">
+      <div className="mb-10 w-full space-y-4 rounded-2xl border border-accent/20 bg-zinc-950 p-6 text-left shadow-[0_18px_48px_rgba(200,138,8,0.08)]">
         <div className="flex justify-between border-b border-zinc-900 pb-3">
           <span className="text-xs font-bold uppercase text-zinc-500">Número</span>
           <span className="font-mono font-bold text-accent">#{order.order_number}</span>
@@ -197,7 +197,7 @@ function OrderConfirmedPage() {
         <button
           type="button"
           onClick={() => navigate({ to: `/pedido/${orderId}` })}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent py-4 font-black uppercase text-white shadow-[0_12px_32px_rgba(106,27,154,0.24)] transition-transform active:scale-95"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent py-4 font-black uppercase text-white shadow-[0_12px_32px_rgba(200,138,8,0.24)] transition-transform active:scale-95"
         >
           Ver detalhes do pedido
           <ArrowRight className="h-5 w-5" />

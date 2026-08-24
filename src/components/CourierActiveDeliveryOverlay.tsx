@@ -272,7 +272,7 @@ export function CourierActiveDeliveryOverlay() {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 top-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[1250] flex items-end justify-center p-3">
-      <section className="pointer-events-auto w-full max-w-[390px] overflow-hidden rounded-[2rem] border border-accent/40 bg-[#080808]/98 text-white shadow-[0_-24px_80px_rgba(0,0,0,0.75),0_0_35px_rgba(106,27,154,0.1)] backdrop-blur-xl">
+      <section className="pointer-events-auto w-full max-w-[390px] overflow-hidden rounded-[2rem] border border-accent/40 bg-[#080808]/98 text-white shadow-[0_-24px_80px_rgba(0,0,0,0.75),0_0_35px_rgba(200,138,8,0.1)] backdrop-blur-xl">
         <div className="max-h-[68dvh] overflow-y-auto p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -296,7 +296,7 @@ export function CourierActiveDeliveryOverlay() {
                   <span
                     className={`h-3 w-3 shrink-0 rounded-full border ${
                       index <= currentStage
-                        ? "border-primary bg-primary shadow-[0_0_14px_rgba(57,181,74,0.4)]"
+                        ? "border-primary bg-primary shadow-[0_0_14px_rgba(246,190,28,0.4)]"
                         : "border-zinc-700 bg-zinc-950"
                     }`}
                   />
@@ -366,7 +366,7 @@ export function CourierActiveDeliveryOverlay() {
               type="button"
               disabled={Boolean(busy)}
               onClick={() => void transition(action.target)}
-              className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-accent text-sm font-black text-white shadow-[0_14px_40px_rgba(57,181,74,0.2)] disabled:opacity-60"
+              className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-accent text-sm font-black text-white shadow-[0_14px_40px_rgba(246,190,28,0.2)] disabled:opacity-60"
             >
               {busy === "transition" ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -401,7 +401,7 @@ export function CourierActiveDeliveryOverlay() {
                 type="button"
                 disabled={Boolean(busy) || pin.length !== 4}
                 onClick={() => void complete()}
-                className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-white shadow-[0_10px_30px_rgba(57,181,74,0.18)] disabled:opacity-50"
+                className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-white shadow-[0_10px_30px_rgba(246,190,28,0.18)] disabled:opacity-50"
               >
                 {busy === "complete" ? (
                   <Loader2 className="h-5 w-5 animate-spin" />

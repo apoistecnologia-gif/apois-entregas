@@ -85,7 +85,7 @@ export function CourierBottomNav({
               </span>
               {item.label}
               {selected ? (
-                <span className="absolute -bottom-1 h-[3px] w-8 rounded-full bg-gradient-to-r from-primary to-accent shadow-[0_0_16px_rgba(106,27,154,0.45)]" />
+                <span className="absolute -bottom-1 h-[3px] w-8 rounded-full bg-gradient-to-r from-primary to-accent shadow-[0_0_16px_rgba(200,138,8,0.45)]" />
               ) : null}
             </button>
           );
@@ -128,7 +128,7 @@ export function CourierHistoryPanel({ jobs, onClose }: { jobs: any[]; onClose: (
       <PanelHeader title="Corridas" onClose={onClose} />
 
       <main className="mx-auto w-full max-w-lg space-y-4 p-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
-        <section className="overflow-hidden rounded-[1.75rem] border border-accent/30 bg-[radial-gradient(circle_at_top_right,rgba(106,27,154,0.22),transparent_42%),#090909] p-5 shadow-[0_22px_60px_rgba(0,0,0,0.5)]">
+        <section className="overflow-hidden rounded-[1.75rem] border border-accent/30 bg-[radial-gradient(circle_at_top_right,rgba(200,138,8,0.22),transparent_42%),#090909] p-5 shadow-[0_22px_60px_rgba(0,0,0,0.5)]">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">
             Seu histórico APOIS
           </p>
@@ -281,10 +281,10 @@ export function CourierProfilePanel({
       <PanelHeader title="Perfil" onClose={onClose} />
 
       <main className="mx-auto w-full max-w-lg space-y-4 p-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
-        <section className="relative overflow-hidden rounded-[2rem] border border-accent/30 bg-[radial-gradient(circle_at_top_right,rgba(106,27,154,0.24),transparent_36%),linear-gradient(145deg,#101010,#070707)] p-5 shadow-[0_24px_65px_rgba(0,0,0,0.55)]">
+        <section className="relative overflow-hidden rounded-[2rem] border border-accent/30 bg-[radial-gradient(circle_at_top_right,rgba(200,138,8,0.24),transparent_36%),linear-gradient(145deg,#101010,#070707)] p-5 shadow-[0_24px_65px_rgba(0,0,0,0.55)]">
           <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full border border-accent/15" />
           <div className="relative flex items-center gap-4">
-            <div className="grid h-[4.5rem] w-[4.5rem] shrink-0 place-items-center rounded-full border border-accent/35 bg-black text-accent shadow-[0_0_30px_rgba(106,27,154,0.16)]">
+            <div className="grid h-[4.5rem] w-[4.5rem] shrink-0 place-items-center rounded-full border border-accent/35 bg-black text-accent shadow-[0_0_30px_rgba(200,138,8,0.16)]">
               <UserRound className="h-9 w-9" />
             </div>
             <div className="min-w-0 flex-1">
@@ -405,10 +405,10 @@ export function CourierProfilePanel({
         <button
           type="button"
           onClick={onFinance}
-          className="flex w-full items-center justify-between rounded-[1.6rem] border border-accent/30 bg-[linear-gradient(135deg,rgba(106,27,154,0.18),rgba(57,181,74,0.05)_45%,#090909_70%)] p-4 text-left shadow-[0_14px_35px_rgba(0,0,0,0.35)] active:scale-[0.99]"
+          className="flex w-full items-center justify-between rounded-[1.6rem] border border-accent/30 bg-[linear-gradient(135deg,rgba(200,138,8,0.18),rgba(246,190,28,0.05)_45%,#090909_70%)] p-4 text-left shadow-[0_14px_35px_rgba(0,0,0,0.35)] active:scale-[0.99]"
         >
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-white shadow-[0_0_22px_rgba(57,181,74,0.2)]">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-white shadow-[0_0_22px_rgba(246,190,28,0.2)]">
               <CircleDollarSign className="h-5 w-5" />
             </div>
             <div className="min-w-0">
