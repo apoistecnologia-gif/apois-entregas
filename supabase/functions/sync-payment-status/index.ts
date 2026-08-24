@@ -58,11 +58,11 @@ async function recoverCancelledPaidOrder(input: {
     throw new Error("cancelled_order_refund_create_failed");
   }
 
-  if (!["openpix", "mercadopago"].includes(payment.provider)) {
+  if (!["openpix", "mercadopago", "mercadopago_merchant"].includes(payment.provider)) {
     throw new Error("cancelled_order_refund_provider_unsupported");
   }
 
-  const refundResponse = await fetch(`${supabaseUrl}/functions/v1/process-refund`, {
+  const refundResponse = await fetch(`${supabaseUrl}/functions/v1/process-superapp-refund`, {
     method: "POST",
     headers: {
       Authorization: authorization,

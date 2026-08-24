@@ -350,7 +350,7 @@ function MerchantOrderControlCenter() {
     });
 
     if (!error && data?.refund_id) {
-      const { error: refundError } = await supabase.functions.invoke("process-refund", {
+      const { error: refundError } = await supabase.functions.invoke("process-superapp-refund", {
         body: { refundId: data.refund_id },
       });
       if (refundError) {

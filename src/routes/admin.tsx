@@ -482,7 +482,7 @@ function AdminWorkspace() {
 
   const processRefund = async (refund: any) => {
     setBusy(`refund:${refund.id}`);
-    const { error } = await supabase.functions.invoke("process-refund", {
+    const { error } = await supabase.functions.invoke("process-superapp-refund", {
       body: { refundId: refund.id },
     });
     setBusy(null);

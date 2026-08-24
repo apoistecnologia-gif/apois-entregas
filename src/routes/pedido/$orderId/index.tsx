@@ -162,7 +162,7 @@ function OrderDetailsPage() {
       if (error) throw error;
       const refundId = (data as any)?.refund_id ?? null;
       if (refundId) {
-        const { error: refundError } = await supabase.functions.invoke("process-refund", {
+        const { error: refundError } = await supabase.functions.invoke("process-superapp-refund", {
           body: { refundId },
         });
         if (refundError)
