@@ -873,6 +873,8 @@ export function CourierFinance({
   draft,
   setDraft,
   busy,
+  payoutAvailable,
+  payoutBlockedMessage,
   onSaveAccount,
   onRequestPayout,
   onClose,
@@ -1021,7 +1023,7 @@ export function CourierFinance({
                 />
                 <Button
                   className="h-13 w-full rounded-2xl font-black"
-                  disabled={!payoutAccount || busy === "payout"}
+                  disabled={!payoutAccount || busy === "payout" || payoutAvailable === false}
                   onClick={onRequestPayout}
                 >
                   {busy === "payout" ? (
@@ -1032,10 +1034,14 @@ export function CourierFinance({
                   Solicitar saque
                 </Button>
               </div>
-              <p className="mt-3 text-[11px] leading-4 text-zinc-500">
-                A solicitação entra em processamento após a reserva do saldo. O app não promete
-                transferência instantânea.
-              </p>
+              {payoutAvailable === false ? (
+                <p className="mt-3 text-[11px] leading-4 text-amber-400">{payoutBlockedMessage}</p>
+              ) : (
+                <p className="mt-3 text-[11px] leading-4 text-zinc-500">
+                  A solicitação entra em processamento após a reserva do saldo. O app não promete
+                  transferência instantânea.
+                </p>
+              )}
             </section>
 
             <FinanceList

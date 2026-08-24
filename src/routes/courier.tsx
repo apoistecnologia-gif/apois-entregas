@@ -81,6 +81,10 @@ function CourierApp() {
     amount: "",
   });
   const [currentPosition, setCurrentPosition] = useState<CourierPosition | null>(null);
+  const [payoutAvailable, setPayoutAvailable] = useState(false);
+  const [payoutBlockedMessage, setPayoutBlockedMessage] = useState(
+    "Saques estão temporariamente indisponíveis enquanto o recebimento direto dos entregadores é finalizado.",
+  );
 
   const loadCourierOperations = useCallback(async (courierId: string) => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
@@ -209,6 +213,25 @@ function CourierApp() {
   useEffect(() => {
     void loadAll();
   }, [loadAll]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await rpc("get_delivery_checkout_readiness");
+      if (cancelled) return;
+      if (error || !data) return;
+      const live = data.mode === "marketplace_direct_live";
+      setPayoutAvailable(live);
+      if (!live && data.message) {
+        setPayoutBlockedMessage(
+          "Saques estão temporariamente indisponíveis enquanto o recebimento direto dos entregadores é finalizado.",
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!courier?.id || courier.status !== "approved" || !courier.is_active) return;
@@ -588,6 +611,7 @@ function CourierApp() {
   };
 
   const requestPayout = async () => {
+    if (!payoutAvailable) return toast.error(payoutBlockedMessage);
     if (!wallet || !payoutAccount) return toast.error("Cadastre sua chave PIX primeiro.");
     const amount = Number(payoutDraft.amount);
     if (!Number.isFinite(amount) || amount <= 0) return toast.error("Informe um valor válido.");
@@ -747,6 +771,8 @@ function CourierApp() {
           draft={payoutDraft}
           setDraft={setPayoutDraft}
           busy={busy}
+          payoutAvailable={payoutAvailable}
+          payoutBlockedMessage={payoutBlockedMessage}
           onSaveAccount={savePayoutAccount}
           onRequestPayout={requestPayout}
           onClose={() => setFinanceOpen(false)}

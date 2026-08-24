@@ -18,6 +18,13 @@ export function CourierPendingPayoutProcessor() {
       processingRef.current = true;
 
       try {
+        const { data: readiness, error: readinessError } = await (supabase.rpc as any)(
+          "get_delivery_checkout_readiness",
+        );
+        if (disposed) return;
+        const payoutLive = !readinessError && readiness?.mode === "marketplace_direct_live";
+        if (!payoutLive) return;
+
         const {
           data: { user },
           error: userError,
