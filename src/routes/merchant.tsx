@@ -36,6 +36,7 @@ import {
 import { MerchantCouponsPanel } from "@/components/MerchantCouponsPanel";
 import { MerchantSubscriptionGate } from "@/components/MerchantSubscriptionGate";
 import { GoogleMapsAddressSelector } from "@/components/GoogleMapsAddressSelector";
+import { MerchantMercadoPagoConnectCard } from "@/components/MerchantMercadoPagoConnectCard";
 
 export const Route = createFileRoute("/merchant")({
   ssr: false,
@@ -1934,6 +1935,8 @@ function MerchantWorkspace() {
               />
             </div>
           </section>
+
+          <MerchantMercadoPagoConnectCard />
 
           <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
             <h2 className="font-black">Entrega e pedido mínimo</h2>

@@ -457,6 +457,23 @@ function CheckoutPage() {
       if (items.length === 0) throw new Error("Sua sacola está vazia.");
       if (paymentMethod !== "pix") throw new Error("No momento, apenas PIX está disponível.");
 
+      const { data: providerSetting } = await (supabase.rpc as any)("get_order_payment_provider");
+      const configuredProvider =
+        typeof providerSetting === "string" ? providerSetting.trim().toLowerCase() : "mercadopago";
+
+      if (configuredProvider === "mercadopago_merchant") {
+        const { data: readiness, error: readinessError } = await supabase.functions.invoke(
+          "merchant-payment-readiness",
+          { body: { merchantId: merchant.id } },
+        );
+        if (readinessError || readiness?.ready !== true) {
+          throw new Error(
+            (readiness && typeof readiness.message === "string" && readiness.message) ||
+              "Este estabelecimento não está pronto para receber pagamentos agora.",
+          );
+        }
+      }
+
       const fingerprint = checkoutFingerprint({
         merchantId: merchant.id,
         paymentMethod,
@@ -501,11 +518,12 @@ function CheckoutPage() {
       const orderId = orderResponse?.orderId;
       if (!orderId) throw new Error("O backend não retornou o identificador do pedido.");
 
-      const { data: providerSetting } = await (supabase.rpc as any)("get_order_payment_provider");
-      const configuredProvider =
-        typeof providerSetting === "string" ? providerSetting.trim().toLowerCase() : "mercadopago";
       const pixFunction =
-        configuredProvider === "asaas" ? "create-asaas-pix-charge" : "create-pix-charge";
+        configuredProvider === "asaas"
+          ? "create-asaas-pix-charge"
+          : configuredProvider === "mercadopago_merchant"
+            ? "create-merchant-mercadopago-pix"
+            : "create-pix-charge";
       const { data: pixResponse, error: pixError } = await supabase.functions.invoke(pixFunction, {
         body: { orderId },
       });
