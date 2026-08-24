@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { verifyAccountAccessOrSignOut } from "@/lib/account-access";
 import { getSafeProductRoute } from "@/lib/product-routing";
 
 export const Route = createFileRoute("/auth/callback")({
@@ -42,6 +43,12 @@ function AuthCallbackPage() {
       if (error || !session) {
         if (!cancelled)
           setErrorMessage("O link expirou ou já foi utilizado. Tente entrar novamente.");
+        return;
+      }
+
+      const access = await verifyAccountAccessOrSignOut();
+      if (!access.allowed) {
+        if (!cancelled) setErrorMessage(access.message);
         return;
       }
 
