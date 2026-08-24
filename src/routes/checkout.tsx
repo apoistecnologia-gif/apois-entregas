@@ -211,6 +211,8 @@ function CheckoutPage() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [pixData, setPixData] = useState<PixData | null>(loadActivePix);
   const [copied, setCopied] = useState(false);
+  const [deliveryPlatformAvailable, setDeliveryPlatformAvailable] = useState(true);
+  const [deliveryUnavailableMessage, setDeliveryUnavailableMessage] = useState<string | null>(null);
 
   const paymentMethod =
     typeof window !== "undefined" ? sessionStorage.getItem("apois_payment_method") || "pix" : "pix";
@@ -247,6 +249,28 @@ function CheckoutPage() {
   }, [isHydrated, items.length, pixData, navigate]);
 
   useEffect(() => {
+    let disposed = false;
+    const loadDeliveryReadiness = async () => {
+      const { data, error } = await (supabase.rpc as any)("get_delivery_checkout_readiness");
+      if (disposed || error || !data) return;
+      const available = data.delivery_available === true;
+      setDeliveryPlatformAvailable(available);
+      if (!available) {
+        setDeliveryUnavailableMessage(
+          typeof data.message === "string"
+            ? data.message
+            : "A entrega está temporariamente indisponível. Escolha retirada quando disponível.",
+        );
+        setFulfillmentType("pickup");
+      }
+    };
+    void loadDeliveryReadiness();
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!merchant?.id) return;
     let disposed = false;
     const loadMerchantConfig = async () => {
@@ -265,13 +289,15 @@ function CheckoutPage() {
       const config = data as MerchantCheckoutConfig;
       setMerchantConfig(config);
       if (!config.delivery_enabled && config.pickup_enabled) setFulfillmentType("pickup");
-      if (config.delivery_enabled && !config.pickup_enabled) setFulfillmentType("delivery");
+      if (config.delivery_enabled && !config.pickup_enabled && deliveryPlatformAvailable) {
+        setFulfillmentType("delivery");
+      }
     };
     void loadMerchantConfig();
     return () => {
       disposed = true;
     };
-  }, [merchant?.id]);
+  }, [merchant?.id, deliveryPlatformAvailable]);
 
   useEffect(() => {
     if (!merchant?.id) {
@@ -613,7 +639,7 @@ function CheckoutPage() {
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              disabled={merchantConfig?.delivery_enabled === false}
+              disabled={merchantConfig?.delivery_enabled === false || !deliveryPlatformAvailable}
               onClick={() => {
                 setFulfillmentType("delivery");
                 sessionStorage.removeItem(CHECKOUT_ATTEMPT_STORAGE_KEY);
@@ -645,6 +671,11 @@ function CheckoutPage() {
               <span className="text-sm font-bold">Retirada</span>
             </button>
           </div>
+          {!deliveryPlatformAvailable && deliveryUnavailableMessage ? (
+            <p className="mt-3 text-xs leading-relaxed text-amber-400">
+              {deliveryUnavailableMessage}
+            </p>
+          ) : null}
         </section>
 
         {fulfillmentType === "delivery" ? (

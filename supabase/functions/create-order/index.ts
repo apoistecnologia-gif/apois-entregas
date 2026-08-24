@@ -133,6 +133,14 @@ function mapOrderError(message: string) {
       error: "Este endereço está fora da área de entrega disponível.",
     };
   }
+  if (normalized.includes("courier marketplace payout not live")) {
+    return {
+      status: 409,
+      code: "DELIVERY_PLATFORM_UNAVAILABLE",
+      error:
+        "A entrega está temporariamente indisponível enquanto o recebimento direto dos entregadores é finalizado. Escolha retirada quando o estabelecimento oferecer essa opção.",
+    };
+  }
   if (normalized.includes("delivery is unavailable")) {
     return {
       status: 409,
