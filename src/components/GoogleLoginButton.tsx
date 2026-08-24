@@ -17,7 +17,7 @@ const DEFAULT_NATIVE_SCHEMES = {
 
 function getNativeAuthCallback() {
   const product = getApoisProductMode();
-  const configured = String(import.meta.env.VITE_APOIS_NATIVE_SCHEME ?? "").trim();
+  const configured = String(import.meta.env["VITE_APOIS_NATIVE_SCHEME"] ?? "").trim();
   const scheme = configured || DEFAULT_NATIVE_SCHEMES[product];
   return `${scheme}://auth/callback`;
 }
