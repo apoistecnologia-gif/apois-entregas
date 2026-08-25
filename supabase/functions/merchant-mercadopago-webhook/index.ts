@@ -22,29 +22,50 @@ Deno.serve(async(req)=>{
  const supabaseUrl=Deno.env.get("SUPABASE_URL"),serviceRole=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");if(!supabaseUrl||!serviceRole)return response(503,"server_configuration");const admin=createClient(supabaseUrl,serviceRole,{auth:{persistSession:false,autoRefreshToken:false}});
  const eventId=text(body.id)||(body.id!=null?String(body.id):`${dataId}:${ts}`);const providerEventId=`mercadopago_merchant:${eventId}`;
  const existingEvent=await admin.from("payment_events").select("id,status").eq("provider","mercadopago_merchant").eq("provider_event_id",providerEventId).maybeSingle();if(existingEvent.data?.status==="processed")return response(200,"ok");
- const pr=await admin.from("payments").select("id,order_id,amount,status,provider_charge_id,merchant_mercadopago_account_id").eq("provider","mercadopago_merchant").eq("provider_charge_id",dataId).maybeSingle();const payment=pr.data;if(!payment)return response(202,"unmatched");
+ // .ilike (não .eq): `dataId` já vem em minúsculas (linha acima), mas o provider_charge_id
+ // salvo mantém o casing original emitido pelo Mercado Pago (ex.: "ORDTST01..."), necessário
+ // para as chamadas de API em sync-payment-status/process-superapp-refund. ilike sem
+ // curingas faz comparação exata case-insensitive, sem afetar os ids numéricos legados.
+ const pr=await admin.from("payments").select("id,order_id,amount,status,provider_charge_id,merchant_mercadopago_account_id").eq("provider","mercadopago_merchant").ilike("provider_charge_id",dataId).maybeSingle();const payment=pr.data;if(!payment)return response(202,"unmatched");
  const eventRow=existingEvent.data??(await admin.from("payment_events").insert({provider:"mercadopago_merchant",provider_event_id:providerEventId,event_type:text(body.action)??text(body.type)??"payment",payment_id:payment.id,payload:body,status:"received"}).select("id,status").single()).data;if(!eventRow)return response(500,"event_persistence_failed");
  const ar=await admin.from("merchant_mercadopago_accounts").select("id,status,encrypted_access_token,token_iv").eq("id",payment.merchant_mercadopago_account_id).maybeSingle();const account=ar.data;if(!account||account.status!=="connected"){await admin.from("payment_events").update({status:"failed",error_message:"merchant_account_missing",processed_at:new Date().toISOString()}).eq("id",eventRow.id);return response(500,"merchant_account_missing")}
  let token:string;try{token=await decrypt(account.encrypted_access_token,account.token_iv,await tokenKey())}catch{await admin.from("payment_events").update({status:"failed",error_message:"credential_decrypt_failed",processed_at:new Date().toISOString()}).eq("id",eventRow.id);return response(503,"credential_unavailable")}
- // Orders API: o `data.id` notificado é o id da Order (prefixo ORD/ORDTST), consultado
- // via GET /v1/orders/{id} — não mais /v1/payments/{id}. Ver create-merchant-mercadopago-pix
- // e o par getMercadoPagoState (provider "mercadopago", já em Orders API) em sync-payment-status.
- const mp=await fetch(`https://api.mercadopago.com/v1/orders/${encodeURIComponent(dataId)}`,{headers:{Authorization:`Bearer ${token}`,Accept:"application/json"}});const raw:unknown=await mp.json().catch(()=>null);if(!mp.ok||!isRec(raw)){await admin.from("payment_events").update({status:"failed",error_message:`provider_lookup_${mp.status}`,processed_at:new Date().toISOString()}).eq("id",eventRow.id);return response(502,"provider_lookup_failed")}
- const providerAmount=Number(raw.total_amount);if(!Number.isFinite(providerAmount)||Math.round(providerAmount*100)!==Math.round(Number(payment.amount)*100)||text(raw.external_reference)!==`apois-entregas-order-${payment.order_id}`){await admin.from("payment_events").update({status:"failed",error_message:"provider_payment_mismatch",processed_at:new Date().toISOString()}).eq("id",eventRow.id);return response(409,"payment_mismatch")}
- const status=(text(raw.status)??"unknown").toLowerCase();const statusDetail=(text(raw.status_detail)??"unknown").toLowerCase();const now=new Date().toISOString();
- if(status==="processed"&&statusDetail==="accredited"){
-   const alreadyPaid=payment.status==="paid";await admin.from("payments").update({status:"paid",paid_at:now,failed_at:null,failure_reason:null}).eq("id",payment.id).neq("status","refunded");await admin.from("orders").update({payment_status:"paid"}).eq("id",payment.order_id).neq("status","cancelled").neq("status","refunded");
+ // Compatibilidade dupla: pagamentos criados antes desta migração (estabelecimentos reais,
+ // ex. Açaí no Grau) têm provider_charge_id numérico da Payments API legada; pagamentos
+ // novos de contas com orders_api_enabled=true têm id da Order (prefixo ORD/ORDTST). O
+ // `data.id` notificado pelo Mercado Pago já indica qual é: nunca tentamos adivinhar,
+ // apenas seguimos o formato do id que está de fato salvo em payments.provider_charge_id.
+ const isOrdersApiId=dataId.startsWith("ord");
+ const now=new Date().toISOString();
+ let providerAmount:number;let providerExternalRef:string|null;let paid=false;let refunded=false;let failed=false;let raw:Rec;
+ if(isOrdersApiId){
+   const mp=await fetch(`https://api.mercadopago.com/v1/orders/${encodeURIComponent(dataId)}`,{headers:{Authorization:`Bearer ${token}`,Accept:"application/json"}});const rawRes:unknown=await mp.json().catch(()=>null);if(!mp.ok||!isRec(rawRes)){await admin.from("payment_events").update({status:"failed",error_message:`provider_lookup_${mp.status}`,processed_at:now}).eq("id",eventRow.id);return response(502,"provider_lookup_failed")}
+   raw=rawRes;providerAmount=Number(raw.total_amount);providerExternalRef=text(raw.external_reference);
+   const status=(text(raw.status)??"unknown").toLowerCase();const statusDetail=(text(raw.status_detail)??"unknown").toLowerCase();
+   paid=status==="processed"&&statusDetail==="accredited";refunded=status==="refunded";failed=["canceled","cancelled","expired","failed"].includes(status)||(status==="charged_back"&&statusDetail==="settled");
+ }else{
+   const mp=await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(dataId)}`,{headers:{Authorization:`Bearer ${token}`,Accept:"application/json"}});const rawRes:unknown=await mp.json().catch(()=>null);if(!mp.ok||!isRec(rawRes)){await admin.from("payment_events").update({status:"failed",error_message:`provider_lookup_${mp.status}`,processed_at:now}).eq("id",eventRow.id);return response(502,"provider_lookup_failed")}
+   raw=rawRes;providerAmount=Number(raw.transaction_amount);providerExternalRef=text(raw.external_reference);
+   const status=(text(raw.status)??"unknown").toLowerCase();
+   paid=status==="approved";refunded=status==="refunded";failed=["cancelled","rejected","charged_back"].includes(status);
+ }
+ if(!Number.isFinite(providerAmount)||Math.round(providerAmount*100)!==Math.round(Number(payment.amount)*100)||providerExternalRef!==`apois-entregas-order-${payment.order_id}`){await admin.from("payment_events").update({status:"failed",error_message:"provider_payment_mismatch",processed_at:now}).eq("id",eventRow.id);return response(409,"payment_mismatch")}
+ if(paid){
+   const alreadyPaid=payment.status==="paid";await admin.from("payments").update({status:"paid",paid_at:isOrdersApiId?now:(text(raw.date_approved)??now),failed_at:null,failure_reason:null}).eq("id",payment.id).neq("status","refunded");await admin.from("orders").update({payment_status:"paid"}).eq("id",payment.order_id).neq("status","cancelled").neq("status","refunded");
    if(!alreadyPaid)await admin.from("payment_transactions").upsert({payment_id:payment.id,provider_transaction_id:dataId,transaction_type:"capture",amount:Number(payment.amount),status:"processed",processed_at:now},{onConflict:"payment_id,provider_transaction_id,transaction_type"});
- }else if(status==="refunded"){
+ }else if(refunded){
    await admin.from("payments").update({status:"refunded",failed_at:null,failure_reason:null}).eq("id",payment.id);
    const transitioned=await admin.from("orders").update({payment_status:"refunded",status:"refunded"}).eq("id",payment.order_id).eq("status","cancelled").select("id").maybeSingle();if(!transitioned.data)await admin.from("orders").update({payment_status:"refunded"}).eq("id",payment.order_id);
-   // A Orders API não expõe uma lista de reembolsos separada como a Payments API: o próprio
-   // GET acima já é o estado final da Order após o reembolso, então usamos o id da Order como
-   // referência do reembolso em vez de buscar um sub-recurso de refunds não confirmado.
    const pendingRefund=await admin.from("refunds").select("id,amount,requested_by").eq("payment_id",payment.id).in("status",["pending","processing","failed"]).order("created_at",{ascending:false}).limit(1).maybeSingle();
-   if(pendingRefund.data){await admin.from("refunds").update({status:"completed",provider_refund_id:dataId,processed_at:now}).eq("id",pendingRefund.data.id);await admin.from("payment_transactions").upsert({payment_id:payment.id,provider_transaction_id:`${dataId}:refund`,transaction_type:"refund",amount:Number(pendingRefund.data.amount),status:"completed",processed_at:now},{onConflict:"payment_id,provider_transaction_id,transaction_type"});}
- }else if(["canceled","cancelled","expired","failed"].includes(status)||(status==="charged_back"&&statusDetail==="settled")){
-   if(payment.status!=="paid"&&payment.status!=="refunded"){await admin.from("payments").update({status:"failed",failed_at:now,failure_reason:`mercadopago_${status}`}).eq("id",payment.id);await admin.from("orders").update({payment_status:"failed"}).eq("id",payment.order_id).neq("status","cancelled").neq("status","refunded");}
+   if(pendingRefund.data){
+     // Orders API: sem lista de refunds separada — o próprio GET acima já é o estado final,
+     // então usamos o id da Order como referência. Payments API legada: busca o refund real.
+     let providerRefundId=dataId;
+     if(!isOrdersApiId){const list=await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(dataId)}/refunds`,{headers:{Authorization:`Bearer ${token}`,Accept:"application/json"}});const refunds:unknown=await list.json().catch(()=>[]);const matched=Array.isArray(refunds)?refunds.find((r:any)=>Math.round(Number(r?.amount)*100)===Math.round(Number(pendingRefund.data.amount)*100)):null;if(matched?.id!=null)providerRefundId=String(matched.id);}
+     await admin.from("refunds").update({status:"completed",provider_refund_id:providerRefundId,processed_at:now}).eq("id",pendingRefund.data.id);await admin.from("payment_transactions").upsert({payment_id:payment.id,provider_transaction_id:isOrdersApiId?`${dataId}:refund`:providerRefundId,transaction_type:"refund",amount:Number(pendingRefund.data.amount),status:"completed",processed_at:now},{onConflict:"payment_id,provider_transaction_id,transaction_type"});
+   }
+ }else if(failed){
+   if(payment.status!=="paid"&&payment.status!=="refunded"){await admin.from("payments").update({status:"failed",failed_at:now,failure_reason:`mercadopago_${text(raw.status)??"unknown"}`}).eq("id",payment.id);await admin.from("orders").update({payment_status:"failed"}).eq("id",payment.order_id).neq("status","cancelled").neq("status","refunded");}
  }
  await admin.from("payment_events").update({status:"processed",payload:raw,processed_at:now,error_message:null}).eq("id",eventRow.id);return response(200,"ok");
 });

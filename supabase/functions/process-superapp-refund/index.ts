@@ -40,25 +40,43 @@ Deno.serve(async(req)=>{
  if(!payment.provider_charge_id)return json(409,{error:"provider_charge_not_found"});if(Math.round(Number(payment.amount)*100)!==Math.round(Number(refund.amount)*100))return json(409,{error:"refund_amount_conflict"});if(!["paid","refunded"].includes(payment.status))return json(409,{error:"payment_not_confirmed"});
  const ar=await admin.from("merchant_mercadopago_accounts").select("id,merchant_id,status,encrypted_access_token,token_iv").eq("id",payment.merchant_mercadopago_account_id).maybeSingle();const account=ar.data;if(!account||account.merchant_id!==order.merchant_id||account.status!=="connected")return json(409,{error:"merchant_mercadopago_account_unavailable"});
  let token:string;try{token=await decrypt(account.encrypted_access_token,account.token_iv,await tokenKey())}catch{return json(503,{error:"merchant_payment_credentials_unavailable"})}
- // Orders API: o provider_charge_id armazenado é o id da Order (ver create-merchant-mercadopago-pix).
- // O reembolso é feito por POST /v1/orders/{id}/refund com corpo vazio (reembolso total),
- // conforme a referência oficial: "the value to be refunded should not be indicated in the
- // request's body, that must be empty". Não existe endpoint de listagem de reembolsos
- // separado como na Payments API — o próprio GET da Order já reflete o estado pós-reembolso,
- // então usamos isso para checar idempotentemente se já foi reembolsado antes de tentar de novo.
- const orderIdMp=String(payment.provider_charge_id);const headers={Authorization:`Bearer ${token}`,Accept:"application/json"};
- const lookup=await fetch(`https://api.mercadopago.com/v1/orders/${encodeURIComponent(orderIdMp)}`,{headers});const providerOrder:unknown=await lookup.json().catch(()=>null);if(!lookup.ok||!isRec(providerOrder))return json(502,{error:"provider_lookup_failed"});
- const providerAmount=Number(providerOrder.total_amount);if(!Number.isFinite(providerAmount)||Math.round(providerAmount*100)!==Math.round(Number(payment.amount)*100)||text(providerOrder.external_reference)!==`apois-entregas-order-${order.id}`)return json(409,{error:"provider_payment_mismatch"});
- let providerResult:any=String(providerOrder.status??"").toLowerCase()==="refunded"?providerOrder:null;let reused=Boolean(providerResult);
- if(!providerResult){
+ // Compatibilidade dupla: pagamentos criados antes desta migração (estabelecimentos reais já
+ // conectados) têm provider_charge_id numérico da Payments API legada; pagamentos novos de
+ // contas com orders_api_enabled=true têm id da Order (prefixo ORD/ORDTST). Segue o formato
+ // do id realmente salvo. Para Orders API o reembolso é POST /v1/orders/{id}/refund com corpo
+ // vazio (reembolso total), conforme a referência oficial: "the value to be refunded should
+ // not be indicated in the request's body, that must be empty".
+ const chargeId=String(payment.provider_charge_id);const isOrdersApiId=chargeId.toLowerCase().startsWith("ord");const headers={Authorization:`Bearer ${token}`,Accept:"application/json"};
+ let providerRefundId:string;let status:string;let reused:boolean;
+ if(isOrdersApiId){
+   const lookup=await fetch(`https://api.mercadopago.com/v1/orders/${encodeURIComponent(chargeId)}`,{headers});const providerOrder:unknown=await lookup.json().catch(()=>null);if(!lookup.ok||!isRec(providerOrder))return json(502,{error:"provider_lookup_failed"});
+   const providerAmount=Number(providerOrder.total_amount);if(!Number.isFinite(providerAmount)||Math.round(providerAmount*100)!==Math.round(Number(payment.amount)*100)||text(providerOrder.external_reference)!==`apois-entregas-order-${order.id}`)return json(409,{error:"provider_payment_mismatch"});
+   let providerResult:any=String(providerOrder.status??"").toLowerCase()==="refunded"?providerOrder:null;reused=Boolean(providerResult);
+   if(!providerResult){
+     await admin.from("refunds").update({status:"processing"}).eq("id",refund.id).in("status",["pending","failed","processing"]);
+     const idempotency=`apois-entregas-refund-${refund.id}`;
+     const result=await fetch(`https://api.mercadopago.com/v1/orders/${encodeURIComponent(chargeId)}/refund`,{method:"POST",headers:{...headers,"X-Idempotency-Key":idempotency}});const raw:unknown=await result.json().catch(()=>null);
+     if(!result.ok||!isRec(raw)){await admin.from("refunds").update({status:"failed"}).eq("id",refund.id);return json(502,{error:"refund_provider_error"});}
+     providerResult=raw;
+   }
+   providerRefundId=chargeId;status=String(providerResult?.status??"").toLowerCase();
+   if(status==="refunded"){await finalize(admin,refund,order,payment,providerRefundId);return json(200,{refund:{id:refund.id,status:"completed",providerRefundId},reused});}
+   if(["canceled","cancelled","expired","failed"].includes(status)){await admin.from("refunds").update({status:"failed",provider_refund_id:providerRefundId}).eq("id",refund.id);return json(502,{error:"refund_provider_error"});}
+   await finalize(admin,refund,order,payment,providerRefundId,"processing");return json(202,{refund:{id:refund.id,status:"processing",providerRefundId},reused});
+ }
+ const lookup=await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(chargeId)}`,{headers});const providerPayment:unknown=await lookup.json().catch(()=>null);if(!lookup.ok||!isRec(providerPayment))return json(502,{error:"provider_lookup_failed"});
+ const providerAmount=Number(providerPayment.transaction_amount);if(!Number.isFinite(providerAmount)||Math.round(providerAmount*100)!==Math.round(Number(payment.amount)*100)||text(providerPayment.external_reference)!==`apois-entregas-order-${order.id}`)return json(409,{error:"provider_payment_mismatch"});
+ const list=await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(chargeId)}/refunds`,{headers});const existing:unknown=await list.json().catch(()=>[]);const existingRefund=Array.isArray(existing)?existing.find((r:any)=>Math.round(Number(r?.amount)*100)===Math.round(Number(refund.amount)*100)&&!["rejected","cancelled","canceled"].includes(String(r?.status??"").toLowerCase())):null;
+ let providerRefund:any=existingRefund;reused=Boolean(existingRefund);
+ if(!providerRefund){
    await admin.from("refunds").update({status:"processing"}).eq("id",refund.id).in("status",["pending","failed","processing"]);
    const idempotency=`apois-entregas-refund-${refund.id}`;
-   const result=await fetch(`https://api.mercadopago.com/v1/orders/${encodeURIComponent(orderIdMp)}/refund`,{method:"POST",headers:{...headers,"X-Idempotency-Key":idempotency}});const raw:unknown=await result.json().catch(()=>null);
+   const result=await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(chargeId)}/refunds`,{method:"POST",headers:{...headers,"Content-Type":"application/json","X-Idempotency-Key":idempotency},body:"{}"});const raw:unknown=await result.json().catch(()=>null);
    if(!result.ok||!isRec(raw)){await admin.from("refunds").update({status:"failed"}).eq("id",refund.id);return json(502,{error:"refund_provider_error"});}
-   providerResult=raw;
+   providerRefund=raw;
  }
- const providerRefundId=orderIdMp;const status=String(providerResult?.status??"").toLowerCase();
- if(status==="refunded"){await finalize(admin,refund,order,payment,providerRefundId);return json(200,{refund:{id:refund.id,status:"completed",providerRefundId},reused});}
- if(["canceled","cancelled","expired","failed"].includes(status)){await admin.from("refunds").update({status:"failed",provider_refund_id:providerRefundId}).eq("id",refund.id);return json(502,{error:"refund_provider_error"});}
+ providerRefundId=providerRefund?.id!=null?String(providerRefund.id):`apois-entregas-refund-${refund.id}`;status=String(providerRefund?.status??"").toLowerCase();
+ if(["approved","completed","refunded"].includes(status)){await finalize(admin,refund,order,payment,providerRefundId);return json(200,{refund:{id:refund.id,status:"completed",providerRefundId},reused});}
+ if(["rejected","cancelled","canceled","failed"].includes(status)){await admin.from("refunds").update({status:"failed",provider_refund_id:providerRefundId}).eq("id",refund.id);return json(502,{error:"refund_provider_error"});}
  await finalize(admin,refund,order,payment,providerRefundId,"processing");return json(202,{refund:{id:refund.id,status:"processing",providerRefundId},reused});
 });

@@ -535,34 +535,67 @@ async function getMercadoPagoMerchantState(
     throw new Error("provider_not_configured");
   }
 
-  // Orders API: mesmo padrão de getMercadoPagoState() acima, mas com o access_token OAuth
-  // do estabelecimento em vez do token da própria plataforma, e o external_reference no
-  // formato usado pelo fluxo de marketplace (create-merchant-mercadopago-pix).
+  // Compatibilidade dupla: pagamentos criados antes desta migração (estabelecimentos reais
+  // já conectados) têm provider_charge_id numérico da Payments API legada; pagamentos novos
+  // de contas com orders_api_enabled=true têm id da Order (prefixo ORD/ORDTST). Segue o
+  // formato do id realmente salvo, nunca assume um dos dois.
+  const chargeId = String(payment.provider_charge_id);
+  const isOrdersApiId = chargeId.toLowerCase().startsWith("ord");
+
+  if (isOrdersApiId) {
+    const res = await fetch(
+      `https://api.mercadopago.com/v1/orders/${encodeURIComponent(chargeId)}`,
+      { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } },
+    );
+    const resource = await readJson(res);
+    if (!res.ok || !isRecord(resource)) throw new Error("provider_lookup_failed");
+    if (text(resource.id)?.toLowerCase() !== chargeId.toLowerCase())
+      throw new Error("conflict:PROVIDER_RESOURCE_MISMATCH");
+    if (text(resource.external_reference) !== `apois-entregas-order-${order.id}`)
+      throw new Error("conflict:EXTERNAL_REFERENCE_MISMATCH");
+    const amount = Number(resource.total_amount);
+    if (
+      !Number.isFinite(amount) ||
+      Math.round(amount * 100) !== Math.round(Number(payment.amount) * 100)
+    )
+      throw new Error("conflict:AMOUNT_MISMATCH");
+
+    const status = text(resource.status) ?? "unknown";
+    const detail = text(resource.status_detail) ?? "unknown";
+    return {
+      status: `${status}:${detail}`,
+      paid: status === "processed" && detail === "accredited",
+      refunded: status === "refunded" || detail === "refunded",
+      failed: ["canceled", "cancelled", "expired", "failed"].includes(status),
+      processing: status === "processing",
+      payload: resource,
+    };
+  }
+
   const res = await fetch(
-    `https://api.mercadopago.com/v1/orders/${encodeURIComponent(payment.provider_charge_id)}`,
+    `https://api.mercadopago.com/v1/payments/${encodeURIComponent(chargeId)}`,
     { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } },
   );
   const resource = await readJson(res);
   if (!res.ok || !isRecord(resource)) throw new Error("provider_lookup_failed");
-  if (text(resource.id) !== payment.provider_charge_id)
+  if (text(resource.id) !== chargeId)
     throw new Error("conflict:PROVIDER_RESOURCE_MISMATCH");
   if (text(resource.external_reference) !== `apois-entregas-order-${order.id}`)
     throw new Error("conflict:EXTERNAL_REFERENCE_MISMATCH");
-  const amount = Number(resource.total_amount);
+  const amount = Number(resource.transaction_amount);
   if (
     !Number.isFinite(amount) ||
     Math.round(amount * 100) !== Math.round(Number(payment.amount) * 100)
   )
     throw new Error("conflict:AMOUNT_MISMATCH");
 
-  const status = text(resource.status) ?? "unknown";
-  const detail = text(resource.status_detail) ?? "unknown";
+  const status = (text(resource.status) ?? "unknown").toLowerCase();
   return {
-    status: `${status}:${detail}`,
-    paid: status === "processed" && detail === "accredited",
-    refunded: status === "refunded" || detail === "refunded",
-    failed: ["canceled", "cancelled", "expired", "failed"].includes(status),
-    processing: status === "processing",
+    status,
+    paid: status === "approved",
+    refunded: status === "refunded",
+    failed: ["cancelled", "rejected", "charged_back"].includes(status),
+    processing: ["pending", "in_process", "in_mediation", "authorized"].includes(status),
     payload: resource,
   };
 }
