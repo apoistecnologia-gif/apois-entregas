@@ -1661,6 +1661,20 @@ function AdminReportsPanel({ orders, refunds, payouts }: any) {
     0,
   );
   const completionRate = monthOrders.length > 0 ? (delivered.length / monthOrders.length) * 100 : 0;
+  const latestRefundByOrderId = new Map<string, any>();
+  for (const refund of refunds) {
+    const existing = latestRefundByOrderId.get(refund.order_id);
+    if (!existing || new Date(refund.created_at) > new Date(existing.created_at)) {
+      latestRefundByOrderId.set(refund.order_id, refund);
+    }
+  }
+  const refundStatusLabel: Record<string, string> = {
+    pending: "Estorno pendente",
+    processing: "Estorno em processamento",
+    completed: "Estornado",
+    refunded: "Estornado",
+    failed: "Estorno falhou",
+  };
 
   return (
     <div className="space-y-6">
@@ -1755,7 +1769,18 @@ function AdminReportsPanel({ orders, refunds, payouts }: any) {
                   <td className="px-5 py-3">
                     <Status value={order.status} />
                   </td>
-                  <td className="px-5 py-3 text-zinc-400">{order.payment_status}</td>
+                  <td className="px-5 py-3 text-zinc-400">
+                    {order.payment_status}
+                    {["cancelled", "refunded"].includes(order.status) &&
+                    order.payment_status === "paid" ? (
+                      <span className="ml-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-400">
+                        {latestRefundByOrderId.has(order.id)
+                          ? (refundStatusLabel[latestRefundByOrderId.get(order.id).status] ??
+                            "Estorno registrado")
+                          : "Sem estorno registrado"}
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="px-5 py-3 text-right font-bold">{money(order.total)}</td>
                   <td className="px-5 py-3 text-right font-bold text-primary">
                     {money(order.platform_fee)}
