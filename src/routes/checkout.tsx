@@ -22,6 +22,35 @@ import { toast } from "sonner";
 const ACTIVE_PIX_STORAGE_KEY = "apois_active_pix";
 const CHECKOUT_ATTEMPT_STORAGE_KEY = "apois_checkout_attempt";
 const CHECKOUT_ATTEMPT_TTL_MS = 30 * 60 * 1000;
+const MP_SECURITY_SCRIPT_ID = "mercadopago-security-script";
+const MP_DEVICE_ID_WAIT_MS = 1500;
+const MP_DEVICE_ID_POLL_MS = 50;
+
+// Carrega o script oficial de segurança do Mercado Pago uma única vez por sessão de
+// checkout. Ele preenche `window.MP_DEVICE_SESSION_ID` de forma transparente e é a
+// mesma técnica usada por integrações com o SDK MercadoPago.js v2 para o critério
+// "Device ID" da avaliação de qualidade do Mercado Pago.
+function ensureMercadoPagoSecurityScript() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById(MP_SECURITY_SCRIPT_ID)) return;
+  const script = document.createElement("script");
+  script.id = MP_SECURITY_SCRIPT_ID;
+  script.src = "https://www.mercadopago.com/v2/security.js";
+  script.setAttribute("view", "checkout");
+  script.async = true;
+  document.head.appendChild(script);
+}
+
+async function readMercadoPagoDeviceId(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const deadline = Date.now() + MP_DEVICE_ID_WAIT_MS;
+  while (Date.now() < deadline) {
+    const value = (window as unknown as { MP_DEVICE_SESSION_ID?: string }).MP_DEVICE_SESSION_ID;
+    if (typeof value === "string" && value.trim()) return value.trim();
+    await new Promise((resolve) => window.setTimeout(resolve, MP_DEVICE_ID_POLL_MS));
+  }
+  return null;
+}
 
 type PixData = {
   qrCodeImageUrl: string;
@@ -216,6 +245,10 @@ function CheckoutPage() {
 
   const paymentMethod =
     typeof window !== "undefined" ? sessionStorage.getItem("apois_payment_method") || "pix" : "pix";
+
+  useEffect(() => {
+    ensureMercadoPagoSecurityScript();
+  }, []);
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -550,8 +583,10 @@ function CheckoutPage() {
           : configuredProvider === "mercadopago_merchant"
             ? "create-merchant-mercadopago-pix"
             : "create-pix-charge";
+      const deviceId =
+        configuredProvider === "mercadopago_merchant" ? await readMercadoPagoDeviceId() : null;
       const { data: pixResponse, error: pixError } = await supabase.functions.invoke(pixFunction, {
-        body: { orderId },
+        body: { orderId, deviceId },
       });
       if (pixError) {
         throw new Error(await getFunctionErrorMessage(pixError, "Não foi possível gerar o PIX."));

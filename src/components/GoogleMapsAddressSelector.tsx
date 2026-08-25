@@ -2,13 +2,18 @@
 import { AdvancedMarker, APIProvider, Map } from "@vis.gl/react-google-maps";
 import { CheckCircle2, Loader2, MapPin, Navigation, Search } from "lucide-react";
 import { useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { autocompleteAddress, geocodeAddress, getPlaceDetails } from "@/lib/google-maps.functions";
 import { getApoisProductMode } from "@/lib/product-routing";
 import { toast } from "sonner";
+
+async function invokeMaps(body: Record<string, unknown>) {
+  const { data, error } = await supabase.functions.invoke("google-maps-address", { body });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
 
 interface GoogleMapsAddressSelectorProps {
   onAddressSelected: (address: {
@@ -56,19 +61,6 @@ export function GoogleMapsAddressSelector({
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [pointConfirmed, setPointConfirmed] = useState(Boolean(initialCenter));
   const [hasExplicitPoint, setHasExplicitPoint] = useState(Boolean(initialCenter));
-
-  const geocodeFn = useServerFn(geocodeAddress);
-  const autocompleteFn = useServerFn(autocompleteAddress);
-  const detailsFn = useServerFn(getPlaceDetails);
-
-  const getAccessToken = async () => {
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.getSession();
-    if (error || !session?.access_token) throw new Error("Sessão expirada");
-    return session.access_token;
-  };
 
   const persistMerchantMappedAddress = async (
     address: {
@@ -133,8 +125,7 @@ export function GoogleMapsAddressSelector({
     setIsConfirming(true);
 
     try {
-      const accessToken = await getAccessToken();
-      const data = await geocodeFn({ data: { lat, lng, accessToken } });
+      const data = await invokeMaps({ action: "reverse_geocode", lat, lng });
       const first = data.results[0];
 
       if (isMerchantProduct) {
@@ -231,8 +222,7 @@ export function GoogleMapsAddressSelector({
     }
 
     try {
-      const accessToken = await getAccessToken();
-      const data = await autocompleteFn({ data: { input: value, accessToken } });
+      const data = await invokeMaps({ action: "autocomplete", input: value });
       setSuggestions(data.predictions);
     } catch (error) {
       console.error("Autocomplete error:", error);
@@ -246,8 +236,7 @@ export function GoogleMapsAddressSelector({
     setSuggestions([]);
 
     try {
-      const accessToken = await getAccessToken();
-      const data = await detailsFn({ data: { placeId: suggestion.place_id, accessToken } });
+      const data = await invokeMaps({ action: "place_details", placeId: suggestion.place_id });
       const result = data.result;
       if (!result) {
         toast.error("O endereço selecionado não possui coordenadas válidas.");
