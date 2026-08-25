@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.112.1";
+import { getMercadoPagoChargeRoute } from "../_shared/mercadopago-charge-id.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -535,21 +536,20 @@ async function getMercadoPagoMerchantState(
     throw new Error("provider_not_configured");
   }
 
-  // Compatibilidade dupla: pagamentos criados antes desta migração (estabelecimentos reais
-  // já conectados) têm provider_charge_id numérico da Payments API legada; pagamentos novos
-  // de contas com orders_api_enabled=true têm id da Order (prefixo ORD/ORDTST). Segue o
-  // formato do id realmente salvo, nunca assume um dos dois.
+  // Compatibilidade dupla com classificação fechada: IDs numéricos seguem para Payments API,
+  // as famílias ORD observadas seguem para Orders API e qualquer outro formato é recusado.
   const chargeId = String(payment.provider_charge_id);
-  const isOrdersApiId = chargeId.toLowerCase().startsWith("ord");
+  const chargeRoute = getMercadoPagoChargeRoute(chargeId);
+  if (!chargeRoute) throw new Error("conflict:UNSUPPORTED_PROVIDER_CHARGE_ID");
 
-  if (isOrdersApiId) {
+  if (chargeRoute.api === "orders") {
     const res = await fetch(
-      `https://api.mercadopago.com/v1/orders/${encodeURIComponent(chargeId)}`,
+      chargeRoute.lookupUrl,
       { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } },
     );
     const resource = await readJson(res);
     if (!res.ok || !isRecord(resource)) throw new Error("provider_lookup_failed");
-    if (text(resource.id)?.toLowerCase() !== chargeId.toLowerCase())
+    if (text(resource.id) !== chargeId)
       throw new Error("conflict:PROVIDER_RESOURCE_MISMATCH");
     if (text(resource.external_reference) !== `apois-entregas-order-${order.id}`)
       throw new Error("conflict:EXTERNAL_REFERENCE_MISMATCH");
@@ -573,7 +573,7 @@ async function getMercadoPagoMerchantState(
   }
 
   const res = await fetch(
-    `https://api.mercadopago.com/v1/payments/${encodeURIComponent(chargeId)}`,
+    chargeRoute.lookupUrl,
     { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } },
   );
   const resource = await readJson(res);
