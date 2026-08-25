@@ -121,7 +121,7 @@ function RedefinirSenhaPage() {
             </Button>
           </div>
         ) : (
-          <form onSubmit={savePassword} className="mt-6 space-y-4">
+          <form onSubmit={savePassword} method="post" className="mt-6 space-y-4">
             <label className="block text-xs font-bold text-zinc-400">
               Nova senha
               <div className="relative mt-2">

@@ -2042,7 +2042,7 @@ function MerchantApplication({ user, categories, busy, onSubmit, onBack }: any) 
             Envie os dados do negócio. A liberação do painel operacional ocorre após análise
             administrativa.
           </p>
-          <form onSubmit={onSubmit} className="mt-8 grid gap-4 md:grid-cols-2">
+          <form onSubmit={onSubmit} method="post" className="mt-8 grid gap-4 md:grid-cols-2">
             <input name="name" required placeholder="Nome do estabelecimento" className="Input" />
             <input name="legalName" placeholder="Razão social" className="Input" />
             <input name="document" required placeholder="CNPJ/CPF" className="Input" />

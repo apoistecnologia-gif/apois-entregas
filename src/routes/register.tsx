@@ -232,7 +232,7 @@ function Register() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3" noValidate>
+        <form onSubmit={handleSubmit} method="post" className="space-y-3" noValidate>
           <Field label="Nome completo" error={fieldError("fullName")}>
             <Input
               value={formData.fullName}

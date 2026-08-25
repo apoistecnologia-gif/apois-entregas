@@ -200,7 +200,7 @@ function EditarEndereco() {
           />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 px-6 py-6 pb-24">
+        <form onSubmit={handleSubmit} method="post" className="space-y-6 px-6 py-6 pb-24">
           <div className="space-y-3">
             <label className="text-sm font-medium text-zinc-400">Apelido do endereço</label>
             <div className="flex gap-2">

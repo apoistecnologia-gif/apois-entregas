@@ -206,7 +206,7 @@ function NovoEndereco() {
           />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 px-5 py-5">
+        <form onSubmit={handleSubmit} method="post" className="space-y-5 px-5 py-5">
           <div className="space-y-3">
             <label className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">
               Tipo do endereço

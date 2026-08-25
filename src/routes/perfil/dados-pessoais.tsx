@@ -337,7 +337,7 @@ function DadosPessoaisPage() {
               </div>
             </section>
 
-            <form onSubmit={handleSave} className="space-y-6">
+            <form onSubmit={handleSave} method="post" className="space-y-6">
               <div className="space-y-4">
                 <Field label="Nome completo" icon={User}>
                   <input

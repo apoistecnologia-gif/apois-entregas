@@ -244,7 +244,7 @@ function Login() {
               </p>
             </div>
 
-            <form onSubmit={handleLogin} className="mt-6 space-y-4">
+            <form onSubmit={handleLogin} method="post" className="mt-6 space-y-4">
               <div className="space-y-2">
                 <label className="ml-1 text-xs font-bold text-zinc-400">E-mail</label>
                 <div className="relative">
@@ -373,7 +373,7 @@ function Login() {
           </h1>
         </div>
 
-        <form onSubmit={handleLogin} className="mt-10 space-y-5">
+        <form onSubmit={handleLogin} method="post" className="mt-10 space-y-5">
           <div className="space-y-2">
             <label className="ml-1 text-sm font-medium text-zinc-400">E-mail</label>
             <Input
