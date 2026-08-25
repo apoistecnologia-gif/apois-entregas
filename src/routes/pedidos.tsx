@@ -52,6 +52,19 @@ function orderStatusLabel(status: string, fulfillmentType: string | null | undef
   return statusLabels[status] ?? status.replaceAll("_", " ");
 }
 
+const successStatuses = new Set(["delivered"]);
+const dangerStatuses = new Set(["cancelled", "refunded"]);
+
+function orderStatusBadgeClass(status: string) {
+  if (successStatuses.has(status)) {
+    return "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20";
+  }
+  if (dangerStatuses.has(status)) {
+    return "bg-red-500/10 text-red-400 ring-red-500/20";
+  }
+  return "bg-primary/10 text-primary ring-primary/20";
+}
+
 function PedidosPage() {
   const navigate = useNavigate();
   const { totalItems } = useCart();
@@ -203,7 +216,9 @@ function PedidosPage() {
                   <h3 className="truncate font-bold leading-tight text-white">
                     {order.merchants?.name || "Estabelecimento"}
                   </h3>
-                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase text-primary ring-1 ring-primary/20">
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black uppercase ring-1 ${orderStatusBadgeClass(order.status)}`}
+                  >
                     {orderStatusLabel(order.status, order.fulfillment_type)}
                   </span>
                 </div>
