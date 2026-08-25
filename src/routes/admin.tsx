@@ -233,6 +233,10 @@ function AdminWorkspace() {
     };
   }, [loadAll]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [activeTab]);
+
   const logout = async () => {
     await supabase.auth.signOut();
     navigate({ to: "/login" });
