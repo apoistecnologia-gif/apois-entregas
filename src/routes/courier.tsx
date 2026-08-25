@@ -461,11 +461,23 @@ function CourierApp() {
         }
 
         const position = await new Promise<GeolocationPosition>((resolve, reject) =>
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0,
-          }),
+          navigator.geolocation.getCurrentPosition(
+            resolve,
+            (geoError) => {
+              const geoMessage =
+                geoError.code === geoError.PERMISSION_DENIED
+                  ? "Permita o acesso à localização para ficar online."
+                  : geoError.code === geoError.POSITION_UNAVAILABLE
+                    ? "Não foi possível obter sua localização agora. Verifique o GPS e tente novamente."
+                    : "A localização demorou demais para responder. Verifique o GPS e tente novamente.";
+              reject(new Error(geoMessage));
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 15000,
+              maximumAge: 0,
+            },
+          ),
         );
 
         const initialPosition: CourierPosition = {
