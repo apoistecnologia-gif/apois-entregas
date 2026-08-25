@@ -24,6 +24,16 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState, MetricCard, WorkspaceShell } from "@/components/WorkspaceShell";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { clearPayoutAttemptKey, getPayoutAttemptKey } from "@/lib/payout-attempt";
@@ -127,6 +137,10 @@ function MerchantWorkspace() {
   const [payouts, setPayouts] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [rejectDialogOrderId, setRejectDialogOrderId] = useState<string | null>(null);
+  const [rejectReasonDraft, setRejectReasonDraft] = useState("");
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [categoryNameDraft, setCategoryNameDraft] = useState("");
   const [productDraft, setProductDraft] = useState({
     name: "",
     price: "",
@@ -490,9 +504,16 @@ function MerchantWorkspace() {
     if (merchant?.id) await loadOperations(merchant.id);
   };
 
-  const rejectOrder = async (orderId: string) => {
-    const reason = window.prompt("Informe o motivo do cancelamento:")?.trim();
-    if (!reason) return;
+  const openRejectDialog = (orderId: string) => {
+    setRejectReasonDraft("");
+    setRejectDialogOrderId(orderId);
+  };
+
+  const confirmRejectOrder = async () => {
+    const orderId = rejectDialogOrderId;
+    const reason = rejectReasonDraft.trim();
+    if (!orderId || !reason) return;
+    setRejectDialogOrderId(null);
     setBusyAction(`order:${orderId}`);
     const { data, error } = await rpc("merchant_reject_order", {
       _order_id: orderId,
@@ -515,10 +536,11 @@ function MerchantWorkspace() {
     if (merchant?.id) await loadOperations(merchant.id);
   };
 
-  const addCategory = async () => {
+  const confirmAddCategory = async () => {
     if (!merchant?.id) return;
-    const name = window.prompt("Nome da categoria:")?.trim();
+    const name = categoryNameDraft.trim();
     if (!name) return;
+    setCategoryDialogOpen(false);
     const slug = `${name
       .toLowerCase()
       .normalize("NFD")
@@ -948,6 +970,7 @@ function MerchantWorkspace() {
   ];
 
   return (
+    <>
     <WorkspaceShell
       brand={merchant.name}
       subtitle="Painel do Estabelecimento"
@@ -1030,7 +1053,7 @@ function MerchantWorkspace() {
                   order={order}
                   busy={busyAction === `order:${order.id}`}
                   onTransition={transitionOrder}
-                  onReject={rejectOrder}
+                  onReject={openRejectDialog}
                   onRefresh={() => merchant?.id && void loadOperations(merchant.id)}
                 />
               ))}
@@ -1119,7 +1142,7 @@ function MerchantWorkspace() {
                           order={order}
                           busy={busyAction === `order:${order.id}`}
                           onTransition={transitionOrder}
-                          onReject={rejectOrder}
+                          onReject={openRejectDialog}
                           onRefresh={() => merchant?.id && void loadOperations(merchant.id)}
                           detailed
                         />
@@ -1143,7 +1166,7 @@ function MerchantWorkspace() {
             <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="font-black">Categorias</h2>
-                <Button type="button" size="sm" onClick={addCategory}>
+                <Button type="button" size="sm" onClick={() => { setCategoryNameDraft(""); setCategoryDialogOpen(true); }}>
                   <Plus className="mr-1 h-4 w-4" /> Nova
                 </Button>
               </div>
@@ -2019,6 +2042,62 @@ function MerchantWorkspace() {
         </div>
       )}
     </WorkspaceShell>
+    <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Nova categoria</DialogTitle>
+          <DialogDescription>Informe o nome da categoria do cardápio.</DialogDescription>
+        </DialogHeader>
+        <Input
+          autoFocus
+          value={categoryNameDraft}
+          onChange={(e) => setCategoryNameDraft(e.target.value)}
+          placeholder="Ex.: Bebidas"
+          maxLength={80}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") confirmAddCategory();
+          }}
+        />
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setCategoryDialogOpen(false)}>
+            Cancelar
+          </Button>
+          <Button type="button" onClick={confirmAddCategory} disabled={!categoryNameDraft.trim()}>
+            Criar categoria
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={rejectDialogOrderId !== null} onOpenChange={(open) => { if (!open) setRejectDialogOrderId(null); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Cancelar pedido</DialogTitle>
+          <DialogDescription>Informe o motivo do cancelamento para o cliente e o estorno.</DialogDescription>
+        </DialogHeader>
+        <Textarea
+          autoFocus
+          value={rejectReasonDraft}
+          onChange={(e) => setRejectReasonDraft(e.target.value)}
+          placeholder="Ex.: Produto em falta no momento."
+          maxLength={300}
+          rows={3}
+        />
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setRejectDialogOrderId(null)}>
+            Voltar
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={confirmRejectOrder}
+            disabled={!rejectReasonDraft.trim()}
+          >
+            Confirmar cancelamento
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
