@@ -28,6 +28,8 @@ import { AdminReviewsPanel } from "@/components/AdminReviewsPanel";
 import { AdminOrdersPanel } from "@/components/AdminOrdersPanel";
 import { AdminMerchantCreateDialog } from "@/components/AdminMerchantCreateDialog";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { usePromptDialog } from "@/components/ui/prompt-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -132,6 +134,8 @@ function AdminWorkspace() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [selectedMerchantId, setSelectedMerchantId] = useState<string | null>(null);
   const [createMerchantOpen, setCreateMerchantOpen] = useState(false);
+  const { confirm, confirmDialog } = useConfirmDialog();
+  const { prompt, promptDialog } = usePromptDialog();
 
   const loadAll = useCallback(async (quiet = false) => {
     quiet ? setRefreshing(true) : setLoading(true);
@@ -242,94 +246,26 @@ function AdminWorkspace() {
     navigate({ to: "/login" });
   };
 
-  const createMerchantManually = async () => {
-    const ownerLookup = window
-      .prompt("Telefone ou ID do usuário que será dono do estabelecimento:")
-      ?.trim();
-    if (!ownerLookup) return;
-    const digits = ownerLookup.replace(/\D/g, "");
-    const owner = profiles.find(
-      (profile) =>
-        profile.id === ownerLookup ||
-        (digits.length >= 8 && String(profile.phone ?? "").replace(/\D/g, "") === digits),
-    );
-    if (!owner) {
-      toast.error("Usuário não encontrado. Cadastre a conta do responsável primeiro.");
-      return;
-    }
-
-    const categoriesRes = await from("merchant_categories")
-      .select("id,name")
-      .eq("is_active", true)
-      .order("name");
-    if (categoriesRes.error) return toast.error(categoriesRes.error.message);
-    const categories = categoriesRes.data ?? [];
-    if (!categories.length) return toast.error("Nenhuma categoria de estabelecimento ativa.");
-    const categoryName = window
-      .prompt(
-        `Categoria do estabelecimento:\n${categories.map((item: any) => `• ${item.name}`).join("\n")}`,
-      )
-      ?.trim();
-    if (!categoryName) return;
-    const category = categories.find(
-      (item: any) =>
-        item.name.toLocaleLowerCase("pt-BR") === categoryName.toLocaleLowerCase("pt-BR"),
-    );
-    if (!category)
-      return toast.error("Categoria não encontrada. Digite exatamente um nome da lista.");
-
-    const name = window.prompt("Nome do estabelecimento:")?.trim();
-    if (!name) return;
-    const legalName = window.prompt("Razão social (opcional):")?.trim() ?? "";
-    const document = window.prompt("CNPJ/CPF do estabelecimento:")?.trim() ?? "";
-    const phone = window.prompt("Telefone do estabelecimento:", owner.phone ?? "")?.trim() ?? "";
-    const email = window.prompt("E-mail do estabelecimento (opcional):")?.trim() ?? "";
-    const addressLine = window.prompt("Endereço (rua, número e complemento):")?.trim() ?? "";
-    const neighborhood = window.prompt("Bairro:")?.trim() ?? "";
-    const city = window.prompt("Cidade:")?.trim() ?? "";
-    const state = window.prompt("UF:")?.trim().toUpperCase() ?? "";
-    if (!addressLine || !city || state.length !== 2) {
-      toast.error("Informe endereço, cidade e UF para cadastrar o estabelecimento.");
-      return;
-    }
-    const approve = window.confirm(
-      "Deseja cadastrar e JÁ APROVAR/LIBERAR este estabelecimento?\n\nOK = aprovado e ativo agora\nCancelar = enviar para análise",
-    );
-
-    setBusy("merchant:new");
-    const { data, error } = await rpc("admin_create_merchant", {
-      _owner_user_id: owner.id,
-      _category_id: category.id,
-      _name: name,
-      _legal_name: legalName,
-      _document: document,
-      _contact_phone: phone,
-      _contact_email: email,
-      _address_line: addressLine,
-      _neighborhood: neighborhood,
-      _city: city,
-      _state: state,
-      _latitude: null,
-      _longitude: null,
-      _approve: approve,
-    });
-    setBusy(null);
-    if (error) return toast.error(error.message);
-    toast.success(
-      approve
-        ? "Estabelecimento cadastrado e liberado."
-        : "Estabelecimento cadastrado para análise.",
-    );
-    await loadAll(true);
-    if (data) setSelectedMerchantId(String(data));
-  };
+  // Cadastro manual de estabelecimento é feito via <AdminMerchantCreateDialog>
+  // (mesma RPC admin_create_merchant, com seleção de categoria/dono em UI real).
+  // Uma implementação legada baseada em window.prompt sequencial existia aqui,
+  // nunca era chamada por nenhum botão, e foi removida.
 
   const reviewMerchant = async (
     merchantId: string,
     status: "approved" | "rejected" | "blocked",
   ) => {
-    const reason = status === "approved" ? null : window.prompt("Informe o motivo:")?.trim();
-    if (status !== "approved" && !reason) return;
+    let reason: string | null = null;
+    if (status !== "approved") {
+      const values = await prompt({
+        title: status === "rejected" ? "Reprovar estabelecimento" : "Bloquear estabelecimento",
+        fields: [{ key: "reason", label: "Motivo", required: true, maxLength: 500 }],
+        confirmLabel: status === "rejected" ? "Reprovar" : "Bloquear",
+        destructive: true,
+      });
+      reason = values?.["reason"]?.trim() || null;
+      if (!reason) return;
+    }
     setBusy(`merchant:${merchantId}`);
     const { error } = await rpc("admin_review_merchant", {
       _merchant_id: merchantId,
@@ -343,8 +279,17 @@ function AdminWorkspace() {
   };
 
   const suspendMerchant = async (merchantId: string, suspended: boolean) => {
-    const reason = suspended ? window.prompt("Motivo da suspensão:")?.trim() : null;
-    if (suspended && !reason) return;
+    let reason: string | null = null;
+    if (suspended) {
+      const values = await prompt({
+        title: "Suspender estabelecimento",
+        fields: [{ key: "reason", label: "Motivo da suspensão", required: true, maxLength: 500 }],
+        confirmLabel: "Suspender",
+        destructive: true,
+      });
+      reason = values?.["reason"]?.trim() || null;
+      if (!reason) return;
+    }
     setBusy(`merchant:${merchantId}`);
     const { error } = await rpc("admin_suspend_merchant", {
       _merchant_id: merchantId,
@@ -358,13 +303,21 @@ function AdminWorkspace() {
   };
 
   const deleteMerchant = async (merchantId: string, merchantName: string) => {
-    const confirmed = window.confirm(
-      `Excluir definitivamente ${merchantName}? Esta ação só será permitida se não houver histórico de pedidos.`,
-    );
+    const confirmed = await confirm({
+      title: "Excluir estabelecimento definitivamente",
+      description: `Excluir definitivamente ${merchantName}? Esta ação só será permitida se não houver histórico de pedidos.`,
+      confirmLabel: "Continuar",
+      destructive: true,
+    });
     if (!confirmed) return;
-    const typed = window
-      .prompt(`Digite EXCLUIR para confirmar a exclusão de ${merchantName}:`)
-      ?.trim();
+    const values = await prompt({
+      title: "Confirmar exclusão",
+      description: `Digite EXCLUIR para confirmar a exclusão de ${merchantName}.`,
+      fields: [{ key: "typed", label: "Confirmação", placeholder: "EXCLUIR", required: true }],
+      confirmLabel: "Excluir definitivamente",
+      destructive: true,
+    });
+    const typed = values?.["typed"]?.trim();
     if (typed !== "EXCLUIR") {
       toast.error("Exclusão cancelada: confirmação inválida.");
       return;
@@ -379,8 +332,17 @@ function AdminWorkspace() {
   };
 
   const reviewCourier = async (courierId: string, status: "approved" | "rejected" | "blocked") => {
-    const reason = status === "approved" ? null : window.prompt("Informe o motivo:")?.trim();
-    if (status !== "approved" && !reason) return;
+    let reason: string | null = null;
+    if (status !== "approved") {
+      const values = await prompt({
+        title: status === "rejected" ? "Reprovar entregador" : "Bloquear entregador",
+        fields: [{ key: "reason", label: "Motivo", required: true, maxLength: 500 }],
+        confirmLabel: status === "rejected" ? "Reprovar" : "Bloquear",
+        destructive: true,
+      });
+      reason = values?.["reason"]?.trim() || null;
+      if (!reason) return;
+    }
     setBusy(`courier:${courierId}`);
     const { error } = await rpc("admin_review_courier", {
       _courier_id: courierId,
@@ -398,9 +360,17 @@ function AdminWorkspace() {
     documentId: string,
     status: "approved" | "rejected",
   ) => {
-    const reason =
-      status === "rejected" ? window.prompt("Motivo da reprovação do documento:")?.trim() : null;
-    if (status === "rejected" && !reason) return;
+    let reason: string | null = null;
+    if (status === "rejected") {
+      const values = await prompt({
+        title: "Reprovar documento",
+        fields: [{ key: "reason", label: "Motivo da reprovação", required: true, maxLength: 500 }],
+        confirmLabel: "Reprovar",
+        destructive: true,
+      });
+      reason = values?.["reason"]?.trim() || null;
+      if (!reason) return;
+    }
     setBusy(`doc:${documentId}`);
     const { error } = await rpc("admin_review_document", {
       _kind: kind,
@@ -424,8 +394,17 @@ function AdminWorkspace() {
   const setUserActive = async (profile: any, isActive: boolean) => {
     if (profile.id === user?.id && !isActive)
       return toast.error("Você não pode bloquear sua própria conta administrativa.");
-    const reason = isActive ? null : window.prompt("Motivo do bloqueio:")?.trim();
-    if (!isActive && !reason) return;
+    let reason: string | null = null;
+    if (!isActive) {
+      const values = await prompt({
+        title: "Bloquear usuário",
+        fields: [{ key: "reason", label: "Motivo do bloqueio", required: true, maxLength: 500 }],
+        confirmLabel: "Bloquear",
+        destructive: true,
+      });
+      reason = values?.["reason"]?.trim() || null;
+      if (!reason) return;
+    }
     setBusy(`user:${profile.id}`);
     const { error } = await rpc("admin_set_user_active", {
       _user_id: profile.id,
@@ -456,12 +435,23 @@ function AdminWorkspace() {
   };
 
   const replyTicket = async (ticket: any, internal: boolean) => {
-    const message = window
-      .prompt(
-        internal ? "Nota interna para a equipe:" : "Resposta que será enviada ao solicitante:",
-        "",
-      )
-      ?.trim();
+    const values = await prompt({
+      title: internal ? "Nota interna" : "Responder chamado",
+      description: internal
+        ? "Nota interna para a equipe (não é enviada ao solicitante)."
+        : "Esta resposta será enviada ao solicitante.",
+      fields: [
+        {
+          key: "message",
+          label: internal ? "Nota interna" : "Resposta",
+          type: "textarea",
+          required: true,
+          maxLength: 5000,
+        },
+      ],
+      confirmLabel: internal ? "Salvar nota" : "Enviar resposta",
+    });
+    const message = values?.["message"]?.trim();
     if (!message) return;
     if (message.length > 5000) {
       toast.error("A mensagem pode ter no máximo 5.000 caracteres.");
@@ -501,17 +491,36 @@ function AdminWorkspace() {
   ) => {
     let provider = payout.provider || null;
     let providerPayoutId = payout.provider_payout_id || null;
-    let failureReason = null;
+    let failureReason: string | null = null;
     if (status === "paid") {
-      provider = window.prompt("Provedor do repasse:", provider || "manual")?.trim() || "manual";
-      providerPayoutId = window
-        .prompt("Referência/ID do repasse concluído:", providerPayoutId || "")
-        ?.trim();
+      const values = await prompt({
+        title: "Confirmar repasse pago",
+        description: "Informe a referência real do repasse já concluído no provedor.",
+        fields: [
+          { key: "provider", label: "Provedor do repasse", defaultValue: provider || "manual", required: true },
+          {
+            key: "providerPayoutId",
+            label: "Referência/ID do repasse concluído",
+            defaultValue: providerPayoutId || "",
+            required: true,
+          },
+        ],
+        confirmLabel: "Marcar como pago",
+      });
+      if (!values) return;
+      provider = values["provider"]?.trim() || "manual";
+      providerPayoutId = values["providerPayoutId"]?.trim() || "";
       if (!providerPayoutId)
         return toast.error("Informe a referência real do repasse antes de marcar como pago.");
     }
     if (status === "failed") {
-      failureReason = window.prompt("Motivo da falha:")?.trim();
+      const values = await prompt({
+        title: "Marcar repasse como falho",
+        fields: [{ key: "reason", label: "Motivo da falha", required: true, maxLength: 500 }],
+        confirmLabel: "Confirmar falha",
+        destructive: true,
+      });
+      failureReason = values?.["reason"]?.trim() || null;
       if (!failureReason) return;
     }
     setBusy(`payout:${payout.id}`);
@@ -547,10 +556,33 @@ function AdminWorkspace() {
     }
 
     const suggestedCity = cities.find((city) => city.is_active) ?? cities[0];
-    const cityInput = window
-      .prompt("Cidade da regra (Nome/UF):", `${suggestedCity.name}/${suggestedCity.state}`)
-      ?.trim();
-    if (!cityInput) return;
+    const formValues = await prompt({
+      title: "Nova regra financeira",
+      description: "Use o formato Nome/UF exibido no painel para identificar a cidade.",
+      fields: [
+        {
+          key: "cityInput",
+          label: "Cidade da regra (Nome/UF)",
+          defaultValue: `${suggestedCity.name}/${suggestedCity.state}`,
+          required: true,
+        },
+        {
+          key: "name",
+          label: "Nome da regra",
+          defaultValue: `Regra ${suggestedCity.name}/${suggestedCity.state}`,
+          required: true,
+        },
+        { key: "commission", label: "Comissão do estabelecimento (%)", type: "number", defaultValue: "0", required: true },
+        { key: "courierBase", label: "Base do entregador (R$)", type: "number", defaultValue: "0", required: true },
+        { key: "perKm", label: "Valor por km do entregador (R$)", type: "number", defaultValue: "0", required: true },
+        { key: "minimum", label: "Ganho mínimo do entregador (R$)", type: "number", defaultValue: "0", required: true },
+        { key: "customerFee", label: "Taxa de serviço do cliente (R$)", type: "number", defaultValue: "0", required: true },
+      ],
+      confirmLabel: "Criar regra",
+    });
+    if (!formValues) return;
+
+    const cityInput = formValues["cityInput"]?.trim() ?? "";
     const normalized = cityInput.toLocaleLowerCase("pt-BR").replaceAll(" ", "");
     const city = cities.find(
       (item) =>
@@ -560,26 +592,15 @@ function AdminWorkspace() {
       toast.error("Cidade não encontrada. Use o formato Nome/UF exibido no painel.");
       return;
     }
-
-    const name = window.prompt("Nome da regra:", `Regra ${city.name}/${city.state}`)?.trim();
+    const name = formValues["name"]?.trim();
     if (!name) return;
-    const commissionRaw = window.prompt("Comissão do estabelecimento (%):", "0");
-    if (commissionRaw === null) return;
-    const courierBaseRaw = window.prompt("Base do entregador (R$):", "0");
-    if (courierBaseRaw === null) return;
-    const perKmRaw = window.prompt("Valor por km do entregador (R$):", "0");
-    if (perKmRaw === null) return;
-    const minimumRaw = window.prompt("Ganho mínimo do entregador (R$):", "0");
-    if (minimumRaw === null) return;
-    const customerFeeRaw = window.prompt("Taxa de serviço do cliente (R$):", "0");
-    if (customerFeeRaw === null) return;
 
     const values = {
-      commission: Number(commissionRaw.replace(",", ".")),
-      courierBase: Number(courierBaseRaw.replace(",", ".")),
-      perKm: Number(perKmRaw.replace(",", ".")),
-      minimum: Number(minimumRaw.replace(",", ".")),
-      customerFee: Number(customerFeeRaw.replace(",", ".")),
+      commission: Number((formValues["commission"] ?? "").replace(",", ".")),
+      courierBase: Number((formValues["courierBase"] ?? "").replace(",", ".")),
+      perKm: Number((formValues["perKm"] ?? "").replace(",", ".")),
+      minimum: Number((formValues["minimum"] ?? "").replace(",", ".")),
+      customerFee: Number((formValues["customerFee"] ?? "").replace(",", ".")),
     };
     if (
       !Number.isFinite(values.commission) ||
@@ -628,38 +649,55 @@ function AdminWorkspace() {
   };
 
   const editFeeRule = async (rule: any) => {
-    const commissionRaw = window.prompt(
-      "Comissão do estabelecimento (%):",
-      String(rule.merchant_commission_percent ?? 0),
-    );
-    if (commissionRaw === null) return;
-    const courierBaseRaw = window.prompt(
-      "Base do entregador (R$):",
-      String(rule.courier_base_fee ?? 0),
-    );
-    if (courierBaseRaw === null) return;
-    const perKmRaw = window.prompt(
-      "Valor por km do entregador (R$):",
-      String(rule.courier_per_km ?? 0),
-    );
-    if (perKmRaw === null) return;
-    const minimumRaw = window.prompt(
-      "Ganho mínimo do entregador (R$):",
-      String(rule.courier_minimum_fee ?? 0),
-    );
-    if (minimumRaw === null) return;
-    const customerFeeRaw = window.prompt(
-      "Taxa de serviço do cliente (R$):",
-      String(rule.customer_service_fee ?? 0),
-    );
-    if (customerFeeRaw === null) return;
+    const formValues = await prompt({
+      title: "Editar regra financeira",
+      fields: [
+        {
+          key: "commission",
+          label: "Comissão do estabelecimento (%)",
+          type: "number",
+          defaultValue: String(rule.merchant_commission_percent ?? 0),
+          required: true,
+        },
+        {
+          key: "courierBase",
+          label: "Base do entregador (R$)",
+          type: "number",
+          defaultValue: String(rule.courier_base_fee ?? 0),
+          required: true,
+        },
+        {
+          key: "perKm",
+          label: "Valor por km do entregador (R$)",
+          type: "number",
+          defaultValue: String(rule.courier_per_km ?? 0),
+          required: true,
+        },
+        {
+          key: "minimum",
+          label: "Ganho mínimo do entregador (R$)",
+          type: "number",
+          defaultValue: String(rule.courier_minimum_fee ?? 0),
+          required: true,
+        },
+        {
+          key: "customerFee",
+          label: "Taxa de serviço do cliente (R$)",
+          type: "number",
+          defaultValue: String(rule.customer_service_fee ?? 0),
+          required: true,
+        },
+      ],
+      confirmLabel: "Salvar alterações",
+    });
+    if (!formValues) return;
 
     const values = {
-      commission: Number(commissionRaw.replace(",", ".")),
-      courierBase: Number(courierBaseRaw.replace(",", ".")),
-      perKm: Number(perKmRaw.replace(",", ".")),
-      minimum: Number(minimumRaw.replace(",", ".")),
-      customerFee: Number(customerFeeRaw.replace(",", ".")),
+      commission: Number((formValues["commission"] ?? "").replace(",", ".")),
+      courierBase: Number((formValues["courierBase"] ?? "").replace(",", ".")),
+      perKm: Number((formValues["perKm"] ?? "").replace(",", ".")),
+      minimum: Number((formValues["minimum"] ?? "").replace(",", ".")),
+      customerFee: Number((formValues["customerFee"] ?? "").replace(",", ".")),
     };
 
     if (
@@ -695,8 +733,22 @@ function AdminWorkspace() {
   };
 
   const editSetting = async (setting: any) => {
-    const raw = window.prompt(`Valor JSON para ${setting.key}:`, JSON.stringify(setting.value));
-    if (raw === null) return;
+    const formValues = await prompt({
+      title: `Editar configuração: ${setting.key}`,
+      description: "Valor em formato JSON.",
+      fields: [
+        {
+          key: "raw",
+          label: "Valor JSON",
+          type: "textarea",
+          defaultValue: JSON.stringify(setting.value),
+          required: true,
+        },
+      ],
+      confirmLabel: "Salvar",
+    });
+    const raw = formValues?.["raw"];
+    if (raw === null || raw === undefined) return;
     try {
       const value = JSON.parse(raw);
       setBusy(`setting:${setting.key}`);
@@ -796,6 +848,7 @@ function AdminWorkspace() {
   ];
 
   return (
+    <>
     <WorkspaceShell
       brand="Administração"
       subtitle="APOIS ENTREGA"
@@ -1050,6 +1103,9 @@ function AdminWorkspace() {
         </div>
       )}
     </WorkspaceShell>
+    {confirmDialog}
+    {promptDialog}
+    </>
   );
 }
 

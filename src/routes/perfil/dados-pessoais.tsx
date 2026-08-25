@@ -11,6 +11,7 @@ import {
   UserX,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { usePromptDialog } from "@/components/ui/prompt-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -101,6 +102,7 @@ function DadosPessoaisPage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [avatarVersion, setAvatarVersion] = useState(0);
+  const { prompt, promptDialog } = usePromptDialog();
   const [profile, setProfile] = useState<ProfileDraft>({
     full_name: "",
     phone: "",
@@ -261,10 +263,22 @@ function DadosPessoaisPage() {
 
   const deactivateAccount = async () => {
     if (deactivating) return;
-    const confirmation = window.prompt(
-      "Esta ação desativa sua conta e encerra sua sessão. Digite DESATIVAR para confirmar.",
-    );
-    if (confirmation !== "DESATIVAR") return;
+    const values = await prompt({
+      title: "Desativar conta",
+      description:
+        "Esta ação desativa sua conta e encerra sua sessão. Digite DESATIVAR para confirmar.",
+      fields: [
+        {
+          key: "confirmation",
+          label: "Confirmação",
+          placeholder: "DESATIVAR",
+          required: true,
+        },
+      ],
+      confirmLabel: "Desativar conta",
+      destructive: true,
+    });
+    if (values?.["confirmation"] !== "DESATIVAR") return;
     setDeactivating(true);
     try {
       const { error } = await (supabase.rpc as any)("deactivate_own_account");
@@ -282,6 +296,7 @@ function DadosPessoaisPage() {
     : "";
 
   return (
+    <>
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
       <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur-lg">
         <button
@@ -428,6 +443,8 @@ function DadosPessoaisPage() {
         )}
       </main>
     </div>
+    {promptDialog}
+    </>
   );
 }
 

@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/enderecos")({
@@ -68,6 +69,7 @@ function EnderecosLayout() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   const fetchAddresses = useCallback(async () => {
     setIsLoading(true);
@@ -174,7 +176,13 @@ function EnderecosLayout() {
       toast.error("Defina outro endereço como padrão antes de excluir este");
       return;
     }
-    if (!window.confirm("Tem certeza que deseja excluir este endereço?")) return;
+    const ok = await confirm({
+      title: "Excluir endereço",
+      description: "Tem certeza que deseja excluir este endereço?",
+      confirmLabel: "Excluir",
+      destructive: true,
+    });
+    if (!ok) return;
     const { error } = await supabase.from("customer_addresses").delete().eq("id", address.id);
     if (error) toast.error("Erro ao excluir endereço");
     else {
@@ -357,6 +365,7 @@ function EnderecosLayout() {
       </main>
 
       <Outlet />
+      {confirmDialog}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Loader2, PackageCheck, Truck, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { usePromptDialog } from "@/components/ui/prompt-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { getApoisProductMode } from "@/lib/product-routing";
 
@@ -143,6 +144,7 @@ function MerchantOrderControlCenter() {
   const [orders, setOrders] = useState<MerchantOrder[]>([]);
   const [open, setOpen] = useState(false);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  const { prompt, promptDialog } = usePromptDialog();
   const readyPromptedRef = useRef<Set<string>>(loadReadyPromptedOrders());
 
   const loadOrders = useCallback(async (id: string) => {
@@ -340,7 +342,14 @@ function MerchantOrderControlCenter() {
 
   const reject = async (orderId: string) => {
     if (!merchantId || busyOrderId) return;
-    const reason = window.prompt("Informe o motivo do cancelamento:")?.trim();
+    const values = await prompt({
+      title: "Cancelar pedido",
+      description: "Informe o motivo do cancelamento para o cliente e o estorno.",
+      fields: [{ key: "reason", label: "Motivo do cancelamento", required: true, maxLength: 300 }],
+      confirmLabel: "Confirmar cancelamento",
+      destructive: true,
+    });
+    const reason = values?.["reason"]?.trim();
     if (!reason) return;
 
     setBusyOrderId(orderId);
@@ -544,6 +553,7 @@ function MerchantOrderControlCenter() {
           </span>
         ) : null}
       </button>
+      {promptDialog}
     </div>
   );
 }

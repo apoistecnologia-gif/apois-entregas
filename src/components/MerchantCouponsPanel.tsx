@@ -2,6 +2,7 @@ import { Copy, Loader2, Tag, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState, MetricCard } from "@/components/WorkspaceShell";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -40,6 +41,7 @@ export function MerchantCouponsPanel({ merchantId }: { merchantId: string }) {
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const { confirm, confirmDialog } = useConfirmDialog();
   const [draft, setDraft] = useState(() => {
     const now = new Date();
     const end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -186,7 +188,13 @@ export function MerchantCouponsPanel({ merchantId }: { merchantId: string }) {
       toast.error("Cupons já utilizados devem ser pausados para preservar o histórico.");
       return;
     }
-    if (!window.confirm(`Excluir o cupom ${coupon.code}?`)) return;
+    const ok = await confirm({
+      title: "Excluir cupom",
+      description: `Excluir o cupom ${coupon.code}? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Excluir",
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(`delete:${coupon.id}`);
     const { error } = await from("coupons")
       .delete()
@@ -420,6 +428,7 @@ export function MerchantCouponsPanel({ merchantId }: { merchantId: string }) {
           )}
         </section>
       </div>
+      {confirmDialog}
     </div>
   );
 }

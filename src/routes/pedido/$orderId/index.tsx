@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CustomerDeliveryMap } from "@/components/CustomerDeliveryMap";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { usePromptDialog } from "@/components/ui/prompt-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -49,6 +51,8 @@ function OrderDetailsPage() {
   const [pickupPin, setPickupPin] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const { confirm, confirmDialog } = useConfirmDialog();
+  const { prompt, promptDialog } = usePromptDialog();
 
   const fetchOrder = useCallback(async () => {
     const orderResult = await supabase.from("orders").select("*").eq("id", orderId).maybeSingle();
@@ -144,14 +148,31 @@ function OrderDetailsPage() {
 
   const cancelOrder = async () => {
     if (!order || cancelling) return;
-    const reason = window.prompt("Por que você deseja cancelar este pedido?")?.trim();
+    const values = await prompt({
+      title: "Cancelar pedido",
+      description: "Por que você deseja cancelar este pedido?",
+      fields: [
+        {
+          key: "reason",
+          label: "Motivo",
+          type: "textarea",
+          required: true,
+          maxLength: 300,
+        },
+      ],
+      confirmLabel: "Continuar",
+      destructive: true,
+    });
+    const reason = values?.["reason"]?.trim();
     if (!reason) return;
-    if (
-      !window.confirm(
+    const ok = await confirm({
+      title: "Confirmar cancelamento",
+      description:
         "Confirma o cancelamento? Depois de cancelado, o pedido não seguirá para preparo ou recebimento.",
-      )
-    )
-      return;
+      confirmLabel: "Confirmar cancelamento",
+      destructive: true,
+    });
+    if (!ok) return;
 
     setCancelling(true);
     try {
@@ -301,6 +322,7 @@ function OrderDetailsPage() {
     .join(" · ");
 
   return (
+    <>
     <div className="flex h-screen w-full flex-col overflow-hidden bg-black text-white">
       <header className="sticky top-0 z-50 flex items-center gap-4 border-b border-zinc-900 bg-black/80 p-4 backdrop-blur-lg">
         <button
@@ -573,5 +595,8 @@ function OrderDetailsPage() {
         </div>
       </main>
     </div>
+    {confirmDialog}
+    {promptDialog}
+    </>
   );
 }

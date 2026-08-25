@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { EmptyState, MetricCard } from "@/components/WorkspaceShell";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 
 type Promotion = {
@@ -66,6 +67,7 @@ export function MerchantPromotionsPanel({
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const { confirm, confirmDialog } = useConfirmDialog();
   const [draft, setDraft] = useState(() => {
     const now = new Date();
     const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -158,7 +160,13 @@ export function MerchantPromotionsPanel({
   };
 
   const deletePromotion = async (promotion: Promotion) => {
-    if (!window.confirm(`Excluir a promoção “${promotion.name}”?`)) return;
+    const ok = await confirm({
+      title: "Excluir promoção",
+      description: `Excluir a promoção "${promotion.name}"? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Excluir",
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(`delete:${promotion.id}`);
     const { error } = await (supabase.from as any)("promotions")
       .delete()
@@ -379,6 +387,7 @@ export function MerchantPromotionsPanel({
           </div>
         )}
       </section>
+      {confirmDialog}
     </div>
   );
 }

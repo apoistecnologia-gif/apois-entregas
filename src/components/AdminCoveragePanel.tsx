@@ -2,6 +2,7 @@ import { CirclePlus, Loader2, MapPinned, Pencil, Save, Trash2, X } from "lucide-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState, MetricCard } from "@/components/WorkspaceShell";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -83,6 +84,7 @@ export function AdminCoveragePanel({
     active: false,
   });
   const [zoneDraft, setZoneDraft] = useState<ZoneDraft>(emptyZoneDraft);
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   useEffect(() => {
     if (!selectedCityId && cities[0]?.id) setSelectedCityId(cities[0].id);
@@ -253,7 +255,13 @@ export function AdminCoveragePanel({
   };
 
   const deleteZone = async (zone: DeliveryZone) => {
-    if (!window.confirm(`Excluir a zona “${zone.name}”?`)) return;
+    const ok = await confirm({
+      title: "Excluir zona de entrega",
+      description: `Excluir a zona "${zone.name}"? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Excluir",
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(`delete-zone:${zone.id}`);
     const { error } = await rpc("admin_delete_delivery_zone", { _zone_id: zone.id });
     setBusy(null);
@@ -646,6 +654,7 @@ export function AdminCoveragePanel({
           )}
         </section>
       </div>
+      {confirmDialog}
     </div>
   );
 }

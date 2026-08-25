@@ -26,6 +26,7 @@ import { EmptyState, MetricCard, WorkspaceShell } from "@/components/WorkspaceSh
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -120,6 +121,7 @@ function MerchantWorkspace() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const { confirm: confirmAction, confirmDialog: confirmActionDialog } = useConfirmDialog();
   const [user, setUser] = useState<any>(null);
   const [membership, setMembership] = useState<any>(null);
   const [merchant, setMerchant] = useState<any>(null);
@@ -592,7 +594,14 @@ function MerchantWorkspace() {
   };
 
   const deleteProduct = async (product: any) => {
-    if (!merchant?.id || !window.confirm(`Excluir ${product.name}?`)) return;
+    if (!merchant?.id) return;
+    const ok = await confirmAction({
+      title: "Excluir produto",
+      description: `Excluir ${product.name}? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Excluir",
+      destructive: true,
+    });
+    if (!ok) return;
     const { error } = await from("products").delete().eq("id", product.id);
     if (error) return toast.error(error.message);
     toast.success("Produto excluído.");
@@ -675,7 +684,14 @@ function MerchantWorkspace() {
   };
 
   const deleteSpecialHours = async (row: any) => {
-    if (!merchant?.id || !window.confirm(`Remover a exceção de ${row.service_date}?`)) return;
+    if (!merchant?.id) return;
+    const ok = await confirmAction({
+      title: "Remover exceção de horário",
+      description: `Remover a exceção de ${row.service_date}?`,
+      confirmLabel: "Remover",
+      destructive: true,
+    });
+    if (!ok) return;
     const { error } = await from("merchant_special_hours")
       .delete()
       .eq("id", row.id)
@@ -2097,6 +2113,7 @@ function MerchantWorkspace() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {confirmActionDialog}
     </>
   );
 }

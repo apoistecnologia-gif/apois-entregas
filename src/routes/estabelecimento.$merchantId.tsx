@@ -41,6 +41,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ProductCustomizationSheet } from "@/components/ProductCustomizationSheet";
 import { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
@@ -89,6 +90,7 @@ function EstabelecimentoPage() {
     shouldClearExistingCart: boolean;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, confirmDialog } = useConfirmDialog();
   const { addItem, totalPrice, totalItems, merchant: cartMerchant, clearCart } = useCart();
 
   useEffect(() => {
@@ -195,13 +197,14 @@ function EstabelecimentoPage() {
     let shouldClearExistingCart = false;
     // Verificar se já existe item de outro estabelecimento
     if (cartMerchant && cartMerchant.id !== merchantId) {
-      if (
-        !window.confirm(
+      const ok = await confirm({
+        title: "Trocar de estabelecimento",
+        description:
           "Você já tem itens de outro estabelecimento na sacola. Deseja limpar a sacola e iniciar um novo pedido aqui?",
-        )
-      ) {
-        return;
-      }
+        confirmLabel: "Limpar e continuar",
+        destructive: true,
+      });
+      if (!ok) return;
       shouldClearExistingCart = true;
     }
 
@@ -597,6 +600,7 @@ function EstabelecimentoPage() {
 
       {/* Margem final para o scroll */}
       <div className="h-10 shrink-0" />
+      {confirmDialog}
     </div>
   );
 }

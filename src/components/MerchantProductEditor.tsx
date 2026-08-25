@@ -1,6 +1,8 @@
 import { ImagePlus, Loader2, Pencil, Plus, Store, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { usePromptDialog } from "@/components/ui/prompt-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -68,6 +70,8 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
     categoryId: product.menu_category_id ?? "",
   });
   const [groupDraft, setGroupDraft] = useState({ name: "", min: "0", max: "1" });
+  const { confirm, confirmDialog } = useConfirmDialog();
+  const { prompt, promptDialog } = usePromptDialog();
 
   useEffect(() => {
     setDraft({
@@ -214,14 +218,31 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
   };
 
   const editGroup = async (group: OptionGroup) => {
-    const name = window.prompt("Nome do grupo:", group.name)?.trim();
+    const values = await prompt({
+      title: "Editar grupo de adicionais",
+      fields: [
+        { key: "name", label: "Nome do grupo", defaultValue: group.name, required: true },
+        {
+          key: "min",
+          label: "Quantidade mínima",
+          type: "number",
+          defaultValue: String(group.min_selections),
+          required: true,
+        },
+        {
+          key: "max",
+          label: "Quantidade máxima",
+          type: "number",
+          defaultValue: String(group.max_selections),
+          required: true,
+        },
+      ],
+    });
+    if (!values) return;
+    const name = (values["name"] ?? "").trim();
     if (!name) return;
-    const minText = window.prompt("Quantidade mínima:", String(group.min_selections));
-    if (minText === null) return;
-    const maxText = window.prompt("Quantidade máxima:", String(group.max_selections));
-    if (maxText === null) return;
-    const min = Number(minText);
-    const max = Number(maxText);
+    const min = Number(values["min"]);
+    const max = Number(values["max"]);
     if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 || max < 1 || min > max) {
       return toast.error("Limites inválidos.");
     }
@@ -246,7 +267,13 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
   };
 
   const deleteGroup = async (group: OptionGroup) => {
-    if (!window.confirm(`Excluir o grupo “${group.name}” e todas as opções dele?`)) return;
+    const ok = await confirm({
+      title: "Excluir grupo de adicionais",
+      description: `Excluir o grupo "${group.name}" e todas as opções dele? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Excluir",
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(`group:${group.id}`);
     const { error } = await from("product_option_groups").delete().eq("id", group.id);
     setBusy(null);
@@ -256,11 +283,24 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
   };
 
   const createOption = async (group: OptionGroup) => {
-    const name = window.prompt(`Nova opção em “${group.name}”:`)?.trim();
+    const values = await prompt({
+      title: "Nova opção",
+      description: `Adicionar uma opção ao grupo "${group.name}".`,
+      fields: [
+        { key: "name", label: "Nome da opção", required: true },
+        {
+          key: "price",
+          label: "Acréscimo em R$ (use 0 para sem acréscimo)",
+          type: "number",
+          defaultValue: "0",
+          required: true,
+        },
+      ],
+    });
+    if (!values) return;
+    const name = (values["name"] ?? "").trim();
     if (!name) return;
-    const priceText = window.prompt("Acréscimo em R$ (use 0 para sem acréscimo):", "0");
-    if (priceText === null) return;
-    const price = Number(priceText.replace(",", "."));
+    const price = Number((values["price"] ?? "").replace(",", "."));
     if (!Number.isFinite(price) || price < 0) return toast.error("Informe um acréscimo válido.");
 
     const groupOptions = optionsByGroup.get(group.id) ?? [];
@@ -279,11 +319,23 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
   };
 
   const editOption = async (option: ProductOption) => {
-    const name = window.prompt("Nome da opção:", option.name)?.trim();
+    const values = await prompt({
+      title: "Editar opção",
+      fields: [
+        { key: "name", label: "Nome da opção", defaultValue: option.name, required: true },
+        {
+          key: "price",
+          label: "Acréscimo em R$",
+          type: "number",
+          defaultValue: String(option.price_delta),
+          required: true,
+        },
+      ],
+    });
+    if (!values) return;
+    const name = (values["name"] ?? "").trim();
     if (!name) return;
-    const priceText = window.prompt("Acréscimo em R$:", String(option.price_delta));
-    if (priceText === null) return;
-    const price = Number(priceText.replace(",", "."));
+    const price = Number((values["price"] ?? "").replace(",", "."));
     if (!Number.isFinite(price) || price < 0) return toast.error("Informe um acréscimo válido.");
 
     setBusy(`option:${option.id}`);
@@ -306,7 +358,13 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
   };
 
   const deleteOption = async (option: ProductOption) => {
-    if (!window.confirm(`Excluir a opção “${option.name}”?`)) return;
+    const ok = await confirm({
+      title: "Excluir opção",
+      description: `Excluir a opção "${option.name}"? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Excluir",
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(`option:${option.id}`);
     const { error } = await from("product_options").delete().eq("id", option.id);
     setBusy(null);
@@ -661,6 +719,8 @@ export function MerchantProductEditor({ product, merchantId, categories, onChang
           </div>
         </div>
       ) : null}
+      {confirmDialog}
+      {promptDialog}
     </>
   );
 }
