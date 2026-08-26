@@ -973,7 +973,7 @@ export function CourierFinance({
           </div>
         </section>
 
-        {!wallet ? (
+        {!wallet && !manualPayoutMode ? (
           <div className="rounded-[1.6rem] border border-dashed border-primary/20 bg-zinc-950 p-6 text-center">
             <WalletCards className="mx-auto h-8 w-8 text-primary" />
             <p className="mt-3 font-black">Sua carteira aparecerá aqui</p>
