@@ -864,6 +864,15 @@ export function ActiveDelivery({
   );
 }
 
+const SETTLEMENT_STATUS_LABEL: Record<string, string> = {
+  awaiting_payment: "A receber",
+  overdue: "Repasse vencido",
+  merchant_marked_paid: "Pagamento informado",
+  confirmed: "Pagamento confirmado",
+  disputed: "Em contestação",
+  admin_resolved: "Resolvido pela APOIS",
+};
+
 export function CourierFinance({
   wallet,
   metrics,
@@ -875,8 +884,13 @@ export function CourierFinance({
   busy,
   payoutAvailable,
   payoutBlockedMessage,
+  manualPayoutMode,
+  settlements,
+  settlementBusy,
   onSaveAccount,
   onRequestPayout,
+  onConfirmSettlement,
+  onDisputeSettlement,
   onClose,
 }: any) {
   return (
@@ -1007,42 +1021,122 @@ export function CourierFinance({
               </div>
             </section>
 
-            <section className="rounded-[1.6rem] border border-primary/25 bg-[linear-gradient(145deg,rgba(250,204,21,0.08),#090909_60%)] p-4">
-              <div className="flex items-center gap-2">
-                <WalletCards className="h-5 w-5 text-primary" />
-                <h2 className="font-black">Solicitar saque</h2>
-              </div>
-              <div className="mt-4 space-y-3">
-                <FinanceInput
-                  value={draft.amount}
-                  onChange={(value: string) =>
-                    setDraft((current: any) => ({ ...current, amount: value }))
-                  }
-                  placeholder="Valor do saque"
-                  type="number"
-                />
-                <Button
-                  className="h-13 w-full rounded-2xl font-black"
-                  disabled={!payoutAccount || busy === "payout" || payoutAvailable === false}
-                  onClick={onRequestPayout}
-                >
-                  {busy === "payout" ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <WalletCards className="mr-2 h-4 w-4" />
-                  )}{" "}
-                  Solicitar saque
-                </Button>
-              </div>
-              {payoutAvailable === false ? (
-                <p className="mt-3 text-[11px] leading-4 text-amber-400">{payoutBlockedMessage}</p>
-              ) : (
-                <p className="mt-3 text-[11px] leading-4 text-zinc-500">
-                  A solicitação entra em processamento após a reserva do saldo. O app não promete
-                  transferência instantânea.
+            {manualPayoutMode ? (
+              <section className="rounded-[1.6rem] border border-primary/25 bg-[linear-gradient(145deg,rgba(250,204,21,0.08),#090909_60%)] p-4">
+                <div className="flex items-center gap-2">
+                  <WalletCards className="h-5 w-5 text-primary" />
+                  <h2 className="font-black">A receber</h2>
+                </div>
+                <p className="mt-2 text-[11px] leading-4 text-zinc-500">
+                  Cada estabelecimento paga você diretamente via Pix, fora do app, com base no
+                  fechamento diário abaixo.
                 </p>
-              )}
-            </section>
+                <div className="mt-4 space-y-3">
+                  {(settlements ?? []).length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-zinc-800 bg-black p-5 text-center text-sm text-zinc-500">
+                      Nenhum repasse ainda. Ele aparecerá aqui após o fechamento das entregas do
+                      dia.
+                    </div>
+                  ) : (
+                    settlements.map((settlement: any) => (
+                      <div
+                        key={settlement.id}
+                        className="rounded-2xl border border-zinc-800 bg-black p-4"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-bold">{settlement.merchant_name}</p>
+                            <p className="mt-0.5 text-xs text-zinc-600">
+                              {new Date(settlement.settlement_date).toLocaleDateString("pt-BR")} ·{" "}
+                              {settlement.delivery_count} entrega(s) · prazo{" "}
+                              {new Date(settlement.due_at).toLocaleString("pt-BR")}
+                            </p>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[9px] font-black uppercase text-primary">
+                            {SETTLEMENT_STATUS_LABEL[settlement.effective_status] ??
+                              settlement.effective_status}
+                          </span>
+                        </div>
+                        <p className="mt-3 text-lg font-black text-primary">
+                          {courierMoney(settlement.total_amount)}
+                        </p>
+                        {settlement.status === "merchant_marked_paid" ? (
+                          <>
+                            <p className="mt-2 text-xs text-zinc-400">
+                              Estabelecimento informou que realizou o pagamento.
+                            </p>
+                            <div className="mt-3 flex gap-2">
+                              <Button
+                                className="h-11 flex-1 rounded-xl text-xs font-black"
+                                disabled={settlementBusy === settlement.id}
+                                onClick={() => onConfirmSettlement(settlement.id)}
+                              >
+                                {settlementBusy === settlement.id ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : null}
+                                Confirmar recebimento
+                              </Button>
+                              <Button
+                                variant="outline"
+                                className="h-11 flex-1 rounded-xl border-zinc-800 bg-zinc-950 text-xs font-black"
+                                disabled={settlementBusy === settlement.id}
+                                onClick={() => onDisputeSettlement(settlement.id)}
+                              >
+                                Não recebi
+                              </Button>
+                            </div>
+                          </>
+                        ) : null}
+                        {settlement.status === "disputed" ? (
+                          <p className="mt-2 text-xs text-amber-400">
+                            Sua contestação foi enviada para a APOIS.
+                          </p>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+            ) : (
+              <section className="rounded-[1.6rem] border border-primary/25 bg-[linear-gradient(145deg,rgba(250,204,21,0.08),#090909_60%)] p-4">
+                <div className="flex items-center gap-2">
+                  <WalletCards className="h-5 w-5 text-primary" />
+                  <h2 className="font-black">Solicitar saque</h2>
+                </div>
+                <div className="mt-4 space-y-3">
+                  <FinanceInput
+                    value={draft.amount}
+                    onChange={(value: string) =>
+                      setDraft((current: any) => ({ ...current, amount: value }))
+                    }
+                    placeholder="Valor do saque"
+                    type="number"
+                  />
+                  <Button
+                    className="h-13 w-full rounded-2xl font-black"
+                    disabled={!payoutAccount || busy === "payout" || payoutAvailable === false}
+                    onClick={onRequestPayout}
+                  >
+                    {busy === "payout" ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <WalletCards className="mr-2 h-4 w-4" />
+                    )}{" "}
+                    Solicitar saque
+                  </Button>
+                </div>
+                {payoutAvailable === false ? (
+                  <p className="mt-3 text-[11px] leading-4 text-amber-400">
+                    {payoutBlockedMessage}
+                  </p>
+                ) : (
+                  <p className="mt-3 text-[11px] leading-4 text-zinc-500">
+                    A solicitação entra em processamento após a reserva do saldo. O app não promete
+                    transferência instantânea.
+                  </p>
+                )}
+              </section>
+            )}
 
             <FinanceList
               title="Histórico de saques"

@@ -45,6 +45,7 @@ import {
   MerchantReviewsPanel,
 } from "@/components/MerchantGrowthPanels";
 import { MerchantCouponsPanel } from "@/components/MerchantCouponsPanel";
+import { MerchantCourierSettlementsPanel } from "@/components/MerchantCourierSettlementsPanel";
 import { MerchantSubscriptionGate } from "@/components/MerchantSubscriptionGate";
 import { GoogleMapsAddressSelector } from "@/components/GoogleMapsAddressSelector";
 import { MerchantMercadoPagoConnectCard } from "@/components/MerchantMercadoPagoConnectCard";
@@ -976,6 +977,7 @@ function MerchantWorkspace() {
     { id: "reviews", label: "Avaliações", icon: Star },
     { id: "reports", label: "Relatórios", icon: BarChart3 },
     { id: "finance", label: "Financeiro", icon: WalletCards },
+    { id: "courier-payouts", label: "Repasses", icon: BadgeDollarSign },
     {
       id: "billing",
       label: "Mensalidade",
@@ -1851,6 +1853,10 @@ function MerchantWorkspace() {
             </div>
           )}
         </div>
+      )}
+
+      {activeTab === "courier-payouts" && (
+        <MerchantCourierSettlementsPanel merchantId={merchant.id} />
       )}
 
       {activeTab === "settings" && (

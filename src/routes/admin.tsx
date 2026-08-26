@@ -25,6 +25,7 @@ import { AdminCoveragePanel } from "@/components/AdminCoveragePanel";
 import { AdminSupportPanel } from "@/components/AdminSupportPanel";
 import { AdminRealtimeOperationsPanel } from "@/components/AdminRealtimeOperationsPanel";
 import { AdminReviewsPanel } from "@/components/AdminReviewsPanel";
+import { AdminCourierSettlementsPanel } from "@/components/AdminCourierSettlementsPanel";
 import { AdminOrdersPanel } from "@/components/AdminOrdersPanel";
 import { AdminMerchantCreateDialog } from "@/components/AdminMerchantCreateDialog";
 import { Button } from "@/components/ui/button";
@@ -842,6 +843,7 @@ function AdminWorkspace() {
       icon: WalletCards,
       badge: pendingPayouts.length + pendingRefunds.length + overdueMerchantSubscriptions.length,
     },
+    { id: "courier-settlements", label: "Repasses", icon: CircleDollarSign },
     { id: "support", label: "Suporte", icon: Headphones, badge: openTickets.length },
     { id: "settings", label: "Operação", icon: Settings },
     { id: "audit", label: "Auditoria", icon: ShieldCheck },
@@ -1050,6 +1052,8 @@ function AdminWorkspace() {
           onRefund={processRefund}
         />
       )}
+
+      {activeTab === "courier-settlements" && <AdminCourierSettlementsPanel />}
 
       {activeTab === "support" && (
         <AdminSupportPanel

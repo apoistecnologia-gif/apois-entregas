@@ -121,6 +121,13 @@ function courierDispatchErrorMessage(message?: string | null) {
       description: "Conclua as etapas de aceite e preparo antes de solicitar um entregador.",
     };
   }
+  if (normalized.includes("courier settlement overdue")) {
+    return {
+      title: "Repasses a entregadores vencidos.",
+      description:
+        "Regularize os repasses pendentes na aba Repasses para voltar a solicitar entregadores APOIS.",
+    };
+  }
   return {
     title: "Não foi possível solicitar o entregador.",
     description: message || "Tente novamente em instantes.",

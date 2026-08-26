@@ -85,6 +85,9 @@ function CourierApp() {
   const [payoutBlockedMessage, setPayoutBlockedMessage] = useState(
     "Saques estão temporariamente indisponíveis enquanto o recebimento direto dos entregadores é finalizado.",
   );
+  const [manualPayoutMode, setManualPayoutMode] = useState(false);
+  const [settlements, setSettlements] = useState<any[]>([]);
+  const [settlementBusy, setSettlementBusy] = useState<string | null>(null);
 
   const loadCourierOperations = useCallback(async (courierId: string) => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo";
@@ -166,6 +169,28 @@ function CourierApp() {
       setPayoutAccount(null);
       setPayouts([]);
     }
+
+    const settlementsRes = await from("courier_settlements_view")
+      .select("*")
+      .eq("courier_id", courierId)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    const settlementRows = settlementsRes.data ?? [];
+    const settlementMerchantIds = Array.from(
+      new Set(settlementRows.map((row: any) => row.merchant_id).filter(Boolean)),
+    );
+    const settlementMerchantsRes = settlementMerchantIds.length
+      ? await from("merchants").select("id,name").in("id", settlementMerchantIds)
+      : { data: [] };
+    const merchantNameById = new Map(
+      (settlementMerchantsRes.data ?? []).map((row: any) => [row.id, row.name]),
+    );
+    setSettlements(
+      settlementRows.map((row: any) => ({
+        ...row,
+        merchant_name: merchantNameById.get(row.merchant_id) ?? "Estabelecimento",
+      })),
+    );
   }, []);
 
   const loadAll = useCallback(
@@ -222,6 +247,7 @@ function CourierApp() {
       if (error || !data) return;
       const live = data.mode === "marketplace_direct_live";
       setPayoutAvailable(live);
+      setManualPayoutMode(data.mode === "merchant_manual");
       if (!live && data.message) {
         setPayoutBlockedMessage(
           "Saques estão temporariamente indisponíveis enquanto o recebimento direto dos entregadores é finalizado.",
@@ -642,6 +668,29 @@ function CourierApp() {
     if (courier?.id) await loadCourierOperations(courier.id);
   };
 
+  const confirmSettlementReceived = async (settlementId: string) => {
+    setSettlementBusy(settlementId);
+    const { error } = await rpc("courier_confirm_courier_settlement", {
+      _settlement_id: settlementId,
+    });
+    setSettlementBusy(null);
+    if (error) return toast.error(error.message || "Não foi possível confirmar o recebimento.");
+    toast.success("Recebimento confirmado.");
+    if (courier?.id) await loadCourierOperations(courier.id);
+  };
+
+  const disputeSettlement = async (settlementId: string) => {
+    setSettlementBusy(settlementId);
+    const { error } = await rpc("courier_dispute_courier_settlement", {
+      _settlement_id: settlementId,
+      _reason: "Entregador informou que não recebeu o Pix.",
+    });
+    setSettlementBusy(null);
+    if (error) return toast.error(error.message || "Não foi possível registrar a contestação.");
+    toast.success("Contestação registrada. A APOIS foi notificada.");
+    if (courier?.id) await loadCourierOperations(courier.id);
+  };
+
   if (loading) {
     return (
       <div className="grid min-h-dvh place-items-center bg-black p-5 text-white">
@@ -785,8 +834,13 @@ function CourierApp() {
           busy={busy}
           payoutAvailable={payoutAvailable}
           payoutBlockedMessage={payoutBlockedMessage}
+          manualPayoutMode={manualPayoutMode}
+          settlements={settlements}
+          settlementBusy={settlementBusy}
           onSaveAccount={savePayoutAccount}
           onRequestPayout={requestPayout}
+          onConfirmSettlement={confirmSettlementReceived}
+          onDisputeSettlement={disputeSettlement}
           onClose={() => setFinanceOpen(false)}
         />
         <CourierBottomNav
