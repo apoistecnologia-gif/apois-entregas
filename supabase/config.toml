@@ -17,3 +17,9 @@ verify_jwt = false
 # x-apois-push-dispatch-key against PUSH_DISPATCH_WEBHOOK_SECRET before doing work.
 [functions.dispatch-push-outbox]
 verify_jwt = false
+
+# Called by admins (Bearer JWT) or by the protected pg_cron/pg_net retry job via
+# x-apois-payout-dispatch-key, verified against private.runtime_settings before any
+# dispatch happens. Remains inert while courier_payout_mode != marketplace_direct_live.
+[functions.mercadopago-payout]
+verify_jwt = false
