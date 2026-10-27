@@ -21,6 +21,6 @@ guard(official.includes('data:image/webp;base64,'), "Official APOIS mark reused 
 guard((workspace.match(/src=\{APOIS_LOGO_DATA_URL\}/g) ?? []).length === 2, "Web merchant/admin sidebars show official mark on desktop and mobile");
 guard(login.includes('src={APOIS_LOGO_DATA_URL}'), "Login shows official mark");
 guard(workspace.includes("merchant_new_order_alert_") && workspace.includes("playMerchantOrderAlert()"), "Merchant realtime sound notifications preserved");
-guard(workspace.includes("onTabChange(tab)") && workspace.includes("onLogout()"), "Workspace navigation and logout callbacks preserved");
+guard(workspace.includes("onTabChange(tab)") && workspace.includes("onClick={onLogout}"), "Workspace navigation and logout callbacks preserved");
 guard(login.includes("signInWithPassword") && login.includes("hasAdminRole"), "Existing authentication / admin authorization preserved");
 guard(routing.includes("merchant") && routing.includes("admin"), "Product isolation remains configured");
