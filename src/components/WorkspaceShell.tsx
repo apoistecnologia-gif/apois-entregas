@@ -1,3 +1,4 @@
+import { APOIS_LOGO_DATA_URL } from "@/assets/apoisOfficialLogo";
 import { LogOut, Menu, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -145,7 +146,7 @@ export function WorkspaceShell({
           <div className="border-b border-border p-6">
             <div className="flex items-center gap-3">
               <img
-                src="/apois-official-circular-2026.webp"
+                src={APOIS_LOGO_DATA_URL}
                 alt="APOIS"
                 className="h-11 w-11 rounded-full border border-[#E51B23]/20 bg-white object-cover shadow-sm"
               />
@@ -208,7 +209,7 @@ export function WorkspaceShell({
           <div className="flex items-start justify-between border-b border-border p-5">
             <div className="flex items-center gap-3">
               <img
-                src="/apois-official-circular-2026.webp"
+                src={APOIS_LOGO_DATA_URL}
                 alt="APOIS"
                 className="h-10 w-10 rounded-full border border-[#E51B23]/20 bg-white object-cover shadow-sm"
               />
