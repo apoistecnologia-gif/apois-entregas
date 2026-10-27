@@ -7,10 +7,12 @@ on:
       - '.github/workflows/apois-backoffice-red-visual-check.yml'
       - 'src/**'
       - 'scripts/verify-apois-backoffice-brand.mjs'
+      - 'package.json'
+      - 'bun.lock'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   backoffice-visual:
@@ -25,15 +27,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          persist-credentials: true
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14
-      - name: Install isolated workspace dependencies (existing repo lock is not frozen-reproducible)
+      - name: Rebuild reproducible patched TanStack lockfile
         run: |
           set -euo pipefail
-          bun install --no-save
-          git diff --exit-code -- package.json bun.lock
+          bun install --lockfile-only
+          grep -Fq '"@tanstack/react-start@1.168.60"' bun.lock
+          grep -Fq '"@tanstack/start-server-core@1.169.39"' bun.lock
+          if grep -Eq '"@tanstack/react-start@1\\.168\\.[0-5][0-9]"' bun.lock; then
+            echo "::error::Vulnerable TanStack Start remains locked"
+            exit 1
+          fi
+          bun install --frozen-lockfile
       - name: Verify official red backoffice branding and functional boundaries
         run: node scripts/verify-apois-backoffice-brand.mjs
       - name: Typecheck shared portal code
@@ -42,5 +50,15 @@ jobs:
         run: bun run build:admin
       - name: Build standalone APOIS Estabelecimento
         run: bun run build:merchant
+      - name: Commit validated lockfile without changing product logic
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add bun.lock
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix(security): lock patched TanStack dependency tree for backoffice'
+            git push origin HEAD:fix/apois-entregas-portals-red-20261027
+          fi
       - name: No deployment, no database mutations
         run: echo "[OK] Visual-only checks completed; production untouched."
