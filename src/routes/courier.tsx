@@ -22,7 +22,6 @@ import {
   ActiveDelivery,
   CourierApplication,
   CourierFinance,
-  CourierOfflineCard,
   CourierOfferCard,
   CourierReviewState,
   CourierStatusCard,
@@ -947,7 +946,16 @@ function CourierApp() {
             )}
           </>
         ) : (
-          <CourierOfflineCard busy={busy === "online"} onToggle={toggleOnline} />
+          <>
+            <CourierLiveMap
+              currentPosition={currentPosition}
+              merchants={nearbyMerchants}
+              activeOfferMerchantIds={[]}
+            />
+            <p className="rounded-xl border border-zinc-800 bg-zinc-950/80 px-3 py-2 text-center text-xs text-zinc-400">
+              Você está offline. Use o controle de disponibilidade acima para receber entregas.
+            </p>
+          </>
         )}
       </main>
 
