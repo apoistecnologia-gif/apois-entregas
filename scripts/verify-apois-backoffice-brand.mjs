@@ -18,9 +18,10 @@ guard(root.includes('href: apoisBackofficeCss'), "Official CSS is loaded after l
 guard(css.includes("APOIS_BACKOFFICE_RED_2026") && css.includes("#E51B23") && css.includes("#C9141B"), "Canonical red / white palette present");
 guard(css.includes('content: normal !important'), "Legacy gold CSS image substitution is disabled");
 guard(official.includes('data:image/webp;base64,'), "Official APOIS mark reused from Corridas");
-guard((workspace.match(/src=\{APOIS_LOGO_DATA_URL\}/g) ?? []).length === 2, "Web merchant/admin sidebars show official mark on desktop and mobile");
-guard(login.includes('src={APOIS_LOGO_DATA_URL}'), "Login shows official mark");
+guard((workspace.match(/src="\/apois-official-circular-2026\.webp"/g) ?? []).length === 2, "Admin/Merchant navigation uses the supplied circular icon");
+guard(login.includes('data-apois-backoffice-desktop-login={productMode}') && login.includes('src="/apois-official-circular-2026.webp"'), "Web Admin and Merchant logins use desktop layout and official logo");
 guard(workspace.includes("merchant_new_order_alert_") && workspace.includes("playMerchantOrderAlert()"), "Merchant realtime sound notifications preserved");
 guard(workspace.includes("onTabChange(tab)") && workspace.includes("onClick={onLogout}"), "Workspace navigation and logout callbacks preserved");
 guard(login.includes("signInWithPassword") && login.includes("hasAdminRole"), "Existing authentication / admin authorization preserved");
 guard(routing.includes("merchant") && routing.includes("admin"), "Product isolation remains configured");
+guard(login.includes('if (productMode === "courier")') && login.includes('src={APOIS_LOGO_DATA_URL}'), "Customer/courier mobile visual paths are not redesigned");
