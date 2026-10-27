@@ -6,6 +6,7 @@ import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { citiesWithoutCourierDispatch } from "@/lib/courier-dispatch-readiness";
+import { AdminCourierOperationalGates } from "@/components/AdminCourierOperationalGates";
 
 type City = {
   id: string;
@@ -306,6 +307,7 @@ export function AdminCoveragePanel({
           </div>
         </section>
       )}
+      <AdminCourierOperationalGates />
       <div className="grid gap-4 sm:grid-cols-3">
         <MetricCard label="Cidades cadastradas" value={cities.length} />
         <MetricCard label="Cidades ativas" value={cities.filter((city) => city.is_active).length} />
