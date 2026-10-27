@@ -194,6 +194,114 @@ function Login() {
     }
   };
 
+  // Web-only backoffice login: do not reuse the compact mobile customer/courier shell.
+  // All auth, role checks, password recovery and redirect logic are unchanged above.
+  if (productMode === "admin" || productMode === "merchant") {
+    const isAdmin = productMode === "admin";
+    const sectionLabel = isAdmin ? "Administração de Entregas" : "Portal do Estabelecimento";
+    return (
+      <div className="min-h-dvh w-full bg-[#F6F7F9] text-[#182130]" data-apois-backoffice-desktop-login={productMode}>
+        <div className="grid min-h-dvh w-full lg:grid-cols-[minmax(0,1fr)_minmax(460px,.87fr)]">
+          <aside className="relative hidden flex-col justify-between overflow-hidden bg-[#182130] p-12 text-white lg:flex xl:p-16">
+            <div aria-hidden="true" className="pointer-events-none absolute -left-28 bottom-[-240px] h-[510px] w-[510px] rounded-full border-[76px] border-[#E51B23]/15" />
+            <div aria-hidden="true" className="pointer-events-none absolute -right-36 top-[-190px] h-[510px] w-[510px] rounded-full bg-[#E51B23]/10 blur-3xl" />
+            <div className="relative z-10 flex items-center gap-4">
+              <img src="/apois-official-circular-2026.webp" alt="APOIS" width="64" height="64" className="h-16 w-16 rounded-full bg-white object-contain" />
+              <div>
+                <p className="text-xl font-black tracking-[.12em]">APOIS</p>
+                <p className="text-xs font-extrabold uppercase tracking-[.13em] text-[#FF858A]">{sectionLabel}</p>
+              </div>
+            </div>
+            <div className="relative z-10 max-w-lg space-y-6">
+              <div className="h-1.5 w-16 rounded-full bg-[#E51B23]" />
+              <h1 className="text-4xl font-black leading-tight tracking-tight xl:text-5xl">
+                {isAdmin ? "Controle completo das entregas." : "Seu negócio em movimento."}
+              </h1>
+              <p className="max-w-md text-base leading-7 text-white/70">
+                {isAdmin
+                  ? "Gestão de estabelecimentos, entregadores e operações em um ambiente seguro."
+                  : "Acompanhe pedidos, produtos e entregas na central do seu estabelecimento."}
+              </p>
+            </div>
+            <p className="relative z-10 border-t border-white/15 pt-6 text-xs text-white/55">
+              APOIS Tecnologia e Mobilidade · Acesso restrito
+            </p>
+          </aside>
+          <main className="flex min-h-dvh items-center justify-center px-5 py-12 sm:px-10 lg:bg-white lg:px-12" aria-labelledby="apois-portal-login-title">
+            <div className="w-full max-w-[460px]">
+              <div className="mb-10 flex items-center gap-3">
+                <img src="/apois-official-circular-2026.webp" alt="Logomarca APOIS" width="64" height="64" className="h-16 w-16 rounded-full bg-white object-contain shadow-[0_8px_24px_rgba(229,27,35,0.10)]" />
+                <div>
+                  <p className="text-xl font-black tracking-[.09em] text-[#182130]">APOIS</p>
+                  <p className="text-xs font-extrabold uppercase tracking-[.12em] text-[#C9141B]">{sectionLabel}</p>
+                </div>
+              </div>
+              <p className="mb-3 text-xs font-bold uppercase tracking-[.19em] text-[#C9141B]">Acesso seguro</p>
+              <h2 id="apois-portal-login-title" className="text-3xl font-black tracking-tight text-[#182130]">Entrar no painel</h2>
+              <p className="mb-8 mt-3 text-sm leading-6 text-[#606B7A]">
+                Entre com seu e-mail e senha para acessar o {isAdmin ? "administrativo" : "estabelecimento"}.
+              </p>
+              <form onSubmit={handleLogin} method="post" className="space-y-5">
+                <div className="space-y-2">
+                  <label htmlFor="apois-portal-email" className="block text-sm font-semibold text-[#293547]">E-mail</label>
+                  <Input
+                    id="apois-portal-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); if (loginError) setLoginError(null); }}
+                    required
+                    autoComplete="email"
+                    placeholder="seuemail@exemplo.com"
+                    className="h-12 rounded-xl border-[#DCE1E8] bg-white px-4 text-base text-[#182130]"
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="apois-portal-password" className="block text-sm font-semibold text-[#293547]">Senha</label>
+                  <div className="relative">
+                    <Input
+                      id="apois-portal-password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => { setPassword(e.target.value); if (loginError) setLoginError(null); }}
+                      required
+                      autoComplete="current-password"
+                      placeholder="Digite sua senha"
+                      className="h-12 rounded-xl border-[#DCE1E8] bg-white px-4 pr-12 text-base text-[#182130]"
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-[#667081] hover:text-[#C9141B]"
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                  <button type="button" disabled={isLoading} onClick={() => void handlePasswordReset()} className="block w-fit text-sm font-semibold text-[#C9141B] hover:underline disabled:opacity-50">
+                    Esqueci minha senha
+                  </button>
+                </div>
+                {loginError && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">{loginError}</p>}
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="h-12 w-full rounded-xl bg-[#E51B23] text-base font-bold text-white shadow-[0_12px_24px_-14px_rgba(229,27,35,0.65)] hover:bg-[#C9141B]"
+                >
+                  {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Entrando…</> : "Entrar com segurança"}
+                </Button>
+              </form>
+              <p className="mt-10 border-t border-[#E1E4EA] pt-5 text-center text-xs text-[#667081]">
+                Acesso exclusivo às contas autorizadas. As permissões são verificadas após entrar.
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   if (productMode === "courier") {
     return (
       <div className="relative min-h-dvh w-full overflow-x-hidden bg-black text-white">
