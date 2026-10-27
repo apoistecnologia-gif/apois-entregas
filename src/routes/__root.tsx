@@ -13,6 +13,7 @@ import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
 import systemThemeCss from "../system-theme.css?url";
+import apoisBackofficeCss from "../apois-backoffice-2026.css?url";
 import { ApoisLaunchSplash } from "../components/ApoisLaunchSplash";
 import { AuthSessionIsolation } from "../components/AuthSessionIsolation";
 import { CourierOfferOverlay } from "../components/CourierOfferOverlay";
@@ -142,6 +143,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       links: [
         { rel: "stylesheet", href: appCss },
         { rel: "stylesheet", href: systemThemeCss },
+        { rel: "stylesheet", href: apoisBackofficeCss },
         { rel: "icon", href: "/favicon.png", type: "image/png" },
       ],
     };
@@ -157,13 +159,13 @@ function RootShell({ children }: { children: ReactNode }) {
   const isBackofficeProduct = product === "admin" || product === "merchant";
 
   return (
-    <html lang="pt-BR" className="dark apois-system-theme">
+    <html lang="pt-BR" className={isBackofficeProduct ? "apois-system-theme apois-portal-v2026" : "dark apois-system-theme"}>
       <head>
         <HeadContent />
       </head>
-      <body className="bg-black antialiased">
+      <body className={isBackofficeProduct ? "bg-background text-foreground antialiased" : "bg-black antialiased"}>
         {isBackofficeProduct ? (
-          <div className="min-h-dvh w-full bg-black">{children}</div>
+          <div className="min-h-dvh w-full bg-background text-foreground">{children}</div>
         ) : (
           <div className="flex min-h-dvh w-full items-start justify-center overflow-x-hidden md:py-8 lg:py-12">
             <div className="relative flex min-h-dvh w-full flex-col bg-background md:min-h-[700px] md:max-w-[390px] md:overflow-hidden md:rounded-[3rem] md:shadow-2xl md:ring-8 md:ring-zinc-900">
