@@ -5,6 +5,7 @@ import { EmptyState, MetricCard } from "@/components/WorkspaceShell";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { citiesWithoutCourierDispatch } from "@/lib/courier-dispatch-readiness";
 
 type City = {
   id: string;
@@ -96,6 +97,8 @@ export function AdminCoveragePanel({
     () => cities.find((city) => city.id === selectedCityId) ?? null,
     [cities, selectedCityId],
   );
+
+  const citiesNeedingDispatchRadius = useMemo(() => citiesWithoutCourierDispatch(cities), [cities]);
 
   const loadZones = useCallback(async () => {
     if (!selectedCityId) {
@@ -273,6 +276,36 @@ export function AdminCoveragePanel({
 
   return (
     <div className="space-y-6">
+      {citiesNeedingDispatchRadius.length > 0 && (
+        <section
+          role="alert"
+          data-apois-courier-dispatch-readiness
+          className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
+        >
+          <h2 className="text-sm font-black text-amber-200">
+            Busca de entregadores bloqueada em {citiesNeedingDispatchRadius.length} {citiesNeedingDispatchRadius.length === 1 ? "cidade ativa" : "cidades ativas"}
+          </h2>
+          <p className="mt-2 text-xs leading-relaxed text-amber-100/90">
+            Sem um raio de busca definido, o servidor não envia ofertas aos entregadores dessa cidade.
+            O raio de entrega do cliente é independente e não será utilizado como substituto.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {citiesNeedingDispatchRadius.map((city) => (
+              <button
+                key={city.id}
+                type="button"
+                onClick={() => {
+                  setSelectedCityId(city.id);
+                  setEditingCity({ ...city });
+                }}
+                className="rounded-lg border border-amber-400/40 bg-zinc-950 px-3 py-2 text-xs font-bold text-amber-100 hover:border-amber-300"
+              >
+                Configurar busca em {city.name} · {city.state}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
       <div className="grid gap-4 sm:grid-cols-3">
         <MetricCard label="Cidades cadastradas" value={cities.length} />
         <MetricCard label="Cidades ativas" value={cities.filter((city) => city.is_active).length} />
