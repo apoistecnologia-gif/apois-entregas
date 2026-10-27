@@ -39,6 +39,17 @@ html.apois-system-theme.apois-portal-v2026 {
   background: var(--background);
   color: var(--foreground);
 }
+/* The legacy system stylesheet swaps product logos via CSS content:url().
+   On the portals, let the actual official red/white src render instead. */
+html.apois-portal-v2026 img[alt="APOIS ENTREGA"],
+html.apois-portal-v2026 img[alt="APOIS ENTREGAS"] {
+  content: normal !important;
+}
+html.apois-portal-v2026 img[alt="APOIS"],
+html.apois-portal-v2026 img[alt="APOIS ENTREGA"] {
+  border-radius: 999px;
+  background: #FFFFFF;
+}
 html.apois-portal-v2026 body,
 html.apois-portal-v2026 body > div,
 html.apois-portal-v2026 #root {
@@ -123,3 +134,9 @@ html.apois-portal-v2026 :is(button,a,[role="button"]) {
     overflow-y: auto;
   }
 }
+
+/* Replace remaining obsolete gold utility classes only where they are brand
+   decoration. Amber status/warning classes intentionally stay amber. */
+html.apois-portal-v2026 :is([class~="text-[#F6BE1C]"],[class~="text-[#FFD700]"],[class~="text-[#F6B900]"]) { color: #C9141B !important; }
+html.apois-portal-v2026 :is([class~="bg-[#F6BE1C]"],[class~="bg-[#FFD700]"],[class~="bg-[#F6B900]"]) { background-color: #E51B23 !important; color: #FFFFFF !important; }
+html.apois-portal-v2026 :is([class~="border-[#F6BE1C]"],[class~="border-[#FFD700]"],[class~="border-[#F6B900]"]) { border-color: #E51B23 !important; }
