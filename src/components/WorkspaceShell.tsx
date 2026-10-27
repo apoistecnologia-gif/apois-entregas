@@ -2,7 +2,7 @@ import { LogOut, Menu, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import logoAsset from "@/assets/logo.png.asset.json";
+import { APOIS_LOGO_DATA_URL } from "@/assets/apoisOfficialLogo";
 
 export type WorkspaceTab = {
   id: string;
@@ -139,22 +139,22 @@ export function WorkspaceShell({
   };
 
   return (
-    <div className="min-h-dvh bg-black text-white">
+    <div className="min-h-dvh bg-background text-foreground">
       <div className="flex min-h-dvh">
-        <aside className="hidden w-72 shrink-0 border-r border-zinc-900 bg-zinc-950 lg:flex lg:flex-col">
-          <div className="border-b border-zinc-900 p-6">
+        <aside className="hidden w-72 shrink-0 border-r border-border bg-card lg:flex lg:flex-col">
+          <div className="border-b border-border p-6">
             <div className="flex items-center gap-3">
               <img
-                src={logoAsset.url}
+                src={APOIS_LOGO_DATA_URL}
                 alt="APOIS"
-                className="h-11 w-11 rounded-xl object-contain"
+                className="h-11 w-11 rounded-full border border-[#E51B23]/20 bg-white object-cover shadow-sm"
               />
               <div className="min-w-0">
                 <p className="text-lg font-black tracking-tight text-primary">APOIS</p>
-                <p className="truncate text-sm font-bold text-white">{brand}</p>
+                <p className="truncate text-sm font-bold text-foreground">{brand}</p>
               </div>
             </div>
-            <p className="mt-2 text-xs text-zinc-500">{subtitle}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{subtitle}</p>
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-4">
             {tabs.map((tab) => {
@@ -165,7 +165,7 @@ export function WorkspaceShell({
                   type="button"
                   key={tab.id}
                   onClick={() => chooseTab(tab.id)}
-                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold transition ${selected ? "bg-primary text-black" : "text-zinc-400 hover:bg-zinc-900 hover:text-white"}`}
+                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold transition ${selected ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}
                 >
                   {Icon ? <Icon className="h-4 w-4" /> : null}
                   <span className="flex-1">{tab.label}</span>
@@ -180,9 +180,9 @@ export function WorkspaceShell({
               );
             })}
           </nav>
-          <div className="border-t border-zinc-900 p-4">
+          <div className="border-t border-border p-4">
             {userLabel ? (
-              <p className="mb-3 truncate px-2 text-xs text-zinc-500">{userLabel}</p>
+              <p className="mb-3 truncate px-2 text-xs text-muted-foreground">{userLabel}</p>
             ) : null}
             <button
               type="button"
@@ -203,14 +203,14 @@ export function WorkspaceShell({
           />
         ) : null}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-zinc-900 bg-zinc-950 transition-transform lg:hidden ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
+          className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-border bg-card transition-transform lg:hidden ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
         >
-          <div className="flex items-start justify-between border-b border-zinc-900 p-5">
+          <div className="flex items-start justify-between border-b border-border p-5">
             <div className="flex items-center gap-3">
               <img
-                src={logoAsset.url}
+                src={APOIS_LOGO_DATA_URL}
                 alt="APOIS"
-                className="h-10 w-10 rounded-xl object-contain"
+                className="h-10 w-10 rounded-full border border-[#E51B23]/20 bg-white object-cover shadow-sm"
               />
               <div>
                 <p className="text-lg font-black text-primary">APOIS</p>
@@ -220,7 +220,7 @@ export function WorkspaceShell({
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
-              className="rounded-lg bg-zinc-900 p-2"
+              className="rounded-lg bg-muted p-2"
             >
               <X className="h-5 w-5" />
             </button>
@@ -234,7 +234,7 @@ export function WorkspaceShell({
                   type="button"
                   key={tab.id}
                   onClick={() => chooseTab(tab.id)}
-                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold ${selected ? "bg-primary text-black" : "text-zinc-400"}`}
+                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold ${selected ? "bg-primary text-primary-foreground" : "text-zinc-400"}`}
                 >
                   {Icon ? <Icon className="h-4 w-4" /> : null}
                   <span className="flex-1">{tab.label}</span>
@@ -257,12 +257,12 @@ export function WorkspaceShell({
         </aside>
 
         <div className="min-w-0 flex-1">
-          <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-zinc-900 bg-black/90 px-4 backdrop-blur lg:px-8">
+          <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-white/95 px-4 backdrop-blur lg:px-8">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setMobileOpen(true)}
-                className="rounded-xl bg-zinc-900 p-2 lg:hidden"
+                className="rounded-xl bg-muted p-2 lg:hidden"
               >
                 <Menu className="h-5 w-5" />
               </button>
@@ -277,7 +277,7 @@ export function WorkspaceShell({
             </div>
             <div className="flex items-center gap-2">
               {userLabel ? (
-                <span className="hidden max-w-xs truncate text-xs text-zinc-500 sm:block">
+                <span className="hidden max-w-xs truncate text-xs text-muted-foreground sm:block">
                   {userLabel}
                 </span>
               ) : null}
@@ -309,9 +309,9 @@ export function MetricCard({
 }) {
   return (
     <div className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-      <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">{label}</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
       <div className="mt-2 text-2xl font-black text-white">{value}</div>
-      {hint ? <p className="mt-1 text-xs text-zinc-500">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }
@@ -320,7 +320,7 @@ export function EmptyState({ title, description }: { title: string; description:
   return (
     <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/50 p-10 text-center">
       <p className="font-bold text-white">{title}</p>
-      <p className="mt-2 text-sm text-zinc-500">{description}</p>
+      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
     </div>
   );
 }
