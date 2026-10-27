@@ -12,7 +12,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
-import logoAsset from "@/assets/logo.png.asset.json";
+import { APOIS_LOGO_DATA_URL } from "@/assets/apoisOfficialLogo";
 import deliveryHeroAsset from "@/assets/delivery-hero.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -225,7 +225,7 @@ function Login() {
         <main className="relative z-10 mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-md flex-col px-5 pb-[max(env(safe-area-inset-bottom),1.5rem)] pt-2">
           <div className="flex min-h-[8.5rem] flex-col items-center justify-end text-center">
             <img
-              src={logoAsset.url}
+              src={APOIS_LOGO_DATA_URL}
               alt="APOIS ENTREGA"
               className="h-20 w-auto max-w-[72vw] object-contain drop-shadow-[0_10px_30px_rgba(0,0,0,0.7)]"
             />
@@ -361,7 +361,7 @@ function Login() {
       <main className="mx-auto flex w-full max-w-md flex-col px-6 pb-[max(env(safe-area-inset-bottom),2rem)] pt-8">
         <div className="flex flex-col items-center text-center">
           <img
-            src={logoAsset.url}
+            src={APOIS_LOGO_DATA_URL}
             alt="APOIS ENTREGA"
             className="mb-5 h-20 w-auto object-contain"
           />
