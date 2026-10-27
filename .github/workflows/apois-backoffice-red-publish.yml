@@ -1,0 +1,86 @@
+name: APOIS Entregas - Publicar identidade visual Admin e Estabelecimento
+on:
+  push:
+    branches:
+      - fix/apois-entregas-portals-red-20261027
+    paths:
+      - '.github/workflows/apois-backoffice-red-publish.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: apois-entregas-portal-visual-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release backoffice visual / ${{ matrix.product }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - product: admin
+            project: prj_KjPKn2tXBIqxqCNzRxInuVXLLxNO
+            domain: admin.apoisbrasil.com.br
+          - product: merchant
+            project: prj_MxPK6zSoXIjac5egZRYmBXVhKTs6
+            domain: parceiros.apoisbrasil.com.br
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VERCEL_ORG_ID: team_shDkxHdc4ARgsiLdRaLSz0zA
+      VERCEL_PROJECT_ID: ${{ matrix.project }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VITE_APOIS_PRODUCT_MODE: ${{ matrix.product }}
+      VITE_SUPABASE_URL: https://sbvhdgyuuperszlsllji.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_tmNxPNALqBcWiEdD7_eWOw_mk0qRkJa
+      VITE_GOOGLE_MAPS_BROWSER_KEY: ${{ secrets.VITE_GOOGLE_MAPS_BROWSER_KEY }}
+      VITE_GOOGLE_MAPS_MAP_ID: ${{ secrets.VITE_GOOGLE_MAPS_MAP_ID }}
+      APOIS_VERCEL_BUILD: '1'
+      NITRO_PRESET: vercel
+    steps:
+      - name: Checkout reviewed brand branch only
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - name: Gate token availability before attempting release
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}" || { echo "::error::VERCEL_TOKEN secret unavailable; no release performed"; exit 1; }
+          test "${GITHUB_REF_NAME}" = "fix/apois-entregas-portals-red-20261027"
+      - name: Install exact patched dependencies
+        run: |
+          set -euo pipefail
+          bun install --frozen-lockfile
+          grep -Fq '"@tanstack/react-start@1.168.60"' bun.lock
+          grep -Fq '"@tanstack/start-server-core@1.169.39"' bun.lock
+      - name: Verify red brand, routes, and preserved functional boundaries
+        run: |
+          set -euo pipefail
+          node scripts/verify-apois-backoffice-brand.mjs
+          bun run typecheck
+      - name: Compile isolated product as Vercel Nitro output
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${VITE_APOIS_PRODUCT_MODE}" = "admin" ]; then
+            bun run build:admin
+          else
+            bun run build:merchant
+          fi
+          test -s .vercel/output/config.json
+          test -d .vercel/output/static
+          echo "[OK] Real protected Nitro build is ready for ${VITE_APOIS_PRODUCT_MODE}"
+      - name: Publish only approved Vercel project
+        shell: bash
+        run: |
+          set -euo pipefail
+          # This deployment is built from this source tree, not the stale private superapp submodule.
+          # Never unset protected production credentials or change domains/RLS.
+          rm -rf .git
+          bunx vercel deploy --prebuilt --prod --yes
+          echo "[OK] Vercel production release requested for ${VITE_APOIS_PRODUCT_MODE}"
