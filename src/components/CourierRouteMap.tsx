@@ -249,10 +249,34 @@ export function CourierLiveMap({
 }) {
   const browserKey = (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
   const mapId = (import.meta as any).env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined;
+  // A consulta pontual posiciona o mapa mesmo offline. Não registra nem envia
+  // coordenadas ao servidor; o rastreamento operacional continua exclusivo do modo online.
+  const [offlinePosition, setOfflinePosition] = useState<CourierPosition | null>(null);
+  useEffect(() => {
+    if (currentPosition || !navigator.geolocation) return;
+    let active = true;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (!active) return;
+        setOfflinePosition({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          heading: position.coords.heading,
+          speed: position.coords.speed,
+          recordedAt: Date.now(),
+        });
+      },
+      () => undefined,
+      { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 },
+    );
+    return () => { active = false; };
+  }, [currentPosition]);
+  const mapPosition = currentPosition ?? offlinePosition;
   const activeOfferSet = useMemo(() => new Set(activeOfferMerchantIds), [activeOfferMerchantIds]);
   const nearbyMerchants = useMemo(() => {
-    if (!currentPosition) return [];
-    const origin = { lat: currentPosition.lat, lng: currentPosition.lng };
+    if (!mapPosition) return [];
+    const origin = { lat: mapPosition.lat, lng: mapPosition.lng };
     return merchants
       .map((merchant) => {
         const lat = parseCoordinate(merchant.latitude);
@@ -270,7 +294,7 @@ export function CourierLiveMap({
       .filter((merchant: any) => merchant.distanceMeters <= 8000)
       .sort((a: any, b: any) => a.distanceMeters - b.distanceMeters)
       .slice(0, 30) as any[];
-  }, [activeOfferSet, currentPosition, merchants]);
+  }, [activeOfferSet, mapPosition, merchants]);
 
   return (
     <section className="overflow-hidden rounded-[1.9rem] border border-accent/25 bg-zinc-950 shadow-[0_24px_65px_rgba(0,0,0,0.5)]">
@@ -279,16 +303,16 @@ export function CourierLiveMap({
           Mapa em tempo real
         </p>
         <p className="mt-1 text-xs text-zinc-500">
-          {currentPosition
+          {mapPosition
             ? `${nearbyMerchants.length} parceiros APOIS em até 8 km`
             : "Obtendo sua localização..."}
         </p>
       </div>
-      {browserKey && mapId && currentPosition ? (
+      {browserKey && mapId && mapPosition ? (
         <APIProvider apiKey={browserKey}>
           <div className="relative h-[23rem] min-h-[52vh] max-h-[31rem] w-full bg-zinc-900">
             <Map
-              center={{ lat: currentPosition.lat, lng: currentPosition.lng }}
+              center={{ lat: mapPosition.lat, lng: mapPosition.lng }}
               zoom={14}
               gestureHandling="greedy"
               disableDefaultUI
@@ -312,12 +336,12 @@ export function CourierLiveMap({
                   </div>
                 </AdvancedMarker>
               ))}
-              <AdvancedMarker position={{ lat: currentPosition.lat, lng: currentPosition.lng }}>
+              <AdvancedMarker position={{ lat: mapPosition.lat, lng: mapPosition.lng }}>
                 <div className="grid h-11 w-11 place-items-center rounded-full border-4 border-white bg-primary text-white shadow-2xl ring-4 ring-primary/20">
                   <Navigation className="h-5 w-5 fill-white text-white" />
                 </div>
               </AdvancedMarker>
-              <RecenterControl position={{ lat: currentPosition.lat, lng: currentPosition.lng }} />
+              <RecenterControl position={{ lat: mapPosition.lat, lng: mapPosition.lng }} />
             </Map>
           </div>
         </APIProvider>
