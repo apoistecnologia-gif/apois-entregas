@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { APOIS_LOGO_DATA_URL } from "@/assets/apoisOfficialLogo";
+import { APOIS_OFFICIAL_RED_LOGO_URL } from "@/assets/apoisOfficial2026";
 import deliveryHeroAsset from "@/assets/delivery-hero.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -206,7 +207,7 @@ function Login() {
             <div aria-hidden="true" className="pointer-events-none absolute -left-28 bottom-[-240px] h-[510px] w-[510px] rounded-full border-[76px] border-[#E51B23]/15" />
             <div aria-hidden="true" className="pointer-events-none absolute -right-36 top-[-190px] h-[510px] w-[510px] rounded-full bg-[#E51B23]/10 blur-3xl" />
             <div className="relative z-10 flex items-center gap-4">
-              <img src={APOIS_LOGO_DATA_URL} alt="APOIS" width="64" height="64" className="h-16 w-16 rounded-full bg-white object-contain" />
+              <img src={APOIS_OFFICIAL_RED_LOGO_URL} alt="APOIS" width="64" height="64" className="h-16 w-16 rounded-full bg-white object-contain" />
               <div>
                 <p className="text-xl font-black tracking-[.12em]">APOIS</p>
                 <p className="text-xs font-extrabold uppercase tracking-[.13em] text-[#FF858A]">{sectionLabel}</p>
@@ -230,7 +231,7 @@ function Login() {
           <main className="flex min-h-dvh items-center justify-center px-5 py-12 sm:px-10 lg:bg-white lg:px-12" aria-labelledby="apois-portal-login-title">
             <div className="w-full max-w-[460px]">
               <div className="mb-10 flex items-center gap-3">
-                <img src={APOIS_LOGO_DATA_URL} alt="Logomarca APOIS" width="64" height="64" className="h-16 w-16 rounded-full bg-white object-contain shadow-[0_8px_24px_rgba(229,27,35,0.10)]" />
+                <img src={APOIS_OFFICIAL_RED_LOGO_URL} alt="Logomarca APOIS" width="64" height="64" className="h-16 w-16 rounded-full bg-white object-contain shadow-[0_8px_24px_rgba(229,27,35,0.10)]" />
                 <div>
                   <p className="text-xl font-black tracking-[.09em] text-[#182130]">APOIS</p>
                   <p className="text-xs font-extrabold uppercase tracking-[.12em] text-[#C9141B]">{sectionLabel}</p>
