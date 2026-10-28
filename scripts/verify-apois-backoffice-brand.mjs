@@ -29,3 +29,10 @@ guard(workspace.includes("onTabChange(tab)") && workspace.includes("onClick={onL
 guard(login.includes("signInWithPassword") && login.includes("hasAdminRole"), "Existing authentication / admin authorization preserved");
 guard(routing.includes("merchant") && routing.includes("admin"), "Product isolation remains configured");
 guard(login.includes('if (productMode === "courier")') && login.includes('src={APOIS_LOGO_DATA_URL}'), "Customer/courier mobile visual paths are not redesigned");
+
+const reset = read("src/routes/redefinir-senha.tsx");
+guard(login.includes("supabase.auth.resetPasswordForEmail") && login.includes("redirectTo:"), "Admin and Merchant email recovery remains enabled");
+guard(reset.includes("exchangeCodeForSession") && reset.includes('type: "recovery"') && reset.includes('event === "PASSWORD_RECOVERY"'), "Recovery requires signed link intent, not an ordinary login session");
+guard(reset.includes('if (!recoveryIntent && !recoveryEvent) throw new Error("no_recovery_link")'), "Existing standard session cannot enter reset screen by itself");
+guard(reset.includes("supabase.auth.updateUser({ password })") && reset.includes("supabase.auth.signOut()"), "Reset updates only the recipient account and clears session");
+guard(reset.includes('product === "admin" || product === "merchant"') && reset.includes("APOIS_OFFICIAL_RED_LOGO_URL"), "Recovery screen uses correct official red brand only for web portals");
