@@ -101,17 +101,36 @@ function Login() {
     }
     if (isLoading) return;
     setIsLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-      redirectTo: `${window.location.origin}/redefinir-senha`,
-    });
-    setIsLoading(false);
-    if (error) {
-      const message = "Não foi possível enviar o link de recuperação agora.";
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: `${window.location.origin}/redefinir-senha`,
+      });
+      if (error) {
+        // Show actionable delivery/configuration failures without exposing whether
+        // this address exists in Auth. Never display tokens or raw backend errors.
+        const code = String(error.code ?? "").toLowerCase();
+        const status = error.status;
+        const message =
+          status === 429 || code.includes("rate_limit") || code.includes("over_email_send_rate_limit")
+            ? "Limite temporário de envio de e-mails. Aguarde antes de solicitar outro link."
+            : code.includes("redirect") || code.includes("validation_failed")
+              ? "O endereço de recuperação não está autorizado no Supabase. Verifique as Redirect URLs."
+              : status === 0 || status === 502 || status === 503 || status === 504
+                ? "Serviço de autenticação indisponível no momento. Tente novamente mais tarde."
+                : "Não foi possível enviar o link de recuperação. Verifique os registros de Auth do Supabase.";
+        if (import.meta.env.DEV) console.warn("[APOIS Auth] password recovery request failed", { code, status });
+        setLoginError(message);
+        toast.error(message);
+        return;
+      }
+      toast.success("Se este e-mail estiver cadastrado, você receberá um link para definir uma nova senha.");
+    } catch {
+      const message = "Falha de conexão com o serviço de autenticação. Verifique a conexão e tente novamente.";
       setLoginError(message);
       toast.error(message);
-      return;
+    } finally {
+      setIsLoading(false);
     }
-    toast.success("Se este e-mail estiver cadastrado, você receberá o link de recuperação.");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
