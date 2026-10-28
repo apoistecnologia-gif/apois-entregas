@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - fix/apois-entregas-portals-red-20261027
+      - fix/apois-portals-recovery-20261028
     paths:
       - '.github/workflows/apois-backoffice-red-visual-check.yml'
       - 'src/**'
