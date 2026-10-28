@@ -36,3 +36,4 @@ guard(reset.includes("exchangeCodeForSession") && reset.includes('type: "recover
 guard(reset.includes('if (!recoveryIntent && !recoveryEvent) throw new Error("no_recovery_link")'), "Existing standard session cannot enter reset screen by itself");
 guard(reset.includes("supabase.auth.updateUser({ password })") && reset.includes("supabase.auth.signOut()"), "Reset updates only the recipient account and clears session");
 guard(reset.includes('product === "admin" || product === "merchant"') && reset.includes("APOIS_OFFICIAL_RED_LOGO_URL"), "Recovery screen uses correct official red brand only for web portals");
+guard(reset.includes("if (!isBackoffice)") && reset.includes("historical customer/courier recovery contract") && reset.includes("password.length < 8"), "Customer/courier legacy recovery and 8-character minimum remain preserved");
