@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getApoisProductMode } from "@/lib/product-routing";
+import { APOIS_OFFICIAL_RED_LOGO_URL } from "@/assets/apoisOfficial2026";
 
 export const Route = createFileRoute("/redefinir-senha")({
   ssr: false,
@@ -22,50 +24,66 @@ function RedefinirSenhaPage() {
   const [saving, setSaving] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
 
+  const product = getApoisProductMode();
+  const isBackoffice = product === "admin" || product === "merchant";
+
   useEffect(() => {
     let cancelled = false;
-    const establishRecoverySession = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const providerError = params.get("error_description") || params.get("error");
-      if (providerError) {
-        if (!cancelled) {
-          setLinkError("Este link de recuperação é inválido ou expirou.");
-          setChecking(false);
-        }
-        return;
-      }
-
-      const code = params.get("code");
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          if (!cancelled) {
-            setLinkError("Este link de recuperação é inválido ou expirou.");
-            setChecking(false);
-          }
-          return;
-        }
-      }
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!cancelled) {
-        setReady(Boolean(session));
-        setLinkError(session ? null : "Não encontramos uma sessão válida para redefinir a senha.");
+    let recoveryEvent = false;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" && session && !cancelled) {
+        recoveryEvent = true;
+        setReady(true);
+        setLinkError(null);
         setChecking(false);
       }
-    };
+    });
+    const establishRecoverySession = async () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        if (params.has("error") || hash.has("error")) throw new Error("invalid_recovery_link");
+        const code = params.get("code");
+        const tokenHash = params.get("token_hash");
+        const type = params.get("type") ?? hash.get("type");
+        let recoveryIntent = recoveryEvent;
 
-    void establishRecoverySession();
-    return () => {
-      cancelled = true;
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          recoveryIntent = true;
+        } else if (tokenHash && type === "recovery") {
+          const { error } = await supabase.auth.verifyOtp({ type: "recovery", token_hash: tokenHash });
+          if (error) throw error;
+          recoveryIntent = true;
+        } else if (type === "recovery" && hash.has("access_token")) {
+          // The Supabase client consumes implicit recovery tokens automatically.
+          recoveryIntent = true;
+        }
+        if (!recoveryIntent && !recoveryEvent) throw new Error("no_recovery_link");
+
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session) throw error ?? new Error("invalid_recovery_session");
+        if (!cancelled) {
+          setReady(true);
+          setLinkError(null);
+          setChecking(false);
+        }
+      } catch {
+        if (!cancelled && !recoveryEvent) {
+          setReady(false);
+          setLinkError("Este link de recuperação é inválido ou expirou. Solicite outro pelo login.");
+          setChecking(false);
+        }
+      }
     };
+    void establishRecoverySession();
+    return () => { cancelled = true; subscription.unsubscribe(); };
   }, []);
 
   const passwordError = useMemo(() => {
     if (!password) return "Informe a nova senha.";
-    if (password.length < 8) return "Use pelo menos 8 caracteres.";
+    if (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) return "Use pelo menos 10 caracteres, incluindo letras e números.";
     if (confirmPassword !== password) return "As senhas não coincidem.";
     return null;
   }, [confirmPassword, password]);
@@ -76,7 +94,7 @@ function RedefinirSenhaPage() {
     setSaving(true);
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      toast.error(error.message || "Não foi possível atualizar sua senha.");
+      toast.error("Não foi possível atualizar a senha. Solicite outro link, se necessário.");
       setSaving(false);
       return;
     }
@@ -86,9 +104,10 @@ function RedefinirSenhaPage() {
   };
 
   return (
-    <div className="grid min-h-dvh place-items-center bg-black p-6 text-white">
-      <div className="w-full max-w-sm rounded-3xl border border-zinc-900 bg-zinc-950 p-6">
+    <div className={isBackoffice ? "grid min-h-dvh place-items-center bg-[#F6F7F9] p-6 text-[#182130]" : "grid min-h-dvh place-items-center bg-black p-6 text-white"}>
+      <div className={isBackoffice ? "w-full max-w-md rounded-3xl border border-[#E1E4EA] bg-white p-7 shadow-[0_16px_54px_rgba(24,33,48,0.08)]" : "w-full max-w-sm rounded-3xl border border-zinc-900 bg-zinc-950 p-6"}>
         <div className="text-center">
+          {isBackoffice && <img src={APOIS_OFFICIAL_RED_LOGO_URL} alt="APOIS" width="72" height="72" className="mx-auto mb-3 h-[72px] w-[72px] rounded-full bg-white object-contain" />}
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary">
             {checking ? (
               <Loader2 className="h-7 w-7 animate-spin" />
@@ -97,18 +116,18 @@ function RedefinirSenhaPage() {
             )}
           </div>
           <h1 className="mt-4 text-2xl font-black">Redefinir senha</h1>
-          <p className="mt-2 text-sm text-zinc-500">Crie uma nova senha para sua conta APOIS.</p>
+          <p className={isBackoffice ? "mt-2 text-sm text-[#606B7A]" : "mt-2 text-sm text-zinc-500"}>Crie uma nova senha para sua conta APOIS.</p>
         </div>
 
         {checking ? (
-          <p className="mt-6 text-center text-sm text-zinc-500">
+          <p className={isBackoffice ? "mt-6 text-center text-sm text-[#606B7A]" : "mt-6 text-center text-sm text-zinc-500"}>
             Validando o link de recuperação...
           </p>
         ) : linkError ? (
           <div className="mt-6">
             <p
               role="alert"
-              className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300"
+              className={isBackoffice ? "rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" : "rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300"}
             >
               {linkError}
             </p>
@@ -122,7 +141,7 @@ function RedefinirSenhaPage() {
           </div>
         ) : (
           <form onSubmit={savePassword} method="post" className="mt-6 space-y-4">
-            <label className="block text-xs font-bold text-zinc-400">
+            <label className={isBackoffice ? "block text-xs font-bold text-[#606B7A]" : "block text-xs font-bold text-zinc-400"}>
               Nova senha
               <div className="relative mt-2">
                 <Input
@@ -130,8 +149,8 @@ function RedefinirSenhaPage() {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete="new-password"
-                  className="h-12 border-zinc-800 bg-black pr-12"
-                  placeholder="Mínimo 8 caracteres"
+                  className={isBackoffice ? "h-12 border-[#DCE1E8] bg-white pr-12 text-[#182130]" : "h-12 border-zinc-800 bg-black pr-12"}
+                  placeholder="Mínimo 10 caracteres"
                 />
                 <button
                   type="button"
@@ -150,7 +169,7 @@ function RedefinirSenhaPage() {
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 autoComplete="new-password"
-                className="mt-2 h-12 border-zinc-800 bg-black"
+                className={isBackoffice ? "mt-2 h-12 border-[#DCE1E8] bg-white text-[#182130]" : "mt-2 h-12 border-zinc-800 bg-black"}
                 placeholder="Repita a senha"
               />
             </label>
@@ -159,7 +178,7 @@ function RedefinirSenhaPage() {
                 {passwordError ?? "Senha pronta para ser atualizada."}
               </p>
             ) : null}
-            <Button disabled={Boolean(passwordError) || saving} className="h-12 w-full font-black">
+            <Button disabled={Boolean(passwordError) || saving} className={isBackoffice ? "h-12 w-full bg-[#E51B23] font-black text-white hover:bg-[#C9141B]" : "h-12 w-full font-black"}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Salvar nova senha
             </Button>
