@@ -60,6 +60,14 @@ function RedefinirSenhaPage() {
           // The Supabase client consumes implicit recovery tokens automatically.
           recoveryIntent = true;
         }
+        if (!isBackoffice) {
+          // Preserve the historical customer/courier recovery contract.
+          // Only the two administrative web portals adopt the stricter link gate.
+          const { data: { session }, error } = await supabase.auth.getSession();
+          if (error || !session) throw error ?? new Error("invalid_recovery_session");
+          if (!cancelled) { setReady(true); setLinkError(null); setChecking(false); }
+          return;
+        }
         if (!recoveryIntent && !recoveryEvent) throw new Error("no_recovery_link");
 
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -79,14 +87,14 @@ function RedefinirSenhaPage() {
     };
     void establishRecoverySession();
     return () => { cancelled = true; subscription.unsubscribe(); };
-  }, []);
+  }, [isBackoffice]);
 
   const passwordError = useMemo(() => {
     if (!password) return "Informe a nova senha.";
-    if (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) return "Use pelo menos 10 caracteres, incluindo letras e números.";
+    if (isBackoffice ? (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) : password.length < 8) return isBackoffice ? "Use pelo menos 10 caracteres, incluindo letras e números." : "Use pelo menos 8 caracteres.";
     if (confirmPassword !== password) return "As senhas não coincidem.";
     return null;
-  }, [confirmPassword, password]);
+  }, [confirmPassword, password, isBackoffice]);
 
   const savePassword = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -150,7 +158,7 @@ function RedefinirSenhaPage() {
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete="new-password"
                   className={isBackoffice ? "h-12 border-[#DCE1E8] bg-white pr-12 text-[#182130]" : "h-12 border-zinc-800 bg-black pr-12"}
-                  placeholder="Mínimo 10 caracteres"
+                  placeholder={isBackoffice ? "Mínimo 10 caracteres, letras e números" : "Mínimo 8 caracteres"}
                 />
                 <button
                   type="button"
