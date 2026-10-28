@@ -203,7 +203,7 @@ function Login() {
     return (
       <div className="min-h-dvh w-full bg-[#F6F7F9] text-[#182130]" data-apois-backoffice-desktop-login={productMode}>
         <div className="grid min-h-dvh w-full lg:grid-cols-[minmax(0,1fr)_minmax(460px,.87fr)]">
-          <aside className="relative hidden flex-col justify-between overflow-hidden bg-[#182130] p-12 text-white lg:flex xl:p-16">
+          <aside data-apois-portal-brand-hero className="relative hidden flex-col justify-between overflow-hidden bg-[#182130] p-12 text-white lg:flex xl:p-16">
             <div aria-hidden="true" className="pointer-events-none absolute -left-28 bottom-[-240px] h-[510px] w-[510px] rounded-full border-[76px] border-[#E51B23]/15" />
             <div aria-hidden="true" className="pointer-events-none absolute -right-36 top-[-190px] h-[510px] w-[510px] rounded-full bg-[#E51B23]/10 blur-3xl" />
             <div className="relative z-10 flex items-center gap-4">
@@ -215,10 +215,10 @@ function Login() {
             </div>
             <div className="relative z-10 max-w-lg space-y-6">
               <div className="h-1.5 w-16 rounded-full bg-[#E51B23]" />
-              <h1 className="text-4xl font-black leading-tight tracking-tight xl:text-5xl">
+              <h1 data-apois-portal-brand-headline className="text-4xl font-black leading-tight tracking-tight text-white xl:text-5xl">
                 {isAdmin ? "Controle completo das entregas." : "Seu negócio em movimento."}
               </h1>
-              <p className="max-w-md text-base leading-7 text-white/70">
+              <p className="max-w-md text-base leading-7 text-white/75">
                 {isAdmin
                   ? "Gestão de estabelecimentos, entregadores e operações em um ambiente seguro."
                   : "Acompanhe pedidos, produtos e entregas na central do seu estabelecimento."}
