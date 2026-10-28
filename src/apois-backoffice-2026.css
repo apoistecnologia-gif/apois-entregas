@@ -77,6 +77,21 @@ html.apois-portal-v2026 :is([class~="text-zinc-400"],[class~="text-zinc-500"],[c
 html.apois-portal-v2026 [class~="text-white"]:not(button):not(a) {
   color: #182130;
 }
+/* Hero panels intentionally use a dark APOIS graphite background.
+ * Never let the broad light-surface text normalization recolor their
+ * white headlines to the same graphite as the background. */
+html.apois-portal-v2026 [data-apois-portal-brand-hero] {
+  color: #FFFFFF !important;
+}
+html.apois-portal-v2026 [data-apois-portal-brand-hero] [data-apois-portal-brand-headline] {
+  color: #FFFFFF !important;
+  opacity: 1;
+  visibility: visible;
+}
+html.apois-portal-v2026 [data-apois-portal-brand-hero] p[class*="text-white"] {
+  color: rgb(255 255 255 / 0.76) !important;
+}
+
 html.apois-portal-v2026 :is(button,a)[class~="bg-primary"],
 html.apois-portal-v2026 [class~="bg-primary"] [class~="text-white"],
 html.apois-portal-v2026 [class~="bg-primary"][class~="text-white"] {
