@@ -20,6 +20,10 @@ guard(css.includes('content: normal !important'), "Legacy gold CSS image substit
 guard(official.includes('data:image/png;base64,iVBORw0KGgo'), "Official APOIS mark reused from Corridas");
 guard((workspace.match(/src=\{APOIS_OFFICIAL_RED_LOGO_URL\}/g) ?? []).length === 2, "Admin/Merchant navigation uses the supplied circular icon");
 guard(login.includes('data-apois-backoffice-desktop-login={productMode}') && login.includes("src={APOIS_OFFICIAL_RED_LOGO_URL}"), "Web Admin and Merchant logins use desktop layout and official logo");
+guard(login.includes('data-apois-portal-brand-hero') && login.includes('data-apois-portal-brand-headline'), "Both desktop portals retain semantic hero headline");
+guard(login.includes('isAdmin ? "Controle completo das entregas." : "Seu negócio em movimento."'), "Both Admin and Merchant headline copy is retained");
+guard(css.includes('html.apois-portal-v2026 [data-apois-portal-brand-hero] [data-apois-portal-brand-headline]') && css.includes('color: #FFFFFF !important;'), "Dark hero headline remains white, overriding legacy text-white normalization");
+
 guard(workspace.includes("merchant_new_order_alert_") && workspace.includes("playMerchantOrderAlert()"), "Merchant realtime sound notifications preserved");
 guard(workspace.includes("onTabChange(tab)") && workspace.includes("onClick={onLogout}"), "Workspace navigation and logout callbacks preserved");
 guard(login.includes("signInWithPassword") && login.includes("hasAdminRole"), "Existing authentication / admin authorization preserved");
