@@ -123,7 +123,11 @@ function Login() {
         toast.error(message);
         return;
       }
-      toast.success("Se este e-mail estiver cadastrado, você receberá um link para definir uma nova senha.");
+      if (productMode === "merchant") {
+        await navigate({ to: "/redefinir-senha", search: { otp: "1", email: normalizedEmail } as never });
+      } else {
+        toast.success("Se este e-mail estiver cadastrado, você receberá um link para definir uma nova senha.");
+      }
     } catch {
       const message = "Falha de conexão com o serviço de autenticação. Verifique a conexão e tente novamente.";
       setLoginError(message);
