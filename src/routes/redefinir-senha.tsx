@@ -23,11 +23,21 @@ function RedefinirSenhaPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpMode, setOtpMode] = useState(false);
 
   const product = getApoisProductMode();
   const isBackoffice = product === "admin" || product === "merchant";
 
   useEffect(() => {
+    if (isBackoffice && new URLSearchParams(window.location.search).get("otp") === "1") {
+      setOtpMode(true);
+      setOtpEmail(new URLSearchParams(window.location.search).get("email") ?? "");
+      setChecking(false);
+      return;
+    }
     let cancelled = false;
     let recoveryEvent = false;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -89,6 +99,27 @@ function RedefinirSenhaPage() {
     return () => { cancelled = true; subscription.unsubscribe(); };
   }, [isBackoffice]);
 
+  const verifyRecoveryCode = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (verifyingOtp || !/^[0-9]{6}$/.test(otpCode) || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(otpEmail.trim())) return;
+    setVerifyingOtp(true);
+    setLinkError(null);
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: otpEmail.trim().toLowerCase(),
+      token: otpCode,
+      type: "recovery",
+    });
+    if (error || !data.session) {
+      setLinkError("Código inválido ou expirado. Solicite um novo código pelo login.");
+    } else {
+      setReady(true);
+      setOtpMode(false);
+      setOtpCode("");
+      // Keep the authenticated recovery session for password update.
+    }
+    setVerifyingOtp(false);
+  };
+
   const passwordError = useMemo(() => {
     if (!password) return "Informe a nova senha.";
     if (isBackoffice ? (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) : password.length < 8) return isBackoffice ? "Use pelo menos 10 caracteres, incluindo letras e números." : "Use pelo menos 8 caracteres.";
@@ -117,7 +148,20 @@ function RedefinirSenhaPage() {
         <div className="text-center">
           {isBackoffice && <img src={APOIS_OFFICIAL_RED_LOGO_URL} alt="APOIS" width="72" height="72" className="mx-auto mb-3 h-[72px] w-[72px] rounded-full bg-white object-contain" />}
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary">
-            {checking ? (
+            {otpMode ? (
+          <form onSubmit={verifyRecoveryCode} className="mt-6 space-y-4">
+            <p className="text-sm text-[#606B7A]">Digite o código de 6 dígitos recebido no e-mail. Não abra o link de recuperação.</p>
+            <label className="block text-sm font-semibold">E-mail
+              <Input type="email" autoComplete="email" value={otpEmail} onChange={(event) => setOtpEmail(event.target.value)} required className="mt-2" />
+            </label>
+            <label className="block text-sm font-semibold">Código de verificação
+              <Input inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="[0-9]{6}" value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/\\D/g, "").slice(0, 6))} required className="mt-2" placeholder="000000" />
+            </label>
+            {linkError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{linkError}</p>}
+            <Button type="submit" disabled={verifyingOtp || otpCode.length !== 6} className="w-full bg-[#E51B23] text-white">Verificar código</Button>
+            <Button type="button" variant="outline" className="w-full" onClick={() => navigate({ to: "/login" })}>Voltar ao login</Button>
+          </form>
+        ) : checking ? (
               <Loader2 className="h-7 w-7 animate-spin" />
             ) : (
               <LockKeyhole className="h-7 w-7" />
