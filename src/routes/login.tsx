@@ -124,7 +124,7 @@ function Login() {
         return;
       }
       if (productMode === "merchant") {
-        await navigate({ to: "/redefinir-senha", search: { otp: "1", email: normalizedEmail } as never });
+        window.location.assign(`/redefinir-senha?${new URLSearchParams({ otp: "1", email: normalizedEmail }).toString()}`);
       } else {
         toast.success("Se este e-mail estiver cadastrado, você receberá um link para definir uma nova senha.");
       }
