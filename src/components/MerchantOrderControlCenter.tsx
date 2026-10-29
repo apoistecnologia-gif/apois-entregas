@@ -386,7 +386,7 @@ function MerchantOrderControlCenter() {
   if (!enabled || !merchantId) return null;
 
   return (
-    <div className="fixed bottom-5 left-5 z-[990] text-white">
+    <div className="fixed bottom-4 right-4 z-[990] flex max-w-[calc(100vw-2rem)] flex-col items-end text-white sm:bottom-5 sm:right-5">
       {open ? (
         <section className="mb-3 max-h-[72dvh] w-[min(420px,calc(100vw-2.5rem))] overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 shadow-2xl">
           <div className="flex items-center justify-between border-b border-zinc-900 px-4 py-3">
@@ -536,14 +536,14 @@ function MerchantOrderControlCenter() {
           type="button"
           disabled={busyOrderId === readyDeliveryOrder.id}
           onClick={() => void requestCourier(readyDeliveryOrder.id)}
-          className="mb-3 flex w-[min(420px,calc(100vw-2.5rem))] items-center justify-center gap-3 rounded-2xl border border-[#F6BE1C] bg-[#F6BE1C] px-5 py-4 text-sm font-black uppercase text-black shadow-2xl disabled:opacity-60"
+          className="mb-2 inline-flex max-w-[min(255px,calc(100vw-2rem))] min-h-10 items-center justify-center gap-2 rounded-xl border border-[#E51B23] bg-[#E51B23] px-3 py-2 text-xs font-bold text-white shadow-lg transition hover:bg-[#C9141B] disabled:opacity-60"
         >
           {busyOrderId === readyDeliveryOrder.id ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Truck className="h-5 w-5" />
+            <Truck className="h-4 w-4 shrink-0" />
           )}
-          Solicitar entregador · Pedido #{readyDeliveryOrder.order_number}
+          Pedir entregador · #{readyDeliveryOrder.order_number}
         </button>
       ) : null}
 
