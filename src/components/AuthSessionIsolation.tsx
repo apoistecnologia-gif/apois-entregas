@@ -176,5 +176,10 @@ export function AuthSessionIsolation({ children }: { children: ReactNode }) {
     );
   }
 
-  return <Fragment key={userId ?? "anonymous"}>{children}</Fragment>;
+  // A successful recovery OTP changes the session from anonymous to authenticated.
+  // Do not remount the public recovery page on that transition: it would reset
+  // its verified-code state before the user can set a new password.
+  const authFlowPath = typeof window !== "undefined" ? window.location.pathname : "";
+  const stableAuthFlow = authFlowPath === "/redefinir-senha" || authFlowPath === "/auth/callback";
+  return <Fragment key={stableAuthFlow ? "auth-flow" : (userId ?? "anonymous")}>{children}</Fragment>;
 }
