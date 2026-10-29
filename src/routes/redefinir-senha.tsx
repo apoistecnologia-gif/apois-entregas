@@ -137,7 +137,13 @@ function RedefinirSenhaPage() {
     setSaving(true);
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      toast.error("Não foi possível atualizar a senha. Solicite outro link, se necessário.");
+      const code = String(error.code ?? "").toLowerCase();
+      const message = code === "same_password" || error.status === 422 && /same.password/i.test(error.message)
+        ? "A nova senha precisa ser diferente da senha anterior. Escolha outra combinação."
+        : code === "session_not_found" || error.status === 401
+          ? "Sua sessão de recuperação expirou. Solicite um novo código."
+          : "Não foi possível atualizar a senha. Tente novamente ou solicite um novo código.";
+      toast.error(message);
       setSaving(false);
       return;
     }
