@@ -101,7 +101,7 @@ function RedefinirSenhaPage() {
 
   const verifyRecoveryCode = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (verifyingOtp || !/^[0-9]{6}$/.test(otpCode) || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(otpEmail.trim())) return;
+    if (verifyingOtp || !/^[0-9]{6,8}$/.test(otpCode) || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(otpEmail.trim())) return;
     setVerifyingOtp(true);
     setLinkError(null);
     const { data, error } = await supabase.auth.verifyOtp({
@@ -160,15 +160,15 @@ function RedefinirSenhaPage() {
 
         {otpMode ? (
           <form onSubmit={verifyRecoveryCode} className="mt-6 space-y-4">
-            <p className="text-sm text-[#606B7A]">Digite o código de 6 dígitos recebido no e-mail. Não abra o link de recuperação.</p>
+            <p className="text-sm text-[#606B7A]">Digite o código recebido no e-mail (6 a 8 dígitos). Não abra o link de recuperação.</p>
             <label className="block text-sm font-semibold">E-mail
               <Input type="email" autoComplete="email" value={otpEmail} onChange={(event) => setOtpEmail(event.target.value)} required className="mt-2" />
             </label>
             <label className="block text-sm font-semibold">Código de verificação
-              <Input inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="[0-9]{6}" value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/\\D/g, "").slice(0, 6))} required className="mt-2" placeholder="000000" />
+              <Input inputMode="numeric" autoComplete="one-time-code" maxLength={8} pattern="[0-9]{6,8}" value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/\\D/g, "").slice(0, 8))} required className="mt-2" placeholder="000000" />
             </label>
             {linkError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{linkError}</p>}
-            <Button type="submit" disabled={verifyingOtp || otpCode.length !== 6} className="w-full bg-[#E51B23] text-white">Verificar código</Button>
+            <Button type="submit" disabled={verifyingOtp || (otpCode.length < 6 || otpCode.length > 8)} className="w-full bg-[#E51B23] text-white">Verificar código</Button>
             <Button type="button" variant="outline" className="w-full" onClick={() => navigate({ to: "/login" })}>Voltar ao login</Button>
           </form>
         ) : checking ? (
