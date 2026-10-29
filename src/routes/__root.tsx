@@ -16,6 +16,7 @@ import appCss from "../styles.css?url";
 import systemThemeCss from "../system-theme.css?url";
 import apoisBackofficeCss from "../apois-backoffice-2026.css?url";
 import { ApoisLaunchSplash } from "../components/ApoisLaunchSplash";
+import { APOIS_OFFICIAL_RED_LOGO_URL } from "../assets/apoisOfficial2026";
 import { AuthSessionIsolation } from "../components/AuthSessionIsolation";
 import { CourierOfferOverlay } from "../components/CourierOfferOverlay";
 import { CourierPendingPayoutProcessor } from "../components/CourierPendingPayoutProcessor";
@@ -145,7 +146,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { rel: "stylesheet", href: appCss },
         { rel: "stylesheet", href: systemThemeCss },
         { rel: "stylesheet", href: apoisBackofficeCss },
-        { rel: "icon", href: "/favicon.png", type: "image/png" },
+        { rel: "icon", href: ["admin", "merchant"].includes(getApoisProductMode()) ? APOIS_OFFICIAL_RED_LOGO_URL : "/favicon.png", type: "image/png" },
       ],
     };
   },
