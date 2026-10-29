@@ -180,6 +180,17 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+// Order alerts and dispatch controls belong exclusively to authenticated merchant
+// operational routes. They must never mount on login or password-recovery pages.
+function MerchantOperationalServices() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  if (getApoisProductMode() !== "merchant") return null;
+  if (pathname !== "/merchant" && !pathname.startsWith("/merchant/") &&
+      pathname !== "/configuracoes-estabelecimento" &&
+      !pathname.startsWith("/configuracoes-estabelecimento/")) return null;
+  return <MerchantOrderSoundWatcher />;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -200,7 +211,7 @@ function RootComponent() {
       />
       <ApoisLaunchSplash />
       <CustomerPushManager />
-      <MerchantOrderSoundWatcher />
+      <MerchantOperationalServices />
       <CourierOfferOverlay />
       <CourierPendingPayoutProcessor />
       <MerchantPendingPayoutProcessor />
