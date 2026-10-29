@@ -32,7 +32,7 @@ function RedefinirSenhaPage() {
   const isBackoffice = product === "admin" || product === "merchant";
 
   useEffect(() => {
-    if (isBackoffice && new URLSearchParams(window.location.search).get("otp") === "1") {
+    if (isBackoffice && new URLSearchParams(window.location.search).get("otp")?.replaceAll('"', "") === "1") {
       setOtpMode(true);
       setOtpEmail(new URLSearchParams(window.location.search).get("email") ?? "");
       setChecking(false);
