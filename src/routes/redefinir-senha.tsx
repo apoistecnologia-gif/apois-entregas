@@ -148,7 +148,7 @@ function RedefinirSenhaPage() {
         <div className="text-center">
           {isBackoffice && <img src={APOIS_OFFICIAL_RED_LOGO_URL} alt="APOIS" width="72" height="72" className="mx-auto mb-3 h-[72px] w-[72px] rounded-full bg-white object-contain" />}
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary">
-            {otpMode ? (
+                {otpMode ? (
           <form onSubmit={verifyRecoveryCode} className="mt-6 space-y-4">
             <p className="text-sm text-[#606B7A]">Digite o código de 6 dígitos recebido no e-mail. Não abra o link de recuperação.</p>
             <label className="block text-sm font-semibold">E-mail
@@ -162,16 +162,6 @@ function RedefinirSenhaPage() {
             <Button type="button" variant="outline" className="w-full" onClick={() => navigate({ to: "/login" })}>Voltar ao login</Button>
           </form>
         ) : checking ? (
-              <Loader2 className="h-7 w-7 animate-spin" />
-            ) : (
-              <LockKeyhole className="h-7 w-7" />
-            )}
-          </div>
-          <h1 className="mt-4 text-2xl font-black">Redefinir senha</h1>
-          <p className={isBackoffice ? "mt-2 text-sm text-[#606B7A]" : "mt-2 text-sm text-zinc-500"}>Crie uma nova senha para sua conta APOIS.</p>
-        </div>
-
-        {checking ? (
           <p className={isBackoffice ? "mt-6 text-center text-sm text-[#606B7A]" : "mt-6 text-center text-sm text-zinc-500"}>
             Validando o link de recuperação...
           </p>
