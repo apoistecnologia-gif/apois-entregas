@@ -101,7 +101,11 @@ function RedefinirSenhaPage() {
 
   const verifyRecoveryCode = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (verifyingOtp || !/^[0-9]{6,8}$/.test(otpCode) || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(otpEmail.trim())) return;
+    if (verifyingOtp) return;
+    if (!/^[0-9]{6,8}$/.test(otpCode) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(otpEmail.trim())) {
+      setLinkError("Confira o e-mail e digite o código completo recebido.");
+      return;
+    }
     setVerifyingOtp(true);
     setLinkError(null);
     const { data, error } = await supabase.auth.verifyOtp({
@@ -165,7 +169,7 @@ function RedefinirSenhaPage() {
               <Input type="email" autoComplete="email" value={otpEmail} onChange={(event) => setOtpEmail(event.target.value)} required className="mt-2" />
             </label>
             <label className="block text-sm font-semibold">Código de verificação
-              <Input inputMode="numeric" autoComplete="one-time-code" maxLength={8} pattern="[0-9]{6,8}" value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/\\D/g, "").slice(0, 8))} required className="mt-2" placeholder="000000" />
+              <Input inputMode="numeric" autoComplete="one-time-code" maxLength={8} pattern="[0-9]{6,8}" value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 8))} required className="mt-2" placeholder="000000" />
             </label>
             {linkError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{linkError}</p>}
             <Button type="submit" disabled={verifyingOtp || (otpCode.length < 6 || otpCode.length > 8)} className="w-full bg-[#E51B23] text-white">Verificar código</Button>
