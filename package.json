@@ -16,7 +16,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "audit:repo": "node scripts/repository-audit.mjs",
+    "audit:repo": "node scripts/repository-audit.mjs && node scripts/verify-apois-entregas-supabase-source.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
