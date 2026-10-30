@@ -359,9 +359,16 @@ function MerchantWorkspace() {
     [loadOperations],
   );
 
+  // QA ONLY: no fabricated paid subscription; the backend checks the
+  // tightly allowlisted customer/test merchant before it permits cash.
+  const isIsolatedTestMerchant =
+    merchant?.slug === "apois-teste-entregas-homologacao-20261029" &&
+    merchant?.approval_status === "approved" &&
+    merchant?.is_active === true;
   const subscriptionAccessAllowed = Boolean(
-    subscription?.current_period_end &&
-    new Date(subscription.current_period_end).getTime() > Date.now(),
+    isIsolatedTestMerchant ||
+    (subscription?.current_period_end &&
+      new Date(subscription.current_period_end).getTime() > Date.now()),
   );
 
   useEffect(() => {
