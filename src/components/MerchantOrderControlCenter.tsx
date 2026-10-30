@@ -58,6 +58,12 @@ const STATUS_LABELS: Record<string, string> = {
 
 const READY_PROMPT_STORAGE_KEY = "apois_merchant_ready_delivery_prompts";
 
+function isOperationalPayment(order: MerchantOrder) {
+  const method = String(order.payment_method ?? "").toLowerCase();
+  const status = String(order.payment_status ?? "").toLowerCase();
+  return status === "paid" || (method === "cash" && status === "pending");
+}
+
 function money(value: MerchantOrder["total"]) {
   return `R$ ${Number(value ?? 0)
     .toFixed(2)
@@ -161,7 +167,6 @@ function MerchantOrderControlCenter() {
         "id,order_number,status,payment_status,payment_method,fulfillment_type,total,created_at",
       )
       .eq("merchant_id", id)
-      .eq("payment_status", "paid")
       .in("status", ACTIVE_STATUSES)
       .order("created_at", { ascending: true })
       .limit(50);
@@ -289,7 +294,7 @@ function MerchantOrderControlCenter() {
         (order) =>
           order.status === "ready" &&
           order.fulfillment_type === "delivery" &&
-          (order.payment_method !== "pix" || order.payment_status === "paid"),
+          isOperationalPayment(order),
       ) ?? null,
     [orders],
   );
@@ -351,7 +356,7 @@ function MerchantOrderControlCenter() {
     if (!merchantId || busyOrderId) return;
     const values = await prompt({
       title: "Cancelar pedido",
-      description: "Informe o motivo do cancelamento para o cliente e o estorno.",
+      description: "Informe o motivo do cancelamento para o cliente.",
       fields: [{ key: "reason", label: "Motivo do cancelamento", required: true, maxLength: 300 }],
       confirmLabel: "Confirmar cancelamento",
       destructive: true,
@@ -408,8 +413,7 @@ function MerchantOrderControlCenter() {
 
           <div className="max-h-[60dvh] space-y-3 overflow-y-auto p-3">
             {orders.map((order) => {
-              const paymentReady =
-                order.payment_method !== "pix" || order.payment_status === "paid";
+              const paymentReady = isOperationalPayment(order);
               const busy = busyOrderId === order.id;
               const canReject = PRE_PICKUP_CANCELLABLE_STATUSES.includes(order.status);
 
