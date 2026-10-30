@@ -27,6 +27,12 @@ function loadAlertedOrders() {
   }
 }
 
+function isAlertableOrderPayment(paymentMethod: unknown, paymentStatus: unknown) {
+  const method = String(paymentMethod ?? "").toLowerCase();
+  const status = String(paymentStatus ?? "").toLowerCase();
+  return status === "paid" || (method === "cash" && status === "pending");
+}
+
 function persistAlertedOrders(ids: Set<string>) {
   if (typeof window === "undefined") return;
   sessionStorage.setItem(ALERTED_STORAGE_KEY, JSON.stringify(Array.from(ids).slice(-100)));
@@ -124,13 +130,13 @@ function MerchantOrderSoundWatcher() {
     }
   }, [playOrderAlert]);
 
-  const queuePaidOrder = useCallback(
+  const queueOrder = useCallback(
     (orderId: string, orderNumber: string) => {
       if (alertedOrdersRef.current.has(orderId) || pendingAlertsRef.current.has(orderId)) return;
       pendingAlertsRef.current.set(orderId, { orderId, orderNumber });
       const label = orderNumber ? ` #${orderNumber}` : "";
-      toast.success(`Novo pedido pago${label}!`, {
-        description: "Pagamento confirmado. O pedido já pode ser atendido pelo estabelecimento.",
+      toast.success(`Novo pedido${label}!`, {
+        description: "O pedido já pode ser atendido pelo estabelecimento.",
         duration: 12_000,
       });
       void flushPending();
@@ -236,16 +242,14 @@ function MerchantOrderSoundWatcher() {
           const previous = payload.old as Record<string, unknown> | null;
           const orderId = typeof next?.["id"] === "string" ? next["id"] : null;
           const paymentStatus = String(next?.["payment_status"] ?? "").toLowerCase();
+          const paymentMethod = String(next?.["payment_method"] ?? "").toLowerCase();
           const previousPaymentStatus = String(previous?.["payment_status"] ?? "").toLowerCase();
+          const previousPaymentMethod = String(previous?.["payment_method"] ?? "").toLowerCase();
           const status = String(next?.["status"] ?? "").toLowerCase();
-          if (
-            !orderId ||
-            paymentStatus !== "paid" ||
-            previousPaymentStatus === "paid" ||
-            status !== "confirmed"
-          )
-            return;
-          queuePaidOrder(orderId, next?.["order_number"] ? String(next["order_number"]) : "");
+          const paymentReady = isAlertableOrderPayment(paymentMethod, paymentStatus);
+          const wasPaymentReady = isAlertableOrderPayment(previousPaymentMethod, previousPaymentStatus);
+          if (!orderId || !paymentReady || wasPaymentReady || status !== "confirmed") return;
+          queueOrder(orderId, next?.["order_number"] ? String(next["order_number"]) : "");
         },
       )
       .subscribe();
@@ -253,17 +257,16 @@ function MerchantOrderSoundWatcher() {
     const reconcile = async () => {
       const { data, error } = await supabase
         .from("orders" as any)
-        .select("id,order_number,payment_status,status,created_at")
+        .select("id,order_number,payment_status,payment_method,status,created_at")
         .eq("merchant_id", merchantId)
-        .eq("payment_status", "paid")
         .eq("status", "confirmed")
         .gte("created_at", startedAt)
         .order("created_at", { ascending: true })
         .limit(30);
       if (disposed || error || !Array.isArray(data)) return;
       data.forEach((order) => {
-        if (typeof order?.id === "string") {
-          queuePaidOrder(order.id, order?.order_number ? String(order.order_number) : "");
+        if (typeof order?.id === "string" && isAlertableOrderPayment(order.payment_method, order.payment_status)) {
+          queueOrder(order.id, order?.order_number ? String(order.order_number) : "");
         }
       });
     };
@@ -275,7 +278,7 @@ function MerchantOrderSoundWatcher() {
       window.clearInterval(interval);
       void supabase.removeChannel(channel);
     };
-  }, [enabled, merchantId, queuePaidOrder]);
+  }, [enabled, merchantId, queueOrder]);
 
   useEffect(
     () => () => {
