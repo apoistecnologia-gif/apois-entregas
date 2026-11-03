@@ -128,6 +128,12 @@ function TermosPage() {
           </p>
         </section>
 
+        {import.meta.env.VITE_APOIS_LEGAL_ACCEPTANCE_V2 === "true" && (
+          <a href="/aceites" className="block rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm font-bold text-primary underline">
+            Ver documentos vigentes e consultar meus aceites versionados
+          </a>
+        )}
+
         {sections.map((section) => (
           <section
             key={section.title}
