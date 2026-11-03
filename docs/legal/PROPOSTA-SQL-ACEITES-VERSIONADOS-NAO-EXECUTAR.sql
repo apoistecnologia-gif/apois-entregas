@@ -46,7 +46,10 @@ begin
       raise exception 'published legal document is immutable';
     end if;
   end if;
-  return case when tg_op = 'DELETE' then old else new end;
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
 end;
 $fn$;
 
@@ -84,8 +87,8 @@ on public.legal_document_versions(audience, document_key, status, effective_at);
 alter table public.legal_document_versions enable row level security;
 alter table public.legal_acceptance_events enable row level security;
 
-revoke all on table public.legal_document_versions from anon, authenticated;
-revoke all on table public.legal_acceptance_events from anon, authenticated;
+revoke all on table public.legal_document_versions from public, anon, authenticated;
+revoke all on table public.legal_acceptance_events from public, anon, authenticated;
 
 grant select on table public.legal_document_versions to anon, authenticated;
 grant select on table public.legal_acceptance_events to authenticated;
@@ -106,7 +109,8 @@ using (
   status = 'retired'
   and exists (
     select 1 from public.legal_acceptance_events e
-    where e.document_version_id = id and e.user_id = (select auth.uid())
+    where e.document_version_id = legal_document_versions.id
+      and e.user_id = (select auth.uid())
   )
 );
 
