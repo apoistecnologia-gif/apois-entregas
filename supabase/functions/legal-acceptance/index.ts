@@ -27,7 +27,7 @@ function response(req: Request, code: number, data: JsonRecord) {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
   if (origin && permitted) headers["Access-Control-Allow-Origin"] = origin;
-  return new Response(JSON.stringify(data), { status: permitted ? code : 403, headers });
+  return new Response(code === 204 ? null : JSON.stringify(data), { status: permitted ? code : 403, headers });
 }
 
 Deno.serve(async (req) => {
