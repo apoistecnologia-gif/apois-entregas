@@ -21,6 +21,11 @@ create table if not exists public.legal_document_versions (
   unique (document_key, audience, version)
 );
 
+-- Apenas uma versão de cada documento/papel pode permanecer publicada.
+create unique index if not exists legal_one_published_version_per_audience
+on public.legal_document_versions(document_key, audience)
+where status = 'published';
+
 -- Publicações jamais podem ter texto/versionamento substituídos.
 create or replace function public.prevent_published_legal_document_mutation()
 returns trigger language plpgsql set search_path = '' as $fn$
@@ -64,17 +69,11 @@ create table if not exists public.legal_acceptance_events (
   unique (user_id, request_id)
 );
 
--- Prova histórica é apenas acrescentada: proibir UPDATE e DELETE, inclusive por engano.
-create or replace function public.prevent_legal_acceptance_event_mutation()
-returns trigger language plpgsql set search_path = '' as $fn$
-begin
-  raise exception 'legal acceptance event is append only';
-end;
-$fn$;
-drop trigger if exists legal_acceptance_events_append_only on public.legal_acceptance_events;
-create trigger legal_acceptance_events_append_only
-before update or delete on public.legal_acceptance_events
-for each row execute function public.prevent_legal_acceptance_event_mutation();
+-- Eventos não podem ser alterados pela API do usuário. O controle de INSERT,
+-- UPDATE e DELETE é feito por privilégios mínimos, sem conceder essas operações
+-- a anon/authenticated. Exclusão excepcional por dever legal, retenção vencida
+-- ou apagamento de conta será executada por procedimento administrativo auditado.
+-- Não impor trigger de DELETE que impossibilite o CASCADE de auth.users.
 
 create index if not exists legal_acceptance_events_user_idx
 on public.legal_acceptance_events(user_id, occurred_at desc);
@@ -97,6 +96,20 @@ on public.legal_document_versions
 for select to anon, authenticated
 using (status = 'published' and effective_at <= now());
 
+-- Versões retiradas continuam disponíveis somente para titulares que já
+-- possuem evento daquela versão. Isso evita expor drafts e conserva prova histórica.
+drop policy if exists "Read own previously accepted legal documents" on public.legal_document_versions;
+create policy "Read own previously accepted legal documents"
+on public.legal_document_versions
+for select to authenticated
+using (
+  status = 'retired'
+  and exists (
+    select 1 from public.legal_acceptance_events e
+    where e.document_version_id = id and e.user_id = (select auth.uid())
+  )
+);
+
 drop policy if exists "Users read own legal event records" on public.legal_acceptance_events;
 create policy "Users read own legal event records"
 on public.legal_acceptance_events
@@ -106,4 +119,6 @@ using (user_id = (select auth.uid()));
 -- Nenhum INSERT/UPDATE/DELETE é concedido a anon/authenticated.
 -- O Edge Function usa service_role somente no servidor, verificando JWT e função do usuário.
 -- Não publicar documento algum nesta etapa: a tabela inicia vazia.
+-- Antes de aprovar uma versão posterior, marcar a atual como retired e testar
+-- se o titular pode visualizar o conteúdo histórico através da RLS.
 -- Revisar retenção, exclusão e proteção de direitos antes de aplicar.
