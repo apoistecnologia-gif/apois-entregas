@@ -32,6 +32,7 @@ const SHARED_PUBLIC_PATHS = new Set([
   "/auth/callback",
   "/termos",
   "/privacidade",
+  "/aceites", // protegida por autenticacao e feature flag na propria rota
 ]);
 
 function isWithin(pathname: string, root: string) {
