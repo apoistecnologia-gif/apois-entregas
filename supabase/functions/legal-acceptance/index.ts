@@ -1,19 +1,16 @@
 import { createClient } from "npm:@supabase/supabase-js@2.112.1";
+import {
+  validateAcceptancePayload,
+  isActiveLegalDocument,
+  requiredAcceptanceAction,
+  resolvePreviousAcceptance,
+} from "./rules.mjs";
 
 // Implementação preparada em branch de homologação. Não implantar até aprovar
 // os documentos, executar/testar a migration e configurar APOIS_LEGAL_ALLOWED_ORIGINS.
 // Supabase secret key deve permanecer EXCLUSIVAMENTE no servidor.
 
 type JsonRecord = Record<string, unknown>;
-
-const asRecord = (value: unknown): JsonRecord | null =>
-  value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as JsonRecord)
-    : null;
-const asString = (value: unknown) =>
-  typeof value === "string" ? value.trim() : "";
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const hexSha256 = /^[0-9a-f]{64}$/i;
 
 function response(req: Request, code: number, data: JsonRecord) {
   const origin = req.headers.get("origin");
@@ -44,24 +41,15 @@ Deno.serve(async (req) => {
   const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
   if (!jwt || jwt === authHeader) return response(req, 401, { error: "authentication_required" });
 
-  let body: JsonRecord | null;
+  let body: unknown;
   try {
-    body = asRecord(await req.json());
+    body = await req.json();
   } catch {
     return response(req, 400, { error: "invalid_json" });
   }
-  if (!body) return response(req, 400, { error: "invalid_body" });
-
-  const documentId = asString(body.document_id);
-  const requestId = asString(body.request_id);
-  const action = asString(body.action);
-  const checksum = asString(body.content_sha256).toLowerCase();
-  const appVersion = asString(body.app_version);
-  if (!uuidPattern.test(documentId) || !uuidPattern.test(requestId)
-      || !hexSha256.test(checksum) || !["accepted", "acknowledged"].includes(action)
-      || appVersion.length > 64) {
-    return response(req, 400, { error: "invalid_evidence_request" });
-  }
+  const parsed = validateAcceptancePayload(body);
+  if (!parsed.ok) return response(req, 400, { error: parsed.error });
+  const { documentId, requestId, action, checksum, appVersion } = parsed.value;
 
   const url = Deno.env.get("SUPABASE_URL");
   const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -81,16 +69,13 @@ Deno.serve(async (req) => {
     .eq("id", documentId)
     .maybeSingle();
   if (docError) return response(req, 503, { error: "catalog_unavailable" });
-  if (!document || document.status !== "published" ||
-      !document.effective_at || Date.parse(document.effective_at) > Date.now()) {
+  if (!isActiveLegalDocument(document)) {
     return response(req, 409, { error: "document_not_active" });
   }
   if (checksum !== document.content_sha256) {
     return response(req, 409, { error: "document_changed_reload_required" });
   }
-  const requiredAction = document.document_key === "privacy_notice"
-    ? "acknowledged"
-    : "accepted";
+  const requiredAction = requiredAcceptanceAction(document.document_key);
   if (action !== requiredAction) {
     return response(req, 400, { error: "invalid_legal_action" });
   }
@@ -142,29 +127,45 @@ Deno.serve(async (req) => {
   }
 
   if (insertError?.code === "23505") {
-    const { data: prior, error: readError } = await admin
+    // A request_id collision and an already-accepted document are distinct cases.
+    // Resolve the request_id first, or a reused ID could be accepted for another act.
+    const { data: byRequestId, error: requestError } = await admin
       .from("legal_acceptance_events")
       .select("id,document_version_id,action,occurred_at")
       .eq("user_id", userId)
-      .or("request_id.eq." + requestId + ",document_version_id.eq." + documentId)
-      .order("occurred_at", { ascending: true })
-      .limit(5);
-    if (readError) return response(req, 503, { error: "evidence_lookup_failed" });
-    const matching = prior?.find((entry) =>
-      entry.document_version_id === documentId && entry.action === action);
-    if (matching) {
+      .eq("request_id", requestId)
+      .maybeSingle();
+    if (requestError) return response(req, 503, { error: "evidence_lookup_failed" });
+
+    let byDocument = null;
+    if (!byRequestId) {
+      const prior = await admin
+        .from("legal_acceptance_events")
+        .select("id,document_version_id,action,occurred_at")
+        .eq("user_id", userId)
+        .eq("document_version_id", documentId)
+        .eq("action", action)
+        .maybeSingle();
+      if (prior.error) return response(req, 503, { error: "evidence_lookup_failed" });
+      byDocument = prior.data;
+    }
+    const decision = resolvePreviousAcceptance(byRequestId, byDocument, documentId, action);
+    if (decision.kind === "conflict") {
+      return response(req, 409, { error: "request_id_already_used" });
+    }
+    if (decision.kind === "existing") {
       return response(req, 200, {
-        id: matching.id,
-        document_version_id: matching.document_version_id,
+        id: decision.event.id,
+        document_version_id: decision.event.document_version_id,
         version: document.version,
         content_sha256: document.content_sha256,
-        action: matching.action,
-        occurred_at: matching.occurred_at,
+        action: decision.event.action,
+        occurred_at: decision.event.occurred_at,
         accepted_from_server: true,
         already_recorded: true,
       });
     }
-    return response(req, 409, { error: "request_id_already_used" });
+    return response(req, 503, { error: "evidence_lookup_failed" });
   }
   return response(req, 503, { error: "evidence_not_recorded" });
 });
