@@ -2,7 +2,8 @@ import { createClient } from "npm:@supabase/supabase-js@2.112.1";
 
 type JsonRecord = Record<string, unknown>;
 
-const MONTHLY_AMOUNT = 69.9;
+// Valor definido para novas adesões: assinaturas antigas conservam o valor registrado.
+const NEW_MERCHANT_MONTHLY_AMOUNT = 59.9;
 const PIX_EXPIRATION_MS = 30 * 60 * 1000;
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -217,7 +218,7 @@ Deno.serve(async (request: Request) => {
         merchant_id: merchant.id,
         provider: "mercadopago",
         provider_status: "pending",
-        amount: MONTHLY_AMOUNT,
+        amount: NEW_MERCHANT_MONTHLY_AMOUNT,
         currency: "BRL",
         billing_frequency: "monthly",
         metadata: { environment, billingModel: "monthly_pix" },
@@ -228,6 +229,14 @@ Deno.serve(async (request: Request) => {
       return json(request, 500, { error: "subscription_create_failed" });
     }
     subscription = created.data;
+  }
+
+  // Não alterar preços de contratos antigos: o valor registrado na assinatura
+  // vigente prevalece até a revisão comercial expressamente aplicável.
+  const subscriptionAmount = numberValue(subscription.amount);
+  if (subscriptionAmount === null || subscriptionAmount <= 0 ||
+      Math.abs(subscriptionAmount - Math.round(subscriptionAmount * 100) / 100) > 1e-8) {
+    return json(request, 503, { error: "invalid_subscription_amount" });
   }
 
   const { data: paymentRows, error: paymentsError } = await admin
@@ -261,7 +270,7 @@ Deno.serve(async (request: Request) => {
     if (
       text(raw.external_reference) !== expectedReference ||
       amount === null ||
-      Math.round(amount * 100) !== 6990
+      Math.round(amount * 100) !== Math.round(Number(paymentRow.amount) * 100)
     ) {
       console.error("merchant subscription PIX provider mismatch", {
         merchantId: merchant.id,
@@ -431,12 +440,12 @@ Deno.serve(async (request: Request) => {
     ? {
         type: "online",
         external_reference: externalReference,
-        total_amount: MONTHLY_AMOUNT.toFixed(2),
+        total_amount: subscriptionAmount.toFixed(2),
         payer: { email: payerEmail, first_name: "APRO" },
         transactions: {
           payments: [
             {
-              amount: MONTHLY_AMOUNT.toFixed(2),
+              amount: subscriptionAmount.toFixed(2),
               payment_method: { id: "pix", type: "bank_transfer" },
             },
           ],
@@ -446,12 +455,12 @@ Deno.serve(async (request: Request) => {
         type: "online",
         processing_mode: "automatic",
         external_reference: externalReference,
-        total_amount: MONTHLY_AMOUNT.toFixed(2),
+        total_amount: subscriptionAmount.toFixed(2),
         payer: { email: payerEmail },
         transactions: {
           payments: [
             {
-              amount: MONTHLY_AMOUNT.toFixed(2),
+              amount: subscriptionAmount.toFixed(2),
               payment_method: { id: "pix", type: "bank_transfer" },
               expiration_time: "PT30M",
             },
@@ -504,7 +513,7 @@ Deno.serve(async (request: Request) => {
       merchant_subscription_id: subscription.id,
       provider_authorized_payment_id: providerOrderId,
       provider_payment_id: transactionId,
-      amount: MONTHLY_AMOUNT,
+      amount: subscriptionAmount,
       currency: "BRL",
       status: orderPaid(providerRaw) ? "approved" : "pending",
       method: "pix",
