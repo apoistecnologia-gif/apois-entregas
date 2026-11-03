@@ -32,6 +32,7 @@ const SHARED_PUBLIC_PATHS = new Set([
   "/auth/callback",
   "/termos",
   "/privacidade",
+  "/aceites", // Autenticação e chave de ativação são exigidas pela própria rota.
 ]);
 
 function isWithin(pathname: string, root: string) {
