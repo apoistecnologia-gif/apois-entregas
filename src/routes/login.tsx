@@ -316,6 +316,14 @@ function Login() {
                   {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Entrando…</> : "Entrar com segurança"}
                 </Button>
               </form>
+              {!isAdmin && allowsSignup ? (
+                <p className="mt-6 text-center text-sm text-[#606B7A]">
+                  Ainda não tem uma conta?{" "}
+                  <Link to="/register" className="font-bold text-[#C9141B] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-[#E51B23]">
+                    Criar minha conta
+                  </Link>
+                </p>
+              ) : null}
               <p className="mt-10 border-t border-[#E1E4EA] pt-5 text-center text-xs text-[#667081]">
                 Acesso exclusivo às contas autorizadas. As permissões são verificadas após entrar.
               </p>
