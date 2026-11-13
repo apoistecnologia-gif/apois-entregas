@@ -952,7 +952,7 @@ function MerchantWorkspace() {
         categories={merchantCategories}
         busy={busyAction === "application"}
         onSubmit={createApplication}
-        onBack={() => navigate({ to: "/perfil" })}
+        onBack={() => { void logout(); }}
       />
     );
   }
@@ -2140,7 +2140,7 @@ function MerchantApplication({ user, categories, busy, onSubmit, onBack }: any) 
           onClick={onBack}
           className="text-sm font-bold text-zinc-500 hover:text-white"
         >
-          ← Voltar para minha conta
+          ← Voltar ao login
         </button>
         <div className="mt-6 rounded-3xl border border-zinc-900 bg-zinc-950 p-6 md:p-8">
           <p className="text-sm font-black uppercase tracking-[0.2em] text-primary">
