@@ -5,6 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import logoAsset from "@/assets/logo.png.asset.json";
+import { APOIS_OFFICIAL_RED_LOGO_URL } from "@/assets/apoisOfficial2026";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getApoisProductMode, getProductHomeRoute, getProductLabel } from "@/lib/product-routing";
@@ -215,8 +216,8 @@ function Register() {
       <main className="min-h-0 flex-1 overflow-y-auto px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
         <div className="mb-5 flex flex-col items-center text-center">
           <img
-            src={logoAsset.url}
-            alt="APOIS ENTREGA"
+            src={product === "merchant" ? APOIS_OFFICIAL_RED_LOGO_URL : logoAsset.url}
+            alt={product === "merchant" ? "Logomarca oficial APOIS" : "APOIS ENTREGA"}
             className="mb-3 h-14 w-auto object-contain"
           />
           <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">
