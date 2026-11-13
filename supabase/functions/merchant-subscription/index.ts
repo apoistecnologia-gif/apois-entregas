@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.112.1";
 type JsonRecord = Record<string, unknown>;
 
 // Valor definido para novas adesões: assinaturas antigas conservam o valor registrado.
-const NEW_MERCHANT_MONTHLY_AMOUNT = 59.9;
+const NEW_MERCHANT_MONTHLY_AMOUNT = 69.9;
 const PIX_EXPIRATION_MS = 30 * 60 * 1000;
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
