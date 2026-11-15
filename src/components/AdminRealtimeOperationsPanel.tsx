@@ -487,7 +487,7 @@ export function AdminRealtimeOperationsPanel() {
               do navegador.
             </div>
           ) : (
-            <div className="min-h-[430px] bg-zinc-900">
+            <div className="h-[430px] bg-zinc-900">
               <AdminMapErrorBoundary>
                 <APIProvider apiKey={browserKey} onError={(error) => {
                   console.error("APOIS Admin: Google Maps API load failure", error);
