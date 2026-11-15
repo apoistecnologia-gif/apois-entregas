@@ -376,9 +376,19 @@ export function AdminRealtimeOperationsPanel() {
             automaticamente em até 45 segundos enquanto esta aba estiver aberta.
           </p>
           {lastUpdatedAt ? (
-            <p className="mt-1 text-[11px] text-zinc-500">
-              Última leitura: {dateTime(lastUpdatedAt)}
-            </p>
+            <div
+              role="status"
+              aria-live="polite"
+              className="mt-3 inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 shadow-sm"
+            >
+              <span className="inline-flex items-center gap-2 text-primary">
+                <RefreshCw className="h-4 w-4" />
+                Atualização automática ativa
+              </span>
+              <time dateTime={lastUpdatedAt} className="tabular-nums text-zinc-900">
+                Última leitura: {dateTime(lastUpdatedAt)}
+              </time>
+            </div>
           ) : null}
         </div>
         <Button
