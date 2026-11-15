@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { usePromptDialog } from "@/components/ui/prompt-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { getApoisProductMode } from "@/lib/product-routing";
+import { getSelectedMerchantMembership, MERCHANT_SELECTION_EVENT } from "@/lib/merchant-selection";
 
 type MerchantOrder = {
   id: string;
@@ -159,6 +160,7 @@ function MerchantOrderControlCenter() {
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
   const { prompt, promptDialog } = usePromptDialog();
   const readyPromptedRef = useRef<Set<string>>(loadReadyPromptedOrders());
+  const activeMerchantRef = useRef<string | null>(null);
 
   const loadOrders = useCallback(async (id: string) => {
     const { data, error } = await supabase
@@ -194,17 +196,21 @@ function MerchantOrderControlCenter() {
         return;
       }
 
-      const { data: membership } = await supabase
+      const { data: memberships, error: membershipError } = await supabase
         .from("merchant_members" as any)
-        .select("merchant_id")
+        .select("merchant_id,role,status,created_at")
         .eq("user_id", user.id)
         .eq("status", "active")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order("created_at", { ascending: false });
 
-      const candidateId =
-        typeof membership?.merchant_id === "string" ? membership.merchant_id : null;
+      if (membershipError) {
+        console.warn("merchant order membership lookup failed", membershipError.code);
+        return;
+      }
+      const candidateId = getSelectedMerchantMembership(
+        user.id,
+        Array.isArray(memberships) ? memberships : [],
+      )?.merchant_id ?? null;
       if (!candidateId || disposed) {
         if (!disposed) {
           setMerchantId(null);
@@ -224,20 +230,26 @@ function MerchantOrderControlCenter() {
           ? candidateId
           : null;
       if (disposed) return;
-      setMerchantId(operationalId);
-      if (!operationalId) {
+      if (activeMerchantRef.current !== operationalId) {
+        activeMerchantRef.current = operationalId;
         setOrders([]);
         setOpen(false);
-        return;
       }
+      setMerchantId(operationalId);
+      if (!operationalId) return;
       await loadOrders(operationalId);
     };
 
     void resolveMerchant();
+    const handleSelection = () => void resolveMerchant();
     const { data: authListener } = supabase.auth.onAuthStateChange(() => void resolveMerchant());
+    window.addEventListener(MERCHANT_SELECTION_EVENT, handleSelection);
+    window.addEventListener("storage", handleSelection);
     return () => {
       disposed = true;
       authListener.subscription.unsubscribe();
+      window.removeEventListener(MERCHANT_SELECTION_EVENT, handleSelection);
+      window.removeEventListener("storage", handleSelection);
     };
   }, [enabled, loadOrders]);
 
