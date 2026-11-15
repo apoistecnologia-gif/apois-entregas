@@ -68,14 +68,8 @@ type Profile = {
 const from = (table: string) => (supabase.from as any)(table);
 const browserKey = (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
 const mapId = (import.meta as any).env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined;
-// Approximate Petrolina/PE starting point for a manual Preview test only.
-// Real courier positions always take precedence when available.
-const previewDemoPositions = [
-  { lat: -9.393912, lng: -40.492966 },
-  { lat: -9.392172, lng: -40.490473 },
-  { lat: -9.390602, lng: -40.487884 },
-] as const;
-const previewDemoPosition = previewDemoPositions[0];
+// The map only mounts with at least one recent valid courier position.
+const fallbackMapCenter = { lat: -9.393912, lng: -40.492966 };
 const courierPositionMaxAgeMs = 30 * 60 * 1000;
 const courierPositionMaxAccuracyMeters = 200; // Matches the current production dispatch policy.
 
@@ -131,16 +125,11 @@ function addressText(value: Record<string, unknown> | null) {
 }
 
 export function AdminRealtimeOperationsPanel() {
-  const [mapSmokeTestRequested, setMapSmokeTestRequested] = useState(false);
-  const [previewSimulationStep, setPreviewSimulationStep] = useState(0);
-  const previewSimulatedPosition = previewDemoPositions[previewSimulationStep];
   const [positionClock, setPositionClock] = useState(() => Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setPositionClock(Date.now()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
-  // Preview-only manual test. No maps are loaded without a courier unless an admin explicitly opts in.
-  const enablePreviewMapSmokeTest = (import.meta as any).env.VITE_APOIS_MAPS_SMOKE_TEST === "true";
   const [jobs, setJobs] = useState<DeliveryJob[]>([]);
   const [availability, setAvailability] = useState<CourierAvailability[]>([]);
   const [locations, setLocations] = useState<CourierLocation[]>([]);
@@ -149,8 +138,6 @@ export function AdminRealtimeOperationsPanel() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [realtimeChannelStatus, setRealtimeChannelStatus] = useState<Record<string, string>>({});
-  const [realtimeEventCount, setRealtimeEventCount] = useState<Record<string, number>>({});
 
   const load = useCallback(async (quiet = false) => {
     quiet ? setRefreshing(true) : setLoading(true);
@@ -208,28 +195,14 @@ export function AdminRealtimeOperationsPanel() {
       { name: "admin_realtime_locations", table: "courier_locations" },
       { name: "admin_realtime_orders", table: "orders" },
     ];
-    const channels = subscriptions.map(({ name, table }) => {
-      const monitor = enablePreviewMapSmokeTest &&
-        (table === "courier_locations" || table === "courier_availability");
-      return supabase
+    const channels = subscriptions.map(({ name, table }) =>
+      supabase
         .channel(name)
-        .on("postgres_changes", { event: "*", schema: "public", table }, () => {
-          refresh();
-          if (monitor) {
-            setRealtimeEventCount((current) => ({
-              ...current,
-              [table]: (current[table] ?? 0) + 1,
-            }));
-          }
-        })
+        .on("postgres_changes", { event: "*", schema: "public", table }, refresh)
         .subscribe((status, error) => {
-          if (!monitor) return;
-          setRealtimeChannelStatus((current) =>
-            current[table] === status ? current : { ...current, [table]: status },
-          );
-          if (error) console.warn("APOIS Realtime channel status:", table, status, error);
-        });
-    });
+          if (error) console.warn("APOIS Realtime subscription error:", table, status, error);
+        }),
+    );
     return () => {
       if (pendingRefresh !== null) clearTimeout(pendingRefresh);
       channels.forEach((channel) => void supabase.removeChannel(channel));
@@ -276,7 +249,7 @@ export function AdminRealtimeOperationsPanel() {
     const first = onlineLocations[0];
     return first
       ? { lat: Number(first.latitude), lng: Number(first.longitude) }
-      : previewDemoPosition;
+      : fallbackMapCenter;
   }, [onlineLocations]);
 
   if (loading) {
@@ -442,37 +415,13 @@ export function AdminRealtimeOperationsPanel() {
             </div>
             <MapPinned className="h-5 w-5 text-primary" />
           </div>
-          {enablePreviewMapSmokeTest ? (
-            <div role="status" className="mx-4 mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-800">
-              <p className="font-semibold">Diagnóstico Supabase Realtime — somente Preview</p>
-              <p className="mt-1">Conexão não significa que um evento já foi recebido.</p>
-              <p className="mt-2">
-                Disponibilidade: <strong>{realtimeChannelStatus.courier_availability ?? "CONECTANDO"}</strong>
-                {" · "}Eventos recebidos: {realtimeEventCount.courier_availability ?? 0}
-              </p>
-              <p className="mt-1">
-                Localização: <strong>{realtimeChannelStatus.courier_locations ?? "CONECTANDO"}</strong>
-                {" · "}Eventos recebidos: {realtimeEventCount.courier_locations ?? 0}
-              </p>
-            </div>
-          ) : null}
-          {onlineLocations.length === 0 && !mapSmokeTestRequested ? (
+          {onlineLocations.length === 0 ? (
             <div
               role="status"
               className="m-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700"
             >
               Nenhum entregador online com localização válida no momento. O mapa será carregado
               automaticamente somente quando houver uma posição disponível.
-              {enablePreviewMapSmokeTest && browserKey && mapId ? (
-                <div className="mt-3">
-                  <Button type="button" variant="outline" onClick={() => setMapSmokeTestRequested(true)}>
-                    Testar mapa e marcador simulado (pode gerar cobrança)
-                  </Button>
-                  <p className="mt-2 text-xs text-zinc-600">
-                    Teste manual sem colocar entregadores online ou criar pedidos.
-                  </p>
-                </div>
-              ) : null}
             </div>
           ) : !browserKey || !mapId ? (
             <div
@@ -492,14 +441,6 @@ export function AdminRealtimeOperationsPanel() {
                   gestureHandling="greedy"
                   disableDefaultUI={false}
                 >
-                  {enablePreviewMapSmokeTest && mapSmokeTestRequested && onlineLocations.length === 0 ? (
-                    <AdvancedMarker position={previewSimulatedPosition} title="SIMULAÇÃO — não é entregador real">
-                      <div className="flex flex-col items-center gap-1 rounded-lg border-2 border-red-600 bg-white px-2 py-1 text-center text-xs font-black text-red-700 shadow-md">
-                        <MapPinned className="h-5 w-5" aria-hidden="true" />
-                        SIMULAÇÃO
-                      </div>
-                    </AdvancedMarker>
-                  ) : null}
                   {onlineLocations.map((location) => {
                     const courier = courierById.get(location.courier_id);
                     const profile = courier ? profileById.get(courier.user_id) : null;
@@ -525,28 +466,6 @@ export function AdminRealtimeOperationsPanel() {
               </APIProvider>
             </div>
           )}
-          {enablePreviewMapSmokeTest && mapSmokeTestRequested && onlineLocations.length === 0 ? (
-            <div className="mx-4 mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
-              <p role="status" className="font-semibold">
-                SIMULAÇÃO DE HOMOLOGAÇÃO — marcador fictício em Petrolina/PE.
-                Não há entregador online e nenhuma localização real foi alterada.
-              </p>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="border-red-400 bg-white text-red-800 hover:bg-red-100"
-                  onClick={() => setPreviewSimulationStep((step) => (step + 1) % previewDemoPositions.length)}
-                >
-                  Mover marcador simulado
-                </Button>
-                <span className="text-xs font-semibold">
-                  Posição simulada {previewSimulationStep + 1} de {previewDemoPositions.length}.
-                  Sem alterações no Supabase.
-                </span>
-              </div>
-            </div>
-          ) : null}
           <div className="grid grid-cols-2 gap-3 p-4">
             <div className="rounded-2xl bg-black p-3">
               <p className="flex items-center gap-1 text-[10px] font-black uppercase text-zinc-500">
