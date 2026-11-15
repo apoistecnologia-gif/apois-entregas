@@ -56,6 +56,8 @@ type CourierLocation = {
 type Courier = {
   id: string;
   user_id: string;
+  status: string;
+  is_active: boolean;
   vehicle_type: string | null;
   vehicle_model: string | null;
 };
@@ -63,6 +65,7 @@ type Courier = {
 type Profile = {
   id: string;
   full_name: string | null;
+  is_active: boolean;
 };
 
 const from = (table: string) => (supabase.from as any)(table);
@@ -151,8 +154,8 @@ export function AdminRealtimeOperationsPanel() {
           .limit(300),
         from("courier_availability").select("*").order("updated_at", { ascending: false }),
         from("courier_locations").select("*").order("recorded_at", { ascending: false }),
-        from("couriers").select("id,user_id,vehicle_type,vehicle_model"),
-        from("profiles").select("id,full_name"),
+        from("couriers").select("id,user_id,status,is_active,vehicle_type,vehicle_model"),
+        from("profiles").select("id,full_name,is_active"),
       ]);
       const firstError = [jobsRes, availabilityRes, locationsRes, couriersRes, profilesRes].find(
         (result) => result.error,
@@ -211,15 +214,34 @@ export function AdminRealtimeOperationsPanel() {
 
   const courierById = useMemo(() => new Map(couriers.map((row) => [row.id, row])), [couriers]);
   const profileById = useMemo(() => new Map(profiles.map((row) => [row.id, row])), [profiles]);
-  const onlineIds = useMemo(
-    () => new Set(availability.filter((row) => row.is_online).map((row) => row.courier_id)),
+  const availabilityByCourierId = useMemo(
+    () => new Map(availability.map((row) => [row.courier_id, row])),
     [availability],
+  );
+  const onlineIds = useMemo(
+    () =>
+      new Set(
+        availability
+          .filter((row) => {
+            if (!row.is_online) return false;
+            const courier = courierById.get(row.courier_id);
+            const profile = courier ? profileById.get(courier.user_id) : null;
+            const lastSeenAt = Date.parse(row.last_seen_at ?? "");
+            return courier?.status === "approved" && courier.is_active &&
+              profile?.is_active === true &&
+              Number.isFinite(lastSeenAt) &&
+              lastSeenAt <= positionClock + 60_000 &&
+              positionClock - lastSeenAt <= courierPositionMaxAgeMs;
+          })
+          .map((row) => row.courier_id),
+      ),
+    [availability, courierById, profileById, positionClock],
   );
   const onlineLocations = useMemo(
     () =>
       locations.filter((row) => {
         if (!onlineIds.has(row.courier_id)) return false;
-        const availabilityRow = availability.find((entry) => entry.courier_id === row.courier_id);
+        const availabilityRow = availabilityByCourierId.get(row.courier_id);
         const lat = Number(row.latitude);
         const lng = Number(row.longitude);
         const accuracy = row.accuracy_meters === null ? NaN : Number(row.accuracy_meters);
@@ -239,7 +261,7 @@ export function AdminRealtimeOperationsPanel() {
           positionClock - lastSeenTime <= courierPositionMaxAgeMs;
         return hasValidCoordinates && hasValidAccuracy && hasRecentPosition;
       }),
-    [locations, onlineIds, availability, positionClock],
+    [locations, onlineIds, availabilityByCourierId, positionClock],
   );
   const delayedJobs = useMemo(
     () => jobs.filter((job) => Date.now() - new Date(job.updated_at).getTime() > 45 * 60 * 1000),
@@ -289,7 +311,7 @@ export function AdminRealtimeOperationsPanel() {
           </p>
           <h2 className="mt-1 text-xl font-black">Pedidos e entregadores em tempo real</h2>
           <p className="mt-1 text-xs text-zinc-500">
-            Atualização por Supabase Realtime, limitada a administradores autorizados.
+            Localização e disponibilidade via Supabase Realtime; demais dados podem exigir atualização manual.
           </p>
         </div>
         <Button
