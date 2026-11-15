@@ -376,10 +376,21 @@ export function AdminRealtimeOperationsPanel() {
             </div>
             <MapPinned className="h-5 w-5 text-primary" />
           </div>
-          {!browserKey || !mapId ? (
-            <div className="m-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">
-              Configure `VITE_GOOGLE_MAPS_BROWSER_KEY` e `VITE_GOOGLE_MAPS_MAP_ID` no ambiente de
-              publicação para exibir o mapa operacional.
+          {onlineLocations.length === 0 ? (
+            <div
+              role="status"
+              className="m-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700"
+            >
+              Nenhum entregador online com localização válida no momento. O mapa será carregado
+              somente quando houver uma posição disponível.
+            </div>
+          ) : !browserKey || !mapId ? (
+            <div
+              role="alert"
+              className="m-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+            >
+              Mapa operacional indisponível. Verifique as configurações de Maps JavaScript no
+              ambiente de publicação.
             </div>
           ) : (
             <div className="h-[430px] bg-zinc-900">
