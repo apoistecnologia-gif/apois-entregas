@@ -120,6 +120,9 @@ function addressText(value: Record<string, unknown> | null) {
 }
 
 export function AdminRealtimeOperationsPanel() {
+  const [mapSmokeTestRequested, setMapSmokeTestRequested] = useState(false);
+  // Preview-only manual test. No maps are loaded without a courier unless an admin explicitly opts in.
+  const enablePreviewMapSmokeTest = (import.meta as any).env.VITE_APOIS_MAPS_SMOKE_TEST === "true";
   const [jobs, setJobs] = useState<DeliveryJob[]>([]);
   const [availability, setAvailability] = useState<CourierAvailability[]>([]);
   const [locations, setLocations] = useState<CourierLocation[]>([]);
@@ -376,13 +379,23 @@ export function AdminRealtimeOperationsPanel() {
             </div>
             <MapPinned className="h-5 w-5 text-primary" />
           </div>
-          {onlineLocations.length === 0 ? (
+          {onlineLocations.length === 0 && !mapSmokeTestRequested ? (
             <div
               role="status"
               className="m-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700"
             >
               Nenhum entregador online com localização válida no momento. O mapa será carregado
-              somente quando houver uma posição disponível.
+              automaticamente somente quando houver uma posição disponível.
+              {enablePreviewMapSmokeTest && browserKey && mapId ? (
+                <div className="mt-3">
+                  <Button type="button" variant="outline" onClick={() => setMapSmokeTestRequested(true)}>
+                    Testar Google Maps no Preview (pode gerar cobrança)
+                  </Button>
+                  <p className="mt-2 text-xs text-zinc-600">
+                    Teste manual sem colocar entregadores online ou criar pedidos.
+                  </p>
+                </div>
+              ) : null}
             </div>
           ) : !browserKey || !mapId ? (
             <div
