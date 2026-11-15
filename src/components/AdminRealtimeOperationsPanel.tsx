@@ -9,7 +9,7 @@ import {
   RefreshCw,
   Route,
 } from "lucide-react";
-import { Component, useCallback, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/WorkspaceShell";
 import { supabase } from "@/integrations/supabase/client";
@@ -73,7 +73,9 @@ const browserKey = (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY as stri
 const mapId = (import.meta as any).env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined;
 // The map only mounts with at least one recent valid courier position.
 const fallbackMapCenter = { lat: -9.393912, lng: -40.492966 };
-const courierPositionMaxAgeMs = 30 * 60 * 1000;
+// A live operations view must not show a position recorded half an hour ago as current.
+const courierPositionMaxAgeMs = 2 * 60 * 1000;
+const operationsPollIntervalMs = 45_000;
 const courierPositionMaxAccuracyMeters = 200; // Matches the current production dispatch policy.
 
 
@@ -171,10 +173,17 @@ export function AdminRealtimeOperationsPanel() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [refreshWarning, setRefreshWarning] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+  const requestInFlightRef = useRef(false);
 
   const load = useCallback(async (quiet = false) => {
+    // GPS events, manual refresh and fallback polling may arrive together.
+    // Skip overlapping requests rather than letting slower responses overwrite fresh data.
+    if (requestInFlightRef.current) return;
+    requestInFlightRef.current = true;
     quiet ? setRefreshing(true) : setLoading(true);
-    setErrorMessage(null);
+    if (!quiet) setErrorMessage(null);
     try {
       const [jobsRes, availabilityRes, locationsRes, couriersRes, profilesRes] = await Promise.all([
         from("delivery_jobs")
@@ -196,12 +205,21 @@ export function AdminRealtimeOperationsPanel() {
       setLocations((locationsRes.data ?? []) as CourierLocation[]);
       setCouriers((couriersRes.data ?? []) as Courier[]);
       setProfiles((profilesRes.data ?? []) as Profile[]);
+      setLastUpdatedAt(new Date().toISOString());
+      setRefreshWarning(null);
+      setErrorMessage(null);
     } catch (error: any) {
       console.error("admin realtime operations load failed", error);
       const message = error?.message || "Não foi possível carregar as operações em tempo real.";
-      setErrorMessage(message);
-      if (!quiet) toast.error(message);
+      if (quiet) {
+        // Transient polling failures must not replace the whole operations screen.
+        setRefreshWarning("Não foi possível atualizar os dados agora. A última leitura permanece visível.");
+      } else {
+        setErrorMessage(message);
+        toast.error(message);
+      }
     } finally {
+      requestInFlightRef.current = false;
       setLoading(false);
       setRefreshing(false);
     }
@@ -209,6 +227,20 @@ export function AdminRealtimeOperationsPanel() {
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    // Orders and delivery_jobs are intentionally outside supabase_realtime.
+    // Poll at a bounded cadence while the Admin tab is visible to cover those updates.
+    const poll = () => {
+      if (document.visibilityState === "visible") void load(true);
+    };
+    const intervalId = window.setInterval(poll, operationsPollIntervalMs);
+    document.addEventListener("visibilitychange", poll);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", poll);
+    };
   }, [load]);
 
   useEffect(() => {
@@ -222,11 +254,10 @@ export function AdminRealtimeOperationsPanel() {
         void load(true);
       }, 10_000);
     };
+    // Only subscribe to tables actually enabled in the realtime publication.
     const subscriptions = [
-      { name: "admin_realtime_jobs", table: "delivery_jobs" },
       { name: "admin_realtime_availability", table: "courier_availability" },
       { name: "admin_realtime_locations", table: "courier_locations" },
-      { name: "admin_realtime_orders", table: "orders" },
     ];
     const channels = subscriptions.map(({ name, table }) =>
       supabase
@@ -341,8 +372,14 @@ export function AdminRealtimeOperationsPanel() {
           </p>
           <h2 className="mt-1 text-xl font-black">Pedidos e entregadores em tempo real</h2>
           <p className="mt-1 text-xs text-zinc-500">
-            Localização e disponibilidade via Supabase Realtime; demais dados podem exigir atualização manual.
+            GPS e disponibilidade via Supabase Realtime. Pedidos e entregas atualizam
+            automaticamente em até 45 segundos enquanto esta aba estiver aberta.
           </p>
+          {lastUpdatedAt ? (
+            <p className="mt-1 text-[11px] text-zinc-500">
+              Última leitura: {dateTime(lastUpdatedAt)}
+            </p>
+          ) : null}
         </div>
         <Button
           type="button"
@@ -355,6 +392,12 @@ export function AdminRealtimeOperationsPanel() {
           Atualizar
         </Button>
       </div>
+
+      {refreshWarning ? (
+        <div role="status" className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+          {refreshWarning}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard label="Pedidos ativos" value={jobs.length} />
