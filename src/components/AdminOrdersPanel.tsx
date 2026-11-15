@@ -9,7 +9,7 @@ import {
   Truck,
   UserRound,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState, MetricCard } from "@/components/WorkspaceShell";
 import { supabase } from "@/integrations/supabase/client";
@@ -191,6 +191,9 @@ export function AdminOrdersPanel() {
   const [jobs, setJobs] = useState<DeliveryJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshWarning, setRefreshWarning] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+  const requestInFlightRef = useRef(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
@@ -202,6 +205,9 @@ export function AdminOrdersPanel() {
   const [timelineLoading, setTimelineLoading] = useState(false);
 
   const load = useCallback(async (quiet = false) => {
+    // Avoid overlapping responses from manual refresh and bounded fallback polling.
+    if (requestInFlightRef.current) return;
+    requestInFlightRef.current = true;
     quiet ? setRefreshing(true) : setLoading(true);
     try {
       const [ordersRes, profilesRes, couriersRes, jobsRes] = await Promise.all([
@@ -228,10 +234,17 @@ export function AdminOrdersPanel() {
       setProfiles((profilesRes.data ?? []) as Profile[]);
       setCouriers((couriersRes.data ?? []) as Courier[]);
       setJobs((jobsRes.data ?? []) as DeliveryJob[]);
+      setLastUpdatedAt(new Date().toISOString());
+      setRefreshWarning(null);
     } catch (error: any) {
       console.error("admin orders load failed", error);
-      toast.error(error?.message || "Não foi possível carregar os pedidos.");
+      if (quiet) {
+        setRefreshWarning("Não foi possível obter a atualização mais recente. A leitura anterior permanece disponível.");
+      } else {
+        toast.error(error?.message || "Não foi possível carregar os pedidos.");
+      }
     } finally {
+      requestInFlightRef.current = false;
       setLoading(false);
       setRefreshing(false);
     }
@@ -242,14 +255,17 @@ export function AdminOrdersPanel() {
   }, [load]);
 
   useEffect(() => {
-    const refresh = () => void load(true);
-    const channels = ["orders", "payments", "delivery_jobs"].map((table) =>
-      supabase
-        .channel(`admin_orders_${table}`)
-        .on("postgres_changes", { event: "*", schema: "public", table }, refresh)
-        .subscribe(),
-    );
-    return () => channels.forEach((channel) => void supabase.removeChannel(channel));
+    // These tables are not in Supabase's Realtime publication.
+    // Read-only fallback covers orders, payment and delivery state changes.
+    const refresh = () => {
+      if (document.visibilityState === "visible") void load(true);
+    };
+    const timer = window.setInterval(refresh, 45_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, [load]);
 
   const profileById = useMemo(() => new Map(profiles.map((row) => [row.id, row])), [profiles]);
@@ -446,7 +462,19 @@ export function AdminOrdersPanel() {
           <h2 className="mt-1 text-xl font-black">Pedidos</h2>
           <p className="mt-1 text-xs text-zinc-500">
             Busca, filtros e timeline integral de pedido, pagamento, entrega e reembolso.
+            Atualização automática a cada 45 segundos enquanto a aba estiver visível.
           </p>
+          {lastUpdatedAt ? (
+            <div role="status" aria-live="polite" className="mt-3 inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 shadow-sm">
+              <span className="inline-flex items-center gap-2 text-primary">
+                <RefreshCw className="h-4 w-4" />
+                Atualização automática ativa
+              </span>
+              <time dateTime={lastUpdatedAt} className="tabular-nums text-zinc-900">
+                Última leitura: {dateTime(lastUpdatedAt)}
+              </time>
+            </div>
+          ) : null}
         </div>
         <Button
           type="button"
@@ -459,6 +487,12 @@ export function AdminOrdersPanel() {
           Atualizar
         </Button>
       </div>
+
+      {refreshWarning ? (
+        <div role="status" className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {refreshWarning}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Pedidos carregados" value={orders.length} />
