@@ -190,7 +190,16 @@ export function AdminRealtimeOperationsPanel() {
   }, [load]);
 
   useEffect(() => {
-    const refresh = () => void load(true);
+    // A location stream can emit many events per minute. Coalesce notifications
+    // so that we do not refetch five tables for every single GPS update.
+    let pendingRefresh: ReturnType<typeof setTimeout> | null = null;
+    const refresh = () => {
+      if (pendingRefresh !== null) return;
+      pendingRefresh = setTimeout(() => {
+        pendingRefresh = null;
+        void load(true);
+      }, 10_000);
+    };
     const subscriptions = [
       { name: "admin_realtime_jobs", table: "delivery_jobs" },
       { name: "admin_realtime_availability", table: "courier_availability" },
@@ -204,6 +213,7 @@ export function AdminRealtimeOperationsPanel() {
         .subscribe(),
     );
     return () => {
+      if (pendingRefresh !== null) clearTimeout(pendingRefresh);
       channels.forEach((channel) => void supabase.removeChannel(channel));
     };
   }, [load]);
