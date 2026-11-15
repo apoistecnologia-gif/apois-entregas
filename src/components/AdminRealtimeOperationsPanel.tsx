@@ -70,7 +70,12 @@ const browserKey = (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY as stri
 const mapId = (import.meta as any).env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined;
 // Approximate Petrolina/PE starting point for a manual Preview test only.
 // Real courier positions always take precedence when available.
-const previewDemoPosition = { lat: -9.393912, lng: -40.492966 };
+const previewDemoPositions = [
+  { lat: -9.393912, lng: -40.492966 },
+  { lat: -9.392172, lng: -40.490473 },
+  { lat: -9.390602, lng: -40.487884 },
+] as const;
+const previewDemoPosition = previewDemoPositions[0];
 const courierPositionMaxAgeMs = 30 * 60 * 1000;
 const courierPositionMaxAccuracyMeters = 200; // Matches the current production dispatch policy.
 
@@ -127,6 +132,8 @@ function addressText(value: Record<string, unknown> | null) {
 
 export function AdminRealtimeOperationsPanel() {
   const [mapSmokeTestRequested, setMapSmokeTestRequested] = useState(false);
+  const [previewSimulationStep, setPreviewSimulationStep] = useState(0);
+  const previewSimulatedPosition = previewDemoPositions[previewSimulationStep];
   const [positionClock, setPositionClock] = useState(() => Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setPositionClock(Date.now()), 60_000);
@@ -444,7 +451,7 @@ export function AdminRealtimeOperationsPanel() {
                   disableDefaultUI={false}
                 >
                   {enablePreviewMapSmokeTest && mapSmokeTestRequested && onlineLocations.length === 0 ? (
-                    <AdvancedMarker position={previewDemoPosition} title="SIMULAÇÃO — não é entregador real">
+                    <AdvancedMarker position={previewSimulatedPosition} title="SIMULAÇÃO — não é entregador real">
                       <div className="flex flex-col items-center gap-1 rounded-lg border-2 border-red-600 bg-white px-2 py-1 text-center text-xs font-black text-red-700 shadow-md">
                         <MapPinned className="h-5 w-5" aria-hidden="true" />
                         SIMULAÇÃO
@@ -477,10 +484,26 @@ export function AdminRealtimeOperationsPanel() {
             </div>
           )}
           {enablePreviewMapSmokeTest && mapSmokeTestRequested && onlineLocations.length === 0 ? (
-            <p role="status" className="mx-4 mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-900">
-              SIMULAÇÃO DE HOMOLOGAÇÃO — marcador fictício em Petrolina/PE.
-              Não há entregador online e nenhuma localização real foi alterada.
-            </p>
+            <div className="mx-4 mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+              <p role="status" className="font-semibold">
+                SIMULAÇÃO DE HOMOLOGAÇÃO — marcador fictício em Petrolina/PE.
+                Não há entregador online e nenhuma localização real foi alterada.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-red-400 bg-white text-red-800 hover:bg-red-100"
+                  onClick={() => setPreviewSimulationStep((step) => (step + 1) % previewDemoPositions.length)}
+                >
+                  Mover marcador simulado
+                </Button>
+                <span className="text-xs font-semibold">
+                  Posição simulada {previewSimulationStep + 1} de {previewDemoPositions.length}.
+                  Sem alterações no Supabase.
+                </span>
+              </div>
+            </div>
           ) : null}
           <div className="grid grid-cols-2 gap-3 p-4">
             <div className="rounded-2xl bg-black p-3">
