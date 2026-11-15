@@ -38,6 +38,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { clearPayoutAttemptKey, getPayoutAttemptKey } from "@/lib/payout-attempt";
+import { getSelectedMerchantMembership, setSelectedMerchantMembership } from "@/lib/merchant-selection";
 import { MerchantProductEditor } from "@/components/MerchantProductEditor";
 import {
   MerchantCustomersPanel,
@@ -125,6 +126,8 @@ function MerchantWorkspace() {
   const { confirm: confirmAction, confirmDialog: confirmActionDialog } = useConfirmDialog();
   const [user, setUser] = useState<any>(null);
   const [membership, setMembership] = useState<any>(null);
+  const [merchantMemberships, setMerchantMemberships] = useState<any[]>([]);
+  const [merchantOptions, setMerchantOptions] = useState<Array<{ id: string; name: string; city: string | null; state: string | null }>>([]);
   const [merchant, setMerchant] = useState<any>(null);
   const [subscription, setSubscription] = useState<any>(null);
   const [merchantCategories, setMerchantCategories] = useState<any[]>([]);
@@ -293,18 +296,30 @@ function MerchantWorkspace() {
           .select("*")
           .eq("user_id", authUser.id)
           .eq("status", "active")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .order("created_at", { ascending: false });
 
         if (memberRes.error) throw memberRes.error;
-        const member = memberRes.data ?? null;
+        const activeMemberships = Array.isArray(memberRes.data) ? memberRes.data : [];
+        const member = getSelectedMerchantMembership(authUser.id, activeMemberships);
+        setMerchantMemberships(activeMemberships);
         setMembership(member);
         if (!member) {
+          setMerchantOptions([]);
           setMerchant(null);
           setSubscription(null);
           setDocuments([]);
+          setOrders([]);
           return;
+        }
+
+        if (activeMemberships.length > 1) {
+          const { data: choices, error: choicesError } = await from("merchants")
+            .select("id,name,city,state")
+            .in("id", activeMemberships.map((item) => item.merchant_id));
+          if (choicesError) console.warn("merchant selector lookup failed", choicesError.code);
+          setMerchantOptions(Array.isArray(choices) ? choices : []);
+        } else {
+          setMerchantOptions([]);
         }
 
         const [merchantRes, docsRes, subscriptionRes, privateRes] = await Promise.all([
@@ -1005,6 +1020,35 @@ function MerchantWorkspace() {
       onLogout={logout}
       userLabel={user?.email}
     >
+      {merchantMemberships.length > 1 && merchantOptions.length > 1 ? (
+        <section className="mb-5 rounded-2xl border border-primary/25 bg-primary/5 p-4">
+          <label htmlFor="apois-merchant-switcher" className="mb-2 block text-sm font-bold">
+            Estabelecimento selecionado
+          </label>
+          <select
+            id="apois-merchant-switcher"
+            aria-label="Selecionar estabelecimento"
+            value={membership?.merchant_id ?? ""}
+            onChange={(event) => {
+              const nextId = event.target.value;
+              if (!user?.id || !merchantMemberships.some((item) => item.merchant_id === nextId)) return;
+              if (nextId === membership?.merchant_id) return;
+              setSelectedMerchantMembership(user.id, nextId);
+              void loadAll();
+            }}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-3 text-sm font-medium text-white"
+          >
+            {merchantOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name} — {option.city || "Cidade não informada"}{option.state ? `/${option.state}` : ""}
+              </option>
+            ))}
+          </select>
+          <p className="mt-2 text-xs text-zinc-400">
+            Cada estabelecimento mantém pedidos, assinatura e financeiro independentes.
+          </p>
+        </section>
+      ) : null}
       {!subscriptionAccessAllowed ? (
         <section className="mb-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
