@@ -149,6 +149,8 @@ export function AdminRealtimeOperationsPanel() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [realtimeChannelStatus, setRealtimeChannelStatus] = useState<Record<string, string>>({});
+  const [realtimeEventCount, setRealtimeEventCount] = useState<Record<string, number>>({});
 
   const load = useCallback(async (quiet = false) => {
     quiet ? setRefreshing(true) : setLoading(true);
@@ -206,12 +208,28 @@ export function AdminRealtimeOperationsPanel() {
       { name: "admin_realtime_locations", table: "courier_locations" },
       { name: "admin_realtime_orders", table: "orders" },
     ];
-    const channels = subscriptions.map(({ name, table }) =>
-      supabase
+    const channels = subscriptions.map(({ name, table }) => {
+      const monitor = enablePreviewMapSmokeTest &&
+        (table === "courier_locations" || table === "courier_availability");
+      return supabase
         .channel(name)
-        .on("postgres_changes", { event: "*", schema: "public", table }, refresh)
-        .subscribe(),
-    );
+        .on("postgres_changes", { event: "*", schema: "public", table }, () => {
+          refresh();
+          if (monitor) {
+            setRealtimeEventCount((current) => ({
+              ...current,
+              [table]: (current[table] ?? 0) + 1,
+            }));
+          }
+        })
+        .subscribe((status, error) => {
+          if (!monitor) return;
+          setRealtimeChannelStatus((current) =>
+            current[table] === status ? current : { ...current, [table]: status },
+          );
+          if (error) console.warn("APOIS Realtime channel status:", table, status, error);
+        });
+    });
     return () => {
       if (pendingRefresh !== null) clearTimeout(pendingRefresh);
       channels.forEach((channel) => void supabase.removeChannel(channel));
@@ -424,6 +442,20 @@ export function AdminRealtimeOperationsPanel() {
             </div>
             <MapPinned className="h-5 w-5 text-primary" />
           </div>
+          {enablePreviewMapSmokeTest ? (
+            <div role="status" className="mx-4 mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-800">
+              <p className="font-semibold">Diagnóstico Supabase Realtime — somente Preview</p>
+              <p className="mt-1">Conexão não significa que um evento já foi recebido.</p>
+              <p className="mt-2">
+                Disponibilidade: <strong>{realtimeChannelStatus.courier_availability ?? "CONECTANDO"}</strong>
+                {" · "}Eventos recebidos: {realtimeEventCount.courier_availability ?? 0}
+              </p>
+              <p className="mt-1">
+                Localização: <strong>{realtimeChannelStatus.courier_locations ?? "CONECTANDO"}</strong>
+                {" · "}Eventos recebidos: {realtimeEventCount.courier_locations ?? 0}
+              </p>
+            </div>
+          ) : null}
           {onlineLocations.length === 0 && !mapSmokeTestRequested ? (
             <div
               role="status"
