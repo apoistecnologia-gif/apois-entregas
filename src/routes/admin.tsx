@@ -228,15 +228,35 @@ function AdminWorkspace() {
   }, [loadAll]);
 
   useEffect(() => {
-    const refresh = () => void loadAll(true);
-    const channel = supabase
-      .channel("admin_live_orders")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, refresh)
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
+    // The orders table is deliberately absent from Supabase Realtime.
+    // Keep the dashboard and sidebar badges current without re-fetching
+    // every admin/finance/document table on each polling cycle.
+    let disposed = false;
+    let inFlight = false;
+    const refreshOrders = async () => {
+      if (document.visibilityState !== "visible" || inFlight) return;
+      inFlight = true;
+      try {
+        const { data, error } = await from("orders")
+          .select("*, merchants(name), payments(id,status,amount,provider,provider_charge_id)")
+          .order("created_at", { ascending: false })
+          .limit(500);
+        if (error) throw error;
+        if (!disposed) setOrders(data ?? []);
+      } catch (error) {
+        console.warn("APOIS Admin: sidebar order refresh failed", error);
+      } finally {
+        inFlight = false;
+      }
     };
-  }, [loadAll]);
+    const timer = window.setInterval(() => void refreshOrders(), 60_000);
+    document.addEventListener("visibilitychange", refreshOrders);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshOrders);
+    };
+  }, []);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
