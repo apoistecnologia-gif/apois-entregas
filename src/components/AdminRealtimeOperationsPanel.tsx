@@ -68,6 +68,12 @@ type Profile = {
 const from = (table: string) => (supabase.from as any)(table);
 const browserKey = (import.meta as any).env.VITE_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
 const mapId = (import.meta as any).env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined;
+// Approximate Petrolina/PE starting point for a manual Preview test only.
+// Real courier positions always take precedence when available.
+const previewDemoPosition = { lat: -9.393912, lng: -40.492966 };
+const courierPositionMaxAgeMs = 30 * 60 * 1000;
+const courierPositionMaxAccuracyMeters = 200; // Matches the current production dispatch policy.
+
 
 const activeStatuses = [
   "searching",
@@ -121,6 +127,11 @@ function addressText(value: Record<string, unknown> | null) {
 
 export function AdminRealtimeOperationsPanel() {
   const [mapSmokeTestRequested, setMapSmokeTestRequested] = useState(false);
+  const [positionClock, setPositionClock] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setPositionClock(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   // Preview-only manual test. No maps are loaded without a courier unless an admin explicitly opts in.
   const enablePreviewMapSmokeTest = (import.meta as any).env.VITE_APOIS_MAPS_SMOKE_TEST === "true";
   const [jobs, setJobs] = useState<DeliveryJob[]>([]);
@@ -199,11 +210,28 @@ export function AdminRealtimeOperationsPanel() {
   const onlineLocations = useMemo(
     () =>
       locations.filter((row) => {
+        if (!onlineIds.has(row.courier_id)) return false;
+        const availabilityRow = availability.find((entry) => entry.courier_id === row.courier_id);
         const lat = Number(row.latitude);
         const lng = Number(row.longitude);
-        return onlineIds.has(row.courier_id) && Number.isFinite(lat) && Number.isFinite(lng);
+        const accuracy = row.accuracy_meters === null ? NaN : Number(row.accuracy_meters);
+        const locationTime = Date.parse(row.recorded_at);
+        const lastSeenTime = Date.parse(availabilityRow?.last_seen_at ?? row.recorded_at);
+        const hasValidCoordinates =
+          Number.isFinite(lat) && lat >= -90 && lat <= 90 &&
+          Number.isFinite(lng) && lng >= -180 && lng <= 180;
+        const hasValidAccuracy =
+          Number.isFinite(accuracy) && accuracy >= 0 &&
+          accuracy <= courierPositionMaxAccuracyMeters;
+        const hasRecentPosition =
+          Number.isFinite(locationTime) && Number.isFinite(lastSeenTime) &&
+          locationTime <= positionClock + 60_000 &&
+          lastSeenTime <= positionClock + 60_000 &&
+          positionClock - locationTime <= courierPositionMaxAgeMs &&
+          positionClock - lastSeenTime <= courierPositionMaxAgeMs;
+        return hasValidCoordinates && hasValidAccuracy && hasRecentPosition;
       }),
-    [locations, onlineIds],
+    [locations, onlineIds, availability, positionClock],
   );
   const delayedJobs = useMemo(
     () => jobs.filter((job) => Date.now() - new Date(job.updated_at).getTime() > 45 * 60 * 1000),
@@ -213,7 +241,7 @@ export function AdminRealtimeOperationsPanel() {
     const first = onlineLocations[0];
     return first
       ? { lat: Number(first.latitude), lng: Number(first.longitude) }
-      : { lat: -8.0476, lng: -34.877 };
+      : previewDemoPosition;
   }, [onlineLocations]);
 
   if (loading) {
@@ -389,7 +417,7 @@ export function AdminRealtimeOperationsPanel() {
               {enablePreviewMapSmokeTest && browserKey && mapId ? (
                 <div className="mt-3">
                   <Button type="button" variant="outline" onClick={() => setMapSmokeTestRequested(true)}>
-                    Testar Google Maps no Preview (pode gerar cobrança)
+                    Testar mapa e marcador simulado (pode gerar cobrança)
                   </Button>
                   <p className="mt-2 text-xs text-zinc-600">
                     Teste manual sem colocar entregadores online ou criar pedidos.
@@ -415,6 +443,14 @@ export function AdminRealtimeOperationsPanel() {
                   gestureHandling="greedy"
                   disableDefaultUI={false}
                 >
+                  {enablePreviewMapSmokeTest && mapSmokeTestRequested && onlineLocations.length === 0 ? (
+                    <AdvancedMarker position={previewDemoPosition} title="SIMULAÇÃO — não é entregador real">
+                      <div className="flex flex-col items-center gap-1 rounded-lg border-2 border-red-600 bg-white px-2 py-1 text-center text-xs font-black text-red-700 shadow-md">
+                        <MapPinned className="h-5 w-5" aria-hidden="true" />
+                        SIMULAÇÃO
+                      </div>
+                    </AdvancedMarker>
+                  ) : null}
                   {onlineLocations.map((location) => {
                     const courier = courierById.get(location.courier_id);
                     const profile = courier ? profileById.get(courier.user_id) : null;
@@ -440,6 +476,12 @@ export function AdminRealtimeOperationsPanel() {
               </APIProvider>
             </div>
           )}
+          {enablePreviewMapSmokeTest && mapSmokeTestRequested && onlineLocations.length === 0 ? (
+            <p role="status" className="mx-4 mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-900">
+              SIMULAÇÃO DE HOMOLOGAÇÃO — marcador fictício em Petrolina/PE.
+              Não há entregador online e nenhuma localização real foi alterada.
+            </p>
+          ) : null}
           <div className="grid grid-cols-2 gap-3 p-4">
             <div className="rounded-2xl bg-black p-3">
               <p className="flex items-center gap-1 text-[10px] font-black uppercase text-zinc-500">
