@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { EmptyState, MetricCard } from "@/components/WorkspaceShell";
+import { MetricCard } from "@/components/WorkspaceShell";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -351,10 +351,12 @@ export function AdminRealtimeOperationsPanel() {
           </div>
           {jobs.length === 0 ? (
             <div className="p-5">
-              <EmptyState
-                title="Nenhuma entrega ativa"
-                description="As entregas aparecerão aqui assim que entrarem no ciclo operacional."
-              />
+              <div role="status" className="rounded-2xl border border-zinc-200 bg-white px-6 py-10 text-center">
+                <p className="text-base font-semibold text-zinc-950">Nenhuma entrega ativa</p>
+                <p className="mt-2 text-sm text-zinc-700">
+                  As entregas aparecerão aqui assim que entrarem no ciclo operacional.
+                </p>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">
