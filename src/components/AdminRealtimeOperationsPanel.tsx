@@ -9,7 +9,7 @@ import {
   RefreshCw,
   Route,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Component, useCallback, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/WorkspaceShell";
 import { supabase } from "@/integrations/supabase/client";
@@ -127,7 +127,37 @@ function addressText(value: Record<string, unknown> | null) {
   return typeof number === "string" || typeof number === "number" ? `${line}, ${number}` : line;
 }
 
+// Keep Google Maps failures isolated from the rest of the Admin operations page.
+// Google Maps API loading and marker rendering depend on external browser services.
+class AdminMapErrorBoundary extends Component<
+  { children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError(): { failed: boolean } {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("APOIS Admin: Google Maps render failure", error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <div role="alert" className="m-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          Não foi possível abrir o Google Maps. O restante das operações permanece disponível.
+          Confira o console do navegador e as permissões da chave Maps JavaScript.
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export function AdminRealtimeOperationsPanel() {
+  const [mapLoadFailed, setMapLoadFailed] = useState(false);
   const [positionClock, setPositionClock] = useState(() => Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setPositionClock(Date.now()), 60_000);
@@ -447,17 +477,22 @@ export function AdminRealtimeOperationsPanel() {
               Nenhum entregador online com localização válida no momento. O mapa será carregado
               automaticamente somente quando houver uma posição disponível.
             </div>
-          ) : !browserKey || !mapId ? (
+          ) : !browserKey || !mapId || mapLoadFailed ? (
             <div
               role="alert"
               className="m-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
             >
-              Mapa operacional indisponível. Verifique as configurações de Maps JavaScript no
-              ambiente de publicação.
+              Google Maps indisponível neste ambiente. As operações e os indicadores continuam
+              acessíveis. Verifique a chave Maps JavaScript, o Map ID e as mensagens no console
+              do navegador.
             </div>
           ) : (
-            <div className="h-[430px] bg-zinc-900">
-              <APIProvider apiKey={browserKey}>
+            <div className="min-h-[430px] bg-zinc-900">
+              <AdminMapErrorBoundary>
+                <APIProvider apiKey={browserKey} onError={(error) => {
+                  console.error("APOIS Admin: Google Maps API load failure", error);
+                  setMapLoadFailed(true);
+                }}>
                 <GoogleMap
                   defaultCenter={mapCenter}
                   defaultZoom={12}
@@ -487,7 +522,8 @@ export function AdminRealtimeOperationsPanel() {
                     );
                   })}
                 </GoogleMap>
-              </APIProvider>
+                </APIProvider>
+              </AdminMapErrorBoundary>
             </div>
           )}
           <div className="grid grid-cols-2 gap-3 p-4">
