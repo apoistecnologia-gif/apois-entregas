@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getApoisProductMode } from "@/lib/product-routing";
+import { getSelectedMerchantMembership, MERCHANT_SELECTION_EVENT } from "@/lib/merchant-selection";
 import { toast } from "sonner";
 import { MerchantOrderControlCenter } from "./MerchantOrderControlCenter";
 import { Toaster } from "./ui/sonner";
@@ -45,6 +46,7 @@ function MerchantOrderSoundWatcher() {
   const audioUnlockedRef = useRef(false);
   const alertedOrdersRef = useRef<Set<string>>(loadAlertedOrders());
   const pendingAlertsRef = useRef<Map<string, PendingAlert>>(new Map());
+  const activeMerchantRef = useRef<string | null>(null);
 
   const playOrderAlert = useCallback(async () => {
     const context = audioContextRef.current;
@@ -200,25 +202,48 @@ function MerchantOrderSoundWatcher() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user || disposed) return;
+      if (!user || disposed) {
+        if (!disposed) {
+          activeMerchantRef.current = null;
+          pendingAlertsRef.current.clear();
+          setMerchantId(null);
+        }
+        return;
+      }
 
-      const { data } = await supabase
+      const { data: memberships, error } = await supabase
         .from("merchant_members" as any)
-        .select("merchant_id")
+        .select("merchant_id,role,status,created_at")
         .eq("user_id", user.id)
         .eq("status", "active")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order("created_at", { ascending: false });
 
-      if (!disposed) setMerchantId(typeof data?.merchant_id === "string" ? data.merchant_id : null);
+      if (error) {
+        console.warn("merchant sound membership lookup failed", error.code);
+        return;
+      }
+      const selectedId = getSelectedMerchantMembership(
+        user.id,
+        Array.isArray(memberships) ? memberships : [],
+      )?.merchant_id ?? null;
+      if (disposed) return;
+      if (activeMerchantRef.current !== selectedId) {
+        pendingAlertsRef.current.clear();
+        activeMerchantRef.current = selectedId;
+      }
+      setMerchantId(selectedId);
     };
 
     void resolveMerchant();
+    const handleSelection = () => void resolveMerchant();
     const { data: listener } = supabase.auth.onAuthStateChange(() => void resolveMerchant());
+    window.addEventListener(MERCHANT_SELECTION_EVENT, handleSelection);
+    window.addEventListener("storage", handleSelection);
     return () => {
       disposed = true;
       listener.subscription.unsubscribe();
+      window.removeEventListener(MERCHANT_SELECTION_EVENT, handleSelection);
+      window.removeEventListener("storage", handleSelection);
     };
   }, [enabled]);
 
