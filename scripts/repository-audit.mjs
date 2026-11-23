@@ -159,7 +159,7 @@ async function verifySupabaseConfig() {
   const file = "supabase/config.toml";
   const content = await readFile(path.join(ROOT, file), "utf8");
 
-  if (!/^project_id\s*=\s*["']sbvhdgyuuperszlsllji["']/m.test(content)) {
+  if (!/^project_id\s*=\s*["']ptgkwyyolrdgnqketkjj["']/m.test(content)) {
     report(file, "wrong-project", "project_id must point to APOIS ENTREGA - PRODUÇÃO");
   }
 
