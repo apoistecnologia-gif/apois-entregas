@@ -6,6 +6,22 @@ import { markPasswordRecoveryIntent } from "@/lib/passwordRecoveryIntent";
 
 const productMode = getApoisProductMode();
 
+// Some Supabase email templates redirect to the configured Site URL rather
+// than the redirectTo path. If the URL contains an explicit recovery marker,
+// retain the original token/code and route it to the password form BEFORE the
+// normal home/login route is allowed to consume the new session.
+if (typeof window !== "undefined" && (productMode === "admin" || productMode === "merchant")) {
+  const query = new URLSearchParams(window.location.search);
+  const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const isRecoveryLink = query.get("type") === "recovery" || fragment.get("type") === "recovery";
+  if (isRecoveryLink) {
+    markPasswordRecoveryIntent();
+    if (window.location.pathname !== "/redefinir-senha") {
+      window.location.replace("/redefinir-senha" + window.location.search + window.location.hash);
+    }
+  }
+}
+
 const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: typeof window !== "undefined" ? window.localStorage : undefined,
