@@ -1,0 +1,78 @@
+name: APOIS SENATRAN - Exportacao cifrada de backup (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      system:
+        type: choice
+        description: Qual banco PROD exportar
+        required: true
+        options:
+          - entregas
+          - corridas
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ENTREGAS_DATABASE_URL: ${{ secrets.APOIS_ENTREGAS_BACKUP_DATABASE_URL }}
+      CORRIDAS_DATABASE_URL: ${{ secrets.APOIS_CORRIDAS_BACKUP_DATABASE_URL }}
+      AGE_RECIPIENT: ${{ vars.APOIS_BACKUP_AGE_RECIPIENT }}
+      PGSSLMODE: require
+    steps:
+      - name: Verificar que configuracoes de exportacao segura existem
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$AGE_RECIPIENT" || { echo 'Falta chave PUBLICA age de backup'; exit 1; }
+          if [[ '${{ inputs.system }}' = 'entregas' ]]; then
+            test -n "$ENTREGAS_DATABASE_URL" || { echo 'Falta segredo APOIS_ENTREGAS_BACKUP_DATABASE_URL'; exit 1; }
+          else
+            test -n "$CORRIDAS_DATABASE_URL" || { echo 'Falta segredo APOIS_CORRIDAS_BACKUP_DATABASE_URL'; exit 1; }
+          fi
+          echo 'Configurações presentes; não imprimir banco, senha ou chaves'
+
+      - name: Instalar ferramenta de criptografia
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age
+
+      - name: Exportar, conferir e cifrar antes do upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$RUNNER_TEMP/apois-secure-backup"
+          cd "$RUNNER_TEMP/apois-secure-backup"
+          trap 'rm -f -- ./*.dump' EXIT
+          if [[ '${{ inputs.system }}' = 'entregas' ]]; then
+            export POSTGRES_URI="$ENTREGAS_DATABASE_URL"
+            suffix=entregas
+          else
+            export POSTGRES_URI="$CORRIDAS_DATABASE_URL"
+            suffix=corridas
+          fi
+          filename="apois_${suffix}_$(date -u +%Y%m%dT%H%M%SZ)"
+          docker run --rm -e POSTGRES_URI -e PGSSLMODE postgres:17 sh -c 'pg_dump "$POSTGRES_URI" --format=custom --no-owner --no-acl' > "${filename}.dump"
+          test -s "${filename}.dump"
+          docker run --rm -i postgres:17 pg_restore --list < "${filename}.dump" >/dev/null
+          age -r "$AGE_RECIPIENT" -o "${filename}.dump.age" "${filename}.dump"
+          sha256sum "${filename}.dump.age" > "${filename}.dump.age.sha256"
+          rm -f "${filename}.dump"
+          test -s "${filename}.dump.age"
+          echo 'Arquivo criptografado e checksum gerados. Ainda requer teste REAL de restauração em banco separado.'
+
+      - name: Guardar somente arquivos cifrados em artefato privado
+        uses: actions/upload-artifact@v4
+        with:
+          name: apois-backup-cifrado-${{ inputs.system }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/apois-secure-backup/*.dump.age
+            ${{ runner.temp }}/apois-secure-backup/*.dump.age.sha256
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
