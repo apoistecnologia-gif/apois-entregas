@@ -17,6 +17,7 @@ import { APOIS_OFFICIAL_RED_LOGO_URL } from "@/assets/apoisOfficial2026";
 import deliveryHeroAsset from "@/assets/delivery-hero.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { hasPasswordRecoveryIntent } from "@/lib/passwordRecoveryIntent";
 import {
   getApoisProductMode,
   getProductHomeRoute,
@@ -40,6 +41,12 @@ export const Route = createFileRoute("/login")({
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) return;
+
+    // A recovery link creates a temporary Auth session: it must open the
+    // password form rather than being treated as a completed normal login.
+    if (hasPasswordRecoveryIntent()) {
+      throw redirect({ to: "/redefinir-senha" });
+    }
 
     if (getApoisProductMode() === "admin" && !(await hasAdminRole(session.user.id))) {
       await supabase.auth.signOut();
