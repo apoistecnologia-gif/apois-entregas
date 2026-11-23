@@ -65,7 +65,10 @@ Deno.serve(async (req) => {
     const meRes=await fetch("https://api.mercadopago.com/users/me",{headers:{Authorization:`Bearer ${accessToken}`,Accept:"application/json"}});
     const me:unknown=await meRes.json().catch(()=>null);
     if(meRes.ok&&isRecord(me)){providerUserId=providerUserId??(me.id!=null?String(me.id):null);accountEmail=text(me.email);}
-  }catch{}
+  } catch {
+    // A consulta complementar do perfil do vendedor é opcional; o user_id do OAuth
+    // continua como fonte primária e será validado logo abaixo.
+  }
   if(!providerUserId){
     console.error("merchant mp oauth seller identity missing",{merchantId:oauthState.merchant_id});
     return html("Falha ao identificar conta","A autorização foi recebida, mas não foi possível identificar a conta Mercado Pago vinculada.");
