@@ -60,7 +60,18 @@ jobs:
             echo "Nenhuma alteração de formatação necessária."
             exit 0
           fi
-          echo "Arquivos alterados:"
-          git diff --cached --stat | tail -n 50
-          git commit -m "style(ci): aplicar Prettier em arquivos rastreados da branch Q12"
+          echo "WORKFLOW_FORMAT_PATCH_BEGIN"
+          git diff --cached -- .github/workflows || true
+          echo "WORKFLOW_FORMAT_PATCH_END"
+          # GitHub Actions GITHUB_TOKEN cannot write workflow files: leave them
+          # to the GitHub connector with workflow-file permissions.
+          git restore --staged -- .github/workflows
+          git restore -- .github/workflows
+          if git diff --cached --quiet; then
+            echo "Nao ha alteracoes de codigo fora dos workflows."
+            exit 0
+          fi
+          echo "Arquivos alterados (sem workflows):"
+          git diff --cached --stat | tail -n 65
+          git commit -m "style(ci): aplicar Prettier no codigo sem alterar workflows"
           git push origin "HEAD:refs/heads/${SAFE_BRANCH}"
