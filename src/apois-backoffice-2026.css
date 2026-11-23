@@ -5,36 +5,36 @@
  * Operational statuses (success, danger, warning) retain semantic colors.
  */
 html.apois-system-theme.apois-portal-v2026 {
-  --background: #F6F7F9;
+  --background: #f6f7f9;
   --foreground: #182130;
-  --card: #FFFFFF;
+  --card: #ffffff;
   --card-foreground: #182130;
-  --popover: #FFFFFF;
+  --popover: #ffffff;
   --popover-foreground: #182130;
-  --primary: #E51B23;
-  --primary-foreground: #FFFFFF;
-  --secondary: #F2F4F7;
+  --primary: #e51b23;
+  --primary-foreground: #ffffff;
+  --secondary: #f2f4f7;
   --secondary-foreground: #263245;
-  --muted: #F1F3F6;
-  --muted-foreground: #606B7A;
-  --accent: #FDEBED;
-  --accent-foreground: #A9121C;
-  --border: #E0E4EB;
-  --input: #E1E5EC;
-  --ring: #C9141B;
-  --sidebar: #FFFFFF;
+  --muted: #f1f3f6;
+  --muted-foreground: #606b7a;
+  --accent: #fdebed;
+  --accent-foreground: #a9121c;
+  --border: #e0e4eb;
+  --input: #e1e5ec;
+  --ring: #c9141b;
+  --sidebar: #ffffff;
   --sidebar-foreground: #182130;
-  --sidebar-primary: #E51B23;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #FDEBED;
-  --sidebar-accent-foreground: #A9121C;
-  --sidebar-border: #E0E4EB;
-  --sidebar-ring: #C9141B;
-  --chart-1: #E51B23;
-  --chart-2: #C9141B;
+  --sidebar-primary: #e51b23;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fdebed;
+  --sidebar-accent-foreground: #a9121c;
+  --sidebar-border: #e0e4eb;
+  --sidebar-ring: #c9141b;
+  --chart-1: #e51b23;
+  --chart-2: #c9141b;
   --chart-3: #293547;
-  --chart-4: #8A96A5;
-  --chart-5: #F39B9D;
+  --chart-4: #8a96a5;
+  --chart-5: #f39b9d;
   color-scheme: light;
   background: var(--background);
   color: var(--foreground);
@@ -48,7 +48,7 @@ html.apois-portal-v2026 img[alt="APOIS ENTREGAS"] {
 html.apois-portal-v2026 img[alt="APOIS"],
 html.apois-portal-v2026 img[alt="APOIS ENTREGA"] {
   border-radius: 999px;
-  background: #FFFFFF;
+  background: #ffffff;
 }
 html.apois-portal-v2026 body,
 html.apois-portal-v2026 body > div,
@@ -58,21 +58,24 @@ html.apois-portal-v2026 #root {
 }
 /* Existing source uses explicit black / zinc dark tokens across cards,
  * grids, modals and tables. Restyle surfaces without changing any JSX action. */
-html.apois-portal-v2026 :is([class~="bg-black"],[class~="bg-zinc-950"],[class~="bg-zinc-900"]) {
-  background-color: #FFFFFF !important;
+html.apois-portal-v2026 :is([class~="bg-black"], [class~="bg-zinc-950"], [class~="bg-zinc-900"]) {
+  background-color: #ffffff !important;
   color: #182130;
 }
-html.apois-portal-v2026 :is([class~="bg-zinc-800"],[class~="bg-[#090909]"]) {
-  background-color: #F1F3F6 !important;
+html.apois-portal-v2026 :is([class~="bg-zinc-800"], [class~="bg-[#090909]"]) {
+  background-color: #f1f3f6 !important;
 }
-html.apois-portal-v2026 :is([class~="border-zinc-900"],[class~="border-zinc-800"],[class~="border-zinc-700"]) {
-  border-color: #E0E4EB !important;
+html.apois-portal-v2026
+  :is([class~="border-zinc-900"], [class~="border-zinc-800"], [class~="border-zinc-700"]) {
+  border-color: #e0e4eb !important;
 }
-html.apois-portal-v2026 :is([class~="text-zinc-100"],[class~="text-zinc-200"],[class~="text-zinc-300"]) {
+html.apois-portal-v2026
+  :is([class~="text-zinc-100"], [class~="text-zinc-200"], [class~="text-zinc-300"]) {
   color: #283243 !important;
 }
-html.apois-portal-v2026 :is([class~="text-zinc-400"],[class~="text-zinc-500"],[class~="text-zinc-600"]) {
-  color: #606B7A !important;
+html.apois-portal-v2026
+  :is([class~="text-zinc-400"], [class~="text-zinc-500"], [class~="text-zinc-600"]) {
+  color: #606b7a !important;
 }
 html.apois-portal-v2026 [class~="text-white"]:not(button):not(a) {
   color: #182130;
@@ -81,10 +84,10 @@ html.apois-portal-v2026 [class~="text-white"]:not(button):not(a) {
  * Never let the broad light-surface text normalization recolor their
  * white headlines to the same graphite as the background. */
 html.apois-portal-v2026 [data-apois-portal-brand-hero] {
-  color: #FFFFFF !important;
+  color: #ffffff !important;
 }
 html.apois-portal-v2026 [data-apois-portal-brand-hero] [data-apois-portal-brand-headline] {
-  color: #FFFFFF !important;
+  color: #ffffff !important;
   opacity: 1;
   visibility: visible;
 }
@@ -92,59 +95,60 @@ html.apois-portal-v2026 [data-apois-portal-brand-hero] p[class*="text-white"] {
   color: rgb(255 255 255 / 0.76) !important;
 }
 
-html.apois-portal-v2026 :is(button,a)[class~="bg-primary"],
+html.apois-portal-v2026 :is(button, a)[class~="bg-primary"],
 html.apois-portal-v2026 [class~="bg-primary"] [class~="text-white"],
 html.apois-portal-v2026 [class~="bg-primary"][class~="text-white"] {
-  color: #FFFFFF !important;
+  color: #ffffff !important;
 }
 html.apois-portal-v2026 [class~="text-black"][class~="bg-primary"] {
-  color: #FFFFFF !important;
+  color: #ffffff !important;
 }
 html.apois-portal-v2026 [class*="from-primary"][class*="to-accent"] {
-  background-image: linear-gradient(135deg,#E51B23,#C9141B) !important;
+  background-image: linear-gradient(135deg, #e51b23, #c9141b) !important;
 }
 html.apois-portal-v2026 [class*="from-primary"][class*="via-primary"][class*="to-accent"] {
-  background-image: linear-gradient(135deg,#E51B23,#C9141B) !important;
+  background-image: linear-gradient(135deg, #e51b23, #c9141b) !important;
 }
 html.apois-portal-v2026 [class*="from-primary"][class*="to-accent"][class*="text-transparent"],
-html.apois-portal-v2026 [class*="from-primary"][class*="via-primary"][class*="to-accent"][class*="text-transparent"] {
+html.apois-portal-v2026
+  [class*="from-primary"][class*="via-primary"][class*="to-accent"][class*="text-transparent"] {
   color: transparent !important;
 }
 html.apois-portal-v2026 input:not([type="checkbox"]):not([type="radio"]),
 html.apois-portal-v2026 textarea,
 html.apois-portal-v2026 select,
 html.apois-portal-v2026 [role="combobox"] {
-  border-color: #DDE1E8;
-  background-color: #FFFFFF;
+  border-color: #dde1e8;
+  background-color: #ffffff;
   color: #182130;
 }
-html.apois-portal-v2026 :is(input,textarea,select,button,a):focus-visible {
-  outline: 2px solid #C9141B;
+html.apois-portal-v2026 :is(input, textarea, select, button, a):focus-visible {
+  outline: 2px solid #c9141b;
   outline-offset: 2px;
 }
 html.apois-portal-v2026 [role="dialog"],
 html.apois-portal-v2026 [role="alertdialog"] {
-  background: #FFFFFF;
-  border-color: #E0E4EB;
+  background: #ffffff;
+  border-color: #e0e4eb;
   color: #182130;
   max-width: calc(100vw - 24px);
 }
 html.apois-portal-v2026 [role="tab"][data-state="active"],
 html.apois-portal-v2026 [role="switch"][data-state="checked"] {
-  --ring: #C9141B;
-  accent-color: #E51B23;
+  --ring: #c9141b;
+  accent-color: #e51b23;
 }
 html.apois-portal-v2026 table {
-  border-color: #E0E4EB;
+  border-color: #e0e4eb;
 }
-html.apois-portal-v2026 :is(th,td) {
-  border-color: #E8EBF0;
+html.apois-portal-v2026 :is(th, td) {
+  border-color: #e8ebf0;
 }
-html.apois-portal-v2026 :is(button,a,[role="button"]) {
+html.apois-portal-v2026 :is(button, a, [role="button"]) {
   -webkit-tap-highlight-color: transparent;
 }
 @media (max-width: 640px) {
-  html.apois-portal-v2026 :is([role="dialog"],[role="alertdialog"]) {
+  html.apois-portal-v2026 :is([role="dialog"], [role="alertdialog"]) {
     max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);
     overflow-y: auto;
   }
@@ -152,6 +156,16 @@ html.apois-portal-v2026 :is(button,a,[role="button"]) {
 
 /* Replace remaining obsolete gold utility classes only where they are brand
    decoration. Amber status/warning classes intentionally stay amber. */
-html.apois-portal-v2026 :is([class~="text-[#F6BE1C]"],[class~="text-[#FFD700]"],[class~="text-[#F6B900]"]) { color: #C9141B !important; }
-html.apois-portal-v2026 :is([class~="bg-[#F6BE1C]"],[class~="bg-[#FFD700]"],[class~="bg-[#F6B900]"]) { background-color: #E51B23 !important; color: #FFFFFF !important; }
-html.apois-portal-v2026 :is([class~="border-[#F6BE1C]"],[class~="border-[#FFD700]"],[class~="border-[#F6B900]"]) { border-color: #E51B23 !important; }
+html.apois-portal-v2026
+  :is([class~="text-[#F6BE1C]"], [class~="text-[#FFD700]"], [class~="text-[#F6B900]"]) {
+  color: #c9141b !important;
+}
+html.apois-portal-v2026
+  :is([class~="bg-[#F6BE1C]"], [class~="bg-[#FFD700]"], [class~="bg-[#F6B900]"]) {
+  background-color: #e51b23 !important;
+  color: #ffffff !important;
+}
+html.apois-portal-v2026
+  :is([class~="border-[#F6BE1C]"], [class~="border-[#FFD700]"], [class~="border-[#F6B900]"]) {
+  border-color: #e51b23 !important;
+}

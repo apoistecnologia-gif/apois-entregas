@@ -124,25 +124,33 @@ function Login() {
         const code = String(error.code ?? "").toLowerCase();
         const status = error.status;
         const message =
-          status === 429 || code.includes("rate_limit") || code.includes("over_email_send_rate_limit")
+          status === 429 ||
+          code.includes("rate_limit") ||
+          code.includes("over_email_send_rate_limit")
             ? "Limite temporário de envio de e-mails. Aguarde antes de solicitar outro link."
             : code.includes("redirect") || code.includes("validation_failed")
               ? "O endereço de recuperação não está autorizado no Supabase. Verifique as Redirect URLs."
               : status === 0 || status === 502 || status === 503 || status === 504
                 ? "Serviço de autenticação indisponível no momento. Tente novamente mais tarde."
                 : "Não foi possível enviar o link de recuperação. Verifique os registros de Auth do Supabase.";
-        if (import.meta.env.DEV) console.warn("[APOIS Auth] password recovery request failed", { code, status });
+        if (import.meta.env.DEV)
+          console.warn("[APOIS Auth] password recovery request failed", { code, status });
         setLoginError(message);
         toast.error(message);
         return;
       }
       if (productMode === "merchant") {
-        window.location.assign(`/redefinir-senha?${new URLSearchParams({ otp: "1", email: normalizedEmail }).toString()}`);
+        window.location.assign(
+          `/redefinir-senha?${new URLSearchParams({ otp: "1", email: normalizedEmail }).toString()}`,
+        );
       } else {
-        toast.success("Se este e-mail estiver cadastrado, você receberá um link para criar a senha. No painel admin, ele abrirá o domínio oficial da APOIS.");
+        toast.success(
+          "Se este e-mail estiver cadastrado, você receberá um link para criar a senha. No painel admin, ele abrirá o domínio oficial da APOIS.",
+        );
       }
     } catch {
-      const message = "Falha de conexão com o serviço de autenticação. Verifique a conexão e tente novamente.";
+      const message =
+        "Falha de conexão com o serviço de autenticação. Verifique a conexão e tente novamente.";
       setLoginError(message);
       toast.error(message);
     } finally {
@@ -237,21 +245,44 @@ function Login() {
     const isAdmin = productMode === "admin";
     const sectionLabel = isAdmin ? "Administração de Entregas" : "Portal do Estabelecimento";
     return (
-      <div className="min-h-dvh w-full bg-[#F6F7F9] text-[#182130]" data-apois-backoffice-desktop-login={productMode}>
+      <div
+        className="min-h-dvh w-full bg-[#F6F7F9] text-[#182130]"
+        data-apois-backoffice-desktop-login={productMode}
+      >
         <div className="grid min-h-dvh w-full lg:grid-cols-[minmax(0,1fr)_minmax(460px,.87fr)]">
-          <aside data-apois-portal-brand-hero className="relative hidden flex-col justify-between overflow-hidden bg-[#182130] p-12 text-white lg:flex xl:p-16">
-            <div aria-hidden="true" className="pointer-events-none absolute -left-28 bottom-[-240px] h-[510px] w-[510px] rounded-full border-[76px] border-[#E51B23]/15" />
-            <div aria-hidden="true" className="pointer-events-none absolute -right-36 top-[-190px] h-[510px] w-[510px] rounded-full bg-[#E51B23]/10 blur-3xl" />
+          <aside
+            data-apois-portal-brand-hero
+            className="relative hidden flex-col justify-between overflow-hidden bg-[#182130] p-12 text-white lg:flex xl:p-16"
+          >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -left-28 bottom-[-240px] h-[510px] w-[510px] rounded-full border-[76px] border-[#E51B23]/15"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-36 top-[-190px] h-[510px] w-[510px] rounded-full bg-[#E51B23]/10 blur-3xl"
+            />
             <div className="relative z-10 flex items-center gap-4">
-              <img src={APOIS_OFFICIAL_RED_LOGO_URL} alt="APOIS" width="64" height="64" className="h-16 w-16 rounded-full bg-white object-contain" />
+              <img
+                src={APOIS_OFFICIAL_RED_LOGO_URL}
+                alt="APOIS"
+                width="64"
+                height="64"
+                className="h-16 w-16 rounded-full bg-white object-contain"
+              />
               <div>
                 <p className="text-xl font-black tracking-[.12em]">APOIS</p>
-                <p className="text-xs font-extrabold uppercase tracking-[.13em] text-[#FF858A]">{sectionLabel}</p>
+                <p className="text-xs font-extrabold uppercase tracking-[.13em] text-[#FF858A]">
+                  {sectionLabel}
+                </p>
               </div>
             </div>
             <div className="relative z-10 max-w-lg space-y-6">
               <div className="h-1.5 w-16 rounded-full bg-[#E51B23]" />
-              <h1 data-apois-portal-brand-headline className="text-4xl font-black leading-tight tracking-tight text-white xl:text-5xl">
+              <h1
+                data-apois-portal-brand-headline
+                className="text-4xl font-black leading-tight tracking-tight text-white xl:text-5xl"
+              >
                 {isAdmin ? "Controle completo das entregas." : "Seu negócio em movimento."}
               </h1>
               <p className="max-w-md text-base leading-7 text-white/75">
@@ -264,28 +295,55 @@ function Login() {
               APOIS Tecnologia e Mobilidade · Acesso restrito
             </p>
           </aside>
-          <main className="flex min-h-dvh items-center justify-center px-5 py-12 sm:px-10 lg:bg-white lg:px-12" aria-labelledby="apois-portal-login-title">
+          <main
+            className="flex min-h-dvh items-center justify-center px-5 py-12 sm:px-10 lg:bg-white lg:px-12"
+            aria-labelledby="apois-portal-login-title"
+          >
             <div className="w-full max-w-[460px]">
               <div className="mb-10 flex items-center gap-3">
-                <img src={APOIS_OFFICIAL_RED_LOGO_URL} alt="Logomarca APOIS" width="64" height="64" className="h-16 w-16 rounded-full bg-white object-contain shadow-[0_8px_24px_rgba(229,27,35,0.10)]" />
+                <img
+                  src={APOIS_OFFICIAL_RED_LOGO_URL}
+                  alt="Logomarca APOIS"
+                  width="64"
+                  height="64"
+                  className="h-16 w-16 rounded-full bg-white object-contain shadow-[0_8px_24px_rgba(229,27,35,0.10)]"
+                />
                 <div>
                   <p className="text-xl font-black tracking-[.09em] text-[#182130]">APOIS</p>
-                  <p className="text-xs font-extrabold uppercase tracking-[.12em] text-[#C9141B]">{sectionLabel}</p>
+                  <p className="text-xs font-extrabold uppercase tracking-[.12em] text-[#C9141B]">
+                    {sectionLabel}
+                  </p>
                 </div>
               </div>
-              <p className="mb-3 text-xs font-bold uppercase tracking-[.19em] text-[#C9141B]">Acesso seguro</p>
-              <h2 id="apois-portal-login-title" className="text-3xl font-black tracking-tight text-[#182130]">Entrar no painel</h2>
+              <p className="mb-3 text-xs font-bold uppercase tracking-[.19em] text-[#C9141B]">
+                Acesso seguro
+              </p>
+              <h2
+                id="apois-portal-login-title"
+                className="text-3xl font-black tracking-tight text-[#182130]"
+              >
+                Entrar no painel
+              </h2>
               <p className="mb-8 mt-3 text-sm leading-6 text-[#606B7A]">
-                Entre com seu e-mail e senha para acessar o {isAdmin ? "administrativo" : "estabelecimento"}.
+                Entre com seu e-mail e senha para acessar o{" "}
+                {isAdmin ? "administrativo" : "estabelecimento"}.
               </p>
               <form onSubmit={handleLogin} method="post" className="space-y-5">
                 <div className="space-y-2">
-                  <label htmlFor="apois-portal-email" className="block text-sm font-semibold text-[#293547]">E-mail</label>
+                  <label
+                    htmlFor="apois-portal-email"
+                    className="block text-sm font-semibold text-[#293547]"
+                  >
+                    E-mail
+                  </label>
                   <Input
                     id="apois-portal-email"
                     type="email"
                     value={email}
-                    onChange={(e) => { setEmail(e.target.value); if (loginError) setLoginError(null); }}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (loginError) setLoginError(null);
+                    }}
                     required
                     autoComplete="email"
                     placeholder="seuemail@exemplo.com"
@@ -294,13 +352,21 @@ function Login() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="apois-portal-password" className="block text-sm font-semibold text-[#293547]">Senha</label>
+                  <label
+                    htmlFor="apois-portal-password"
+                    className="block text-sm font-semibold text-[#293547]"
+                  >
+                    Senha
+                  </label>
                   <div className="relative">
                     <Input
                       id="apois-portal-password"
                       type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => { setPassword(e.target.value); if (loginError) setLoginError(null); }}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (loginError) setLoginError(null);
+                      }}
                       required
                       autoComplete="current-password"
                       placeholder="Digite sua senha"
@@ -316,23 +382,44 @@ function Login() {
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
-                  <button type="button" disabled={isLoading} onClick={() => void handlePasswordReset()} className="block w-fit text-sm font-semibold text-[#C9141B] hover:underline disabled:opacity-50">
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => void handlePasswordReset()}
+                    className="block w-fit text-sm font-semibold text-[#C9141B] hover:underline disabled:opacity-50"
+                  >
                     Esqueci minha senha
                   </button>
                 </div>
-                {loginError && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">{loginError}</p>}
+                {loginError && (
+                  <p
+                    className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+                    role="alert"
+                  >
+                    {loginError}
+                  </p>
+                )}
                 <Button
                   type="submit"
                   disabled={isLoading}
                   className="h-12 w-full rounded-xl bg-[#E51B23] text-base font-bold text-white shadow-[0_12px_24px_-14px_rgba(229,27,35,0.65)] hover:bg-[#C9141B]"
                 >
-                  {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Entrando…</> : "Entrar com segurança"}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Entrando…
+                    </>
+                  ) : (
+                    "Entrar com segurança"
+                  )}
                 </Button>
               </form>
               {!isAdmin && allowsSignup ? (
                 <p className="mt-6 text-center text-sm text-[#606B7A]">
                   Ainda não tem uma conta?{" "}
-                  <Link to="/register" className="font-bold text-[#C9141B] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-[#E51B23]">
+                  <Link
+                    to="/register"
+                    className="font-bold text-[#C9141B] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-[#E51B23]"
+                  >
                     Criar minha conta
                   </Link>
                 </p>

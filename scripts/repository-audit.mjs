@@ -31,6 +31,25 @@ const INTERNAL_PUBLIC_FUNCTIONS = new Map([
       ],
     },
   ],
+  [
+    "mercadopago-payout",
+    {
+      // This endpoint accepts either a validated runtime dispatch key or an
+      // authenticated active admin. Never whitelist by name without validating
+      // the source-level authorization and fail-closed payout switches.
+      file: "supabase/functions/mercadopago-payout/index.ts",
+      requiredPatterns: [
+        /x-apois-payout-dispatch-key/,
+        /verify_payout_dispatch_runtime_key/,
+        /auth\.auth\.getUser\(token\)/,
+        /\.eq\("role", "admin"\)/,
+        /if \(!identity\) return json\(401/,
+        /if \(!identity\.admin\) return json\(403/,
+        /marketplace_direct_live/,
+        /MERCADO_PAGO_PAYOUT_ENABLED/,
+      ],
+    },
+  ],
 ]);
 
 const findings = [];
@@ -159,7 +178,7 @@ async function verifySupabaseConfig() {
   const file = "supabase/config.toml";
   const content = await readFile(path.join(ROOT, file), "utf8");
 
-  if (!/^project_id\s*=\s*["']sbvhdgyuuperszlsllji["']/m.test(content)) {
+  if (!/^project_id\s*=\s*["']ptgkwyyolrdgnqketkjj["']/m.test(content)) {
     report(file, "wrong-project", "project_id must point to APOIS ENTREGA - PRODUÇÃO");
   }
 

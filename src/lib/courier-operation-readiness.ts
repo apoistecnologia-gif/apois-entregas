@@ -27,19 +27,27 @@ export function merchantSubscriptionDateWarnings(
     if (!latest.has(subscription.merchant_id)) latest.set(subscription.merchant_id, subscription);
   }
   return merchants
-    .filter((merchant) => merchant.is_active && merchant.approval_status === "approved" && merchant.delivery_enabled)
+    .filter(
+      (merchant) =>
+        merchant.is_active && merchant.approval_status === "approved" && merchant.delivery_enabled,
+    )
     .filter((merchant) => {
       const subscription = latest.get(merchant.id);
-      return !subscription ||
+      return (
+        !subscription ||
         !subscription.current_period_end ||
         !Number.isFinite(Date.parse(subscription.current_period_end)) ||
         Date.parse(subscription.current_period_end) <= now ||
-        subscription.last_payment_status !== "approved";
+        subscription.last_payment_status !== "approved"
+      );
     })
     .map((merchant) => merchant.name);
 }
 
-export function paymentProviderBlockingOrders(provider: string | null, enabled: boolean | null): boolean {
+export function paymentProviderBlockingOrders(
+  provider: string | null,
+  enabled: boolean | null,
+): boolean {
   // False is meaningful only when Safe2Pay is the selected provider. Never
   // claim other gateways are ready without checking their own configuration.
   return provider === "safe2pay_marketplace" && enabled !== true;

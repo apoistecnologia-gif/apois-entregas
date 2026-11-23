@@ -234,8 +234,11 @@ Deno.serve(async (request: Request) => {
   // Não alterar preços de contratos antigos: o valor registrado na assinatura
   // vigente prevalece até a revisão comercial expressamente aplicável.
   const subscriptionAmount = numberValue(subscription.amount);
-  if (subscriptionAmount === null || subscriptionAmount <= 0 ||
-      Math.abs(subscriptionAmount - Math.round(subscriptionAmount * 100) / 100) > 1e-8) {
+  if (
+    subscriptionAmount === null ||
+    subscriptionAmount <= 0 ||
+    Math.abs(subscriptionAmount - Math.round(subscriptionAmount * 100) / 100) > 1e-8
+  ) {
     return json(request, 503, { error: "invalid_subscription_amount" });
   }
 

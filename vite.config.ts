@@ -5,6 +5,9 @@
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { assertQ12BuildEnvironment } from "./scripts/assert-q12-build-environment.mjs";
+
+assertQ12BuildEnvironment(process.env);
 
 const isMobileBuild = process.env["APOIS_MOBILE_BUILD"] === "1";
 const isVercelBuild = process.env["APOIS_VERCEL_BUILD"] === "1" || process.env["VERCEL"] === "1";

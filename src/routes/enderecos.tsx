@@ -231,7 +231,11 @@ function EnderecosLayout() {
         ) : loadError ? (
           <div className="space-y-4 rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-center">
             <p className="text-sm text-red-300">{loadError}</p>
-            <Button variant="outline" onClick={() => void fetchAddresses()} className="border-zinc-800">
+            <Button
+              variant="outline"
+              onClick={() => void fetchAddresses()}
+              className="border-zinc-800"
+            >
               <RefreshCw className="mr-2 h-4 w-4" /> Tentar novamente
             </Button>
           </div>
@@ -256,7 +260,8 @@ function EnderecosLayout() {
                   tabIndex={0}
                   onClick={() => setSelectedAddressId(address.id)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") setSelectedAddressId(address.id);
+                    if (event.key === "Enter" || event.key === " ")
+                      setSelectedAddressId(address.id);
                   }}
                   className={`rounded-3xl border p-4 ${selected ? "border-primary bg-primary/5" : "border-zinc-800 bg-zinc-950"}`}
                 >

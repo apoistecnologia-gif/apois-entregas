@@ -181,5 +181,7 @@ export function AuthSessionIsolation({ children }: { children: ReactNode }) {
   // its verified-code state before the user can set a new password.
   const authFlowPath = typeof window !== "undefined" ? window.location.pathname : "";
   const stableAuthFlow = authFlowPath === "/redefinir-senha" || authFlowPath === "/auth/callback";
-  return <Fragment key={stableAuthFlow ? "auth-flow" : (userId ?? "anonymous")}>{children}</Fragment>;
+  return (
+    <Fragment key={stableAuthFlow ? "auth-flow" : (userId ?? "anonymous")}>{children}</Fragment>
+  );
 }

@@ -27,13 +27,19 @@ writeFileSync(iconPath, iconXml, "utf8");
 let manifest = readFileSync(manifestPath, "utf8");
 manifest = manifest.replace(/android:icon="[^"]+"/, 'android:icon="@drawable/apois_launcher"');
 if (/android:roundIcon="[^"]+"/.test(manifest)) {
-  manifest = manifest.replace(/android:roundIcon="[^"]+"/, 'android:roundIcon="@drawable/apois_launcher"');
+  manifest = manifest.replace(
+    /android:roundIcon="[^"]+"/,
+    'android:roundIcon="@drawable/apois_launcher"',
+  );
 } else {
-  manifest = manifest.replace("<application", '<application android:roundIcon="@drawable/apois_launcher"');
+  manifest = manifest.replace(
+    "<application",
+    '<application android:roundIcon="@drawable/apois_launcher"',
+  );
 }
 writeFileSync(manifestPath, manifest, "utf8");
 
-if (!manifest.includes('@drawable/apois_launcher')) {
+if (!manifest.includes("@drawable/apois_launcher")) {
   throw new Error("Falha ao aplicar o ícone oficial APOIS no AndroidManifest.xml");
 }
 

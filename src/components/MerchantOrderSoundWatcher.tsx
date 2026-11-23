@@ -247,7 +247,10 @@ function MerchantOrderSoundWatcher() {
           const previousPaymentMethod = String(previous?.["payment_method"] ?? "").toLowerCase();
           const status = String(next?.["status"] ?? "").toLowerCase();
           const paymentReady = isAlertableOrderPayment(paymentMethod, paymentStatus);
-          const wasPaymentReady = isAlertableOrderPayment(previousPaymentMethod, previousPaymentStatus);
+          const wasPaymentReady = isAlertableOrderPayment(
+            previousPaymentMethod,
+            previousPaymentStatus,
+          );
           if (!orderId || !paymentReady || wasPaymentReady || status !== "confirmed") return;
           queueOrder(orderId, next?.["order_number"] ? String(next["order_number"]) : "");
         },
@@ -265,7 +268,10 @@ function MerchantOrderSoundWatcher() {
         .limit(30);
       if (disposed || error || !Array.isArray(data)) return;
       data.forEach((order) => {
-        if (typeof order?.id === "string" && isAlertableOrderPayment(order.payment_method, order.payment_status)) {
+        if (
+          typeof order?.id === "string" &&
+          isAlertableOrderPayment(order.payment_method, order.payment_status)
+        ) {
           queueOrder(order.id, order?.order_number ? String(order.order_number) : "");
         }
       });

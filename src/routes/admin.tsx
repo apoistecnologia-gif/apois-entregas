@@ -114,7 +114,11 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminMfaProtectedWorkspace() {
-  return <AdminMfaGate loginPath="/login"><AdminWorkspace /></AdminMfaGate>;
+  return (
+    <AdminMfaGate loginPath="/login">
+      <AdminWorkspace />
+    </AdminMfaGate>
+  );
 }
 
 function AdminWorkspace() {
@@ -503,7 +507,12 @@ function AdminWorkspace() {
         title: "Confirmar repasse pago",
         description: "Informe a referência real do repasse já concluído no provedor.",
         fields: [
-          { key: "provider", label: "Provedor do repasse", defaultValue: provider || "manual", required: true },
+          {
+            key: "provider",
+            label: "Provedor do repasse",
+            defaultValue: provider || "manual",
+            required: true,
+          },
           {
             key: "providerPayoutId",
             label: "Referência/ID do repasse concluído",
@@ -578,11 +587,41 @@ function AdminWorkspace() {
           defaultValue: `Regra ${suggestedCity.name}/${suggestedCity.state}`,
           required: true,
         },
-        { key: "commission", label: "Comissão do estabelecimento (%)", type: "number", defaultValue: "0", required: true },
-        { key: "courierBase", label: "Base do entregador (R$)", type: "number", defaultValue: "0", required: true },
-        { key: "perKm", label: "Valor por km do entregador (R$)", type: "number", defaultValue: "0", required: true },
-        { key: "minimum", label: "Ganho mínimo do entregador (R$)", type: "number", defaultValue: "0", required: true },
-        { key: "customerFee", label: "Taxa de serviço do cliente (R$)", type: "number", defaultValue: "0", required: true },
+        {
+          key: "commission",
+          label: "Comissão do estabelecimento (%)",
+          type: "number",
+          defaultValue: "0",
+          required: true,
+        },
+        {
+          key: "courierBase",
+          label: "Base do entregador (R$)",
+          type: "number",
+          defaultValue: "0",
+          required: true,
+        },
+        {
+          key: "perKm",
+          label: "Valor por km do entregador (R$)",
+          type: "number",
+          defaultValue: "0",
+          required: true,
+        },
+        {
+          key: "minimum",
+          label: "Ganho mínimo do entregador (R$)",
+          type: "number",
+          defaultValue: "0",
+          required: true,
+        },
+        {
+          key: "customerFee",
+          label: "Taxa de serviço do cliente (R$)",
+          type: "number",
+          defaultValue: "0",
+          required: true,
+        },
       ],
       confirmLabel: "Criar regra",
     });
@@ -856,264 +895,264 @@ function AdminWorkspace() {
 
   return (
     <>
-    <WorkspaceShell
-      brand="Administração"
-      subtitle="APOIS ENTREGA"
-      tabs={tabs}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-      onLogout={logout}
-      userLabel={user?.email}
-    >
-      <div className="mb-5 flex items-center justify-between gap-4">
-        <p className="text-sm text-zinc-500">
-          Dados operacionais protegidos por RLS e trilha de auditoria.
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void loadAll(true)}
-          disabled={refreshing}
-          className="border-zinc-800 bg-zinc-950"
-        >
-          <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-          Atualizar
-        </Button>
-      </div>
-
-      {activeTab === "dashboard" && (
-        <Dashboard
-          profiles={profiles}
-          merchants={merchants}
-          couriers={couriers}
-          orders={orders}
-          activeOrders={activeOrders}
-          openTickets={openTickets}
-          pendingPayouts={pendingPayouts}
-          paidVolume={paidVolume}
-        />
-      )}
-
-      <AdminMerchantCreateDialog
-        open={createMerchantOpen}
-        onOpenChange={setCreateMerchantOpen}
-        onCreated={async (merchantId) => {
-          await loadAll(true);
-          setSelectedMerchantId(merchantId);
-        }}
-      />
-
-      {activeTab === "merchants" &&
-        (selectedMerchant ? (
-          <MerchantApplicationDetails
-            merchant={selectedMerchant}
-            profile={profileById.get(selectedMerchant.owner_user_id)}
-            busyKey={busy}
-            onBack={() => setSelectedMerchantId(null)}
-            onReview={reviewMerchant}
-            onSuspend={suspendMerchant}
-            onDelete={deleteMerchant}
-            onDocument={reviewDocument}
-          />
-        ) : (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4">
-              <div>
-                <p className="font-black">Cadastro administrativo</p>
-                <p className="mt-1 text-xs text-zinc-500">
-                  Cadastre um estabelecimento manualmente e, se necessário, já deixe a conta
-                  aprovada e ativa.
-                </p>
-              </div>
-              <Button
-                type="button"
-                disabled={busy === "merchant:new"}
-                onClick={() => setCreateMerchantOpen(true)}
-                className="font-black"
-              >
-                {busy === "merchant:new" ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Building2 className="mr-2 h-4 w-4" />
-                )}
-                Cadastrar estabelecimento
-              </Button>
-            </div>
-            {merchants.map((merchant) => (
-              <ApplicationCard
-                key={merchant.id}
-                kind="merchant"
-                item={merchant}
-                profile={profileById.get(merchant.owner_user_id)}
-                busy={busy === `merchant:${merchant.id}`}
-                onReview={reviewMerchant}
-                onSuspend={suspendMerchant}
-                onDelete={deleteMerchant}
-                onDocument={reviewDocument}
-                onOpenDocument={openDocument}
-                onOpenDetails={() => setSelectedMerchantId(merchant.id)}
-              />
-            ))}
-            {merchants.length === 0 ? (
-              <EmptyState
-                title="Nenhum estabelecimento"
-                description="Cadastros de estabelecimentos aparecerão aqui."
-              />
-            ) : null}
-          </div>
-        ))}
-
-      {activeTab === "couriers" && (
-        <div className="space-y-4">
-          {couriers.map((courier) => (
-            <ApplicationCard
-              key={courier.id}
-              kind="courier"
-              item={courier}
-              profile={profileById.get(courier.user_id)}
-              busy={busy === `courier:${courier.id}`}
-              onReview={reviewCourier}
-              onDocument={reviewDocument}
-              onOpenDocument={openDocument}
-            />
-          ))}
-          {couriers.length === 0 ? (
-            <EmptyState
-              title="Nenhum entregador"
-              description="Cadastros de entregadores aparecerão aqui."
-            />
-          ) : null}
+      <WorkspaceShell
+        brand="Administração"
+        subtitle="APOIS ENTREGA"
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onLogout={logout}
+        userLabel={user?.email}
+      >
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <p className="text-sm text-zinc-500">
+            Dados operacionais protegidos por RLS e trilha de auditoria.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void loadAll(true)}
+            disabled={refreshing}
+            className="border-zinc-800 bg-zinc-950"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
         </div>
-      )}
 
-      {activeTab === "orders" && <AdminOrdersPanel />}
+        {activeTab === "dashboard" && (
+          <Dashboard
+            profiles={profiles}
+            merchants={merchants}
+            couriers={couriers}
+            orders={orders}
+            activeOrders={activeOrders}
+            openTickets={openTickets}
+            pendingPayouts={pendingPayouts}
+            paidVolume={paidVolume}
+          />
+        )}
 
-      {activeTab === "realtime" && <AdminRealtimeOperationsPanel />}
+        <AdminMerchantCreateDialog
+          open={createMerchantOpen}
+          onOpenChange={setCreateMerchantOpen}
+          onCreated={async (merchantId) => {
+            await loadAll(true);
+            setSelectedMerchantId(merchantId);
+          }}
+        />
 
-      {activeTab === "users" && (
-        <div className="grid gap-3 xl:grid-cols-2">
-          {profiles.map((profile) => (
-            <div key={profile.id} className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+        {activeTab === "merchants" &&
+          (selectedMerchant ? (
+            <MerchantApplicationDetails
+              merchant={selectedMerchant}
+              profile={profileById.get(selectedMerchant.owner_user_id)}
+              busyKey={busy}
+              onBack={() => setSelectedMerchantId(null)}
+              onReview={reviewMerchant}
+              onSuspend={suspendMerchant}
+              onDelete={deleteMerchant}
+              onDocument={reviewDocument}
+            />
+          ) : (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4">
                 <div>
-                  <p className="font-black">{profile.full_name || "Usuário sem nome"}</p>
-                  <p className="text-xs text-zinc-500">
-                    {profile.phone || "Sem telefone"} · {profile.id}
+                  <p className="font-black">Cadastro administrativo</p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Cadastre um estabelecimento manualmente e, se necessário, já deixe a conta
+                    aprovada e ativa.
                   </p>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {(rolesByUser.get(profile.id) ?? ["customer"]).map((role) => (
-                      <span
-                        key={role}
-                        className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black uppercase text-primary"
-                      >
-                        {role}
-                      </span>
-                    ))}
-                  </div>
-                  {profile.blocked_reason ? (
-                    <p className="mt-2 text-xs text-red-300">{profile.blocked_reason}</p>
-                  ) : null}
                 </div>
                 <Button
                   type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={busy === `user:${profile.id}`}
-                  onClick={() => void setUserActive(profile, !profile.is_active)}
-                  className={
-                    profile.is_active
-                      ? "border-red-500/20 text-red-400"
-                      : "border-emerald-500/20 text-emerald-400"
-                  }
+                  disabled={busy === "merchant:new"}
+                  onClick={() => setCreateMerchantOpen(true)}
+                  className="font-black"
                 >
-                  {profile.is_active ? "Bloquear" : "Reativar"}
+                  {busy === "merchant:new" ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Building2 className="mr-2 h-4 w-4" />
+                  )}
+                  Cadastrar estabelecimento
                 </Button>
               </div>
+              {merchants.map((merchant) => (
+                <ApplicationCard
+                  key={merchant.id}
+                  kind="merchant"
+                  item={merchant}
+                  profile={profileById.get(merchant.owner_user_id)}
+                  busy={busy === `merchant:${merchant.id}`}
+                  onReview={reviewMerchant}
+                  onSuspend={suspendMerchant}
+                  onDelete={deleteMerchant}
+                  onDocument={reviewDocument}
+                  onOpenDocument={openDocument}
+                  onOpenDetails={() => setSelectedMerchantId(merchant.id)}
+                />
+              ))}
+              {merchants.length === 0 ? (
+                <EmptyState
+                  title="Nenhum estabelecimento"
+                  description="Cadastros de estabelecimentos aparecerão aqui."
+                />
+              ) : null}
             </div>
           ))}
-        </div>
-      )}
 
-      {activeTab === "reviews" && <AdminReviewsPanel />}
-
-      {activeTab === "coverage" && (
-        <AdminCoveragePanel cities={cities} onRefresh={() => loadAll(true)} />
-      )}
-
-      {activeTab === "reports" && (
-        <AdminReportsPanel orders={orders} refunds={refunds} payouts={payouts} />
-      )}
-
-      {activeTab === "finance" && (
-        <FinancePanel
-          payouts={payouts}
-          refunds={refunds}
-          payments={payments}
-          merchantSubscriptions={merchantSubscriptions}
-          pendingPayouts={pendingPayouts}
-          pendingRefunds={pendingRefunds}
-          busy={busy}
-          onPayout={settlePayout}
-          onRefund={processRefund}
-        />
-      )}
-
-      {activeTab === "courier-settlements" && <AdminCourierSettlementsPanel />}
-
-      {activeTab === "support" && (
-        <AdminSupportPanel
-          tickets={tickets}
-          busy={busy}
-          onStatus={updateTicket}
-          onReply={replyTicket}
-        />
-      )}
-
-      {activeTab === "settings" && (
-        <OperationPanel
-          cities={cities}
-          feeRules={feeRules}
-          settingsRows={settingsRows}
-          busy={busy}
-          onToggleCity={toggleCity}
-          onCreateFee={createFeeRule}
-          onEditFee={editFeeRule}
-          onToggleFee={toggleFeeRule}
-          onEditSetting={editSetting}
-        />
-      )}
-
-      {activeTab === "audit" && (
-        <div className="overflow-hidden rounded-2xl border border-zinc-900 bg-zinc-950">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px] text-left text-sm">
-              <thead className="bg-black text-xs uppercase text-zinc-500">
-                <tr>
-                  <th className="p-4">Data</th>
-                  <th>Admin</th>
-                  <th>Ação</th>
-                  <th>Entidade</th>
-                  <th>ID</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-900">
-                {auditLogs.map((log) => (
-                  <tr key={log.id}>
-                    <td className="p-4">{dateTime(log.created_at)}</td>
-                    <td className="font-mono text-xs">{log.admin_id?.slice(0, 8)}</td>
-                    <td className="font-bold">{log.action}</td>
-                    <td>{log.entity_type}</td>
-                    <td className="font-mono text-xs text-zinc-500">{log.entity_id}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {activeTab === "couriers" && (
+          <div className="space-y-4">
+            {couriers.map((courier) => (
+              <ApplicationCard
+                key={courier.id}
+                kind="courier"
+                item={courier}
+                profile={profileById.get(courier.user_id)}
+                busy={busy === `courier:${courier.id}`}
+                onReview={reviewCourier}
+                onDocument={reviewDocument}
+                onOpenDocument={openDocument}
+              />
+            ))}
+            {couriers.length === 0 ? (
+              <EmptyState
+                title="Nenhum entregador"
+                description="Cadastros de entregadores aparecerão aqui."
+              />
+            ) : null}
           </div>
-        </div>
-      )}
-    </WorkspaceShell>
-    {confirmDialog}
-    {promptDialog}
+        )}
+
+        {activeTab === "orders" && <AdminOrdersPanel />}
+
+        {activeTab === "realtime" && <AdminRealtimeOperationsPanel />}
+
+        {activeTab === "users" && (
+          <div className="grid gap-3 xl:grid-cols-2">
+            {profiles.map((profile) => (
+              <div key={profile.id} className="rounded-2xl border border-zinc-900 bg-zinc-950 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-black">{profile.full_name || "Usuário sem nome"}</p>
+                    <p className="text-xs text-zinc-500">
+                      {profile.phone || "Sem telefone"} · {profile.id}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {(rolesByUser.get(profile.id) ?? ["customer"]).map((role) => (
+                        <span
+                          key={role}
+                          className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black uppercase text-primary"
+                        >
+                          {role}
+                        </span>
+                      ))}
+                    </div>
+                    {profile.blocked_reason ? (
+                      <p className="mt-2 text-xs text-red-300">{profile.blocked_reason}</p>
+                    ) : null}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={busy === `user:${profile.id}`}
+                    onClick={() => void setUserActive(profile, !profile.is_active)}
+                    className={
+                      profile.is_active
+                        ? "border-red-500/20 text-red-400"
+                        : "border-emerald-500/20 text-emerald-400"
+                    }
+                  >
+                    {profile.is_active ? "Bloquear" : "Reativar"}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === "reviews" && <AdminReviewsPanel />}
+
+        {activeTab === "coverage" && (
+          <AdminCoveragePanel cities={cities} onRefresh={() => loadAll(true)} />
+        )}
+
+        {activeTab === "reports" && (
+          <AdminReportsPanel orders={orders} refunds={refunds} payouts={payouts} />
+        )}
+
+        {activeTab === "finance" && (
+          <FinancePanel
+            payouts={payouts}
+            refunds={refunds}
+            payments={payments}
+            merchantSubscriptions={merchantSubscriptions}
+            pendingPayouts={pendingPayouts}
+            pendingRefunds={pendingRefunds}
+            busy={busy}
+            onPayout={settlePayout}
+            onRefund={processRefund}
+          />
+        )}
+
+        {activeTab === "courier-settlements" && <AdminCourierSettlementsPanel />}
+
+        {activeTab === "support" && (
+          <AdminSupportPanel
+            tickets={tickets}
+            busy={busy}
+            onStatus={updateTicket}
+            onReply={replyTicket}
+          />
+        )}
+
+        {activeTab === "settings" && (
+          <OperationPanel
+            cities={cities}
+            feeRules={feeRules}
+            settingsRows={settingsRows}
+            busy={busy}
+            onToggleCity={toggleCity}
+            onCreateFee={createFeeRule}
+            onEditFee={editFeeRule}
+            onToggleFee={toggleFeeRule}
+            onEditSetting={editSetting}
+          />
+        )}
+
+        {activeTab === "audit" && (
+          <div className="overflow-hidden rounded-2xl border border-zinc-900 bg-zinc-950">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[800px] text-left text-sm">
+                <thead className="bg-black text-xs uppercase text-zinc-500">
+                  <tr>
+                    <th className="p-4">Data</th>
+                    <th>Admin</th>
+                    <th>Ação</th>
+                    <th>Entidade</th>
+                    <th>ID</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-900">
+                  {auditLogs.map((log) => (
+                    <tr key={log.id}>
+                      <td className="p-4">{dateTime(log.created_at)}</td>
+                      <td className="font-mono text-xs">{log.admin_id?.slice(0, 8)}</td>
+                      <td className="font-bold">{log.action}</td>
+                      <td>{log.entity_type}</td>
+                      <td className="font-mono text-xs text-zinc-500">{log.entity_id}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </WorkspaceShell>
+      {confirmDialog}
+      {promptDialog}
     </>
   );
 }

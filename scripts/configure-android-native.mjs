@@ -26,10 +26,7 @@ const requiredEntries = [
 
 const missingEntries = requiredEntries.filter((entry) => !manifest.includes(entry));
 if (missingEntries.length > 0) {
-  manifest = manifest.replace(
-    manifestTag,
-    `${manifestTag}\n    ${missingEntries.join("\n    ")}`,
-  );
+  manifest = manifest.replace(manifestTag, `${manifestTag}\n    ${missingEntries.join("\n    ")}`);
 }
 
 if (!manifest.includes('android:usesCleartextTraffic="false"')) {

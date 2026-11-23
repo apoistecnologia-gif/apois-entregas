@@ -1,4 +1,4 @@
-project_id = "sbvhdgyuuperszlsllji"
+project_id = "ptgkwyyolrdgnqketkjj"
 
 # External payment providers call these endpoints directly and authenticate with their
 # own provider-specific credentials/signatures. Internal async callbacks may also

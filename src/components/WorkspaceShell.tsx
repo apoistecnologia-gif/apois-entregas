@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-
 export type WorkspaceTab = {
   id: string;
   label: string;

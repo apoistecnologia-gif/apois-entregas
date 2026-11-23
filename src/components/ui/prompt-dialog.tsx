@@ -78,7 +78,12 @@ export function usePromptDialog() {
     : false;
 
   const promptDialog = state ? (
-    <Dialog open onOpenChange={(open) => { if (!open) close(null); }}>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) close(null);
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{state.options.title}</DialogTitle>

@@ -89,7 +89,9 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   const landingRoute = getProductLandingRoute();
 
   useEffect(() => {
-    reportLovableError(error instanceof Error ? error : new Error(String(error)), { boundary: "tanstack_root_error_component" });
+    reportLovableError(error instanceof Error ? error : new Error(String(error)), {
+      boundary: "tanstack_root_error_component",
+    });
   }, [error]);
 
   return (
@@ -146,7 +148,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { rel: "stylesheet", href: appCss },
         { rel: "stylesheet", href: systemThemeCss },
         { rel: "stylesheet", href: apoisBackofficeCss },
-        { rel: "icon", href: ["admin", "merchant"].includes(getApoisProductMode()) ? APOIS_OFFICIAL_RED_LOGO_URL : "/favicon.png", type: "image/png" },
+        {
+          rel: "icon",
+          href: ["admin", "merchant"].includes(getApoisProductMode())
+            ? APOIS_OFFICIAL_RED_LOGO_URL
+            : "/favicon.png",
+          type: "image/png",
+        },
       ],
     };
   },
@@ -161,11 +169,20 @@ function RootShell({ children }: { children: ReactNode }) {
   const isBackofficeProduct = product === "admin" || product === "merchant";
 
   return (
-    <html lang="pt-BR" className={isBackofficeProduct ? "apois-system-theme apois-portal-v2026" : "dark apois-system-theme"}>
+    <html
+      lang="pt-BR"
+      className={
+        isBackofficeProduct ? "apois-system-theme apois-portal-v2026" : "dark apois-system-theme"
+      }
+    >
       <head>
         <HeadContent />
       </head>
-      <body className={isBackofficeProduct ? "bg-background text-foreground antialiased" : "bg-black antialiased"}>
+      <body
+        className={
+          isBackofficeProduct ? "bg-background text-foreground antialiased" : "bg-black antialiased"
+        }
+      >
         {isBackofficeProduct ? (
           <div className="min-h-dvh w-full bg-background text-foreground">{children}</div>
         ) : (
@@ -186,9 +203,13 @@ function RootShell({ children }: { children: ReactNode }) {
 function MerchantOperationalServices() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   if (getApoisProductMode() !== "merchant") return null;
-  if (pathname !== "/merchant" && !pathname.startsWith("/merchant/") &&
-      pathname !== "/configuracoes-estabelecimento" &&
-      !pathname.startsWith("/configuracoes-estabelecimento/")) return null;
+  if (
+    pathname !== "/merchant" &&
+    !pathname.startsWith("/merchant/") &&
+    pathname !== "/configuracoes-estabelecimento" &&
+    !pathname.startsWith("/configuracoes-estabelecimento/")
+  )
+    return null;
   return <MerchantOrderSoundWatcher />;
 }
 

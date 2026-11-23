@@ -46,10 +46,7 @@ function parseAddressComponents(components: AddressComponent[]): Address {
     street: getLong("route"),
     number: getLong("street_number"),
     neighborhood:
-      getLong("sublocality_level_1") ||
-      getLong("neighborhood") ||
-      getLong("sublocality") ||
-      "",
+      getLong("sublocality_level_1") || getLong("neighborhood") || getLong("sublocality") || "",
     city:
       getLong("locality") ||
       getLong("administrative_area_level_2") ||
@@ -133,7 +130,9 @@ export function CustomerLocationAddressSelector({ onAddressSelected, autoLocate 
       (error) => {
         console.error("Erro de geolocalização:", error);
         setIsLocating(false);
-        toast.error("Não foi possível acessar sua localização. Verifique a permissão do aplicativo.");
+        toast.error(
+          "Não foi possível acessar sua localização. Verifique a permissão do aplicativo.",
+        );
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 15000 },
     );
@@ -194,7 +193,11 @@ export function CustomerLocationAddressSelector({ onAddressSelected, autoLocate 
         disabled={isLocating}
         className="h-14 w-full rounded-2xl bg-primary text-base font-black text-black"
       >
-        {isLocating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Navigation className="mr-2 h-5 w-5 fill-current" />}
+        {isLocating ? (
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+        ) : (
+          <Navigation className="mr-2 h-5 w-5 fill-current" />
+        )}
         {isLocating ? "Buscando seu endereço..." : "Usar minha localização atual"}
       </Button>
 
@@ -207,7 +210,9 @@ export function CustomerLocationAddressSelector({ onAddressSelected, autoLocate 
           disabled={isSearching}
           className="h-12 rounded-xl border-zinc-800 bg-zinc-900 pl-10 text-white"
         />
-        {isSearching ? <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" /> : null}
+        {isSearching ? (
+          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" />
+        ) : null}
         {suggestions.length > 0 ? (
           <div className="absolute left-0 right-0 top-full z-[200] mt-1 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl">
             {suggestions.map((suggestion) => (
@@ -221,7 +226,9 @@ export function CustomerLocationAddressSelector({ onAddressSelected, autoLocate 
                   {suggestion.structured_formatting?.main_text || suggestion.description}
                 </p>
                 {suggestion.structured_formatting?.secondary_text ? (
-                  <p className="mt-0.5 truncate text-xs text-zinc-500">{suggestion.structured_formatting.secondary_text}</p>
+                  <p className="mt-0.5 truncate text-xs text-zinc-500">
+                    {suggestion.structured_formatting.secondary_text}
+                  </p>
                 ) : null}
               </button>
             ))}
@@ -230,7 +237,8 @@ export function CustomerLocationAddressSelector({ onAddressSelected, autoLocate 
       </div>
 
       <p className="px-1 text-xs leading-relaxed text-zinc-500">
-        O app tenta preencher rua, bairro, cidade, UF, CEP e número automaticamente. Você completa apenas o que não for identificado.
+        O app tenta preencher rua, bairro, cidade, UF, CEP e número automaticamente. Você completa
+        apenas o que não for identificado.
       </p>
     </div>
   );
