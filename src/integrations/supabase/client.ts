@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./config";
 import { getApoisProductMode } from "@/lib/product-routing";
+import { markPasswordRecoveryIntent } from "@/lib/passwordRecoveryIntent";
 
 const productMode = getApoisProductMode();
 
@@ -17,6 +18,18 @@ const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     detectSessionInUrl: true,
   },
 });
+
+// Capture recovery events as soon as the Auth client starts processing URL tokens.
+// A short-lived navigation hint survives route changes but contains no credentials.
+if (typeof window !== "undefined" && (productMode === "admin" || productMode === "merchant")) {
+  client.auth.onAuthStateChange((event, session) => {
+    if (event !== "PASSWORD_RECOVERY" || !session) return;
+    markPasswordRecoveryIntent();
+    if (window.location.pathname !== "/redefinir-senha") {
+      window.location.replace("/redefinir-senha");
+    }
+  });
+}
 
 // The generated Database type can temporarily lag behind migrations already applied
 // in production. Keep auth/functions/storage strongly typed while allowing route-level
