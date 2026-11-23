@@ -1,0 +1,52 @@
+name: SENATRAN — corrigir formatação do branch de segurança
+
+on:
+  push:
+    branches:
+      - security/senatran-q12-guards-20261123
+    paths:
+      - .github/workflows/senatran-format-branch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format-safety-branch:
+    if: github.ref == 'refs/heads/security/senatran-q12-guards-20261123'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - name: Instalar dependências do lockfile sem alterá-lo
+        run: bun install --frozen-lockfile
+      - name: Formatar arquivos rastreados segundo Prettier da APOIS
+        run: bun run format
+      - name: Conferir lint e formatação antes de publicar
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun run format:check
+          bun run lint
+          echo "APOIS_FORMAT_AND_LINT_OK=true"
+      - name: Publicar somente a formatação na branch de segurança
+        shell: bash
+        env:
+          SAFE_BRANCH: security/senatran-q12-guards-20261123
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -u
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração de formatação necessária."
+            exit 0
+          fi
+          echo "Arquivos alterados:"
+          git diff --cached --stat | tail -n 50
+          git commit -m "style(ci): aplicar Prettier em arquivos rastreados da branch Q12"
+          git push origin "HEAD:refs/heads/${SAFE_BRANCH}"
