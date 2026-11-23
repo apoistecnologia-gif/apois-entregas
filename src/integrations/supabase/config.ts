@@ -3,8 +3,8 @@
 // Sem par explicito em desenvolvimento local, o sistema falha de modo fechado.
 const canonicalUrl = "https://ptgkwyyolrdgnqketkjj.supabase.co";
 const canonicalPublishableKey = "sb_publishable_DcfjTMboo1HX0O3w8Ptijg_quQbvVBY";
-const optionalUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
-const optionalPublishableKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)?.trim();
+const optionalUrl = (import.meta.env['VITE_SUPABASE_URL'] as string | undefined)?.trim();
+const optionalPublishableKey = (import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] as string | undefined)?.trim();
 const hasExplicitPair = Boolean(optionalUrl && optionalPublishableKey);
 // Nunca usar as credenciais canonicas quando houver par explicito de homologacao.
 // A Vercel bloqueia o build Preview caso esse par aponte para producao.
