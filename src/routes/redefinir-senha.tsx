@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getApoisProductMode } from "@/lib/product-routing";
 import { APOIS_OFFICIAL_RED_LOGO_URL } from "@/assets/apoisOfficial2026";
+import { clearPasswordRecoveryIntent, hasPasswordRecoveryIntent, markPasswordRecoveryIntent } from "@/lib/passwordRecoveryIntent";
 
 export const Route = createFileRoute("/redefinir-senha")({
   ssr: false,
@@ -43,6 +44,7 @@ function RedefinirSenhaPage() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" && session && !cancelled) {
         recoveryEvent = true;
+        markPasswordRecoveryIntent();
         setReady(true);
         setLinkError(null);
         setChecking(false);
@@ -56,7 +58,12 @@ function RedefinirSenhaPage() {
         const code = params.get("code");
         const tokenHash = params.get("token_hash");
         const type = params.get("type") ?? hash.get("type");
-        let recoveryIntent = recoveryEvent;
+        let recoveryIntent = recoveryEvent || hasPasswordRecoveryIntent();
+
+        if (type === "recovery") {
+          recoveryIntent = true;
+          markPasswordRecoveryIntent();
+        }
 
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -147,6 +154,7 @@ function RedefinirSenhaPage() {
       setSaving(false);
       return;
     }
+    clearPasswordRecoveryIntent();
     await supabase.auth.signOut();
     toast.success("Senha atualizada. Entre novamente com a nova senha.");
     navigate({ to: "/login" });

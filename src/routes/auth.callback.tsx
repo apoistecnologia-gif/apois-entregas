@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { verifyAccountAccessOrSignOut } from "@/lib/account-access";
 import { getSafeProductRoute } from "@/lib/product-routing";
+import { markPasswordRecoveryIntent } from "@/lib/passwordRecoveryIntent";
 
 export const Route = createFileRoute("/auth/callback")({
   ssr: false,
@@ -43,6 +44,21 @@ function AuthCallbackPage() {
       if (error || !session) {
         if (!cancelled)
           setErrorMessage("O link expirou ou já foi utilizado. Tente entrar novamente.");
+        return;
+      }
+
+      // Supabase recovery links are authentication sessions, not normal logins.
+      // Keep the user on the password creation form before any home redirects.
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const isRecovery =
+        params.get("type") === "recovery" ||
+        hash.get("type") === "recovery" ||
+        params.get("next") === "/redefinir-senha";
+      if (isRecovery) {
+        markPasswordRecoveryIntent();
+        if (!cancelled) {
+          await navigate({ to: "/redefinir-senha", replace: true });
+        }
         return;
       }
 
