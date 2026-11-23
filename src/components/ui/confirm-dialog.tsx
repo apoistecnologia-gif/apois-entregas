@@ -45,7 +45,12 @@ export function useConfirmDialog() {
   };
 
   const confirmDialog = state ? (
-    <AlertDialog open onOpenChange={(open) => { if (!open) close(false); }}>
+    <AlertDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) close(false);
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{state.options.title}</AlertDialogTitle>

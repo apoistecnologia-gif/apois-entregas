@@ -14,11 +14,26 @@ const checks = [
   [file.includes(canonical), "O projeto canônico de Entregas deve ser configurado"],
   [!file.includes(retired), "O host aposentado não pode permanecer como fallback"],
   [file.includes("hasExplicitPair"), "Overrides precisam fornecer URL e publishable key juntos"],
-  [file.includes("hasExplicitPair ? optionalUrl! : canonicalUrl"), "Todas as interfaces usam par explicito de homologacao"],
-  [!file.includes("!backoffice && hasExplicitPair"), "Preview admin nao pode ignorar o par configurado"],
-  [file.includes("import.meta.env.DEV"), "Desenvolvimento local nao pode usar fallback de producao"],
-  [client.includes("SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY"), "O cliente precisa usar a configuração central"],
-  [client.includes('storageKey: "apois-merchant-auth-v2"'), "A sessão Merchant deve continuar isolada"],
+  [
+    file.includes("hasExplicitPair ? optionalUrl! : canonicalUrl"),
+    "Todas as interfaces usam par explicito de homologacao",
+  ],
+  [
+    !file.includes("!backoffice && hasExplicitPair"),
+    "Preview admin nao pode ignorar o par configurado",
+  ],
+  [
+    file.includes("import.meta.env.DEV"),
+    "Desenvolvimento local nao pode usar fallback de producao",
+  ],
+  [
+    client.includes("SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY"),
+    "O cliente precisa usar a configuração central",
+  ],
+  [
+    client.includes('storageKey: "apois-merchant-auth-v2"'),
+    "A sessão Merchant deve continuar isolada",
+  ],
 ];
 let failures = 0;
 for (const [passed, description] of checks) {

@@ -133,10 +133,7 @@ const primeCourierLocationPermission = () => {
   window.setTimeout(() => {
     void NativeGeolocation.checkPermissions()
       .then((permission) => {
-        if (
-          permission.location === "prompt" ||
-          permission.location === "prompt-with-rationale"
-        ) {
+        if (permission.location === "prompt" || permission.location === "prompt-with-rationale") {
           return NativeGeolocation.requestPermissions({
             permissions: ["location", "coarseLocation"],
           });

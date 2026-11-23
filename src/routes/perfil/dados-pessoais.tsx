@@ -297,153 +297,153 @@ function DadosPessoaisPage() {
 
   return (
     <>
-    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
-      <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur-lg">
-        <button
-          type="button"
-          onClick={() => navigate({ to: "/perfil" })}
-          className="rounded-full bg-zinc-900 p-2"
-          aria-label="Voltar"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <h1 className="flex-1 text-center text-xl font-bold text-primary">Dados Pessoais</h1>
-        <div className="w-9" />
-      </header>
+      <div className="relative flex h-screen w-full flex-col overflow-hidden bg-black text-white">
+        <header className="z-50 flex shrink-0 items-center justify-between border-b border-zinc-900 bg-black/80 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] backdrop-blur-lg">
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/perfil" })}
+            className="rounded-full bg-zinc-900 p-2"
+            aria-label="Voltar"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="flex-1 text-center text-xl font-bold text-primary">Dados Pessoais</h1>
+          <div className="w-9" />
+        </header>
 
-      <main className="scrollbar-none flex-1 overflow-y-auto p-6 pb-[calc(env(safe-area-inset-bottom)+7rem)]">
-        {loading ? (
-          <div className="flex h-full items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <div className="space-y-8">
-            <section className="flex flex-col items-center">
-              <div className="relative">
-                <div className="grid h-24 w-24 place-items-center overflow-hidden rounded-full border-2 border-primary bg-zinc-900">
-                  {avatarSrc ? (
-                    <img
-                      src={avatarSrc}
-                      alt="Foto de perfil"
-                      className="h-full w-full object-cover"
+        <main className="scrollbar-none flex-1 overflow-y-auto p-6 pb-[calc(env(safe-area-inset-bottom)+7rem)]">
+          {loading ? (
+            <div className="flex h-full items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-8">
+              <section className="flex flex-col items-center">
+                <div className="relative">
+                  <div className="grid h-24 w-24 place-items-center overflow-hidden rounded-full border-2 border-primary bg-zinc-900">
+                    {avatarSrc ? (
+                      <img
+                        src={avatarSrc}
+                        alt="Foto de perfil"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <User className="h-12 w-12 text-primary" />
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={uploadingAvatar}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute -bottom-1 -right-1 grid h-10 w-10 place-items-center rounded-full border-4 border-black bg-primary text-black"
+                  >
+                    <Camera className="h-4 w-4" />
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void uploadAvatar(file);
+                    }}
+                  />
+                </div>
+              </section>
+
+              <form onSubmit={handleSave} method="post" className="space-y-6">
+                <div className="space-y-4">
+                  <Field label="Nome completo" icon={User}>
+                    <input
+                      type="text"
+                      value={profile.full_name}
+                      onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                      className="profile-input"
+                      required
                     />
+                  </Field>
+                  <Field label="Telefone" icon={Phone}>
+                    <input
+                      type="tel"
+                      value={profile.phone}
+                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                      className="profile-input"
+                    />
+                  </Field>
+                  <Field label="CPF" icon={User}>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={profile.cpf}
+                      onChange={(e) => setProfile({ ...profile, cpf: formatCpf(e.target.value) })}
+                      className="profile-input"
+                      placeholder="000.000.000-00"
+                      maxLength={14}
+                      required
+                    />
+                  </Field>
+                  <Field label="Data de nascimento" icon={CalendarDays}>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={profile.birth_date}
+                      onChange={(e) =>
+                        setProfile({ ...profile, birth_date: maskBirthDate(e.target.value) })
+                      }
+                      className="profile-input"
+                      placeholder="DD/MM/AAAA"
+                      maxLength={10}
+                    />
+                  </Field>
+                  <Field label="E-mail" icon={Mail}>
+                    <input
+                      type="email"
+                      value={profile.email}
+                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                      className="profile-input"
+                      required
+                    />
+                  </Field>
+                </div>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 font-bold text-black disabled:opacity-50"
+                >
+                  {saving ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    <User className="h-12 w-12 text-primary" />
+                    <Save className="h-5 w-5" />
                   )}
+                  {saving ? "Salvando..." : "Salvar alterações"}
+                </button>
+              </form>
+
+              <section className="rounded-3xl border border-red-500/20 bg-red-500/5 p-5">
+                <div className="flex items-start gap-3">
+                  <UserX className="h-5 w-5 text-red-400" />
+                  <div>
+                    <h2 className="font-black text-red-300">Desativar minha conta</h2>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Seu acesso será bloqueado e a sessão será encerrada.
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
-                  disabled={uploadingAvatar}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 grid h-10 w-10 place-items-center rounded-full border-4 border-black bg-primary text-black"
+                  disabled={deactivating}
+                  onClick={() => void deactivateAccount()}
+                  className="mt-4 h-11 w-full rounded-xl border border-red-500/30 bg-red-500/10 text-sm font-black text-red-300"
                 >
-                  <Camera className="h-4 w-4" />
+                  {deactivating ? "Desativando..." : "Desativar conta"}
                 </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) void uploadAvatar(file);
-                  }}
-                />
-              </div>
-            </section>
-
-            <form onSubmit={handleSave} method="post" className="space-y-6">
-              <div className="space-y-4">
-                <Field label="Nome completo" icon={User}>
-                  <input
-                    type="text"
-                    value={profile.full_name}
-                    onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                    className="profile-input"
-                    required
-                  />
-                </Field>
-                <Field label="Telefone" icon={Phone}>
-                  <input
-                    type="tel"
-                    value={profile.phone}
-                    onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                    className="profile-input"
-                  />
-                </Field>
-                <Field label="CPF" icon={User}>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={profile.cpf}
-                    onChange={(e) => setProfile({ ...profile, cpf: formatCpf(e.target.value) })}
-                    className="profile-input"
-                    placeholder="000.000.000-00"
-                    maxLength={14}
-                    required
-                  />
-                </Field>
-                <Field label="Data de nascimento" icon={CalendarDays}>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={profile.birth_date}
-                    onChange={(e) =>
-                      setProfile({ ...profile, birth_date: maskBirthDate(e.target.value) })
-                    }
-                    className="profile-input"
-                    placeholder="DD/MM/AAAA"
-                    maxLength={10}
-                  />
-                </Field>
-                <Field label="E-mail" icon={Mail}>
-                  <input
-                    type="email"
-                    value={profile.email}
-                    onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                    className="profile-input"
-                    required
-                  />
-                </Field>
-              </div>
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 font-bold text-black disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Save className="h-5 w-5" />
-                )}
-                {saving ? "Salvando..." : "Salvar alterações"}
-              </button>
-            </form>
-
-            <section className="rounded-3xl border border-red-500/20 bg-red-500/5 p-5">
-              <div className="flex items-start gap-3">
-                <UserX className="h-5 w-5 text-red-400" />
-                <div>
-                  <h2 className="font-black text-red-300">Desativar minha conta</h2>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Seu acesso será bloqueado e a sessão será encerrada.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                disabled={deactivating}
-                onClick={() => void deactivateAccount()}
-                className="mt-4 h-11 w-full rounded-xl border border-red-500/30 bg-red-500/10 text-sm font-black text-red-300"
-              >
-                {deactivating ? "Desativando..." : "Desativar conta"}
-              </button>
-            </section>
-          </div>
-        )}
-      </main>
-    </div>
-    {promptDialog}
+              </section>
+            </div>
+          )}
+        </main>
+      </div>
+      {promptDialog}
     </>
   );
 }

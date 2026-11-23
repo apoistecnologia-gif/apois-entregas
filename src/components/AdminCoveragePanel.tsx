@@ -284,11 +284,13 @@ export function AdminCoveragePanel({
           className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4"
         >
           <h2 className="text-sm font-black text-amber-200">
-            Busca de entregadores bloqueada em {citiesNeedingDispatchRadius.length} {citiesNeedingDispatchRadius.length === 1 ? "cidade ativa" : "cidades ativas"}
+            Busca de entregadores bloqueada em {citiesNeedingDispatchRadius.length}{" "}
+            {citiesNeedingDispatchRadius.length === 1 ? "cidade ativa" : "cidades ativas"}
           </h2>
           <p className="mt-2 text-xs leading-relaxed text-amber-100/90">
-            Sem um raio de busca definido, o servidor não envia ofertas aos entregadores dessa cidade.
-            O raio de entrega do cliente é independente e não será utilizado como substituto.
+            Sem um raio de busca definido, o servidor não envia ofertas aos entregadores dessa
+            cidade. O raio de entrega do cliente é independente e não será utilizado como
+            substituto.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {citiesNeedingDispatchRadius.map((city) => (

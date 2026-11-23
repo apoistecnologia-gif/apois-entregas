@@ -25,8 +25,7 @@ const distanceMeters = (a: CourierPosition, b: CourierPosition) => {
   return 2 * radius * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 };
 
-const isNativeAndroid = () =>
-  Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+const isNativeAndroid = () => Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 
 const toCourierPosition = (result: {
   coords: {

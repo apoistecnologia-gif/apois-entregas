@@ -100,7 +100,8 @@ function Index() {
             </h1>
 
             <p className="mx-auto mt-4 max-w-[320px] text-[15px] leading-6 text-zinc-400">
-              Seus restaurantes, mercados e lojas favoritos em um só lugar, com entrega acompanhada em tempo real.
+              Seus restaurantes, mercados e lojas favoritos em um só lugar, com entrega acompanhada
+              em tempo real.
             </p>
 
             <div className="mt-6 grid grid-cols-3 gap-2">
@@ -110,7 +111,9 @@ function Index() {
               </div>
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-2 py-3">
                 <MapPin className="mx-auto h-5 w-5 text-[#C88A08]" strokeWidth={1.9} />
-                <span className="mt-2 block text-[10px] font-semibold text-zinc-300">Em tempo real</span>
+                <span className="mt-2 block text-[10px] font-semibold text-zinc-300">
+                  Em tempo real
+                </span>
               </div>
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-2 py-3">
                 <ShieldCheck className="mx-auto h-5 w-5 text-[#F6BE1C]" strokeWidth={1.9} />

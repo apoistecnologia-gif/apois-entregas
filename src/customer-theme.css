@@ -42,7 +42,11 @@
 
 /* Remove the former green/purple brand treatment from customer surfaces. */
 .apois-customer-theme [class*="from-primary"][class*="to-accent"] {
-  background-image: linear-gradient(135deg, oklch(0.57 0.105 220), oklch(0.47 0.085 220)) !important;
+  background-image: linear-gradient(
+    135deg,
+    oklch(0.57 0.105 220),
+    oklch(0.47 0.085 220)
+  ) !important;
 }
 
 .apois-customer-theme [class*="from-primary"][class*="via-primary"][class*="to-accent"] {
@@ -130,21 +134,24 @@
 }
 .apois-customer-theme body,
 .apois-customer-theme body > div,
-.apois-customer-theme [class~="bg-black"] { background-color:#050505; }
+.apois-customer-theme [class~="bg-black"] {
+  background-color: #050505;
+}
 .apois-customer-theme [class*="from-primary"][class*="to-accent"],
 .apois-customer-theme [class*="from-primary"][class*="via-primary"][class*="to-accent"] {
-  background-image:linear-gradient(135deg,#f7ca48,#f6be1c 56%,#c88a08) !important;
-  color:#070707 !important;
+  background-image: linear-gradient(135deg, #f7ca48, #f6be1c 56%, #c88a08) !important;
+  color: #070707 !important;
 }
 .apois-customer-theme [class*="from-primary"][class*="to-accent"][class*="text-transparent"],
-.apois-customer-theme [class*="from-primary"][class*="via-primary"][class*="to-accent"][class*="text-transparent"] {
+.apois-customer-theme
+  [class*="from-primary"][class*="via-primary"][class*="to-accent"][class*="text-transparent"] {
   color: transparent !important;
 }
 .apois-customer-theme [class*="rgba(57,181,74"],
 .apois-customer-theme [class*="rgba(106,27,154"],
 .apois-customer-theme [class*="rgba(31,120,148"],
 .apois-customer-theme [class*="rgba(53,169,201"] {
-  --tw-shadow-color:rgba(246,190,28,.26) !important;
+  --tw-shadow-color: rgba(246, 190, 28, 0.26) !important;
 }
 /* Literal-utility catches for the old green/purple/teal brand hex values
  * are intentionally omitted here: the source-level brand sweep script
@@ -155,19 +162,30 @@
  * sweep's vocabulary, so it's safe to keep as written. */
 .apois-customer-theme [class~="text-[#FFD700]"],
 .apois-customer-theme [class~="text-[#F6B900]"],
-.apois-customer-theme [class~="text-[#FACC15]"] { color:#f6be1c !important; }
+.apois-customer-theme [class~="text-[#FACC15]"] {
+  color: #f6be1c !important;
+}
 .apois-customer-theme [class~="bg-[#FFD700]"],
 .apois-customer-theme [class~="bg-[#F6B900]"],
-.apois-customer-theme [class~="bg-[#FACC15]"] { background-color:#f6be1c !important; color:#070707 !important; }
+.apois-customer-theme [class~="bg-[#FACC15]"] {
+  background-color: #f6be1c !important;
+  color: #070707 !important;
+}
 .apois-customer-theme [class~="border-[#FFD700]"],
 .apois-customer-theme [class~="border-[#F6B900]"],
-.apois-customer-theme [class~="border-[#FACC15]"] { border-color:#f6be1c !important; }
+.apois-customer-theme [class~="border-[#FACC15]"] {
+  border-color: #f6be1c !important;
+}
 .apois-customer-theme input:focus,
 .apois-customer-theme textarea:focus,
-.apois-customer-theme select:focus { border-color:#f6be1c; }
-.apois-customer-theme .apois-customer-card {
-  background:linear-gradient(145deg,#151515,#0b0b0b);
-  border-color:#313131;
-  box-shadow:0 12px 34px rgba(0,0,0,.42);
+.apois-customer-theme select:focus {
+  border-color: #f6be1c;
 }
-.apois-customer-theme .apois-customer-soft-glow { box-shadow:0 10px 30px rgba(246,190,28,.18); }
+.apois-customer-theme .apois-customer-card {
+  background: linear-gradient(145deg, #151515, #0b0b0b);
+  border-color: #313131;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.42);
+}
+.apois-customer-theme .apois-customer-soft-glow {
+  box-shadow: 0 10px 30px rgba(246, 190, 28, 0.18);
+}

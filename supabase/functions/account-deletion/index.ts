@@ -5,7 +5,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 const baseHeaders = {
-  "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+  "Content-Security-Policy":
+    "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
   "Referrer-Policy": "no-referrer",
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
@@ -52,14 +53,20 @@ function page(message = "", isError = false) {
 Deno.serve(async (req) => {
   if (req.method === "GET") return html(page());
   if (req.method !== "POST") return html(page("Método não permitido.", true), 405);
-  if (!SUPABASE_URL || !SERVICE_ROLE) return html(page("Serviço temporariamente indisponível. Tente novamente mais tarde.", true), 503);
+  if (!SUPABASE_URL || !SERVICE_ROLE)
+    return html(
+      page("Serviço temporariamente indisponível. Tente novamente mais tarde.", true),
+      503,
+    );
 
   try {
     const form = await req.formData();
     const honeypot = String(form.get("website") ?? "").trim();
     if (honeypot) return html(page("Solicitação recebida."));
 
-    const email = String(form.get("email") ?? "").trim().toLowerCase();
+    const email = String(form.get("email") ?? "")
+      .trim()
+      .toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
       return html(page("Informe um e-mail válido.", true), 400);
     }
@@ -86,9 +93,19 @@ Deno.serve(async (req) => {
       if (error) throw error;
     }
 
-    return html(page("Solicitação recebida. Se houver uma conta associada ao e-mail informado, a APOIS fará a verificação necessária antes da conclusão."));
+    return html(
+      page(
+        "Solicitação recebida. Se houver uma conta associada ao e-mail informado, a APOIS fará a verificação necessária antes da conclusão.",
+      ),
+    );
   } catch (error) {
-    console.error("account-deletion public request failed", error instanceof Error ? error.message : String(error));
-    return html(page("Não foi possível registrar a solicitação agora. Tente novamente mais tarde.", true), 500);
+    console.error(
+      "account-deletion public request failed",
+      error instanceof Error ? error.message : String(error),
+    );
+    return html(
+      page("Não foi possível registrar a solicitação agora. Tente novamente mais tarde.", true),
+      500,
+    );
   }
 });

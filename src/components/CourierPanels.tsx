@@ -355,9 +355,7 @@ export function CourierProfilePanel({
         <section className="rounded-[1.6rem] border border-zinc-800 bg-zinc-950 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[9px] font-black uppercase tracking-wider text-accent">
-                Cadastro
-              </p>
+              <p className="text-[9px] font-black uppercase tracking-wider text-accent">Cadastro</p>
               <h2 className="mt-1 font-black">Documentos</h2>
             </div>
             <FileCheck2 className="h-6 w-6 text-accent" />

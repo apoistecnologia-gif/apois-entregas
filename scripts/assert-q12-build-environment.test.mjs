@@ -12,16 +12,33 @@ test("Q12: preview sem backend real e aceito como bloqueio seguro", () => {
   assert.doesNotThrow(() => assertQ12BuildEnvironment(preview));
 });
 test("Q12: preview apontando para Entregas producao e rejeitado", () => {
-  assert.throws(() => assertQ12BuildEnvironment({ ...preview, VITE_SUPABASE_URL: "https://ptgkwyyolrdgnqketkjj.supabase.co" }));
+  assert.throws(() =>
+    assertQ12BuildEnvironment({
+      ...preview,
+      VITE_SUPABASE_URL: "https://ptgkwyyolrdgnqketkjj.supabase.co",
+    }),
+  );
 });
 test("Q12: preview apontando para Corridas producao por variavel alternativa e rejeitado", () => {
-  assert.throws(() => assertQ12BuildEnvironment({ ...preview, SUPABASE_URL: "https://tbbzkrfupmqdywnzgnms.supabase.co" }));
+  assert.throws(() =>
+    assertQ12BuildEnvironment({
+      ...preview,
+      SUPABASE_URL: "https://tbbzkrfupmqdywnzgnms.supabase.co",
+    }),
+  );
 });
 test("Q12: projetos legados tambem sao proibidos no preview", () => {
-  assert.throws(() => assertQ12BuildEnvironment({ ...preview, VITE_SUPABASE_URL: "https://vqtucstyduxrqjgyigfk.supabase.co" }));
+  assert.throws(() =>
+    assertQ12BuildEnvironment({
+      ...preview,
+      VITE_SUPABASE_URL: "https://vqtucstyduxrqjgyigfk.supabase.co",
+    }),
+  );
 });
 test("Q12: preview com service_role e rejeitado", () => {
-  assert.throws(() => assertQ12BuildEnvironment({ ...preview, SUPABASE_SERVICE_ROLE_KEY: "teste-nao-real" }));
+  assert.throws(() =>
+    assertQ12BuildEnvironment({ ...preview, SUPABASE_SERVICE_ROLE_KEY: "teste-nao-real" }),
+  );
 });
 test("Q12: preview sem par completo e rejeitado", () => {
   assert.throws(() => assertQ12BuildEnvironment({ ...preview, VITE_SUPABASE_PUBLISHABLE_KEY: "" }));

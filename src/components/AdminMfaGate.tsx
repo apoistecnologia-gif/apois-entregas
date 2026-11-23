@@ -49,7 +49,9 @@ export function AdminMfaGate({
         setStep("enroll");
       }
     } catch {
-      setMessage("Não foi possível confirmar sua autenticação. Confira a conexão e tente novamente.");
+      setMessage(
+        "Não foi possível confirmar sua autenticação. Confira a conexão e tente novamente.",
+      );
       setStep("error");
     }
   }
@@ -128,41 +130,48 @@ export function AdminMfaGate({
         <div>
           <h1 className="text-xl font-bold">Proteção do acesso administrativo</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Para proteger os dados da APOIS, administradores devem confirmar um
-            segundo fator de autenticação antes de abrir o painel.
+            Para proteger os dados da APOIS, administradores devem confirmar um segundo fator de
+            autenticação antes de abrir o painel.
           </p>
         </div>
         {step === "enroll" && (
           <div className="space-y-4">
             <p className="text-sm">
-              Instale um aplicativo autenticador e cadastre o acesso administrativo.
-              Guarde também um segundo fator em dispositivo seguro para recuperação.
+              Instale um aplicativo autenticador e cadastre o acesso administrativo. Guarde também
+              um segundo fator em dispositivo seguro para recuperação.
             </p>
             {!factorId ? (
-              <button type="button" disabled={busy} onClick={beginEnrollment}
-                className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={beginEnrollment}
+                className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50"
+              >
                 {busy ? "Gerando QR Code..." : "Cadastrar autenticador"}
               </button>
             ) : (
               <>
                 {qrCode && (
-                  <img src={qrCode} alt="QR Code para cadastrar o autenticador"
-                    className="mx-auto h-44 w-44 rounded bg-white p-2" />
+                  <img
+                    src={qrCode}
+                    alt="QR Code para cadastrar o autenticador"
+                    className="mx-auto h-44 w-44 rounded bg-white p-2"
+                  />
                 )}
                 {secret && (
                   <p className="break-all rounded-lg bg-muted p-3 text-xs">
                     Chave manual (mantenha em sigilo): <code>{secret}</code>
                   </p>
                 )}
-                <p className="text-sm">Depois de cadastrar, digite o código atual de seis dígitos.</p>
+                <p className="text-sm">
+                  Depois de cadastrar, digite o código atual de seis dígitos.
+                </p>
               </>
             )}
           </div>
         )}
         {step === "challenge" && (
-          <p className="text-sm">
-            Digite o código de seis dígitos do autenticador já cadastrado.
-          </p>
+          <p className="text-sm">Digite o código de seis dígitos do autenticador já cadastrado.</p>
         )}
         {(step === "challenge" || (step === "enroll" && factorId)) && (
           <form onSubmit={verifyCode} className="space-y-3">
@@ -170,27 +179,45 @@ export function AdminMfaGate({
               Código do autenticador
             </label>
             <input
-              id="admin-mfa-code" type="text" inputMode="numeric"
-              autoComplete="one-time-code" pattern="[0-9]{6}"
-              maxLength={6} required value={code}
+              id="admin-mfa-code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              required
+              value={code}
               onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
               className="w-full rounded-lg border border-input bg-background px-4 py-3 text-center text-xl tracking-widest"
             />
-            <button type="submit" disabled={busy}
-              className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50">
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground disabled:opacity-50"
+            >
               {busy ? "Verificando..." : "Confirmar código"}
             </button>
           </form>
         )}
-        {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
+        {message && (
+          <p role="alert" className="text-sm text-destructive">
+            {message}
+          </p>
+        )}
         {step === "error" && (
-          <button type="button" onClick={() => void checkAssurance()}
-            className="w-full rounded-lg border border-border px-4 py-2">
+          <button
+            type="button"
+            onClick={() => void checkAssurance()}
+            className="w-full rounded-lg border border-border px-4 py-2"
+          >
             Tentar novamente
           </button>
         )}
-        <button type="button" onClick={() => void signOut()}
-          className="w-full rounded-lg border border-border px-4 py-2 text-sm">
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className="w-full rounded-lg border border-border px-4 py-2 text-sm"
+        >
           Sair da conta
         </button>
       </section>

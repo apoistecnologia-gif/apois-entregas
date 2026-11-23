@@ -7,7 +7,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getApoisProductMode } from "@/lib/product-routing";
 import { APOIS_OFFICIAL_RED_LOGO_URL } from "@/assets/apoisOfficial2026";
-import { clearPasswordRecoveryIntent, hasPasswordRecoveryIntent, markPasswordRecoveryIntent } from "@/lib/passwordRecoveryIntent";
+import {
+  clearPasswordRecoveryIntent,
+  hasPasswordRecoveryIntent,
+  markPasswordRecoveryIntent,
+} from "@/lib/passwordRecoveryIntent";
 
 export const Route = createFileRoute("/redefinir-senha")({
   ssr: false,
@@ -33,7 +37,10 @@ function RedefinirSenhaPage() {
   const isBackoffice = product === "admin" || product === "merchant";
 
   useEffect(() => {
-    if (isBackoffice && new URLSearchParams(window.location.search).get("otp")?.replaceAll('"', "") === "1") {
+    if (
+      isBackoffice &&
+      new URLSearchParams(window.location.search).get("otp")?.replaceAll('"', "") === "1"
+    ) {
       setOtpMode(true);
       setOtpEmail(new URLSearchParams(window.location.search).get("email") ?? "");
       setChecking(false);
@@ -41,7 +48,9 @@ function RedefinirSenhaPage() {
     }
     let cancelled = false;
     let recoveryEvent = false;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" && session && !cancelled) {
         recoveryEvent = true;
         markPasswordRecoveryIntent();
@@ -70,7 +79,10 @@ function RedefinirSenhaPage() {
           if (error) throw error;
           recoveryIntent = true;
         } else if (tokenHash && type === "recovery") {
-          const { error } = await supabase.auth.verifyOtp({ type: "recovery", token_hash: tokenHash });
+          const { error } = await supabase.auth.verifyOtp({
+            type: "recovery",
+            token_hash: tokenHash,
+          });
           if (error) throw error;
           recoveryIntent = true;
         } else if (type === "recovery" && hash.has("access_token")) {
@@ -80,14 +92,24 @@ function RedefinirSenhaPage() {
         if (!isBackoffice) {
           // Preserve the historical customer/courier recovery contract.
           // Only the two administrative web portals adopt the stricter link gate.
-          const { data: { session }, error } = await supabase.auth.getSession();
+          const {
+            data: { session },
+            error,
+          } = await supabase.auth.getSession();
           if (error || !session) throw error ?? new Error("invalid_recovery_session");
-          if (!cancelled) { setReady(true); setLinkError(null); setChecking(false); }
+          if (!cancelled) {
+            setReady(true);
+            setLinkError(null);
+            setChecking(false);
+          }
           return;
         }
         if (!recoveryIntent && !recoveryEvent) throw new Error("no_recovery_link");
 
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
         if (error || !session) throw error ?? new Error("invalid_recovery_session");
         if (!cancelled) {
           setReady(true);
@@ -97,13 +119,18 @@ function RedefinirSenhaPage() {
       } catch {
         if (!cancelled && !recoveryEvent) {
           setReady(false);
-          setLinkError("Este link de recuperação é inválido ou expirou. Solicite outro pelo login.");
+          setLinkError(
+            "Este link de recuperação é inválido ou expirou. Solicite outro pelo login.",
+          );
           setChecking(false);
         }
       }
     };
     void establishRecoverySession();
-    return () => { cancelled = true; subscription.unsubscribe(); };
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, [isBackoffice]);
 
   const verifyRecoveryCode = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -133,7 +160,14 @@ function RedefinirSenhaPage() {
 
   const passwordError = useMemo(() => {
     if (!password) return "Informe a nova senha.";
-    if (isBackoffice ? (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) : password.length < 8) return isBackoffice ? "Use pelo menos 10 caracteres, incluindo letras e números." : "Use pelo menos 8 caracteres.";
+    if (
+      isBackoffice
+        ? password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)
+        : password.length < 8
+    )
+      return isBackoffice
+        ? "Use pelo menos 10 caracteres, incluindo letras e números."
+        : "Use pelo menos 8 caracteres.";
     if (confirmPassword !== password) return "As senhas não coincidem.";
     return null;
   }, [confirmPassword, password, isBackoffice]);
@@ -145,11 +179,12 @@ function RedefinirSenhaPage() {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
       const code = String(error.code ?? "").toLowerCase();
-      const message = code === "same_password" || error.status === 422 && /same.password/i.test(error.message)
-        ? "A nova senha precisa ser diferente da senha anterior. Escolha outra combinação."
-        : code === "session_not_found" || error.status === 401
-          ? "Sua sessão de recuperação expirou. Solicite um novo código."
-          : "Não foi possível atualizar a senha. Tente novamente ou solicite um novo código.";
+      const message =
+        code === "same_password" || (error.status === 422 && /same.password/i.test(error.message))
+          ? "A nova senha precisa ser diferente da senha anterior. Escolha outra combinação."
+          : code === "session_not_found" || error.status === 401
+            ? "Sua sessão de recuperação expirou. Solicite um novo código."
+            : "Não foi possível atualizar a senha. Tente novamente ou solicite um novo código.";
       toast.error(message);
       setSaving(false);
       return;
@@ -161,10 +196,30 @@ function RedefinirSenhaPage() {
   };
 
   return (
-    <div className={isBackoffice ? "grid min-h-dvh place-items-center bg-[#F6F7F9] p-6 text-[#182130]" : "grid min-h-dvh place-items-center bg-black p-6 text-white"}>
-      <div className={isBackoffice ? "w-full max-w-md rounded-3xl border border-[#E1E4EA] bg-white p-7 shadow-[0_16px_54px_rgba(24,33,48,0.08)]" : "w-full max-w-sm rounded-3xl border border-zinc-900 bg-zinc-950 p-6"}>
+    <div
+      className={
+        isBackoffice
+          ? "grid min-h-dvh place-items-center bg-[#F6F7F9] p-6 text-[#182130]"
+          : "grid min-h-dvh place-items-center bg-black p-6 text-white"
+      }
+    >
+      <div
+        className={
+          isBackoffice
+            ? "w-full max-w-md rounded-3xl border border-[#E1E4EA] bg-white p-7 shadow-[0_16px_54px_rgba(24,33,48,0.08)]"
+            : "w-full max-w-sm rounded-3xl border border-zinc-900 bg-zinc-950 p-6"
+        }
+      >
         <div className="text-center">
-          {isBackoffice && <img src={APOIS_OFFICIAL_RED_LOGO_URL} alt="APOIS" width="72" height="72" className="mx-auto mb-3 h-[72px] w-[72px] rounded-full bg-white object-contain" />}
+          {isBackoffice && (
+            <img
+              src={APOIS_OFFICIAL_RED_LOGO_URL}
+              alt="APOIS"
+              width="72"
+              height="72"
+              className="mx-auto mb-3 h-[72px] w-[72px] rounded-full bg-white object-contain"
+            />
+          )}
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary">
             {checking ? (
               <Loader2 className="h-7 w-7 animate-spin" />
@@ -173,31 +228,83 @@ function RedefinirSenhaPage() {
             )}
           </div>
           <h1 className="mt-4 text-2xl font-black">Redefinir senha</h1>
-          <p className={isBackoffice ? "mt-2 text-sm text-[#606B7A]" : "mt-2 text-sm text-zinc-500"}>Crie uma nova senha para sua conta APOIS.</p>
+          <p
+            className={isBackoffice ? "mt-2 text-sm text-[#606B7A]" : "mt-2 text-sm text-zinc-500"}
+          >
+            Crie uma nova senha para sua conta APOIS.
+          </p>
         </div>
 
         {otpMode ? (
           <form onSubmit={verifyRecoveryCode} className="mt-6 space-y-4">
-            <p className="text-sm text-[#606B7A]">Digite o código recebido no e-mail (6 a 8 dígitos). Não abra o link de recuperação.</p>
-            <label className="block text-sm font-semibold">E-mail
-              <Input type="email" autoComplete="email" value={otpEmail} onChange={(event) => setOtpEmail(event.target.value)} required className="mt-2" />
+            <p className="text-sm text-[#606B7A]">
+              Digite o código recebido no e-mail (6 a 8 dígitos). Não abra o link de recuperação.
+            </p>
+            <label className="block text-sm font-semibold">
+              E-mail
+              <Input
+                type="email"
+                autoComplete="email"
+                value={otpEmail}
+                onChange={(event) => setOtpEmail(event.target.value)}
+                required
+                className="mt-2"
+              />
             </label>
-            <label className="block text-sm font-semibold">Código de verificação
-              <Input inputMode="numeric" autoComplete="one-time-code" maxLength={8} pattern="[0-9]{6,8}" value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 8))} required className="mt-2" placeholder="000000" />
+            <label className="block text-sm font-semibold">
+              Código de verificação
+              <Input
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={8}
+                pattern="[0-9]{6,8}"
+                value={otpCode}
+                onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 8))}
+                required
+                className="mt-2"
+                placeholder="000000"
+              />
             </label>
-            {linkError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{linkError}</p>}
-            <Button type="submit" disabled={verifyingOtp || (otpCode.length < 6 || otpCode.length > 8)} className="w-full bg-[#E51B23] text-white">Verificar código</Button>
-            <Button type="button" variant="outline" className="w-full" onClick={() => navigate({ to: "/login" })}>Voltar ao login</Button>
+            {linkError && (
+              <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">
+                {linkError}
+              </p>
+            )}
+            <Button
+              type="submit"
+              disabled={verifyingOtp || otpCode.length < 6 || otpCode.length > 8}
+              className="w-full bg-[#E51B23] text-white"
+            >
+              Verificar código
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate({ to: "/login" })}
+            >
+              Voltar ao login
+            </Button>
           </form>
         ) : checking ? (
-          <p className={isBackoffice ? "mt-6 text-center text-sm text-[#606B7A]" : "mt-6 text-center text-sm text-zinc-500"}>
+          <p
+            className={
+              isBackoffice
+                ? "mt-6 text-center text-sm text-[#606B7A]"
+                : "mt-6 text-center text-sm text-zinc-500"
+            }
+          >
             Validando o link de recuperação...
           </p>
         ) : linkError ? (
           <div className="mt-6">
             <p
               role="alert"
-              className={isBackoffice ? "rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" : "rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300"}
+              className={
+                isBackoffice
+                  ? "rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+                  : "rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300"
+              }
             >
               {linkError}
             </p>
@@ -211,7 +318,13 @@ function RedefinirSenhaPage() {
           </div>
         ) : (
           <form onSubmit={savePassword} method="post" className="mt-6 space-y-4">
-            <label className={isBackoffice ? "block text-xs font-bold text-[#606B7A]" : "block text-xs font-bold text-zinc-400"}>
+            <label
+              className={
+                isBackoffice
+                  ? "block text-xs font-bold text-[#606B7A]"
+                  : "block text-xs font-bold text-zinc-400"
+              }
+            >
               Nova senha
               <div className="relative mt-2">
                 <Input
@@ -219,8 +332,14 @@ function RedefinirSenhaPage() {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete="new-password"
-                  className={isBackoffice ? "h-12 border-[#DCE1E8] bg-white pr-12 text-[#182130]" : "h-12 border-zinc-800 bg-black pr-12"}
-                  placeholder={isBackoffice ? "Mínimo 10 caracteres, letras e números" : "Mínimo 8 caracteres"}
+                  className={
+                    isBackoffice
+                      ? "h-12 border-[#DCE1E8] bg-white pr-12 text-[#182130]"
+                      : "h-12 border-zinc-800 bg-black pr-12"
+                  }
+                  placeholder={
+                    isBackoffice ? "Mínimo 10 caracteres, letras e números" : "Mínimo 8 caracteres"
+                  }
                 />
                 <button
                   type="button"
@@ -239,7 +358,11 @@ function RedefinirSenhaPage() {
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 autoComplete="new-password"
-                className={isBackoffice ? "mt-2 h-12 border-[#DCE1E8] bg-white text-[#182130]" : "mt-2 h-12 border-zinc-800 bg-black"}
+                className={
+                  isBackoffice
+                    ? "mt-2 h-12 border-[#DCE1E8] bg-white text-[#182130]"
+                    : "mt-2 h-12 border-zinc-800 bg-black"
+                }
                 placeholder="Repita a senha"
               />
             </label>
@@ -248,7 +371,14 @@ function RedefinirSenhaPage() {
                 {passwordError ?? "Senha pronta para ser atualizada."}
               </p>
             ) : null}
-            <Button disabled={Boolean(passwordError) || saving} className={isBackoffice ? "h-12 w-full bg-[#E51B23] font-black text-white hover:bg-[#C9141B]" : "h-12 w-full font-black"}>
+            <Button
+              disabled={Boolean(passwordError) || saving}
+              className={
+                isBackoffice
+                  ? "h-12 w-full bg-[#E51B23] font-black text-white hover:bg-[#C9141B]"
+                  : "h-12 w-full font-black"
+              }
+            >
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Salvar nova senha
             </Button>

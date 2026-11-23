@@ -952,7 +952,9 @@ function MerchantWorkspace() {
         categories={merchantCategories}
         busy={busyAction === "application"}
         onSubmit={createApplication}
-        onBack={() => { void logout(); }}
+        onBack={() => {
+          void logout();
+        }}
       />
     );
   }
@@ -996,1137 +998,1159 @@ function MerchantWorkspace() {
 
   return (
     <>
-    <WorkspaceShell
-      brand={merchant.name}
-      subtitle="Painel do Estabelecimento"
-      tabs={tabs}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-      onLogout={logout}
-      userLabel={user?.email}
-    >
-      {!subscriptionAccessAllowed ? (
-        <section className="mb-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="font-black text-amber-300">Mensalidade pendente</p>
-              <p className="mt-1 text-sm text-zinc-400">
-                Novos pedidos estão bloqueados. Você ainda pode concluir pedidos existentes,
-                consultar histórico e acessar seu financeiro.
-              </p>
-            </div>
-            <Button type="button" onClick={() => setActiveTab("billing")}>
-              Regularizar mensalidade
-            </Button>
-          </div>
-        </section>
-      ) : null}
-
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-zinc-500">Operação em tempo real</p>
-          <p className="font-bold">
-            {merchant.temporarily_closed ? "Pausado temporariamente" : "Estabelecimento ativo"}
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void loadAll(true)}
-          disabled={refreshing}
-          className="border-zinc-800 bg-zinc-950"
-        >
-          <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Atualizar
-        </Button>
-      </div>
-
-      {merchant.latitude == null || merchant.longitude == null ? (
-        <section className="mb-5 rounded-2xl border border-primary/30 bg-primary/5 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="font-black text-primary">Localização da loja pendente</p>
-              <p className="mt-1 text-sm text-zinc-400">
-                Registre a posição exata para habilitar cálculos seguros de entrega e despacho por
-                proximidade.
-              </p>
-            </div>
-            <Button type="button" onClick={() => setActiveTab("settings")}>
-              Definir no mapa
-            </Button>
-          </div>
-        </section>
-      ) : null}
-
-      {activeTab === "dashboard" && (
-        <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="Pedidos em andamento" value={pendingOrders.length} />
-            <MetricCard label="Pedidos registrados" value={orders.length} />
-            <MetricCard
-              label="Vendas pagas"
-              value={money(paidRevenue)}
-              hint="Total bruto dos pedidos carregados"
-            />
-            <MetricCard label="Saldo disponível" value={money(wallet?.available_balance)} />
-          </div>
-          <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-            <h2 className="font-black">Pedidos que precisam de atenção</h2>
-            <div className="mt-4 space-y-3">
-              {pendingOrders.slice(0, 6).map((order) => (
-                <OrderRow
-                  key={order.id}
-                  order={order}
-                  busy={busyAction === `order:${order.id}`}
-                  onTransition={transitionOrder}
-                  onReject={openRejectDialog}
-                  onRefresh={() => merchant?.id && void loadOperations(merchant.id)}
-                />
-              ))}
-              {pendingOrders.length === 0 ? (
-                <p className="text-sm text-zinc-500">Nenhum pedido em andamento.</p>
-              ) : null}
+      <WorkspaceShell
+        brand={merchant.name}
+        subtitle="Painel do Estabelecimento"
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onLogout={logout}
+        userLabel={user?.email}
+      >
+        {!subscriptionAccessAllowed ? (
+          <section className="mb-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-black text-amber-300">Mensalidade pendente</p>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Novos pedidos estão bloqueados. Você ainda pode concluir pedidos existentes,
+                  consultar histórico e acessar seu financeiro.
+                </p>
+              </div>
+              <Button type="button" onClick={() => setActiveTab("billing")}>
+                Regularizar mensalidade
+              </Button>
             </div>
           </section>
+        ) : null}
+
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm text-zinc-500">Operação em tempo real</p>
+            <p className="font-bold">
+              {merchant.temporarily_closed ? "Pausado temporariamente" : "Estabelecimento ativo"}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void loadAll(true)}
+            disabled={refreshing}
+            className="border-zinc-800 bg-zinc-950"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Atualizar
+          </Button>
         </div>
-      )}
 
-      {activeTab === "orders" &&
-        (() => {
-          const columns = [
-            {
-              id: "new",
-              label: "Novos pedidos",
-              statuses: ["confirmed"],
-              accent: "border-primary/30",
-            },
-            {
-              id: "preparing",
-              label: "Em preparo",
-              statuses: ["accepted", "preparing"],
-              accent: "border-orange-500/30",
-            },
-            {
-              id: "ready",
-              label: "Prontos para coleta",
-              statuses: [
-                "ready",
-                "ready_for_pickup",
-                "searching_driver",
-                "driver_assigned",
-                "driver_arriving_store",
-              ],
-              accent: "border-emerald-500/30",
-            },
-            {
-              id: "completed",
-              label: "Concluídos",
-              statuses: [
-                "picked_up",
-                "out_for_delivery",
-                "on_the_way",
-                "delivered",
-                "cancelled",
-                "refunded",
-              ],
-              accent: "border-zinc-800",
-            },
-          ];
-
-          if (orders.length === 0) {
-            return (
-              <EmptyState
-                title="Nenhum pedido"
-                description="Os novos pedidos aparecerão aqui automaticamente."
-              />
-            );
-          }
-
-          return (
-            <div className="grid gap-4 xl:grid-cols-4">
-              {columns.map((column) => {
-                const columnOrders = orders.filter((order) =>
-                  column.statuses.includes(order.status),
-                );
-                return (
-                  <section
-                    key={column.id}
-                    className={`min-w-0 rounded-2xl border bg-zinc-950 p-3 ${column.accent}`}
-                  >
-                    <div className="mb-3 flex items-center justify-between gap-2 px-1">
-                      <h2 className="text-sm font-black uppercase tracking-wide text-zinc-200">
-                        {column.label}
-                      </h2>
-                      <span className="grid h-7 min-w-7 place-items-center rounded-full bg-zinc-900 px-2 text-xs font-black text-primary">
-                        {columnOrders.length}
-                      </span>
-                    </div>
-                    <div className="space-y-3">
-                      {columnOrders.map((order) => (
-                        <OrderRow
-                          key={order.id}
-                          order={order}
-                          busy={busyAction === `order:${order.id}`}
-                          onTransition={transitionOrder}
-                          onReject={openRejectDialog}
-                          onRefresh={() => merchant?.id && void loadOperations(merchant.id)}
-                          detailed
-                        />
-                      ))}
-                      {columnOrders.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-zinc-800 bg-black/40 p-4 text-center text-xs text-zinc-600">
-                          Nenhum pedido nesta etapa.
-                        </div>
-                      ) : null}
-                    </div>
-                  </section>
-                );
-              })}
-            </div>
-          );
-        })()}
-
-      {activeTab === "menu" && (
-        <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
-          <div className="space-y-4">
-            <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="font-black">Categorias</h2>
-                <Button type="button" size="sm" onClick={() => { setCategoryNameDraft(""); setCategoryDialogOpen(true); }}>
-                  <Plus className="mr-1 h-4 w-4" /> Nova
-                </Button>
+        {merchant.latitude == null || merchant.longitude == null ? (
+          <section className="mb-5 rounded-2xl border border-primary/30 bg-primary/5 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-black text-primary">Localização da loja pendente</p>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Registre a posição exata para habilitar cálculos seguros de entrega e despacho por
+                  proximidade.
+                </p>
               </div>
-              <div className="mt-4 space-y-2">
-                {menuCategories.map((category) => (
-                  <div
-                    key={category.id}
-                    className="flex items-center justify-between rounded-xl bg-zinc-900 px-3 py-2 text-sm"
-                  >
-                    <span>{category.name}</span>
-                    <span className={category.is_active ? "text-emerald-400" : "text-zinc-600"}>
-                      {category.is_active ? "Ativa" : "Inativa"}
-                    </span>
-                  </div>
+              <Button type="button" onClick={() => setActiveTab("settings")}>
+                Definir no mapa
+              </Button>
+            </div>
+          </section>
+        ) : null}
+
+        {activeTab === "dashboard" && (
+          <div className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard label="Pedidos em andamento" value={pendingOrders.length} />
+              <MetricCard label="Pedidos registrados" value={orders.length} />
+              <MetricCard
+                label="Vendas pagas"
+                value={money(paidRevenue)}
+                hint="Total bruto dos pedidos carregados"
+              />
+              <MetricCard label="Saldo disponível" value={money(wallet?.available_balance)} />
+            </div>
+            <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+              <h2 className="font-black">Pedidos que precisam de atenção</h2>
+              <div className="mt-4 space-y-3">
+                {pendingOrders.slice(0, 6).map((order) => (
+                  <OrderRow
+                    key={order.id}
+                    order={order}
+                    busy={busyAction === `order:${order.id}`}
+                    onTransition={transitionOrder}
+                    onReject={openRejectDialog}
+                    onRefresh={() => merchant?.id && void loadOperations(merchant.id)}
+                  />
                 ))}
+                {pendingOrders.length === 0 ? (
+                  <p className="text-sm text-zinc-500">Nenhum pedido em andamento.</p>
+                ) : null}
               </div>
             </section>
-            <form
-              onSubmit={createProduct}
-              className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5"
-            >
-              <h2 className="font-black">Novo produto</h2>
-              <Field
-                value={productDraft.name}
-                onChange={(value) => setProductDraft((d) => ({ ...d, name: value }))}
-                placeholder="Nome"
-                required
-              />
-              <Field
-                value={productDraft.price}
-                onChange={(value) => setProductDraft((d) => ({ ...d, price: value }))}
-                placeholder="Preço"
-                type="number"
-                required
-              />
-              <select
-                value={productDraft.categoryId}
-                onChange={(e) => setProductDraft((d) => ({ ...d, categoryId: e.target.value }))}
-                className="w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
-              >
-                <option value="">Sem categoria</option>
-                {menuCategories.map((category) => (
-                  <option value={category.id} key={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-              <textarea
-                value={productDraft.description}
-                onChange={(e) => setProductDraft((d) => ({ ...d, description: e.target.value }))}
-                placeholder="Descrição"
-                className="min-h-20 w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
-              />
-              <Button disabled={busyAction === "product:create"} className="w-full">
-                {busyAction === "product:create" ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                Adicionar produto
-              </Button>
-            </form>
           </div>
-          <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-            <h2 className="font-black">Produtos</h2>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-              {products.map((product) => (
-                <div key={product.id} className="rounded-2xl border border-zinc-800 bg-black p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold">{product.name}</p>
-                      <p className="mt-1 text-xs text-zinc-500">
-                        {product.description || "Sem descrição"}
-                      </p>
-                    </div>
-                    <p className="font-black text-primary">{money(product.price)}</p>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={busyAction === `product:${product.id}`}
-                      onClick={() => void toggleProduct(product)}
-                      className="flex-1 border-zinc-800 bg-zinc-950"
-                    >
-                      {busyAction === `product:${product.id}` ? (
-                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                      ) : null}
-                      {product.is_available ? "Pausar" : "Ativar"}
-                    </Button>
-                    <MerchantProductEditor
-                      product={product}
-                      merchantId={merchant.id}
-                      categories={menuCategories}
-                      onChanged={() => loadOperations(merchant.id)}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => void deleteProduct(product)}
-                      className="text-red-400"
-                      aria-label={`Excluir ${product.name}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              {products.length === 0 ? (
-                <p className="text-sm text-zinc-500">Cadastre o primeiro produto.</p>
-              ) : null}
-            </div>
-          </section>
-        </div>
-      )}
+        )}
 
-      {activeTab === "hours" && (
-        <div className="space-y-6">
-          <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-            <h2 className="font-black">Horários de funcionamento</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              Configure o expediente principal e, quando necessário, um segundo período no mesmo
-              dia.
-            </p>
-            <div className="mt-5 space-y-3">
-              {week.map((label, weekday) => {
-                const row = hours.find((item) => Number(item.weekday) === weekday);
-                const closed = row?.is_closed ?? true;
-                const hasSecond = Boolean(row?.second_opens_at && row?.second_closes_at);
-                return (
-                  <div key={label} className="rounded-xl border border-zinc-900 bg-black p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <span className="text-sm font-bold">{label}</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void saveHours(
-                            weekday,
-                            closed
-                              ? {
-                                  is_closed: false,
-                                  opens_at: row?.opens_at ?? "08:00:00",
-                                  closes_at: row?.closes_at ?? "22:00:00",
-                                }
-                              : {
-                                  is_closed: true,
-                                  opens_at: null,
-                                  closes_at: null,
-                                  second_opens_at: null,
-                                  second_closes_at: null,
-                                },
-                          )
-                        }
-                        className={`rounded-lg px-3 py-2 text-xs font-black ${
-                          closed
-                            ? "bg-zinc-900 text-zinc-500"
-                            : "bg-emerald-500/15 text-emerald-400"
-                        }`}
-                      >
-                        {closed ? "Fechado" : "Aberto"}
-                      </button>
+        {activeTab === "orders" &&
+          (() => {
+            const columns = [
+              {
+                id: "new",
+                label: "Novos pedidos",
+                statuses: ["confirmed"],
+                accent: "border-primary/30",
+              },
+              {
+                id: "preparing",
+                label: "Em preparo",
+                statuses: ["accepted", "preparing"],
+                accent: "border-orange-500/30",
+              },
+              {
+                id: "ready",
+                label: "Prontos para coleta",
+                statuses: [
+                  "ready",
+                  "ready_for_pickup",
+                  "searching_driver",
+                  "driver_assigned",
+                  "driver_arriving_store",
+                ],
+                accent: "border-emerald-500/30",
+              },
+              {
+                id: "completed",
+                label: "Concluídos",
+                statuses: [
+                  "picked_up",
+                  "out_for_delivery",
+                  "on_the_way",
+                  "delivered",
+                  "cancelled",
+                  "refunded",
+                ],
+                accent: "border-zinc-800",
+              },
+            ];
+
+            if (orders.length === 0) {
+              return (
+                <EmptyState
+                  title="Nenhum pedido"
+                  description="Os novos pedidos aparecerão aqui automaticamente."
+                />
+              );
+            }
+
+            return (
+              <div className="grid gap-4 xl:grid-cols-4">
+                {columns.map((column) => {
+                  const columnOrders = orders.filter((order) =>
+                    column.statuses.includes(order.status),
+                  );
+                  return (
+                    <section
+                      key={column.id}
+                      className={`min-w-0 rounded-2xl border bg-zinc-950 p-3 ${column.accent}`}
+                    >
+                      <div className="mb-3 flex items-center justify-between gap-2 px-1">
+                        <h2 className="text-sm font-black uppercase tracking-wide text-zinc-200">
+                          {column.label}
+                        </h2>
+                        <span className="grid h-7 min-w-7 place-items-center rounded-full bg-zinc-900 px-2 text-xs font-black text-primary">
+                          {columnOrders.length}
+                        </span>
+                      </div>
+                      <div className="space-y-3">
+                        {columnOrders.map((order) => (
+                          <OrderRow
+                            key={order.id}
+                            order={order}
+                            busy={busyAction === `order:${order.id}`}
+                            onTransition={transitionOrder}
+                            onReject={openRejectDialog}
+                            onRefresh={() => merchant?.id && void loadOperations(merchant.id)}
+                            detailed
+                          />
+                        ))}
+                        {columnOrders.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-zinc-800 bg-black/40 p-4 text-center text-xs text-zinc-600">
+                            Nenhum pedido nesta etapa.
+                          </div>
+                        ) : null}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
+        {activeTab === "menu" && (
+          <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
+            <div className="space-y-4">
+              <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="font-black">Categorias</h2>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      setCategoryNameDraft("");
+                      setCategoryDialogOpen(true);
+                    }}
+                  >
+                    <Plus className="mr-1 h-4 w-4" /> Nova
+                  </Button>
+                </div>
+                <div className="mt-4 space-y-2">
+                  {menuCategories.map((category) => (
+                    <div
+                      key={category.id}
+                      className="flex items-center justify-between rounded-xl bg-zinc-900 px-3 py-2 text-sm"
+                    >
+                      <span>{category.name}</span>
+                      <span className={category.is_active ? "text-emerald-400" : "text-zinc-600"}>
+                        {category.is_active ? "Ativa" : "Inativa"}
+                      </span>
                     </div>
-                    {!closed ? (
-                      <div className="mt-3 space-y-3">
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          <label className="text-[10px] font-bold uppercase text-zinc-600">
-                            Abertura
-                            <input
-                              type="time"
-                              value={(row?.opens_at ?? "08:00").slice(0, 5)}
-                              onChange={(event) =>
-                                void saveHours(weekday, { opens_at: `${event.target.value}:00` })
-                              }
-                              className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm"
-                            />
-                          </label>
-                          <label className="text-[10px] font-bold uppercase text-zinc-600">
-                            Fechamento
-                            <input
-                              type="time"
-                              value={(row?.closes_at ?? "22:00").slice(0, 5)}
-                              onChange={(event) =>
-                                void saveHours(weekday, { closes_at: `${event.target.value}:00` })
-                              }
-                              className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm"
-                            />
-                          </label>
-                        </div>
-                        {hasSecond ? (
-                          <div className="grid gap-2 rounded-xl border border-primary/10 bg-primary/5 p-3 sm:grid-cols-[1fr_1fr_auto]">
+                  ))}
+                </div>
+              </section>
+              <form
+                onSubmit={createProduct}
+                className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5"
+              >
+                <h2 className="font-black">Novo produto</h2>
+                <Field
+                  value={productDraft.name}
+                  onChange={(value) => setProductDraft((d) => ({ ...d, name: value }))}
+                  placeholder="Nome"
+                  required
+                />
+                <Field
+                  value={productDraft.price}
+                  onChange={(value) => setProductDraft((d) => ({ ...d, price: value }))}
+                  placeholder="Preço"
+                  type="number"
+                  required
+                />
+                <select
+                  value={productDraft.categoryId}
+                  onChange={(e) => setProductDraft((d) => ({ ...d, categoryId: e.target.value }))}
+                  className="w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
+                >
+                  <option value="">Sem categoria</option>
+                  {menuCategories.map((category) => (
+                    <option value={category.id} key={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                <textarea
+                  value={productDraft.description}
+                  onChange={(e) => setProductDraft((d) => ({ ...d, description: e.target.value }))}
+                  placeholder="Descrição"
+                  className="min-h-20 w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
+                />
+                <Button disabled={busyAction === "product:create"} className="w-full">
+                  {busyAction === "product:create" ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  Adicionar produto
+                </Button>
+              </form>
+            </div>
+            <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+              <h2 className="font-black">Produtos</h2>
+              <div className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                {products.map((product) => (
+                  <div key={product.id} className="rounded-2xl border border-zinc-800 bg-black p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-bold">{product.name}</p>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {product.description || "Sem descrição"}
+                        </p>
+                      </div>
+                      <p className="font-black text-primary">{money(product.price)}</p>
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={busyAction === `product:${product.id}`}
+                        onClick={() => void toggleProduct(product)}
+                        className="flex-1 border-zinc-800 bg-zinc-950"
+                      >
+                        {busyAction === `product:${product.id}` ? (
+                          <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                        ) : null}
+                        {product.is_available ? "Pausar" : "Ativar"}
+                      </Button>
+                      <MerchantProductEditor
+                        product={product}
+                        merchantId={merchant.id}
+                        categories={menuCategories}
+                        onChanged={() => loadOperations(merchant.id)}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => void deleteProduct(product)}
+                        className="text-red-400"
+                        aria-label={`Excluir ${product.name}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {products.length === 0 ? (
+                  <p className="text-sm text-zinc-500">Cadastre o primeiro produto.</p>
+                ) : null}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {activeTab === "hours" && (
+          <div className="space-y-6">
+            <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+              <h2 className="font-black">Horários de funcionamento</h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Configure o expediente principal e, quando necessário, um segundo período no mesmo
+                dia.
+              </p>
+              <div className="mt-5 space-y-3">
+                {week.map((label, weekday) => {
+                  const row = hours.find((item) => Number(item.weekday) === weekday);
+                  const closed = row?.is_closed ?? true;
+                  const hasSecond = Boolean(row?.second_opens_at && row?.second_closes_at);
+                  return (
+                    <div key={label} className="rounded-xl border border-zinc-900 bg-black p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <span className="text-sm font-bold">{label}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void saveHours(
+                              weekday,
+                              closed
+                                ? {
+                                    is_closed: false,
+                                    opens_at: row?.opens_at ?? "08:00:00",
+                                    closes_at: row?.closes_at ?? "22:00:00",
+                                  }
+                                : {
+                                    is_closed: true,
+                                    opens_at: null,
+                                    closes_at: null,
+                                    second_opens_at: null,
+                                    second_closes_at: null,
+                                  },
+                            )
+                          }
+                          className={`rounded-lg px-3 py-2 text-xs font-black ${
+                            closed
+                              ? "bg-zinc-900 text-zinc-500"
+                              : "bg-emerald-500/15 text-emerald-400"
+                          }`}
+                        >
+                          {closed ? "Fechado" : "Aberto"}
+                        </button>
+                      </div>
+                      {!closed ? (
+                        <div className="mt-3 space-y-3">
+                          <div className="grid gap-2 sm:grid-cols-2">
                             <label className="text-[10px] font-bold uppercase text-zinc-600">
-                              2ª abertura
+                              Abertura
                               <input
                                 type="time"
-                                value={row.second_opens_at.slice(0, 5)}
+                                value={(row?.opens_at ?? "08:00").slice(0, 5)}
                                 onChange={(event) =>
-                                  void saveHours(weekday, {
-                                    second_opens_at: `${event.target.value}:00`,
-                                  })
+                                  void saveHours(weekday, { opens_at: `${event.target.value}:00` })
                                 }
-                                className="mt-1 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm"
                               />
                             </label>
                             <label className="text-[10px] font-bold uppercase text-zinc-600">
-                              2º fechamento
+                              Fechamento
                               <input
                                 type="time"
-                                value={row.second_closes_at.slice(0, 5)}
+                                value={(row?.closes_at ?? "22:00").slice(0, 5)}
                                 onChange={(event) =>
-                                  void saveHours(weekday, {
-                                    second_closes_at: `${event.target.value}:00`,
-                                  })
+                                  void saveHours(weekday, { closes_at: `${event.target.value}:00` })
                                 }
-                                className="mt-1 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm"
                               />
                             </label>
+                          </div>
+                          {hasSecond ? (
+                            <div className="grid gap-2 rounded-xl border border-primary/10 bg-primary/5 p-3 sm:grid-cols-[1fr_1fr_auto]">
+                              <label className="text-[10px] font-bold uppercase text-zinc-600">
+                                2ª abertura
+                                <input
+                                  type="time"
+                                  value={row.second_opens_at.slice(0, 5)}
+                                  onChange={(event) =>
+                                    void saveHours(weekday, {
+                                      second_opens_at: `${event.target.value}:00`,
+                                    })
+                                  }
+                                  className="mt-1 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm"
+                                />
+                              </label>
+                              <label className="text-[10px] font-bold uppercase text-zinc-600">
+                                2º fechamento
+                                <input
+                                  type="time"
+                                  value={row.second_closes_at.slice(0, 5)}
+                                  onChange={(event) =>
+                                    void saveHours(weekday, {
+                                      second_closes_at: `${event.target.value}:00`,
+                                    })
+                                  }
+                                  className="mt-1 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm"
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void saveHours(weekday, {
+                                    second_opens_at: null,
+                                    second_closes_at: null,
+                                  })
+                                }
+                                className="self-end rounded-lg border border-red-500/20 px-3 py-2 text-xs font-bold text-red-400"
+                              >
+                                Remover
+                              </button>
+                            </div>
+                          ) : (
                             <button
                               type="button"
                               onClick={() =>
                                 void saveHours(weekday, {
-                                  second_opens_at: null,
-                                  second_closes_at: null,
+                                  second_opens_at: "14:00:00",
+                                  second_closes_at: "22:00:00",
                                 })
                               }
-                              className="self-end rounded-lg border border-red-500/20 px-3 py-2 text-xs font-bold text-red-400"
+                              className="text-xs font-bold text-primary"
                             >
-                              Remover
+                              + Adicionar segundo período
                             </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void saveHours(weekday, {
-                                second_opens_at: "14:00:00",
-                                second_closes_at: "22:00:00",
-                              })
-                            }
-                            className="text-xs font-bold text-primary"
-                          >
-                            + Adicionar segundo período
-                          </button>
-                        )}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-            <form
-              onSubmit={saveSpecialHours}
-              className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5"
-            >
-              <div>
-                <h2 className="font-black">Feriados e datas especiais</h2>
-                <p className="mt-1 text-xs text-zinc-500">
-                  Uma exceção por data substitui o horário semanal daquele dia.
-                </p>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
-              <input
-                type="date"
-                required
-                min={new Date().toISOString().slice(0, 10)}
-                value={specialDraft.serviceDate}
-                onChange={(event) =>
-                  setSpecialDraft((current) => ({
-                    ...current,
-                    serviceDate: event.target.value,
-                  }))
-                }
-                className="w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
-              />
-              <Field
-                value={specialDraft.note}
-                onChange={(value) => setSpecialDraft((current) => ({ ...current, note: value }))}
-                placeholder="Motivo (ex.: feriado municipal)"
-              />
-              <label className="flex items-center gap-2 rounded-xl border border-zinc-900 bg-black p-3 text-sm">
+            </section>
+
+            <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+              <form
+                onSubmit={saveSpecialHours}
+                className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5"
+              >
+                <div>
+                  <h2 className="font-black">Feriados e datas especiais</h2>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Uma exceção por data substitui o horário semanal daquele dia.
+                  </p>
+                </div>
                 <input
-                  type="checkbox"
-                  checked={specialDraft.isClosed}
+                  type="date"
+                  required
+                  min={new Date().toISOString().slice(0, 10)}
+                  value={specialDraft.serviceDate}
                   onChange={(event) =>
                     setSpecialDraft((current) => ({
                       ...current,
-                      isClosed: event.target.checked,
+                      serviceDate: event.target.value,
                     }))
                   }
+                  className="w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
                 />
-                Fechado o dia inteiro
-              </label>
-              {!specialDraft.isClosed ? (
-                <>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="time"
-                      value={specialDraft.opensAt}
-                      onChange={(event) =>
-                        setSpecialDraft((current) => ({
-                          ...current,
-                          opensAt: event.target.value,
-                        }))
-                      }
-                      className="rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
-                    />
-                    <input
-                      type="time"
-                      value={specialDraft.closesAt}
-                      onChange={(event) =>
-                        setSpecialDraft((current) => ({
-                          ...current,
-                          closesAt: event.target.value,
-                        }))
-                      }
-                      className="rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
-                    />
-                  </div>
-                  <label className="flex items-center gap-2 text-xs text-zinc-500">
-                    <input
-                      type="checkbox"
-                      checked={specialDraft.secondEnabled}
-                      onChange={(event) =>
-                        setSpecialDraft((current) => ({
-                          ...current,
-                          secondEnabled: event.target.checked,
-                        }))
-                      }
-                    />
-                    Adicionar segundo período
-                  </label>
-                  {specialDraft.secondEnabled ? (
+                <Field
+                  value={specialDraft.note}
+                  onChange={(value) => setSpecialDraft((current) => ({ ...current, note: value }))}
+                  placeholder="Motivo (ex.: feriado municipal)"
+                />
+                <label className="flex items-center gap-2 rounded-xl border border-zinc-900 bg-black p-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={specialDraft.isClosed}
+                    onChange={(event) =>
+                      setSpecialDraft((current) => ({
+                        ...current,
+                        isClosed: event.target.checked,
+                      }))
+                    }
+                  />
+                  Fechado o dia inteiro
+                </label>
+                {!specialDraft.isClosed ? (
+                  <>
                     <div className="grid grid-cols-2 gap-2">
                       <input
                         type="time"
-                        value={specialDraft.secondOpensAt}
+                        value={specialDraft.opensAt}
                         onChange={(event) =>
                           setSpecialDraft((current) => ({
                             ...current,
-                            secondOpensAt: event.target.value,
+                            opensAt: event.target.value,
                           }))
                         }
                         className="rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
                       />
                       <input
                         type="time"
-                        value={specialDraft.secondClosesAt}
+                        value={specialDraft.closesAt}
                         onChange={(event) =>
                           setSpecialDraft((current) => ({
                             ...current,
-                            secondClosesAt: event.target.value,
+                            closesAt: event.target.value,
                           }))
                         }
                         className="rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
                       />
                     </div>
+                    <label className="flex items-center gap-2 text-xs text-zinc-500">
+                      <input
+                        type="checkbox"
+                        checked={specialDraft.secondEnabled}
+                        onChange={(event) =>
+                          setSpecialDraft((current) => ({
+                            ...current,
+                            secondEnabled: event.target.checked,
+                          }))
+                        }
+                      />
+                      Adicionar segundo período
+                    </label>
+                    {specialDraft.secondEnabled ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="time"
+                          value={specialDraft.secondOpensAt}
+                          onChange={(event) =>
+                            setSpecialDraft((current) => ({
+                              ...current,
+                              secondOpensAt: event.target.value,
+                            }))
+                          }
+                          className="rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
+                        />
+                        <input
+                          type="time"
+                          value={specialDraft.secondClosesAt}
+                          onChange={(event) =>
+                            setSpecialDraft((current) => ({
+                              ...current,
+                              secondClosesAt: event.target.value,
+                            }))
+                          }
+                          className="rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
+                        />
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
+                <Button disabled={busyAction === "special-hours"} className="w-full">
+                  {busyAction === "special-hours" ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : null}
-                </>
-              ) : null}
-              <Button disabled={busyAction === "special-hours"} className="w-full">
-                {busyAction === "special-hours" ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                Salvar data especial
-              </Button>
-            </form>
-
-            <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-              <h2 className="font-black">Próximas exceções</h2>
-              <div className="mt-4 space-y-2">
-                {specialHours.map((row) => (
-                  <div
-                    key={row.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-black p-3"
-                  >
-                    <div>
-                      <p className="text-sm font-bold">
-                        {new Date(`${row.service_date}T12:00:00`).toLocaleDateString("pt-BR")}
-                      </p>
-                      <p className="text-xs text-zinc-500">
-                        {row.is_closed
-                          ? row.note || "Fechado"
-                          : `${row.opens_at?.slice(0, 5)}–${row.closes_at?.slice(0, 5)}${
-                              row.second_opens_at && row.second_closes_at
-                                ? ` · ${row.second_opens_at.slice(0, 5)}–${row.second_closes_at.slice(0, 5)}`
-                                : ""
-                            }`}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => void deleteSpecialHours(row)}
-                      className="rounded-lg border border-red-500/20 px-3 py-2 text-xs font-bold text-red-400"
-                    >
-                      Remover
-                    </button>
-                  </div>
-                ))}
-                {specialHours.length === 0 ? (
-                  <p className="text-sm text-zinc-500">Nenhuma data especial futura cadastrada.</p>
-                ) : null}
-              </div>
-            </section>
-          </div>
-        </div>
-      )}
-
-      {activeTab === "promotions" && (
-        <MerchantPromotionsPanel
-          merchantId={merchant.id}
-          products={products}
-          categories={menuCategories}
-        />
-      )}
-
-      {activeTab === "coupons" && <MerchantCouponsPanel merchantId={merchant.id} />}
-
-      {activeTab === "customers" && <MerchantCustomersPanel orders={orders} />}
-
-      {activeTab === "reviews" && (
-        <MerchantReviewsPanel
-          reviews={reviews}
-          rating={Number(merchant.rating ?? 0)}
-          reviewCount={Number(merchant.review_count ?? reviews.length)}
-        />
-      )}
-
-      {activeTab === "reports" &&
-        (() => {
-          const now = new Date();
-          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-          const monthOrders = orders.filter((order) => {
-            const createdAt = order.created_at ? new Date(order.created_at).getTime() : 0;
-            return createdAt >= monthStart;
-          });
-          const completed = monthOrders.filter((order) => order.status === "delivered");
-          const cancelled = monthOrders.filter((order) =>
-            ["cancelled", "refunded"].includes(order.status),
-          );
-          const paid = monthOrders.filter(
-            (order) =>
-              order.payment_status === "paid" && !["cancelled", "refunded"].includes(order.status),
-          );
-          const gross = paid.reduce((sum, order) => sum + Number(order.total ?? 0), 0);
-          const ticket = paid.length > 0 ? gross / paid.length : 0;
-          const deliveryFees = paid.reduce(
-            (sum, order) => sum + Number(order.delivery_fee ?? 0),
-            0,
-          );
-
-          return (
-            <div className="space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-black">Relatórios</h2>
-                  <p className="mt-1 text-sm text-zinc-500">
-                    Indicadores do mês atual calculados a partir dos pedidos reais do
-                    estabelecimento.
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => downloadMerchantReportCsv(monthOrders, merchant.name)}
-                  disabled={monthOrders.length === 0}
-                  className="border-zinc-800 bg-zinc-950"
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar CSV
+                  Salvar data especial
                 </Button>
-              </div>
+              </form>
 
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <MetricCard label="Pedidos no mês" value={monthOrders.length} />
-                <MetricCard label="Entregues" value={completed.length} />
-                <MetricCard label="Vendas pagas" value={money(gross)} />
-                <MetricCard label="Ticket médio" value={money(ticket)} />
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-3">
-                <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-                  <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-                    Cancelamentos
-                  </p>
-                  <p className="mt-2 text-2xl font-black">{cancelled.length}</p>
-                  <p className="mt-1 text-xs text-zinc-600">
-                    Pedidos cancelados ou reembolsados no mês.
-                  </p>
-                </section>
-                <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-                  <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-                    Taxas de entrega
-                  </p>
-                  <p className="mt-2 text-2xl font-black text-primary">{money(deliveryFees)}</p>
-                  <p className="mt-1 text-xs text-zinc-600">
-                    Somatório das taxas em pedidos pagos e válidos.
-                  </p>
-                </section>
-                <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-                  <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-                    Taxa de conclusão
-                  </p>
-                  <p className="mt-2 text-2xl font-black">
-                    {monthOrders.length > 0
-                      ? `${((completed.length / monthOrders.length) * 100).toFixed(1).replace(".", ",")}%`
-                      : "0,0%"}
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-600">
-                    Entregues sobre todos os pedidos registrados no mês.
-                  </p>
-                </section>
-              </div>
-
-              <section className="overflow-hidden rounded-2xl border border-zinc-900 bg-zinc-950">
-                <div className="border-b border-zinc-900 p-5">
-                  <h3 className="font-black">Pedidos recentes do período</h3>
+              <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+                <h2 className="font-black">Próximas exceções</h2>
+                <div className="mt-4 space-y-2">
+                  {specialHours.map((row) => (
+                    <div
+                      key={row.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-900 bg-black p-3"
+                    >
+                      <div>
+                        <p className="text-sm font-bold">
+                          {new Date(`${row.service_date}T12:00:00`).toLocaleDateString("pt-BR")}
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          {row.is_closed
+                            ? row.note || "Fechado"
+                            : `${row.opens_at?.slice(0, 5)}–${row.closes_at?.slice(0, 5)}${
+                                row.second_opens_at && row.second_closes_at
+                                  ? ` · ${row.second_opens_at.slice(0, 5)}–${row.second_closes_at.slice(0, 5)}`
+                                  : ""
+                              }`}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void deleteSpecialHours(row)}
+                        className="rounded-lg border border-red-500/20 px-3 py-2 text-xs font-bold text-red-400"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ))}
+                  {specialHours.length === 0 ? (
+                    <p className="text-sm text-zinc-500">
+                      Nenhuma data especial futura cadastrada.
+                    </p>
+                  ) : null}
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-left text-sm">
-                    <thead className="bg-black/40 text-xs uppercase text-zinc-500">
-                      <tr>
-                        <th className="px-5 py-3">Pedido</th>
-                        <th className="px-5 py-3">Data</th>
-                        <th className="px-5 py-3">Status</th>
-                        <th className="px-5 py-3">Pagamento</th>
-                        <th className="px-5 py-3 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {monthOrders.slice(0, 30).map((order) => (
-                        <tr key={order.id} className="border-t border-zinc-900/80">
-                          <td className="px-5 py-3 font-bold">#{order.order_number}</td>
-                          <td className="px-5 py-3 text-zinc-400">{dateTime(order.created_at)}</td>
-                          <td className="px-5 py-3 text-zinc-300">{order.status}</td>
-                          <td className="px-5 py-3 text-zinc-400">{order.payment_status}</td>
-                          <td className="px-5 py-3 text-right font-bold text-primary">
-                            {money(order.total)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {monthOrders.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-zinc-500">
-                    Ainda não há pedidos registrados neste mês.
-                  </div>
-                ) : null}
               </section>
             </div>
-          );
-        })()}
-
-      {activeTab === "billing" && (
-        <MerchantSubscriptionGate
-          merchant={merchant}
-          subscription={subscription}
-          onRefresh={() => loadAll(true)}
-          onLogout={logout}
-          embedded
-        />
-      )}
-
-      {activeTab === "finance" && (
-        <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <MetricCard label="Saldo total" value={money(wallet?.balance)} />
-            <MetricCard label="Disponível" value={money(wallet?.available_balance)} />
-            <MetricCard label="Reservado" value={money(wallet?.reserved_balance)} />
           </div>
-          {!wallet ? (
-            <EmptyState
-              title="Carteira ainda sem movimentação"
-              description="A carteira é criada automaticamente quando o primeiro pedido entregue é liquidado."
-            />
-          ) : (
-            <div className="grid gap-6 xl:grid-cols-2">
-              <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-                <h2 className="font-black">Conta para repasse</h2>
-                <Field
-                  value={payoutDraft.pixKey}
-                  onChange={(value) => setPayoutDraft((d) => ({ ...d, pixKey: value }))}
-                  placeholder="Chave PIX"
-                />
-                <Field
-                  value={payoutDraft.holderName}
-                  onChange={(value) => setPayoutDraft((d) => ({ ...d, holderName: value }))}
-                  placeholder="Nome do titular"
-                />
-                <Field
-                  value={payoutDraft.document}
-                  onChange={(value) => setPayoutDraft((d) => ({ ...d, document: value }))}
-                  placeholder="CPF/CNPJ do titular"
-                />
-                <Button
-                  type="button"
-                  onClick={savePayoutAccount}
-                  disabled={busyAction === "payout-account"}
-                  className="w-full"
-                >
-                  Salvar chave PIX
-                </Button>
-                <div className="border-t border-zinc-900 pt-4">
+        )}
+
+        {activeTab === "promotions" && (
+          <MerchantPromotionsPanel
+            merchantId={merchant.id}
+            products={products}
+            categories={menuCategories}
+          />
+        )}
+
+        {activeTab === "coupons" && <MerchantCouponsPanel merchantId={merchant.id} />}
+
+        {activeTab === "customers" && <MerchantCustomersPanel orders={orders} />}
+
+        {activeTab === "reviews" && (
+          <MerchantReviewsPanel
+            reviews={reviews}
+            rating={Number(merchant.rating ?? 0)}
+            reviewCount={Number(merchant.review_count ?? reviews.length)}
+          />
+        )}
+
+        {activeTab === "reports" &&
+          (() => {
+            const now = new Date();
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+            const monthOrders = orders.filter((order) => {
+              const createdAt = order.created_at ? new Date(order.created_at).getTime() : 0;
+              return createdAt >= monthStart;
+            });
+            const completed = monthOrders.filter((order) => order.status === "delivered");
+            const cancelled = monthOrders.filter((order) =>
+              ["cancelled", "refunded"].includes(order.status),
+            );
+            const paid = monthOrders.filter(
+              (order) =>
+                order.payment_status === "paid" &&
+                !["cancelled", "refunded"].includes(order.status),
+            );
+            const gross = paid.reduce((sum, order) => sum + Number(order.total ?? 0), 0);
+            const ticket = paid.length > 0 ? gross / paid.length : 0;
+            const deliveryFees = paid.reduce(
+              (sum, order) => sum + Number(order.delivery_fee ?? 0),
+              0,
+            );
+
+            return (
+              <div className="space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-black">Relatórios</h2>
+                    <p className="mt-1 text-sm text-zinc-500">
+                      Indicadores do mês atual calculados a partir dos pedidos reais do
+                      estabelecimento.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => downloadMerchantReportCsv(monthOrders, merchant.name)}
+                    disabled={monthOrders.length === 0}
+                    className="border-zinc-800 bg-zinc-950"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Exportar CSV
+                  </Button>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <MetricCard label="Pedidos no mês" value={monthOrders.length} />
+                  <MetricCard label="Entregues" value={completed.length} />
+                  <MetricCard label="Vendas pagas" value={money(gross)} />
+                  <MetricCard label="Ticket médio" value={money(ticket)} />
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                      Cancelamentos
+                    </p>
+                    <p className="mt-2 text-2xl font-black">{cancelled.length}</p>
+                    <p className="mt-1 text-xs text-zinc-600">
+                      Pedidos cancelados ou reembolsados no mês.
+                    </p>
+                  </section>
+                  <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                      Taxas de entrega
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-primary">{money(deliveryFees)}</p>
+                    <p className="mt-1 text-xs text-zinc-600">
+                      Somatório das taxas em pedidos pagos e válidos.
+                    </p>
+                  </section>
+                  <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+                    <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                      Taxa de conclusão
+                    </p>
+                    <p className="mt-2 text-2xl font-black">
+                      {monthOrders.length > 0
+                        ? `${((completed.length / monthOrders.length) * 100).toFixed(1).replace(".", ",")}%`
+                        : "0,0%"}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-600">
+                      Entregues sobre todos os pedidos registrados no mês.
+                    </p>
+                  </section>
+                </div>
+
+                <section className="overflow-hidden rounded-2xl border border-zinc-900 bg-zinc-950">
+                  <div className="border-b border-zinc-900 p-5">
+                    <h3 className="font-black">Pedidos recentes do período</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[720px] text-left text-sm">
+                      <thead className="bg-black/40 text-xs uppercase text-zinc-500">
+                        <tr>
+                          <th className="px-5 py-3">Pedido</th>
+                          <th className="px-5 py-3">Data</th>
+                          <th className="px-5 py-3">Status</th>
+                          <th className="px-5 py-3">Pagamento</th>
+                          <th className="px-5 py-3 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {monthOrders.slice(0, 30).map((order) => (
+                          <tr key={order.id} className="border-t border-zinc-900/80">
+                            <td className="px-5 py-3 font-bold">#{order.order_number}</td>
+                            <td className="px-5 py-3 text-zinc-400">
+                              {dateTime(order.created_at)}
+                            </td>
+                            <td className="px-5 py-3 text-zinc-300">{order.status}</td>
+                            <td className="px-5 py-3 text-zinc-400">{order.payment_status}</td>
+                            <td className="px-5 py-3 text-right font-bold text-primary">
+                              {money(order.total)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {monthOrders.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-zinc-500">
+                      Ainda não há pedidos registrados neste mês.
+                    </div>
+                  ) : null}
+                </section>
+              </div>
+            );
+          })()}
+
+        {activeTab === "billing" && (
+          <MerchantSubscriptionGate
+            merchant={merchant}
+            subscription={subscription}
+            onRefresh={() => loadAll(true)}
+            onLogout={logout}
+            embedded
+          />
+        )}
+
+        {activeTab === "finance" && (
+          <div className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <MetricCard label="Saldo total" value={money(wallet?.balance)} />
+              <MetricCard label="Disponível" value={money(wallet?.available_balance)} />
+              <MetricCard label="Reservado" value={money(wallet?.reserved_balance)} />
+            </div>
+            {!wallet ? (
+              <EmptyState
+                title="Carteira ainda sem movimentação"
+                description="A carteira é criada automaticamente quando o primeiro pedido entregue é liquidado."
+              />
+            ) : (
+              <div className="grid gap-6 xl:grid-cols-2">
+                <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+                  <h2 className="font-black">Conta para repasse</h2>
                   <Field
-                    value={payoutDraft.amount}
-                    onChange={(value) => setPayoutDraft((d) => ({ ...d, amount: value }))}
-                    placeholder="Valor do saque"
-                    type="number"
+                    value={payoutDraft.pixKey}
+                    onChange={(value) => setPayoutDraft((d) => ({ ...d, pixKey: value }))}
+                    placeholder="Chave PIX"
+                  />
+                  <Field
+                    value={payoutDraft.holderName}
+                    onChange={(value) => setPayoutDraft((d) => ({ ...d, holderName: value }))}
+                    placeholder="Nome do titular"
+                  />
+                  <Field
+                    value={payoutDraft.document}
+                    onChange={(value) => setPayoutDraft((d) => ({ ...d, document: value }))}
+                    placeholder="CPF/CNPJ do titular"
                   />
                   <Button
                     type="button"
-                    onClick={requestPayout}
-                    disabled={busyAction === "payout" || !payoutAccount}
-                    className="mt-3 w-full"
+                    onClick={savePayoutAccount}
+                    disabled={busyAction === "payout-account"}
+                    className="w-full"
                   >
-                    Solicitar saque
+                    Salvar chave PIX
                   </Button>
-                </div>
-              </section>
-              <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-                <h2 className="font-black">Últimos saques</h2>
-                <div className="mt-4 space-y-2">
-                  {payouts.map((payout) => (
-                    <div
-                      key={payout.id}
-                      className="flex items-center justify-between rounded-xl bg-black p-3 text-sm"
+                  <div className="border-t border-zinc-900 pt-4">
+                    <Field
+                      value={payoutDraft.amount}
+                      onChange={(value) => setPayoutDraft((d) => ({ ...d, amount: value }))}
+                      placeholder="Valor do saque"
+                      type="number"
+                    />
+                    <Button
+                      type="button"
+                      onClick={requestPayout}
+                      disabled={busyAction === "payout" || !payoutAccount}
+                      className="mt-3 w-full"
                     >
-                      <div>
-                        <p className="font-bold">{money(payout.amount)}</p>
-                        <p className="text-xs text-zinc-500">{dateTime(payout.requested_at)}</p>
-                      </div>
-                      <span className="text-xs font-black uppercase text-primary">
-                        {payout.status}
-                      </span>
-                    </div>
-                  ))}
-                  {payouts.length === 0 ? (
-                    <p className="text-sm text-zinc-500">Nenhum saque solicitado.</p>
-                  ) : null}
-                </div>
-              </section>
-              <section className="xl:col-span-2 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-                <h2 className="font-black">Extrato</h2>
-                <div className="mt-4 divide-y divide-zinc-900">
-                  {transactions.map((tx) => (
-                    <div key={tx.id} className="flex items-center justify-between py-3 text-sm">
-                      <div>
-                        <p className="font-semibold">{tx.description || tx.transaction_type}</p>
-                        <p className="text-xs text-zinc-500">{dateTime(tx.created_at)}</p>
-                      </div>
-                      <span
-                        className={
-                          Number(tx.balance_delta) >= 0
-                            ? "font-black text-emerald-400"
-                            : "font-black text-red-400"
-                        }
+                      Solicitar saque
+                    </Button>
+                  </div>
+                </section>
+                <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+                  <h2 className="font-black">Últimos saques</h2>
+                  <div className="mt-4 space-y-2">
+                    {payouts.map((payout) => (
+                      <div
+                        key={payout.id}
+                        className="flex items-center justify-between rounded-xl bg-black p-3 text-sm"
                       >
-                        {Number(tx.balance_delta) >= 0 ? "+" : ""}
-                        {money(tx.balance_delta)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </div>
-          )}
-        </div>
-      )}
+                        <div>
+                          <p className="font-bold">{money(payout.amount)}</p>
+                          <p className="text-xs text-zinc-500">{dateTime(payout.requested_at)}</p>
+                        </div>
+                        <span className="text-xs font-black uppercase text-primary">
+                          {payout.status}
+                        </span>
+                      </div>
+                    ))}
+                    {payouts.length === 0 ? (
+                      <p className="text-sm text-zinc-500">Nenhum saque solicitado.</p>
+                    ) : null}
+                  </div>
+                </section>
+                <section className="xl:col-span-2 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+                  <h2 className="font-black">Extrato</h2>
+                  <div className="mt-4 divide-y divide-zinc-900">
+                    {transactions.map((tx) => (
+                      <div key={tx.id} className="flex items-center justify-between py-3 text-sm">
+                        <div>
+                          <p className="font-semibold">{tx.description || tx.transaction_type}</p>
+                          <p className="text-xs text-zinc-500">{dateTime(tx.created_at)}</p>
+                        </div>
+                        <span
+                          className={
+                            Number(tx.balance_delta) >= 0
+                              ? "font-black text-emerald-400"
+                              : "font-black text-red-400"
+                          }
+                        >
+                          {Number(tx.balance_delta) >= 0 ? "+" : ""}
+                          {money(tx.balance_delta)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            )}
+          </div>
+        )}
 
-      {activeTab === "courier-payouts" && (
-        <MerchantCourierSettlementsPanel merchantId={merchant.id} />
-      )}
+        {activeTab === "courier-payouts" && (
+          <MerchantCourierSettlementsPanel merchantId={merchant.id} />
+        )}
 
-      {activeTab === "settings" && (
-        <div className="grid max-w-5xl gap-6 lg:grid-cols-2">
-          <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-            <h2 className="font-black">Dados do estabelecimento</h2>
-            <Field
-              value={settingsDraft.name}
-              onChange={(value) => setSettingsDraft((d) => ({ ...d, name: value }))}
-              placeholder="Nome do estabelecimento"
-              required
-            />
-            <textarea
-              value={settingsDraft.description}
-              onChange={(event) =>
-                setSettingsDraft((d) => ({ ...d, description: event.target.value }))
-              }
-              placeholder="Descrição"
-              className="min-h-24 w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
-            />
-            <div className="grid gap-3 sm:grid-cols-2">
+        {activeTab === "settings" && (
+          <div className="grid max-w-5xl gap-6 lg:grid-cols-2">
+            <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+              <h2 className="font-black">Dados do estabelecimento</h2>
               <Field
-                value={settingsDraft.contactPhone}
-                onChange={(value) => setSettingsDraft((d) => ({ ...d, contactPhone: value }))}
-                placeholder="Telefone"
+                value={settingsDraft.name}
+                onChange={(value) => setSettingsDraft((d) => ({ ...d, name: value }))}
+                placeholder="Nome do estabelecimento"
+                required
               />
-              <Field
-                value={settingsDraft.contactEmail}
-                onChange={(value) => setSettingsDraft((d) => ({ ...d, contactEmail: value }))}
-                placeholder="E-mail"
-                type="email"
-              />
-            </div>
-            <div className="rounded-xl border border-zinc-800 bg-black p-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">
-                Endereço físico
-              </p>
-              <p className="mt-1 text-sm font-semibold text-zinc-200">
-                {[
-                  merchant.address_line,
-                  merchant.neighborhood,
-                  `${merchant.city} - ${merchant.state}`,
-                ]
-                  .filter(Boolean)
-                  .join(" · ") || "Ainda não confirmado"}
-              </p>
-              <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-                O endereço físico não pode ser digitado aqui. Para alterá-lo, use a seção
-                “Localização da loja” e confirme explicitamente o ponto no mapa. Endereço, cidade e
-                coordenadas são gravados juntos para impedir divergências operacionais.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="cursor-pointer rounded-xl border border-zinc-800 bg-black p-3 text-center text-xs font-bold text-zinc-300 hover:border-primary/50">
-                {busyAction === "merchant-asset:logo" ? "Enviando logo..." : "Atualizar logo"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  disabled={busyAction === "merchant-asset:logo"}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) void uploadMerchantAsset("logo", file);
-                    event.currentTarget.value = "";
-                  }}
-                />
-              </label>
-              <label className="cursor-pointer rounded-xl border border-zinc-800 bg-black p-3 text-center text-xs font-bold text-zinc-300 hover:border-primary/50">
-                {busyAction === "merchant-asset:cover" ? "Enviando capa..." : "Atualizar capa"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  disabled={busyAction === "merchant-asset:cover"}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) void uploadMerchantAsset("cover", file);
-                    event.currentTarget.value = "";
-                  }}
-                />
-              </label>
-            </div>
-          </section>
-
-          <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-            <h2 className="font-black">Localização da loja</h2>
-            <p className="text-sm text-zinc-500">
-              A posição correta é usada para validar raio de entrega, distância e acompanhamento
-              operacional.
-            </p>
-            <div className="rounded-xl border border-zinc-900 bg-black p-4 text-sm">
-              {merchant.latitude != null && merchant.longitude != null ? (
-                <>
-                  <p className="font-bold text-emerald-400">Localização configurada</p>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    {Number(merchant.latitude).toFixed(6)}, {Number(merchant.longitude).toFixed(6)}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="font-bold text-amber-400">Localização ainda não configurada</p>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Sem coordenadas, a plataforma não consegue aplicar corretamente o raio padrão da
-                    cidade.
-                  </p>
-                </>
-              )}
-            </div>
-            <div className="rounded-2xl border border-zinc-900 bg-black p-3">
-              <p className="mb-3 text-xs leading-relaxed text-zinc-500">
-                Pesquise o endereço da loja ou marque o ponto exato no mapa. Isso evita que um GPS
-                capturado fora do estabelecimento deixe o cálculo de entrega incorreto.
-              </p>
-              <GoogleMapsAddressSelector
-                initialCenter={
-                  merchant.latitude != null && merchant.longitude != null
-                    ? { lat: Number(merchant.latitude), lng: Number(merchant.longitude) }
-                    : undefined
+              <textarea
+                value={settingsDraft.description}
+                onChange={(event) =>
+                  setSettingsDraft((d) => ({ ...d, description: event.target.value }))
                 }
-                onAddressSelected={(address) => void saveMerchantMappedLocation(address)}
+                placeholder="Descrição"
+                className="min-h-24 w-full rounded-xl border border-zinc-800 bg-black px-3 py-3 text-sm"
               />
-            </div>
-          </section>
-
-          <MerchantMercadoPagoConnectCard />
-
-          <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-            <h2 className="font-black">Entrega e pedido mínimo</h2>
-            <label className="block text-xs text-zinc-500">
-              Taxa de entrega
-              <Field
-                value={settingsDraft.deliveryFee}
-                onChange={(value) => setSettingsDraft((d) => ({ ...d, deliveryFee: value }))}
-                type="number"
-                placeholder="0,00"
-              />
-            </label>
-            <label className="block text-xs text-zinc-500">
-              Pedido mínimo
-              <Field
-                value={settingsDraft.minimumOrder}
-                onChange={(value) => setSettingsDraft((d) => ({ ...d, minimumOrder: value }))}
-                type="number"
-                placeholder="0,00"
-              />
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-xs text-zinc-500">
-                Prazo mínimo
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Field
-                  value={settingsDraft.minMinutes}
-                  onChange={(value) => setSettingsDraft((d) => ({ ...d, minMinutes: value }))}
+                  value={settingsDraft.contactPhone}
+                  onChange={(value) => setSettingsDraft((d) => ({ ...d, contactPhone: value }))}
+                  placeholder="Telefone"
+                />
+                <Field
+                  value={settingsDraft.contactEmail}
+                  onChange={(value) => setSettingsDraft((d) => ({ ...d, contactEmail: value }))}
+                  placeholder="E-mail"
+                  type="email"
+                />
+              </div>
+              <div className="rounded-xl border border-zinc-800 bg-black p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">
+                  Endereço físico
+                </p>
+                <p className="mt-1 text-sm font-semibold text-zinc-200">
+                  {[
+                    merchant.address_line,
+                    merchant.neighborhood,
+                    `${merchant.city} - ${merchant.state}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "Ainda não confirmado"}
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+                  O endereço físico não pode ser digitado aqui. Para alterá-lo, use a seção
+                  “Localização da loja” e confirme explicitamente o ponto no mapa. Endereço, cidade
+                  e coordenadas são gravados juntos para impedir divergências operacionais.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="cursor-pointer rounded-xl border border-zinc-800 bg-black p-3 text-center text-xs font-bold text-zinc-300 hover:border-primary/50">
+                  {busyAction === "merchant-asset:logo" ? "Enviando logo..." : "Atualizar logo"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={busyAction === "merchant-asset:logo"}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void uploadMerchantAsset("logo", file);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+                <label className="cursor-pointer rounded-xl border border-zinc-800 bg-black p-3 text-center text-xs font-bold text-zinc-300 hover:border-primary/50">
+                  {busyAction === "merchant-asset:cover" ? "Enviando capa..." : "Atualizar capa"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={busyAction === "merchant-asset:cover"}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void uploadMerchantAsset("cover", file);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+            </section>
+
+            <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+              <h2 className="font-black">Localização da loja</h2>
+              <p className="text-sm text-zinc-500">
+                A posição correta é usada para validar raio de entrega, distância e acompanhamento
+                operacional.
+              </p>
+              <div className="rounded-xl border border-zinc-900 bg-black p-4 text-sm">
+                {merchant.latitude != null && merchant.longitude != null ? (
+                  <>
+                    <p className="font-bold text-emerald-400">Localização configurada</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {Number(merchant.latitude).toFixed(6)},{" "}
+                      {Number(merchant.longitude).toFixed(6)}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-bold text-amber-400">Localização ainda não configurada</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Sem coordenadas, a plataforma não consegue aplicar corretamente o raio padrão
+                      da cidade.
+                    </p>
+                  </>
+                )}
+              </div>
+              <div className="rounded-2xl border border-zinc-900 bg-black p-3">
+                <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+                  Pesquise o endereço da loja ou marque o ponto exato no mapa. Isso evita que um GPS
+                  capturado fora do estabelecimento deixe o cálculo de entrega incorreto.
+                </p>
+                <GoogleMapsAddressSelector
+                  initialCenter={
+                    merchant.latitude != null && merchant.longitude != null
+                      ? { lat: Number(merchant.latitude), lng: Number(merchant.longitude) }
+                      : undefined
+                  }
+                  onAddressSelected={(address) => void saveMerchantMappedLocation(address)}
+                />
+              </div>
+            </section>
+
+            <MerchantMercadoPagoConnectCard />
+
+            <section className="space-y-3 rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+              <h2 className="font-black">Entrega e pedido mínimo</h2>
+              <label className="block text-xs text-zinc-500">
+                Taxa de entrega
+                <Field
+                  value={settingsDraft.deliveryFee}
+                  onChange={(value) => setSettingsDraft((d) => ({ ...d, deliveryFee: value }))}
                   type="number"
-                  placeholder="30"
+                  placeholder="0,00"
                 />
               </label>
-              <label className="text-xs text-zinc-500">
-                Prazo máximo
+              <label className="block text-xs text-zinc-500">
+                Pedido mínimo
                 <Field
-                  value={settingsDraft.maxMinutes}
-                  onChange={(value) => setSettingsDraft((d) => ({ ...d, maxMinutes: value }))}
+                  value={settingsDraft.minimumOrder}
+                  onChange={(value) => setSettingsDraft((d) => ({ ...d, minimumOrder: value }))}
                   type="number"
-                  placeholder="60"
+                  placeholder="0,00"
                 />
               </label>
-            </div>
-            <button
-              type="button"
-              onClick={() =>
-                setSettingsDraft((d) => ({ ...d, temporarilyClosed: !d.temporarilyClosed }))
-              }
-              className={`w-full rounded-xl border p-3 text-left text-sm font-bold ${settingsDraft.temporarilyClosed ? "border-red-500/30 bg-red-500/10 text-red-300" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"}`}
-            >
-              {settingsDraft.temporarilyClosed
-                ? "Estabelecimento pausado"
-                : "Recebendo pedidos normalmente"}
-            </button>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-xs text-zinc-500">
+                  Prazo mínimo
+                  <Field
+                    value={settingsDraft.minMinutes}
+                    onChange={(value) => setSettingsDraft((d) => ({ ...d, minMinutes: value }))}
+                    type="number"
+                    placeholder="30"
+                  />
+                </label>
+                <label className="text-xs text-zinc-500">
+                  Prazo máximo
+                  <Field
+                    value={settingsDraft.maxMinutes}
+                    onChange={(value) => setSettingsDraft((d) => ({ ...d, maxMinutes: value }))}
+                    type="number"
+                    placeholder="60"
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setSettingsDraft((d) => ({ ...d, temporarilyClosed: !d.temporarilyClosed }))
+                }
+                className={`w-full rounded-xl border p-3 text-left text-sm font-bold ${settingsDraft.temporarilyClosed ? "border-red-500/30 bg-red-500/10 text-red-300" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"}`}
+              >
+                {settingsDraft.temporarilyClosed
+                  ? "Estabelecimento pausado"
+                  : "Recebendo pedidos normalmente"}
+              </button>
+              <Button
+                type="button"
+                onClick={saveSettings}
+                disabled={busyAction === "settings"}
+                className="w-full"
+              >
+                Salvar configurações
+              </Button>
+            </section>
+            <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
+              <h2 className="font-black">Avaliações</h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Nota atual:{" "}
+                <strong className="text-primary">{Number(merchant.rating ?? 0).toFixed(1)}</strong>{" "}
+                ({merchant.review_count ?? 0} avaliações)
+              </p>
+              <div className="mt-4 space-y-3">
+                {reviews.slice(0, 8).map((review) => (
+                  <div key={review.id} className="rounded-xl bg-black p-3">
+                    <p className="text-sm font-bold text-primary">
+                      {review.merchant_rating ?? "—"}/5
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-400">
+                      {review.comment || "Sem comentário"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
+      </WorkspaceShell>
+      <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova categoria</DialogTitle>
+            <DialogDescription>Informe o nome da categoria do cardápio.</DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            value={categoryNameDraft}
+            onChange={(e) => setCategoryNameDraft(e.target.value)}
+            placeholder="Ex.: Bebidas"
+            maxLength={80}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") confirmAddCategory();
+            }}
+          />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCategoryDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={confirmAddCategory} disabled={!categoryNameDraft.trim()}>
+              Criar categoria
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={rejectDialogOrderId !== null}
+        onOpenChange={(open) => {
+          if (!open) setRejectDialogOrderId(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar pedido</DialogTitle>
+            <DialogDescription>
+              Informe o motivo do cancelamento para o cliente e o estorno.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            autoFocus
+            value={rejectReasonDraft}
+            onChange={(e) => setRejectReasonDraft(e.target.value)}
+            placeholder="Ex.: Produto em falta no momento."
+            maxLength={300}
+            rows={3}
+          />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setRejectDialogOrderId(null)}>
+              Voltar
+            </Button>
             <Button
               type="button"
-              onClick={saveSettings}
-              disabled={busyAction === "settings"}
-              className="w-full"
+              variant="destructive"
+              onClick={confirmRejectOrder}
+              disabled={!rejectReasonDraft.trim()}
             >
-              Salvar configurações
+              Confirmar cancelamento
             </Button>
-          </section>
-          <section className="rounded-2xl border border-zinc-900 bg-zinc-950 p-5">
-            <h2 className="font-black">Avaliações</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              Nota atual:{" "}
-              <strong className="text-primary">{Number(merchant.rating ?? 0).toFixed(1)}</strong> (
-              {merchant.review_count ?? 0} avaliações)
-            </p>
-            <div className="mt-4 space-y-3">
-              {reviews.slice(0, 8).map((review) => (
-                <div key={review.id} className="rounded-xl bg-black p-3">
-                  <p className="text-sm font-bold text-primary">
-                    {review.merchant_rating ?? "—"}/5
-                  </p>
-                  <p className="mt-1 text-sm text-zinc-400">{review.comment || "Sem comentário"}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
-    </WorkspaceShell>
-    <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Nova categoria</DialogTitle>
-          <DialogDescription>Informe o nome da categoria do cardápio.</DialogDescription>
-        </DialogHeader>
-        <Input
-          autoFocus
-          value={categoryNameDraft}
-          onChange={(e) => setCategoryNameDraft(e.target.value)}
-          placeholder="Ex.: Bebidas"
-          maxLength={80}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") confirmAddCategory();
-          }}
-        />
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setCategoryDialogOpen(false)}>
-            Cancelar
-          </Button>
-          <Button type="button" onClick={confirmAddCategory} disabled={!categoryNameDraft.trim()}>
-            Criar categoria
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    <Dialog open={rejectDialogOrderId !== null} onOpenChange={(open) => { if (!open) setRejectDialogOrderId(null); }}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Cancelar pedido</DialogTitle>
-          <DialogDescription>Informe o motivo do cancelamento para o cliente e o estorno.</DialogDescription>
-        </DialogHeader>
-        <Textarea
-          autoFocus
-          value={rejectReasonDraft}
-          onChange={(e) => setRejectReasonDraft(e.target.value)}
-          placeholder="Ex.: Produto em falta no momento."
-          maxLength={300}
-          rows={3}
-        />
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setRejectDialogOrderId(null)}>
-            Voltar
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={confirmRejectOrder}
-            disabled={!rejectReasonDraft.trim()}
-          >
-            Confirmar cancelamento
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    {confirmActionDialog}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {confirmActionDialog}
     </>
   );
 }

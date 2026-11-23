@@ -98,7 +98,9 @@ function NovoEndereco() {
     const required = ["postal_code", "street", "number", "neighborhood", "city", "state"];
     for (const field of required) {
       if (!formData[field as keyof typeof formData]) {
-        toast.error("Preencha apenas os dados obrigatórios que a localização não conseguiu identificar.");
+        toast.error(
+          "Preencha apenas os dados obrigatórios que a localização não conseguiu identificar.",
+        );
         return;
       }
     }
@@ -226,7 +228,14 @@ function NovoEndereco() {
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <Field label="CEP*" name="postal_code" value={formData.postal_code} onChange={handleChange} onBlur={handleCEPBlur} inputMode="numeric" />
+            <Field
+              label="CEP*"
+              name="postal_code"
+              value={formData.postal_code}
+              onChange={handleChange}
+              onBlur={handleCEPBlur}
+              inputMode="numeric"
+            />
             <div className="col-span-2">
               <Field label="Rua*" name="street" value={formData.street} onChange={handleChange} />
             </div>
@@ -234,17 +243,38 @@ function NovoEndereco() {
           <div className="grid grid-cols-3 gap-3">
             <Field label="Número*" name="number" value={formData.number} onChange={handleChange} />
             <div className="col-span-2">
-              <Field label="Complemento" name="complement" value={formData.complement} onChange={handleChange} />
+              <Field
+                label="Complemento"
+                name="complement"
+                value={formData.complement}
+                onChange={handleChange}
+              />
             </div>
           </div>
-          <Field label="Bairro*" name="neighborhood" value={formData.neighborhood} onChange={handleChange} />
+          <Field
+            label="Bairro*"
+            name="neighborhood"
+            value={formData.neighborhood}
+            onChange={handleChange}
+          />
           <div className="grid grid-cols-4 gap-3">
             <div className="col-span-3">
               <Field label="Cidade*" name="city" value={formData.city} onChange={handleChange} />
             </div>
-            <Field label="UF*" name="state" value={formData.state} onChange={handleChange} maxLength={2} />
+            <Field
+              label="UF*"
+              name="state"
+              value={formData.state}
+              onChange={handleChange}
+              maxLength={2}
+            />
           </div>
-          <Field label="Ponto de referência" name="reference" value={formData.reference} onChange={handleChange} />
+          <Field
+            label="Ponto de referência"
+            name="reference"
+            value={formData.reference}
+            onChange={handleChange}
+          />
         </form>
       </main>
 
@@ -269,7 +299,10 @@ function NovoEndereco() {
   );
 }
 
-function Field({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+function Field({
+  label,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
     <div className="space-y-2">
       <label className="ml-1 text-xs font-medium text-zinc-500">{label}</label>

@@ -84,11 +84,7 @@ function Inicio() {
 
       const [{ data: profileData, error: profileError }, { data: addrData, error: addrError }] =
         await Promise.all([
-          supabase
-            .from("profiles")
-            .select("full_name,avatar_url")
-            .eq("id", user.id)
-            .single(),
+          supabase.from("profiles").select("full_name,avatar_url").eq("id", user.id).single(),
           supabase
             .from("customer_addresses" as any)
             .select("*")
@@ -280,20 +276,43 @@ function Inicio() {
               >
                 <span className="relative grid aspect-[3/3.4] w-full place-items-center overflow-hidden rounded-[1.25rem] bg-zinc-900 ring-1 ring-white/10 transition-transform group-active:scale-95">
                   {cat.image_url ? (
-                    <img src={cat.image_url} alt={cat.name} loading="lazy" className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
+                    <img
+                      src={cat.image_url}
+                      alt={cat.name}
+                      loading="lazy"
+                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
+                    />
                   ) : cat.slug === "restaurantes" ? (
-                    <img src={catRestaurantes} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
+                    <img
+                      src={catRestaurantes}
+                      alt={cat.name}
+                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
+                    />
                   ) : cat.slug === "mercados" ? (
-                    <img src={catMercados} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
+                    <img
+                      src={catMercados}
+                      alt={cat.name}
+                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
+                    />
                   ) : cat.slug === "farmacias" ? (
-                    <img src={catFarmacias} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
+                    <img
+                      src={catFarmacias}
+                      alt={cat.name}
+                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
+                    />
                   ) : cat.slug === "lojas" ? (
-                    <img src={catLojas} alt={cat.name} className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]" />
+                    <img
+                      src={catLojas}
+                      alt={cat.name}
+                      className="relative h-[78%] w-[78%] object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.65)]"
+                    />
                   ) : (
                     <Store className="h-8 w-8 text-zinc-700" />
                   )}
                 </span>
-                <span className="w-full truncate text-center text-[11px] font-medium text-zinc-300">{cat.name}</span>
+                <span className="w-full truncate text-center text-[11px] font-medium text-zinc-300">
+                  {cat.name}
+                </span>
               </button>
             ))
           ) : null}
@@ -334,7 +353,11 @@ function Inicio() {
                   >
                     <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-white/10">
                       {merchant.logo_url ? (
-                        <img src={merchant.logo_url} alt={merchant.name} className="h-full w-full object-cover transition-transform group-hover:scale-110" />
+                        <img
+                          src={merchant.logo_url}
+                          alt={merchant.name}
+                          className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                        />
                       ) : (
                         <div className="grid h-full w-full place-items-center">
                           <Store className="h-8 w-8 text-zinc-700" />
@@ -349,7 +372,9 @@ function Inicio() {
 
                     <div className="flex min-w-0 flex-col justify-center gap-1.5">
                       <div className="flex items-center gap-2">
-                        <h3 className="truncate text-base font-extrabold text-white">{merchant.name}</h3>
+                        <h3 className="truncate text-base font-extrabold text-white">
+                          {merchant.name}
+                        </h3>
                       </div>
 
                       <div className="flex flex-col gap-1">
@@ -370,9 +395,17 @@ function Inicio() {
                         </div>
                         <div className="flex items-center gap-1 text-[10px] font-bold">
                           {(() => {
-                            const mHours = merchantsHours.filter((hour) => hour.merchant_id === merchant.id);
-                            const mSpecialHours = merchantsSpecialHours.filter((hour) => hour.merchant_id === merchant.id);
-                            const status = calculateMerchantStatus(mHours, undefined, mSpecialHours);
+                            const mHours = merchantsHours.filter(
+                              (hour) => hour.merchant_id === merchant.id,
+                            );
+                            const mSpecialHours = merchantsSpecialHours.filter(
+                              (hour) => hour.merchant_id === merchant.id,
+                            );
+                            const status = calculateMerchantStatus(
+                              mHours,
+                              undefined,
+                              mSpecialHours,
+                            );
                             const colorClass =
                               status.status === "open"
                                 ? "text-green-500"
@@ -381,7 +414,9 @@ function Inicio() {
                                   : "text-zinc-500";
                             return (
                               <>
-                                <span className={`h-1.5 w-1.5 rounded-full ${status.status === "open" ? "bg-green-500" : status.status === "closed" ? "bg-red-500" : "bg-zinc-500"}`} />
+                                <span
+                                  className={`h-1.5 w-1.5 rounded-full ${status.status === "open" ? "bg-green-500" : status.status === "closed" ? "bg-red-500" : "bg-zinc-500"}`}
+                                />
                                 <span className={colorClass}>{status.message}</span>
                               </>
                             );
@@ -390,7 +425,9 @@ function Inicio() {
                       </div>
 
                       {merchant.description && (
-                        <p className="truncate text-[11px] italic text-zinc-500">{merchant.description}</p>
+                        <p className="truncate text-[11px] italic text-zinc-500">
+                          {merchant.description}
+                        </p>
                       )}
                     </div>
                   </button>
@@ -400,7 +437,9 @@ function Inicio() {
                   <span className="grid h-12 w-12 place-items-center rounded-full bg-zinc-900 ring-1 ring-zinc-800">
                     <Store className="h-6 w-6 text-zinc-700" />
                   </span>
-                  <p className="max-w-[200px] text-[12px] leading-relaxed text-zinc-500">Nenhum estabelecimento disponível nesta região.</p>
+                  <p className="max-w-[200px] text-[12px] leading-relaxed text-zinc-500">
+                    Nenhum estabelecimento disponível nesta região.
+                  </p>
                 </div>
               )
             ) : (
@@ -409,7 +448,8 @@ function Inicio() {
                   <MapPin className="h-6 w-6 text-primary" />
                 </span>
                 <p className="max-w-[220px] text-[13px] font-medium leading-relaxed text-zinc-300">
-                  Informe um endereço de entrega para ver os estabelecimentos disponíveis na sua região.
+                  Informe um endereço de entrega para ver os estabelecimentos disponíveis na sua
+                  região.
                 </p>
                 <button
                   onClick={() => navigate({ to: "/enderecos" })}

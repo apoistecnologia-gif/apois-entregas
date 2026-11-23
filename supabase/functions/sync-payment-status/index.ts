@@ -524,7 +524,13 @@ async function getMercadoPagoMerchantState(
     .select("status,encrypted_access_token,token_iv")
     .eq("id", accountId)
     .maybeSingle();
-  if (accountError || !account || account.status !== "connected" || !account.encrypted_access_token || !account.token_iv) {
+  if (
+    accountError ||
+    !account ||
+    account.status !== "connected" ||
+    !account.encrypted_access_token ||
+    !account.token_iv
+  ) {
     throw new Error("provider_not_configured");
   }
 
@@ -543,14 +549,12 @@ async function getMercadoPagoMerchantState(
   if (!chargeRoute) throw new Error("conflict:UNSUPPORTED_PROVIDER_CHARGE_ID");
 
   if (chargeRoute.api === "orders") {
-    const res = await fetch(
-      chargeRoute.lookupUrl,
-      { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } },
-    );
+    const res = await fetch(chargeRoute.lookupUrl, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    });
     const resource = await readJson(res);
     if (!res.ok || !isRecord(resource)) throw new Error("provider_lookup_failed");
-    if (text(resource.id) !== chargeId)
-      throw new Error("conflict:PROVIDER_RESOURCE_MISMATCH");
+    if (text(resource.id) !== chargeId) throw new Error("conflict:PROVIDER_RESOURCE_MISMATCH");
     if (text(resource.external_reference) !== `apois-entregas-order-${order.id}`)
       throw new Error("conflict:EXTERNAL_REFERENCE_MISMATCH");
     const amount = Number(resource.total_amount);
@@ -572,14 +576,12 @@ async function getMercadoPagoMerchantState(
     };
   }
 
-  const res = await fetch(
-    chargeRoute.lookupUrl,
-    { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } },
-  );
+  const res = await fetch(chargeRoute.lookupUrl, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
   const resource = await readJson(res);
   if (!res.ok || !isRecord(resource)) throw new Error("provider_lookup_failed");
-  if (text(resource.id) !== chargeId)
-    throw new Error("conflict:PROVIDER_RESOURCE_MISMATCH");
+  if (text(resource.id) !== chargeId) throw new Error("conflict:PROVIDER_RESOURCE_MISMATCH");
   if (text(resource.external_reference) !== `apois-entregas-order-${order.id}`)
     throw new Error("conflict:EXTERNAL_REFERENCE_MISMATCH");
   const amount = Number(resource.transaction_amount);

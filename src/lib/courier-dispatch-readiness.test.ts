@@ -1,5 +1,8 @@
 import { expect, test } from "bun:test";
-import { citiesWithoutCourierDispatch, isCourierDispatchRadiusConfigured } from "./courier-dispatch-readiness";
+import {
+  citiesWithoutCourierDispatch,
+  isCourierDispatchRadiusConfigured,
+} from "./courier-dispatch-readiness";
 
 test("no implicit radius is inferred from client delivery coverage", () => {
   expect(isCourierDispatchRadiusConfigured(null)).toBe(false);
@@ -14,9 +17,30 @@ test("no implicit radius is inferred from client delivery coverage", () => {
 
 test("administration highlights active cities without dispatch coverage, not inactive cities", () => {
   const cities = [
-    { id: "a", name: "Cidade A", state: "PE", is_active: true, courier_dispatch_radius_km: null, default_delivery_radius_km: 10 },
-    { id: "b", name: "Cidade B", state: "PI", is_active: true, courier_dispatch_radius_km: 20, default_delivery_radius_km: 10 },
-    { id: "c", name: "Cidade C", state: "PE", is_active: false, courier_dispatch_radius_km: null, default_delivery_radius_km: 10 },
+    {
+      id: "a",
+      name: "Cidade A",
+      state: "PE",
+      is_active: true,
+      courier_dispatch_radius_km: null,
+      default_delivery_radius_km: 10,
+    },
+    {
+      id: "b",
+      name: "Cidade B",
+      state: "PI",
+      is_active: true,
+      courier_dispatch_radius_km: 20,
+      default_delivery_radius_km: 10,
+    },
+    {
+      id: "c",
+      name: "Cidade C",
+      state: "PE",
+      is_active: false,
+      courier_dispatch_radius_km: null,
+      default_delivery_radius_km: 10,
+    },
   ];
   expect(citiesWithoutCourierDispatch(cities).map((city) => city.id)).toEqual(["a"]);
 });
