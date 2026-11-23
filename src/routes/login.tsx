@@ -109,8 +109,14 @@ function Login() {
     if (isLoading) return;
     setIsLoading(true);
     try {
+      // A preview URL is ephemeral and may not be on the Supabase Auth allowlist.
+      // Always complete admin password recovery on the official, stable portal.
+      const recoveryOrigin =
+        productMode === "admin" && window.location.hostname.endsWith(".vercel.app")
+          ? "https://admin.apoisbrasil.com.br"
+          : window.location.origin;
       const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-        redirectTo: `${window.location.origin}/redefinir-senha`,
+        redirectTo: `${recoveryOrigin}/redefinir-senha`,
       });
       if (error) {
         // Show actionable delivery/configuration failures without exposing whether
@@ -133,7 +139,7 @@ function Login() {
       if (productMode === "merchant") {
         window.location.assign(`/redefinir-senha?${new URLSearchParams({ otp: "1", email: normalizedEmail }).toString()}`);
       } else {
-        toast.success("Se este e-mail estiver cadastrado, você receberá um link para definir uma nova senha.");
+        toast.success("Se este e-mail estiver cadastrado, você receberá um link para criar a senha. No painel admin, ele abrirá o domínio oficial da APOIS.");
       }
     } catch {
       const message = "Falha de conexão com o serviço de autenticação. Verifique a conexão e tente novamente.";
