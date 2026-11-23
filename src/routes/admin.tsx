@@ -28,6 +28,7 @@ import { AdminReviewsPanel } from "@/components/AdminReviewsPanel";
 import { AdminCourierSettlementsPanel } from "@/components/AdminCourierSettlementsPanel";
 import { AdminOrdersPanel } from "@/components/AdminOrdersPanel";
 import { AdminMerchantCreateDialog } from "@/components/AdminMerchantCreateDialog";
+import { AdminMfaGate } from "@/components/AdminMfaGate";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { usePromptDialog } from "@/components/ui/prompt-dialog";
@@ -108,9 +109,13 @@ export const Route = createFileRoute("/admin")({
     if (!role) throw redirect({ to: "/inicio" });
     return { session };
   },
-  component: AdminWorkspace,
+  component: AdminMfaProtectedWorkspace,
   head: () => ({ meta: [{ title: "Administração | APOIS ENTREGA" }] }),
 });
+
+function AdminMfaProtectedWorkspace() {
+  return <AdminMfaGate loginPath="/login"><AdminWorkspace /></AdminMfaGate>;
+}
 
 function AdminWorkspace() {
   const navigate = useNavigate();
