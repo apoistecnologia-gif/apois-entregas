@@ -32,6 +32,8 @@ Projetos Supabase Free **não oferecem backup automático diário**. Ter a base 
 5. **Testar restauração** em banco isolado, sem escrita na produção; registrar quantidade de tabelas/linhas, checksums, integridade, login de teste, fluxos críticos e tempo real.
 6. Invalidar e eliminar exportações não protegidas, atualizar inventário e registrar resultado em ata assinada.
 
+**Preparação técnica em GitHub:** workflow manual `.github/workflows/senatran-backup-manual.yml`, que só poderá executar após configuração segura dos segredos `APOIS_ENTREGAS_BACKUP_DATABASE_URL`, `APOIS_CORRIDAS_BACKUP_DATABASE_URL` e da variável pública `APOIS_BACKUP_AGE_RECIPIENT`. Ele exporta, valida a lista do dump e envia ao artefato privado **somente o arquivo criptografado age** e seu SHA-256 (retenção de 7 dias); não realiza restauração integral nem constitui backup ativo enquanto não for executado com sucesso. **NUNCA** publicar chave privada de desencriptação ou credenciais no chat ou no repositório.
+
 **Ainda não executado/verificado:** exportação cifrada real e restauração completa. Não usar esta minuta como se fosse relatório de execução.
 
 ## D. Registro de retenção e descarte — Q14
