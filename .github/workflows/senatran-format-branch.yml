@@ -25,7 +25,21 @@ jobs:
       - name: Instalar dependências do lockfile sem alterá-lo
         run: bun install --frozen-lockfile
       - name: Formatar arquivos rastreados segundo Prettier da APOIS
-        run: bun run format
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun run format
+          # Alguns arquivos compactados precisam de mais de uma passagem do formatador.
+          for pass in 1 2 3 4; do
+            if bun run format:check; then
+              echo "Prettier consistente apos passagem ${pass}."
+              break
+            fi
+            bunx prettier --write \
+              supabase/functions/merchant-mercadopago-oauth/index.ts \
+              supabase/functions/merchant-mercadopago-webhook/index.ts \
+              supabase/functions/process-superapp-refund/index.ts
+          done
       - name: Conferir lint e formatação antes de publicar
         shell: bash
         run: |
